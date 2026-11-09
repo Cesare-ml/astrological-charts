@@ -1,6 +1,6 @@
 # Scelta architetturale: archivio asset separato per collaboratori
 
-**Decisione consigliata, non ancora applicata a VirgoStars:** creare un repository privato dedicato **`Cesare-ml/astrological-assets`** per il sottoinsieme di immagini/font di proprietà o con licenza idonea usato dai grafici astrologici. Il repository **non è ancora stato creato** e i file restano oggi sotto `Cesare-ml/virgo-stars/public/assets`.
+**Decisione in attuazione, non ancora applicata a VirgoStars:** il repository dedicato **[`Cesare-ml/astrological-assets`](https://github.com/Cesare-ml/astrological-assets)** è stato creato il 9 novembre 2026 ed è privato. La sua [PR #1](https://github.com/Cesare-ml/astrological-assets/pull/1) prepara il catalogo dei file e l'importazione controllata, ma **non contiene ancora i PNG/font originali**. La sorgente dei file in produzione resta `Cesare-ml/virgo-stars/public/assets`.
 
 Questa decisione nasce da un requisito concreto: un collaboratore che ha accesso solo a `astrological-charts` deve poter visualizzare i grafici correttamente, anche quando non può leggere `virgo-stars`.
 
@@ -81,7 +81,7 @@ Il resto di `public/` (logo del sito, risorse UI generiche, tarocchi e altri med
 
 L'Astrolabio dovrà ottenere **una copia locale per dispositivo** del solo sottoinsieme necessario, generato dal manifest versionato. Un dispositivo offline non può condividere fisicamente gli asset distribuiti dal sito web. Il pacchetto locale deve rimanere coerente con la versione del renderer e supportare rollback.
 
-## Requisiti per creare il repository
+## Requisiti prima di popolare e condividere il repository
 
 1. Repository **privato**. Invitare gli sviluppatori al codice con accesso in lettura agli asset; concedere scrittura agli asset solo a chi deve curarli.
 2. Trasferire soltanto risorse con provenienza e autorizzazioni documentate. Evitare di pubblicare automaticamente texture stock o font e gli elementi brandizzati senza autorizzazione.
@@ -95,3 +95,7 @@ L'Astrolabio dovrà ottenere **una copia locale per dispositivo** del solo sotto
 Il repository `astrological-charts` contiene il **server di sviluppo locale** e test che permettono l'uso di una cartella di asset indipendente dal repository `virgo-stars`.
 
 Non sono stati creati il repository degli asset, una copia dei file grafici, il collegamento automatico della build VirgoStars, una demo Angular integrata o un CDN. La decisione di aprire pubblicamente qualsiasi repository rimane separata e richiede una revisione delle licenze.
+
+## Nota sui permessi di accesso
+
+Il repository è sotto un account GitHub personale; la documentazione ufficiale GitHub avverte che i collaboratori di repository privati personali possono ottenere accesso in scrittura anziché un ruolo strettamente read-only. Se è indispensabile la sola lettura, valutare una organizzazione GitHub con ruoli separati prima degli inviti. Non confondere repo **privato** con repo **sola lettura**.
