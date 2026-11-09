@@ -54,7 +54,7 @@ git clone https://github.com/Cesare-ml/astrological-assets.git
 cd astrological-charts
 git switch feat/independent-assets-dev
 
-node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets
+node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json
 ```
 
 Il server restituisce gli asset su `http://127.0.0.1:4177/assets/...`, espone soltanto richieste GET/HEAD locali e limita gli origin dei browser. Nessun account AWS, endpoint backend, password o token è necessario.
@@ -99,3 +99,7 @@ Non sono stati creati il repository degli asset, una copia dei file grafici, il 
 ## Nota sui permessi di accesso
 
 Il repository è sotto un account GitHub personale; la documentazione ufficiale GitHub avverte che i collaboratori di repository privati personali possono ottenere accesso in scrittura anziché un ruolo strettamente read-only. Se è indispensabile la sola lettura, valutare una organizzazione GitHub con ruoli separati prima degli inviti. Non confondere repo **privato** con repo **sola lettura**.
+
+## Local proof of independent asset access (candidate PR)
+
+While real artwork is still unapproved, `astrological-charts/scripts/preview-synthetic.ps1` creates 78 **original synthetic** PNGs in git-ignored `.local/` and serves them in a manifest-gated preview at `http://127.0.0.1:4177/__preview`. No VirgoStars repository access is needed. See [LOCAL_ASSET_PREVIEW.md](LOCAL_ASSET_PREVIEW.md). The actual Angular chart demo and production asset cutover are still pending.
