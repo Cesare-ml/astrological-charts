@@ -2,27 +2,35 @@
   "name": "grafici-astrologici",
   "version": "0.0.1",
   "private": true,
-  "description": "Private Angular astrology chart rendering development workspace",
+  "description": "Private collaborative Angular/Three.js astrological chart renderer extracted from VirgoStars",
   "scripts": {
     "build": "ng build grafici-astrologici",
     "build:library": "ng build grafici-astrologici",
     "check:types": "tsc -p tsconfig.lib.json --noEmit",
-    "check:extraction": "node scripts/check-extraction.mjs"
+    "check:extraction": "node scripts/check-extraction.mjs",
+    "check:assets": "node scripts/inventory-assets.mjs",
+    "preflight": "npm run check:extraction && npm run check:assets && npm run check:types"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "peerDependencies": {
+    "@angular/common": "^20.3.0",
+    "@angular/core": "^20.3.0",
+    "rxjs": "^7.8.0",
+    "three": "^0.170.0",
+    "gsap": "^3.12.5",
+    "moment-timezone": "^0.5.46"
   },
   "dependencies": {
-    "@angular/common": "^20.3.4",
-    "@angular/core": "^20.3.4",
-    "@angular/compiler": "^20.3.4",
-    "rxjs": "~7.8.0",
-    "three": "^0.170.0",
-    "moment-timezone": "^0.5.46",
-    "gsap": "^3.12.5",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/cli": "^20.3.5",
     "@angular-devkit/build-angular": "^20.3.5",
+    "@angular/compiler": "^20.3.4",
     "@angular/compiler-cli": "^20.3.4",
+    "@types/three": "0.170.0",
     "ng-packagr": "^20.3.0",
     "typescript": "5.8.3"
   }
