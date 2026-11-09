@@ -13,3 +13,6 @@ Thumbs.db
 *.key
 *.p12
 *.pfx
+
+# Locally generated inventory metadata; host artwork stays in virgo-stars
+chart-assets-manifest*.json
