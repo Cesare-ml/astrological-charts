@@ -43,6 +43,8 @@ npm run build
 - [Original source provenance](docs/UPSTREAM_PROVENANCE.md)
 - [Rendering architecture](docs/ARCHITECTURE.md)
 - [Graphics asset audit](docs/ASSETS_AUDIT.md)
+- [Shared host-owned assets and canonical URLs](docs/SHARED_ASSET_ARCHITECTURE.md)
+- [Deterministic asset manifest and offline version comparison](docs/ASSET_MANIFEST.md)
 - [Integration plan — not active](docs/INTEGRATION_PLAN.md)
 - [Technical reference snapshots](docs/reference/README.md)
 
