@@ -74,6 +74,10 @@ An offline physical device necessarily holds local files; it cannot share a disk
 
 This is a planned packaging improvement; **not yet implemented or tested** on devices.
 
+### Deterministic manifest (implemented in separate candidate PR)
+
+The `scripts/asset-manifest.mjs` utility can record only selected `img/` and `fonts/` references from the host-owned `public/assets/` tree, verify their SHA-256 hashes and compare manifest versions. See [ASSET_MANIFEST.md](ASSET_MANIFEST.md). This does not copy any image files, install images into the npm library, or deploy to the Astrolabio.
+
 ## 5. Validation gates
 
 1. `npm run test:asset-urls` (pure URL contract) and `npm run check:extraction`.
