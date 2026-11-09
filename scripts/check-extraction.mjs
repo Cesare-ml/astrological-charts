@@ -31,11 +31,9 @@ function walk(dir) {
 }
 function importTargets(content) {
   const specifiers = [];
-  // Skip comments: old source still contains imports from dormant renderers.
-  const activeCode = content.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   // Capture statically declared imports/exports, including multiline 'from' declarations.
   const re = /\bfrom\s*['"]([^'"]+)['"]|^\s*import\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/gm;
-  for (const m of activeCode.matchAll(re)) specifiers.push(m[1] ?? m[2] ?? m[3]);
+  for (const m of content.matchAll(re)) specifiers.push(m[1] ?? m[2] ?? m[3]);
   return specifiers;
 }
 function resolvesLocally(origin, specifier) {
