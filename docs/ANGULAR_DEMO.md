@@ -73,3 +73,5 @@ A subsequent clean checkout of `cec1a55` passed the same installation, preflight
 The same synthetic browser suite also passed with the locally installed Playwright Firefox 142.0.1 and Playwright Core 1.56.1. An initial strict comparison found one channel differing by one level in one pixel; the test now uses the tolerance described above. This is a desktop headless software test, not an Astrolabio device, offline boot, e-ink, or hardware validation.
 
 On a fresh local checkout of `a421969`, `npm ci`, preflight, both builds, synthetic-pack generation and the full browser suite passed again in Chromium and Firefox.
+
+After fast-forwarding that checkout to `3fd073f`, `npm run test:offline` passed with Firefox 142.0.1: four nonblank 400×400 PNGs from verified synthetic local files, browser context offline and no HTTP(S) requests observed. The installed Astrolabio adapter and hardware were not exercised.
