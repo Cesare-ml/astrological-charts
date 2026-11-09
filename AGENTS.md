@@ -14,7 +14,7 @@ Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/sr
 4. Keep Angular integration intact. Preserve public `grafici-astrologici` import compatibility unless the PR explicitly proposes migration.
 5. Avoid unrelated refactors. Describe visuals before/after, input fixtures, affected consumers, and any changed public contracts.
 6. Do not introduce secrets, tokens, production payloads, personal natal-chart data, or private business records into code or test fixtures.
-7. Check asset rights before adding fonts, symbols, images, textures or icons. Existing source references to assets do not mean they may be publicly redistributed.
+7. All production visual assets are **host-owned** in `virgo-stars/public/assets/`. Never copy them into this renderer repository, package output or demo. Use `resolveChartAssetUrl` for rendering, share canonical `/assets/img/` URLs with host HTML/CSS, and check rights before adding any fixture images or fonts. Asset files already publicly visible do not imply redistribution rights.
 8. Never add GitHub Actions, production deployments, publish-to-npm workflows, or scheduled jobs unless explicitly authorized by repository owner.
 9. Do not treat a successful build as proof of visual correctness. Test browser, mobile PNG and headless/e-ink paths when relevant.
 10. Update docs for every meaningful feature or behavioral change. Report test commands executed and distinguish untested work.
