@@ -1,9 +1,24 @@
 import { SkinManager } from './@skin-manager';
 import * as THREE from 'three';
+import { resolveChartAssetUrl } from './chart-asset-urls';
 
 export class GestoreImmagini {
+  /** @deprecated Historical raw prefix. Prefer configurePublicAssetsBase(). */
   public static assetsBase = "";
   private static pool = new Map<string, THREE.Texture>();
+  private static publicAssetsBase = '/assets/';
+
+  /** The host owns these files; this only changes how URLs are resolved. */
+  public static configurePublicAssetsBase(base: string): void {
+    // Fail fast on invalid configuration instead of breaking texture loads later.
+    resolveChartAssetUrl('img/check.png', base);
+    this.publicAssetsBase = base;
+  }
+
+  public static resolveAssetUrl(ref: string): string {
+    // Preserve the historical override for older consumers while migrating.
+    return this.assetsBase ? this.assetsBase + ref : resolveChartAssetUrl(ref, this.publicAssetsBase);
+  }
 
   public static getImg(ref: string): THREE.Texture {/*
     if (!this.pool.has(ref)) {
@@ -12,7 +27,7 @@ export class GestoreImmagini {
     }
     return this.pool.get(ref)!;*/
     //console.log(this.assetsBase + ref);
-    return new THREE.TextureLoader().load(this.assetsBase + ref);
+    return new THREE.TextureLoader().load(this.resolveAssetUrl(ref));
   }
 
   public static async loadAsync(ref: string): Promise<THREE.Texture> {
@@ -30,14 +45,14 @@ export class GestoreImmagini {
     const loader = new THREE.TextureLoader();
     const promise = new Promise<THREE.Texture>((resolve, reject) => {
       //console.log(this.assetsBase + ref);
-      loader.load(this.assetsBase + ref, resolve, undefined, reject);
+      loader.load(this.resolveAssetUrl(ref), resolve, undefined, reject);
     });
     return promise;
   }
 
 
   public static preload(ref: string) {
-    const ref_full = this.assetsBase + ref;
+    const ref_full = this.resolveAssetUrl(ref);
 
     if (!this.pool.has(ref_full)) {
       const texture = new THREE.TextureLoader().load(ref_full);
@@ -51,14 +66,16 @@ export class GestoreImmagini {
   }
 
   public static preloadImages(urls: string[]): Promise<void[]> {
-    const promises = urls.map(
+    // Different legacy references may identify the same browser URL.
+    // Preload each URL once, relying on the host browser cache for HTML and WebGL.
+    const canonicalUrls = Array.from(new Set(urls.map(url => this.resolveAssetUrl(url))));
+    const promises = canonicalUrls.map(
       (url) =>
         new Promise<void>((resolve, reject) => {
           const img = new Image();
-          const ref_full = this.assetsBase + url;
-          img.src = ref_full;
           img.onload = () => resolve();
-          img.onerror = () => reject(`Errore caricando immagine: ${ref_full}`);
+          img.onerror = () => reject(`Errore caricando immagine: ${url}`);
+          img.src = url;
         })
     );
     return Promise.all(promises);
