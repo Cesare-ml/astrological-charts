@@ -54,12 +54,25 @@ test('reject traversal, duplicate names and case collisions',async()=>{
   });
 });
 
-test('reject symlinks and tampered manifests',async()=>{
+test('reject tampered manifests',async()=>{
   await fixture(async root=>{
     const m=await generate(root);
     m.files[0].bytes=100;
     assert.throws(()=>validateManifest(m),/fingerprint mismatch/);
-    symlinkSync(join(root,'img','zodiac','Sun.png'),join(root,'img','zodiac','linked.png'));
+  });
+});
+
+test('reject symlinks (or skip where Windows requires elevation)',async t=>{
+  await fixture(async root=>{
+    try {
+      symlinkSync(join(root,'img','zodiac','Sun.png'),join(root,'img','zodiac','linked.png'));
+    } catch(err) {
+      if(process.platform==='win32' && ['EPERM','EACCES','UNKNOWN'].includes(err.code)) {
+        t.skip('This Windows user cannot create symlinks');
+        return;
+      }
+      throw err;
+    }
     await assert.rejects(()=>generate(root),/Symlink forbidden/);
   });
 });
