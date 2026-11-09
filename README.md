@@ -49,6 +49,7 @@ These commands and `npm run preflight` passed on Windows with Node 22.18.0 again
 - [Independent contributor asset access and proposed private asset repository](docs/INDEPENDENT_ASSETS_REPOSITORY.md)
 - [Three-repository integration checkpoint, release gates and open blockers](docs/MULTIREPO_INTEGRATION_CHECKPOINT.md)
 - [Asset-only local preview: 78 synthetic PNGs or an approved independent pack](docs/LOCAL_ASSET_PREVIEW.md)
+- [Angular renderer demo and browser tests](docs/ANGULAR_DEMO.md)
 - [Integration plan — not active](docs/INTEGRATION_PLAN.md)
 - [Technical reference snapshots](docs/reference/README.md)
 
@@ -66,6 +67,8 @@ These commands and `npm run preflight` passed on Windows with Node 22.18.0 again
 Work on feature branches and submit pull requests. No production changes, AWS access, real users' birth data, unlicensed artwork, automatic deployment or publication. The maintainer approves compatibility and release decisions.
 
 ## Browser preview of a synthetic asset pack
+
+For the interactive renderer demo, including all four modes and seven selectable skins, follow [the Angular demo guide](docs/ANGULAR_DEMO.md). It uses locally generated placeholder assets; visual compatibility with the original artwork has not been verified.
 
 Before the real images are reviewed/imported, Windows contributors can open a **local gallery of 78 generated checkerboard PNGs** using:
 

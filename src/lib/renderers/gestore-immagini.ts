@@ -43,9 +43,9 @@ export class GestoreImmagini {
     return texture;*/
     
     const loader = new THREE.TextureLoader();
+    const url = this.resolveAssetUrl(ref);
     const promise = new Promise<THREE.Texture>((resolve, reject) => {
-      //console.log(this.assetsBase + ref);
-      loader.load(this.resolveAssetUrl(ref), resolve, undefined, reject);
+      loader.load(url, resolve, undefined, () => reject(new Error(`Unable to load chart asset: ${url}`)));
     });
     return promise;
   }

@@ -24,14 +24,14 @@ npm run test:assets
 node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json
 ```
 
-Angular demo environment will set `GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/')`, and load all generated synthetic natal/transit/synastry/latitude fixtures. **A usable Angular demo and real asset pack are still pending.** The read-only server alone does not produce an interactive chart.
+The [Angular demo](ANGULAR_DEMO.md) configures the asset base and renders generated natal/transit/synastry/latitude fixtures. The real asset pack remains pending; synthetic success does not verify the original visuals.
 
 ## Current integration order
 
 ```text
 astrological-charts #1 -> #8 -> #9 -> #10 -> #11     (stacked draft PRs)
              |
-             +----> independent visual demo (not done)
+             +----> independent synthetic Angular demo (candidate; real visuals unverified)
                           |
 astrological-assets #1 --+----> reviewed asset subset (not done)
                           |
@@ -56,7 +56,7 @@ The upstream has a separate **documentation-only** [VirgoStars PR #155](https://
 
 ## Pending technical blockers
 
-- The top-of-stack candidate compiled after `npm ci` on Windows (Node 22.18.0); realistic asset-loaded rendering remains unverified. Earlier PR heads need their own checks.
+- The top-of-stack candidate compiled after `npm ci` on Windows (Node 22.18.0); rendering with original assets remains unverified. Earlier PR heads need their own checks.
 - A source mismatch exists: `risuonatore-solare-bianco.png` referenced by `dark-bn`/`light-bn` is not in the inspected assets tree; `risuonatore-solare-bn.png` exists. Do not automatically rename.
 - `astrological-assets` has not received legally approved PNG/fonts or a verified complete manifest.
 - Asset selection based on static references is conservative and can miss some dynamic filenames.

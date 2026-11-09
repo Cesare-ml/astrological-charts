@@ -16,6 +16,26 @@ import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer'
 import {SkinManager} from '../renderers/@skin-manager';
 import { debounceTime, fromEvent, map, startWith } from 'rxjs';
 
+/** Dispose resources owned by a generated scene, once per object identity. */
+function disposeSceneResources(root: THREE.Object3D): void {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
+  root.traverse((object: any) => {
+    if (object.geometry) geometries.add(object.geometry);
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (!material) continue;
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) textures.add(value);
+      }
+    }
+  });
+  textures.forEach(texture => texture.dispose());
+  materials.forEach(material => material.dispose());
+  geometries.forEach(geometry => geometry.dispose());
+}
+
 @Injectable({providedIn: 'root'})
 export class GraficoRenderService implements OnDestroy {
   private canvas: HTMLCanvasElement;
@@ -27,6 +47,7 @@ export class GraficoRenderService implements OnDestroy {
 
   private frameId: number = null;
   private renderRequestedBeforeInit = false;
+  private drawGeneration = 0;
   public isInizializzato = false;
 
   private zoomValue: number = 1; // 1 valore attuale dello zoom
@@ -61,11 +82,21 @@ export class GraficoRenderService implements OnDestroy {
   // -------------------- LIFECYCLE --------------------
 
   public ngOnDestroy(): void {
+    ++this.drawGeneration;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
     
     if(this.resizeSub) {
       this.resizeSub.unsubscribe();
     }
+    if (this.scene) {
+      disposeSceneResources(this.scene);
+      this.scene.clear();
+    }
+    this.renderer?.dispose();
+    this.renderer = null;
+    this.scene = null;
+    this.camera = null;
+    this.isInizializzato = false;
   }
 
   // -------------------- INIT --------------------
@@ -73,6 +104,7 @@ export class GraficoRenderService implements OnDestroy {
     canvas: ElementRef<HTMLCanvasElement>, 
     dimensioni: {x:number, y:number}
   ): void {
+    if (this.renderer) this.ngOnDestroy();
     // The first step is to get the reference of the canvas element from our HTML document
     this.canvas = canvas.nativeElement;
     this.dimensioni = dimensioni;
@@ -124,6 +156,7 @@ export class GraficoRenderService implements OnDestroy {
 
   private aggiornaRisoluzioneRenderer(): void {
     const rect = this.canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
 
     const pixelRatio = /*window.devicePixelRatio **/ this.scale;
     //this.renderer.setPixelRatio(pixelRatio);
@@ -136,6 +169,7 @@ export class GraficoRenderService implements OnDestroy {
 
     // Aggiorna i materiali Line2 (LineMaterial)
     this.aggiornaLineMaterialResolution();
+    if (this.isInizializzato) this.render();
   }
 
   private aggiornaLineMaterialResolution(): void {
@@ -182,13 +216,7 @@ export class GraficoRenderService implements OnDestroy {
   ) {
     if(temaRender == null)
       return;
-
-    if(!this.scene) this.scene = new THREE.Scene();
-    // Riusa la scena per mantenere il renderer stabile
-    this.scene.clear();
-    const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
-    this.scene.background = new THREE.Color( bgColor );
-    this.scene.add(this.camera);
+    const generation = ++this.drawGeneration;
 
     var disegno = null;
 
@@ -206,6 +234,16 @@ export class GraficoRenderService implements OnDestroy {
         disegno = await CartaAstraleCreaScena(opzioni,temaRender,temaRenderTransiti,temaRenderSinastria);
         break;
     }
+    if (generation !== this.drawGeneration) {
+      if (disegno) disposeSceneResources(disegno);
+      return;
+    }
+    if(!this.scene) this.scene = new THREE.Scene();
+    disposeSceneResources(this.scene);
+    this.scene.clear();
+    const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
+    this.scene.background = new THREE.Color(bgColor);
+    if (this.camera) this.scene.add(this.camera);
     if (disegno) this.scene.add(disegno);
     this.render();
   }
@@ -240,47 +278,37 @@ export class GraficoRenderService implements OnDestroy {
       alpha: true,
     });
 
-    OggettiSempliciRender.setDimensioniCanvas(dimensioni);
-    offRenderer.setSize(offCanvas.width, offCanvas.height, false);
-    offRenderer.setPixelRatio(scala);
-    //console.log (window.devicePixelRatio);
-
-    // ✅ Crea una scena e camera dedicate (indipendenti da quella desktop)
-    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-    camera.position.z = 3;
-
     const scene = new THREE.Scene();
-    const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
-    scene.background = new THREE.Color(bgColor);
-    scene.add(camera);
+    try {
+      OggettiSempliciRender.setDimensioniCanvas(dimensioni);
+      offRenderer.setPixelRatio(scala);
+      offRenderer.setSize(dimensioni.x, dimensioni.y, false);
+      const camera = new THREE.PerspectiveCamera(75, dimensioni.x / dimensioni.y, 0.1, 1000);
+      camera.position.z = 3;
+      const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
+      scene.background = new THREE.Color(bgColor);
+      scene.add(camera);
+      // Genera il contenuto grafico come nella scena interattiva.
+      let disegno = null;
+      switch (grafico) {
+        case 'latitudini':
+          disegno = await LatitudiniRender.creaScena(temaRender, temaRenderTransiti, temaRenderSinastria, opzioni);
+          break;
+        case 'carta-astrale':
+        default:
+          disegno = await CartaAstraleCreaScena(opzioni, temaRender, temaRenderTransiti, temaRenderSinastria);
+          break;
+      }
 
-    // ✅ Genera il contenuto grafico esattamente come fai nel metodo desktop
-    let disegno = null;
+      if (disegno) scene.add(disegno);
 
-    switch (grafico) {
-      case 'latitudini':
-        disegno = await LatitudiniRender.creaScena(temaRender, temaRenderTransiti, temaRenderSinastria, opzioni);
-        break;
-
-      case 'carta-astrale':
-      default:
-        disegno = await CartaAstraleCreaScena(opzioni, temaRender, temaRenderTransiti, temaRenderSinastria);
-        break;
+      offRenderer.render(scene, camera);
+      return offRenderer.domElement.toDataURL('image/png');
+    } finally {
+      disposeSceneResources(scene);
+      scene.clear();
+      offRenderer.dispose();
     }
-
-    if (disegno) scene.add(disegno);
-
-    // ✅ Renderizza la scena
-    offRenderer.render(scene, camera);
-
-    // ✅ Estrai il PNG come dataURL
-    const dataURL = offRenderer.domElement.toDataURL('image/png');
-
-    // ✅ Libera risorse GPU
-    offRenderer.dispose();
-    scene.clear();
-
-    return dataURL; // Puoi anche convertirlo in Blob se preferisci
   }
 
 }

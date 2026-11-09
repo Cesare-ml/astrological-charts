@@ -5,7 +5,7 @@ You need Git, Node.js compatible with Angular 20 and repository access via your 
 ```powershell
 git clone https://github.com/Cesare-ml/astrological-charts.git
 cd astrological-charts
-git switch feat/import-virgostars-graphics
+git switch feat/verified-asset-preview
 powershell -NoProfile -File .\scripts\verify-local.ps1
 ```
 
@@ -34,7 +34,7 @@ The asset server binds only to `127.0.0.1:4177`. It serves GET/HEAD requests und
 GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
 ```
 
-**The asset repository exists but its original image/font files have not yet been imported**, and the interactive Angular demo is still planned. The commands above describe the intended workflow, not a ready-to-run end-to-end demo. See [asset repository decision](INDEPENDENT_ASSETS_REPOSITORY.md). For code-only tasks, the local asset pack is not required.
+**The asset repository exists but its original image/font files have not yet been imported.** The real-pack command above is therefore a future workflow. The [Angular demo](ANGULAR_DEMO.md) already works with locally generated synthetic assets. See [asset repository decision](INDEPENDENT_ASSETS_REPOSITORY.md).
 
 ## Immediate synthetic preview (does not require VirgoStars or real asset files)
 
@@ -43,3 +43,5 @@ powershell -NoProfile -File .\scripts\preview-synthetic.ps1
 ```
 
 Open `http://127.0.0.1:4177/__preview`. This generates 78 **original checkerboard PNG placeholders** with the exact preload filenames and a local verification manifest. The preview is an asset gallery only; it does not render a natal chart. When the private asset repo contains approved images, point the dev server at its `public/assets` **and** its `manifests/approved-assets.json`. Read [LOCAL_ASSET_PREVIEW.md](LOCAL_ASSET_PREVIEW.md).
+
+For an interactive chart instead of the gallery, use `npm run demo:pack`, `npm run demo:assets` and `npm run demo` as described in [ANGULAR_DEMO.md](ANGULAR_DEMO.md).
