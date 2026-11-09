@@ -1,52 +1,60 @@
 # Astrological Charts
 
-Private, collaborative Angular/TypeScript/Three.js library for rendering astrological charts, extracted from VirgoStars.
+Private collaborative **Angular 20 / TypeScript / Three.js** library extracted from VirgoStars' `grafici-astrologici` code.
 
-> **Status: extraction workspace / NOT released.** This repository is private. Its code is **not** yet the source of truth for the live VirgoStars website or any deployed Astrolabio. No automatic deployment or publication is configured.
+**Status:** initial source extraction exists on **[draft pull request #1](https://github.com/Cesare-ml/astrological-charts/pull/1)**. **NOT build-verified, NOT production-integrated, NOT released.** This repository remains private; no open-source licence or automatic deployments are configured.
 
 ## Purpose
 
-Preserve and develop the existing `grafici-astrologici` rendering library with invited contributors and AI coding agents. **Angular remains the official integration target**. A rewrite for other frameworks is explicitly out of scope.
+Invite known contributors to develop the astrological renderer using Codex, Claude Code and other AI tools. Angular is the official framework; rewriting for React/Vue or an agnostic core is not a current goal.
 
-Original source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/` on branch `master`.
+Source repository: `Cesare-ml/virgo-stars`, subtree `shared/grafici-astrologici/`. Live VirgoStars and Astrolabio continue to use that original source until separately approved.
 
-## Source and safety
+## Current capability
 
-- Treat `src/` as the extracted library source, not a new implementation.
-- Do **not** copy the VirgoStars backend, user data, credentials, `.env`, deployment files, or complete monorepo history here.
-- Do **not** copy proprietary imagery, fonts, or third-party assets without verifying redistribution rights.
-- The original VirgoStars repository remains the active production source until a separate verified integration.
-- All contributions through feature branches and pull requests; no direct production changes.
-- This private repository is **not yet licensed for public redistribution**. Contributors should agree on terms before making external contributions.
+The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
 
-## Project entry points
+**Important:** The original renderer relies on symbols, fonts and textures from `virgo-stars/public/assets/`. They are not included in this extraction until their rights and packaging are reviewed. Building the TypeScript does not prove visual rendering works.
 
-- [AGENTS.md](AGENTS.md) — instructions for humans and AI coding assistants
-- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution workflow and review criteria
-- [docs/EXTRACTION_STATUS.md](docs/EXTRACTION_STATUS.md) — migration state and verification gates
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — rendering architecture and consumers
+## Start developing
 
-## Current library
+The extracted source is on `feat/import-virgostars-graphics` while PR #1 is in draft.
 
-The imported code renders natal charts, transit overlays, synastry, and latitude views with Three.js, and supports offscreen PNG rendering. Astro calculation and interpretation remain outside this library.
+For invited contributors on Windows:
 
-The original monorepo also contains required visual assets under `public/assets/`. These must be reviewed and intentionally packaged or resolved; a successful TypeScript compilation alone does not prove the renderer works.
-
-## Local commands
-
-Once the source and tooling are committed:
+- [Windows quickstart](docs/CONTRIBUTOR_QUICKSTART.md)
+- [Agents guide](AGENTS.md)
+- [Contribution workflow](CONTRIBUTING.md)
+- [Build and dependency policy](docs/BUILD_AND_DEPENDENCIES.md)
 
 ```bash
 npm install
+npm run check:extraction
+npm run check:assets
+npm run check:types
 npm run build
 ```
 
-Do not assume these commands pass until validated in a clean checkout. See `docs/EXTRACTION_STATUS.md`.
+**These commands have been prepared, not yet successfully executed in a clean checkout.** No CI or GitHub Actions is used.
 
-## Goals
+## Documentation
 
-1. Obtain a buildable isolated Angular package with reproducible dependencies.
-2. Add fixture-based and visual regression tests.
-3. Provide a safe local demo using only synthetic example chart data.
-4. Agree on asset licensing and resolve needed paths.
-5. Add controlled versioning and integration back into VirgoStars / Astrolabio.
+- [Extraction status](docs/EXTRACTION_STATUS.md)
+- [Original source provenance](docs/UPSTREAM_PROVENANCE.md)
+- [Rendering architecture](docs/ARCHITECTURE.md)
+- [Graphics asset audit](docs/ASSETS_AUDIT.md)
+- [Integration plan — not active](docs/INTEGRATION_PLAN.md)
+- [Technical reference snapshots](docs/reference/README.md)
+
+## Project roadmap
+
+- [#2: isolated Angular build](https://github.com/Cesare-ml/astrological-charts/issues/2)
+- [#3: assets and rights](https://github.com/Cesare-ml/astrological-charts/issues/3)
+- [#4: synthetic fixtures and visual regression](https://github.com/Cesare-ml/astrological-charts/issues/4)
+- [#5: WebGL lifecycle](https://github.com/Cesare-ml/astrological-charts/issues/5)
+- [#6: private Angular demo](https://github.com/Cesare-ml/astrological-charts/issues/6)
+- [#7: controlled integration into VirgoStars/Astrolabio](https://github.com/Cesare-ml/astrological-charts/issues/7)
+
+## Rules
+
+Work on feature branches and submit pull requests. No production changes, AWS access, real users' birth data, unlicensed artwork, automatic deployment or publication. The maintainer approves compatibility and release decisions.
