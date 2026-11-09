@@ -1,12 +1,13 @@
 {
-  "name": "astrological-charts-workspace",
+  "name": "grafici-astrologici",
   "version": "0.0.1",
   "private": true,
   "description": "Private Angular astrology chart rendering development workspace",
   "scripts": {
     "build": "ng build grafici-astrologici",
     "build:library": "ng build grafici-astrologici",
-    "check:types": "tsc -p tsconfig.lib.json --noEmit"
+    "check:types": "tsc -p tsconfig.lib.json --noEmit",
+    "check:extraction": "node scripts/check-extraction.mjs"
   },
   "dependencies": {
     "@angular/common": "^20.3.4",
