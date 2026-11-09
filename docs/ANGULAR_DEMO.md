@@ -59,7 +59,7 @@ The browser test exercises 28 combinations twice, compares raw pixels between th
 
 - The seven skins and four modes passed only with the generated placeholder pack. Real artwork, visual fidelity, Firefox, e-ink and deployed Astrolabio remain untested.
 - The service queue covers operations issued through `GraficoRenderService` in the same loaded library instance; direct lower-level renderer calls and runtime changes to shared skin/asset configuration remain outside that guarantee. Serialization can increase latency.
-- Disposal covers completed scene geometry, materials, texture properties and registered timelines; partially constructed scenes after an exception and lifetime tests for every advanced mode remain open.
+- Disposal covers completed scene geometry, materials, texture properties and registered timelines. Tests also check timeline cleanup when selected image loads fail during body, house and nested synastry construction. Disposal of all other resources in every partially constructed scene, and lifetime tests for every advanced mode, remain open.
 - Repeated synthetic passes are checked in each browser separately; this is not a visual baseline against original artwork or a guarantee across browser/GPU versions.
 - The `file://` offline test exercises this library's service in Firefox using a test bundle. It is not the existing Astrolabio adapter, its packaging/update process, a minimal device asset subset, e-ink conversion, or hardware.
 - Build and test results must be repeated on the actual target environment and separately for earlier PRs in the stack.

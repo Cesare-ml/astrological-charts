@@ -84,3 +84,30 @@ import gsap from 'gsap';
   } catch (error) { return error instanceof Error ? error.message : String(error); }
   finally { renderer.ngOnDestroy(); }
 };
+
+(globalThis as any).runFailedSceneAnimationProbe = async (sinastria = false) => {
+  GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
+  const opts = structuredClone(defaultOpzioniGrafico) as any;
+  opts.settaggi.skin_id = 'light'; opts.temaGrafico = 'light'; opts.dodecatemore = 'Sun';
+  opts.mostraSinastria = sinastria;
+  for (const body of demoBodies) opts.settaggi.elementi_celesti[body].att = true;
+  const theme = makeDemoTheme(0); theme.planets.Sun.dodecatemoria = {longitude:40};
+  const service = new GraficoRenderService();
+  const canvas = document.createElement('canvas');
+  Object.assign(canvas.style, {width:'400px',height:'400px'}); document.body.appendChild(canvas);
+  service.inizializzaGraficoRender(new ElementRef(canvas), {x:400,y:400});
+  const before = new Set(gsap.globalTimeline.getChildren(true,false,true));
+  const originalLoad = GestoreImmagini.loadAsync;
+  let signCount = 0;
+  if (sinastria) GestoreImmagini.loadAsync = async ref => {
+    if (ref.endsWith('/segni/06.png') && ++signCount === 2) throw new Error('Injected failure: segni/06.png');
+    return originalLoad.call(GestoreImmagini, ref);
+  };
+  let message = '';
+  try { await service.disegnaScena(theme, null, sinastria ? theme : null, 'carta-astrale', opts); }
+  catch (error) { message = error instanceof Error ? error.message : String(error); }
+  finally { GestoreImmagini.loadAsync = originalLoad; service.ngOnDestroy(); canvas.remove(); }
+  const leaked = gsap.globalTimeline.getChildren(true,false,true)
+    .filter(timeline => !before.has(timeline) && timeline.repeat() === -1);
+  return {message, leaked:leaked.length};
+};

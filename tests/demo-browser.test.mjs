@@ -179,3 +179,30 @@ test('concurrent render and exports retain each canvas dimensions', {timeout: 90
     assert.ok(result.destroyedDrawSkipped, 'a queued draw must not revive a destroyed renderer');
   } finally { await browser.close(); }
 });
+
+test('a scene that fails after creating an animation does not leak its timeline', {timeout:60000}, async () => {
+  const bundle = await build({entryPoints:['tests/fixtures/concurrency-harness.ts'], bundle:true,
+    write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
+  const browser = await launchBrowser();
+  try {
+    for (const file of ['elementi-celesti/Moon.png', 'case/06.png']) {
+      const page = await browser.newPage();
+      await page.route(`**/assets/img/simboli-bianchi/${file}`, route => route.abort());
+      await page.goto('http://127.0.0.1:4200/');
+      await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout:30000});
+      await page.addScriptTag({content:bundle.outputFiles[0].text});
+      const result = await page.evaluate(() => globalThis.runFailedSceneAnimationProbe());
+      assert.ok(result.message.includes(file), result.message);
+      assert.equal(result.leaked, 0, `timeline survived a scene failing on ${file}`);
+      await page.close();
+    }
+    const page = await browser.newPage();
+    await page.goto('http://127.0.0.1:4200/');
+    await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'), {timeout:30000});
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const result = await page.evaluate(() => globalThis.runFailedSceneAnimationProbe(true));
+    assert.match(result.message, /segni\/06\.png/);
+    assert.equal(result.leaked, 0, 'timeline survived a failure in the synastry ring');
+    await page.close();
+  } finally { await browser.close(); }
+});
