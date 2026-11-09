@@ -56,7 +56,7 @@ The upstream has a separate **documentation-only** [VirgoStars PR #155](https://
 
 ## Pending technical blockers
 
-- First clean Angular compile and realistic asset-loaded rendering are not yet confirmed.
+- The top-of-stack candidate compiled after `npm ci` on Windows (Node 22.18.0); realistic asset-loaded rendering remains unverified. Earlier PR heads need their own checks.
 - A source mismatch exists: `risuonatore-solare-bianco.png` referenced by `dark-bn`/`light-bn` is not in the inspected assets tree; `risuonatore-solare-bn.png` exists. Do not automatically rename.
 - `astrological-assets` has not received legally approved PNG/fonts or a verified complete manifest.
 - Asset selection based on static references is conservative and can miss some dynamic filenames.
@@ -71,6 +71,12 @@ The upstream has a separate **documentation-only** [VirgoStars PR #155](https://
 - [Upstream documentation PR](https://github.com/Cesare-ml/virgo-stars/pull/155)
 
 No script or documentation here has activated a production change.
+
+## Local verification update
+
+On 2026-11-09 the top of PR #13, including its extraction-check correction and lockfile, passed `npm ci`, `npm run preflight` and `npm run build` on Windows/Node 22.18.0. The asset-server tests required access to loopback; they initially failed inside the restricted sandbox and passed with loopback enabled. Inspection of the library `dist` found no PNG, JPEG, WebP, TTF or WOFF files. This does not verify a future VirgoStars build or rendering fidelity.
+
+The active upstream `dark-bn` and `light-bn` skins reference `risuonatore-solare-bianco.png`; the local upstream tree contains `risuonatore-solare-bn.png` instead. The latter is a monochrome resonator image, but its intended equivalence cannot be established from the filename or appearance alone; no alias or rename is authorized by this observation.
 
 ## New candidate gate — self-contained synthetic preview
 

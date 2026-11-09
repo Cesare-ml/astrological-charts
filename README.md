@@ -2,7 +2,7 @@
 
 Private collaborative **Angular 20 / TypeScript / Three.js** library extracted from VirgoStars' `grafici-astrologici` code.
 
-**Status:** initial source extraction exists on **[draft pull request #1](https://github.com/Cesare-ml/astrological-charts/pull/1)**. **NOT build-verified, NOT production-integrated, NOT released.** This repository remains private; no open-source licence or automatic deployments are configured.
+**Status:** the stacked draft through [PR #13](https://github.com/Cesare-ml/astrological-charts/pull/13) builds locally after `npm ci`; it is **not visually validated, production-integrated or released**. Earlier PR heads have not independently passed this verification. This repository remains private; no open-source licence or automatic deployments are configured.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ The imported source includes Three.js rendering of natal charts, transits, synas
 
 ## Start developing
 
-The extracted source is on `feat/import-virgostars-graphics` while PR #1 is in draft.
+For the current stacked candidate, check out `feat/verified-asset-preview`. PR #1 and the subsequent branches remain separate draft steps.
 
 For invited contributors on Windows:
 
@@ -28,14 +28,14 @@ For invited contributors on Windows:
 - [Build and dependency policy](docs/BUILD_AND_DEPENDENCIES.md)
 
 ```bash
-npm install
+npm ci
 npm run check:extraction
 npm run check:assets
 npm run check:types
 npm run build
 ```
 
-**These commands have been prepared, not yet successfully executed in a clean checkout.** No CI or GitHub Actions is used.
+These commands and `npm run preflight` passed on Windows with Node 22.18.0 against the candidate including the extraction-check fix and lockfile. The localhost tests require loopback access. This verifies the build and asset tooling, not the graphics output. No CI or GitHub Actions is used.
 
 ## Documentation
 
