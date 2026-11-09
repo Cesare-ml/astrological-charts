@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out-tsc/
+.angular/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.pem
+*.key
+*.p12
+*.pfx
