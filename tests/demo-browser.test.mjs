@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { chromium } from 'playwright-core';
 import sharp from 'sharp';
+import { build } from 'esbuild';
 
 const candidates = [process.env.CHROME_PATH, 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome',
@@ -37,6 +38,7 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
   page.on('response', response => { if (response.status() >= 400) badResponses.push(`${response.status()} ${response.url()}`); });
   const started = performance.now();
   const modeImages = new Map();
+  const imageHashes = new Map();
   async function ready() {
     await page.waitForFunction(() => {
       const status = document.querySelector('[data-testid=status]')?.textContent || '';
@@ -53,6 +55,8 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
       for (const skin of skins) {
         await page.selectOption('#skin', skin); await ready();
         const screenshot = await page.locator('canvas').screenshot({path: join(output, `${mode}-${skin}.png`)});
+        const pixels = await sharp(screenshot).removeAlpha().raw().toBuffer();
+        imageHashes.set(`${mode}/${skin}`, createHash('sha256').update(pixels).digest('hex'));
         const {data, info} = await sharp(screenshot).resize(100, 100).removeAlpha().raw().toBuffer({resolveWithObject:true});
         const colors = new Set();
         for (let i = 0; i < data.length; i += info.channels) colors.add(`${data[i]},${data[i+1]},${data[i+2]}`);
@@ -61,6 +65,15 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
       }
     }
     assert.equal(new Set(modeImages.values()).size, modes.length, 'chart modes should produce different canvas images');
+    for (const mode of modes) {
+      await page.selectOption('#mode', mode); await ready();
+      for (const skin of skins) {
+        await page.selectOption('#skin', skin); await ready();
+        const pixels = await sharp(await page.locator('canvas').screenshot()).removeAlpha().raw().toBuffer();
+        assert.equal(createHash('sha256').update(pixels).digest('hex'), imageHashes.get(`${mode}/${skin}`),
+          `${mode}/${skin}: repeated synthetic rendering changed`);
+      }
+    }
     const beforeZoom = await page.locator('canvas').screenshot();
     await page.getByRole('button', {name:'Zoom in'}).click();
     const afterZoom = await page.locator('canvas').screenshot();
@@ -87,6 +100,64 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
     await page.selectOption('#mode', 'natal');
     await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout: 30000});
     assert.match(await page.locator('[data-testid=status]').textContent(), /simboli-bianchi\/segni\/01\.png/);
-    console.log(`28 chart/skin combinations, PNG export and mobile viewport checked in ${Math.round(performance.now()-started)} ms.`);
+    console.log(`28 chart/skin combinations repeated twice, PNG export and mobile viewport checked in ${Math.round(performance.now()-started)} ms.`);
+  } finally { await browser.close(); }
+});
+
+test('render waits for a slow skin texture and reports its failure', {timeout: 60000}, async () => {
+  assert.ok(executablePath, 'Set CHROME_PATH to an installed Chrome or Chromium executable');
+  const browser = await chromium.launch({executablePath, headless:true,
+    args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
+  const page = await browser.newPage();
+  let release;
+  const hold = new Promise(resolve => { release = resolve; });
+  let requested;
+  const hit = new Promise(resolve => { requested = resolve; });
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'), {timeout:30000});
+    await page.route('**/assets/img/textures/texture-oro-3.webp', async route => {
+      requested(); await hold; await route.abort();
+    });
+    await page.selectOption('#skin','sun');
+    await hit;
+    await page.waitForTimeout(500);
+    assert.match(await page.locator('[data-testid=status]').textContent(), /Rendering/, 'must not report completion before texture load');
+    release();
+    await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout:30000});
+    assert.match(await page.locator('[data-testid=status]').textContent(), /texture-oro-3\.webp/);
+    await page.unroute('**/assets/img/textures/texture-oro-3.webp');
+    await page.selectOption('#skin','light');
+    await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'), {timeout:30000});
+    const bundle = await build({entryPoints:['tests/fixtures/concurrency-harness.ts'], bundle:true,
+      write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    await page.route('**/assets/img/textures/texture-oro-3.webp', route => route.abort());
+    assert.match(await page.evaluate(() => globalThis.runMissingTextureExport()), /texture-oro-3\.webp/);
+  } finally { release(); await browser.close(); }
+});
+
+test('concurrent render and exports retain each canvas dimensions', {timeout: 90000}, async () => {
+  assert.ok(executablePath, 'Set CHROME_PATH to an installed Chrome or Chromium executable');
+  const bundle = await build({entryPoints:['tests/fixtures/concurrency-harness.ts'], bundle:true,
+    write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
+  const browser = await chromium.launch({executablePath, headless:true,
+    args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'), {timeout:30000});
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const result = await page.evaluate(() => globalThis.runChartConcurrencyProbe());
+    assert.ok(result.expectedResolutions.length > 0, 'fixture must exercise line-material dimensions');
+    assert.ok(result.smallMatches, 'small concurrent export differs from its sequential baseline');
+    assert.ok(result.largeMatches, 'large concurrent export differs from its sequential baseline');
+    assert.deepEqual(result.concurrentResolutions, result.expectedResolutions, 'interactive redraw dimensions changed during export');
+    assert.ok(result.timelineCount > 0, 'fixture must create an actual repeating GSAP timeline');
+    assert.ok(result.timelineCleared, 'redraw must stop timelines owned by the previous scene');
+    assert.ok(result.exportTimelineCleared, 'export must stop its scene timelines');
+    assert.equal(result.finalBackground, '333333', 'the latest redraw should win');
+    assert.ok(result.queueRecovered, 'a rejected export must not block the next queued operation');
+    assert.ok(result.destroyedDrawSkipped, 'a queued draw must not revive a destroyed renderer');
   } finally { await browser.close(); }
 });

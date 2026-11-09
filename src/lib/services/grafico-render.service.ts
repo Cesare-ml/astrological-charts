@@ -5,6 +5,8 @@ import {TemaRender} from '../models/tema-render.model';
 
 import {CartaAstraleCreaScena} from '../renderers/@carta-astrale/carta-astrale.renderer';
 import { OggettiSempliciRender } from '../renderers/oggetti-semplici.renderer';
+import { GestoreImmagini } from '../renderers/gestore-immagini';
+import { stopSceneAnimations } from '../renderers/scene-animations';
 //import {ElementiRender} from '../renderers/elementi.renderer';
 import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer';
 //import {OrePlanetarieRender} from '../renderers/ore-planetarie.renderer';
@@ -22,6 +24,7 @@ function disposeSceneResources(root: THREE.Object3D): void {
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
   root.traverse((object: any) => {
+    stopSceneAnimations(object);
     if (object.geometry) geometries.add(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       if (!material) continue;
@@ -36,8 +39,35 @@ function disposeSceneResources(root: THREE.Object3D): void {
   geometries.forEach(geometry => geometry.dispose());
 }
 
+async function waitForSceneTextures(root: THREE.Object3D): Promise<void> {
+  const textures = new Set<THREE.Texture>();
+  root.traverse((object: any) => {
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (!material) continue;
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) textures.add(value);
+      }
+    }
+  });
+  await Promise.all([...textures].map(texture => GestoreImmagini.waitForTexture(texture)));
+}
+
 @Injectable({providedIn: 'root'})
 export class GraficoRenderService implements OnDestroy {
+  // Scene construction uses legacy module-wide dimensions. Serialize it across
+  // service instances until those renderer inputs can be made instance-local.
+  private static renderQueue: Promise<void> = Promise.resolve();
+  private static constructingScene = false;
+  private static runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.renderQueue.then(async () => {
+      this.constructingScene = true;
+      try { return await operation(); }
+      finally { this.constructingScene = false; }
+    });
+    this.renderQueue = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
   private canvas: HTMLCanvasElement;
   private renderer: THREE.WebGLRenderer;
   public camera: THREE.PerspectiveCamera;
@@ -121,7 +151,7 @@ export class GraficoRenderService implements OnDestroy {
     this.renderer.setPixelRatio(window.devicePixelRatio );
     this.renderer.setClearColor(0x000000, 0);
 
-    OggettiSempliciRender.setDimensioniCanvas(dimensioni);
+    if (!GraficoRenderService.constructingScene) OggettiSempliciRender.setDimensioniCanvas(dimensioni);
 
     // create the scene
     this.scene = new THREE.Scene();
@@ -217,35 +247,38 @@ export class GraficoRenderService implements OnDestroy {
     if(temaRender == null)
       return;
     const generation = ++this.drawGeneration;
-
-    var disegno = null;
-
-    switch (grafico) {/*
-      case 'elementi':
-        disegno = await ElementiRender.creaScena(temaRender,opzioni);
-        break;*/
-
-      case 'latitudini':
-        disegno =  await LatitudiniRender.creaScena(temaRender,temaRenderTransiti,temaRenderSinastria,opzioni);
-        break;
-
-      case 'carta-astrale':
-      default:
-        disegno = await CartaAstraleCreaScena(opzioni,temaRender,temaRenderTransiti,temaRenderSinastria);
-        break;
-    }
-    if (generation !== this.drawGeneration) {
-      if (disegno) disposeSceneResources(disegno);
-      return;
-    }
-    if(!this.scene) this.scene = new THREE.Scene();
-    disposeSceneResources(this.scene);
-    this.scene.clear();
-    const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
-    this.scene.background = new THREE.Color(bgColor);
-    if (this.camera) this.scene.add(this.camera);
-    if (disegno) this.scene.add(disegno);
-    this.render();
+    return GraficoRenderService.runExclusive(async () => {
+      if (generation !== this.drawGeneration) return;
+      if (this.dimensioni) OggettiSempliciRender.setDimensioniCanvas(this.dimensioni);
+      let disegno = null;
+      switch (grafico) {
+        case 'latitudini':
+          disegno = await LatitudiniRender.creaScena(temaRender,temaRenderTransiti,temaRenderSinastria,opzioni);
+          break;
+        case 'carta-astrale':
+        default:
+          disegno = await CartaAstraleCreaScena(opzioni,temaRender,temaRenderTransiti,temaRenderSinastria);
+          break;
+      }
+      try {
+        if (disegno) await waitForSceneTextures(disegno);
+      } catch (error) {
+        if (disegno) disposeSceneResources(disegno);
+        throw error;
+      }
+      if (generation !== this.drawGeneration) {
+        if (disegno) disposeSceneResources(disegno);
+        return;
+      }
+      if (!this.scene) this.scene = new THREE.Scene();
+      disposeSceneResources(this.scene);
+      this.scene.clear();
+      const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
+      this.scene.background = new THREE.Color(bgColor);
+      if (this.camera) this.scene.add(this.camera);
+      if (disegno) this.scene.add(disegno);
+      this.render();
+    });
   }
 
   public render(): void {
@@ -265,6 +298,14 @@ export class GraficoRenderService implements OnDestroy {
     opzioni: any,
     dimensioni: { x: number, y: number } = { x: 1080, y: 1080 },
     scala: number = 2 // per migliorare nitidezza (Retina-style)
+  ): Promise<string> {
+    return GraficoRenderService.runExclusive(() => this.generaImmagineInterna(
+      temaRender, temaRenderTransiti, temaRenderSinastria, grafico, opzioni, dimensioni, scala));
+  }
+
+  private async generaImmagineInterna(
+    temaRender: TemaRender, temaRenderTransiti: TemaRender, temaRenderSinastria: TemaRender,
+    grafico: string, opzioni: any, dimensioni: {x:number, y:number}, scala: number
   ): Promise<string> {
     // ✅ Crea un canvas off-screen (non quello principale del component)
     const offCanvas = document.createElement('canvas');
@@ -301,7 +342,7 @@ export class GraficoRenderService implements OnDestroy {
       }
 
       if (disegno) scene.add(disegno);
-
+      if (disegno) await waitForSceneTextures(disegno);
       offRenderer.render(scene, camera);
       return offRenderer.domElement.toDataURL('image/png');
     } finally {

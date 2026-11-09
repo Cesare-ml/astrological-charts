@@ -20,7 +20,7 @@ npm run demo
 
 Open `http://127.0.0.1:4200/`. The same commands work in PowerShell. `demo:pack` writes **392 generated test assets** and a SHA-256 manifest only under ignored `.local/demo-pack`. It refuses to overwrite an existing pack: to regenerate, remove that locally generated directory deliberately or generate into another empty directory with `node scripts/generate-demo-pack.mjs --out <directory>` and pass its root and manifest to the asset server. JPEG and WebP placeholders are encoded in their actual formats. None are VirgoStars assets.
 
-Choose natal, transits, synastry or latitudes, one of the seven skins, zoom and export PNG. The demo serializes its own redraw/export requests; this does not guarantee safe concurrent use by other library consumers. Errors from awaited image loads are displayed with the requested URL. Some texture loads in legacy rendering paths are asynchronous and their failures may still appear only in the browser console/network panel.
+Choose natal, transits, synastry or latitudes, one of the seven skins, zoom and export PNG. The service serializes its own scene-building and export operations across its instances because the legacy renderer uses shared dimensions. It awaits scene textures before rendering and reports missing assets with their URL. Direct callers of lower-level renderer functions do not use that service queue.
 
 ## Approved real asset pack
 
@@ -42,14 +42,14 @@ With both servers running, install Chrome/Chromium and set `CHROME_PATH` to its 
 npm run test:demo
 ```
 
-The browser test exercises 28 combinations, saves screenshots under `.local/demo-screenshots`, checks that canvases are nonblank, downloads a 1600×1600 PNG, checks a mobile resize and simulates a missing image. It counts WebGL texture creation/deletion calls during redraw as a lifecycle smoke check. It does **not** compare against approved production reference images, measure GPU memory, prove astrological correctness, or test real hardware. Chrome software WebGL output can vary by driver and timing; saved screenshots are review artifacts, not approved visual baselines. `npm run test:demo-pack` verifies generated formats and manifest integrity without starting a browser.
+The browser test exercises 28 combinations twice, compares raw pixels between the two synthetic runs, saves screenshots under `.local/demo-screenshots`, checks nonblank canvases, downloads a 1600×1600 PNG, checks a mobile resize and simulates missing images and slow textures. It tests simultaneous service exports and redraw, failure recovery and cleanup of a repeating GSAP timeline. It counts WebGL texture creation/deletion calls during redraw as a lifecycle smoke check. It does **not** compare against approved production reference images, measure GPU memory, prove astrological correctness, or test real hardware. Chrome software WebGL output can vary by driver; saved screenshots are review artifacts, not approved visual baselines. `npm run test:demo-pack` verifies generated formats and manifest integrity without starting a browser.
 
 ## Known limits
 
 - The seven skins and four modes passed only with the generated placeholder pack. Real artwork, visual fidelity, Firefox, e-ink and deployed Astrolabio remain untested.
-- The renderer still uses global dimensions and static state. Multiple instances and simultaneous interactive rendering/export need explicit concurrency tests; the demo disables its controls during its own operation.
-- Disposal is implemented for scene geometry, materials and texture properties after completed redraw/export, but timeline cleanup, partially constructed scenes after an exception, and lifetime tests for every advanced mode remain open.
-- One of 28 before/after screenshot comparisons differed; its cause was not established. Some textures load asynchronously, so a stable visual baseline and loading synchronization are still needed.
+- The service queue covers operations issued through `GraficoRenderService` in the same loaded library instance; direct lower-level renderer calls and runtime changes to shared skin/asset configuration remain outside that guarantee. Serialization can increase latency.
+- Disposal covers completed scene geometry, materials, texture properties and registered timelines; partially constructed scenes after an exception and lifetime tests for every advanced mode remain open.
+- The two synthetic passes matched pixel-for-pixel in the test environment; this is not a visual baseline against original artwork or a guarantee across browser/GPU versions.
 - Build and test results must be repeated on the actual target environment and separately for earlier PRs in the stack.
 
 ## Verification record — 2026-11-09

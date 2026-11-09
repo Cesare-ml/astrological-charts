@@ -4,6 +4,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
+import { registerSceneAnimation } from '../scene-animations';
 
 
 export class ElementiCelestiRender {
@@ -178,6 +179,7 @@ export class ElementiCelestiRender {
         if(nome == partiArabeNomePianetaHighlight) {
           //animazione
           var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
+          registerSceneAnimation(el, tl);
           tl.to(el.material, {opacity: 0});
         } else {
           el.material.opacity = 0.3;
@@ -349,6 +351,7 @@ export class ElementiCelestiRender {
 
         //animazione
         var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
+        registerSceneAnimation(eld, tl);
         tl.to(eld.material, {opacity: 0});
 
         var frecciaAdArco = OggettiSempliciRender.lanciaFrecciaAdArco(
