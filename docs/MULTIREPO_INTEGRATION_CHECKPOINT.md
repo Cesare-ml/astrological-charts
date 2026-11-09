@@ -21,7 +21,7 @@ cd astrological-charts
 git switch feat/independent-assets-dev
 npm install
 npm run test:assets
-node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets
+node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json
 ```
 
 Angular demo environment will set `GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/')`, and load all generated synthetic natal/transit/synastry/latitude fixtures. **A usable Angular demo and real asset pack are still pending.** The read-only server alone does not produce an interactive chart.
@@ -71,3 +71,7 @@ The upstream has a separate **documentation-only** [VirgoStars PR #155](https://
 - [Upstream documentation PR](https://github.com/Cesare-ml/virgo-stars/pull/155)
 
 No script or documentation here has activated a production change.
+
+## New candidate gate — self-contained synthetic preview
+
+The [local asset preview](LOCAL_ASSET_PREVIEW.md) provides a real `/__preview` gallery served from a **manifest-verified, approved-only allowlist** of locally generated PNG placeholders. `scripts/preview-synthetic.ps1` can start it on Windows without `virgo-stars` or copying production artwork. The manifest validator rejects missing rights metadata, hashes or file paths. **This is an asset smoke test, not an Angular chart demo and not an Astrolabio test.** No real PNGs have been transferred yet.
