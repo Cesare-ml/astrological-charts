@@ -19,7 +19,7 @@ Before submitting changes, read `AGENTS.md` and `CONTRIBUTING.md`. Make a new br
 
 The code repository does **not** include the production icons, ring textures or fonts. A successful `npm run build` will not automatically make the graphics demo work.
 
-**Proposed future mode:** when a separate, private `Cesare-ml/astrological-assets` repository exists and the maintainer has approved sharing its images, collaborators can clone that pack **without access to `virgo-stars`**:
+**Private repository now exists:** `Cesare-ml/astrological-assets` has been created, but its [draft PR #1](https://github.com/Cesare-ml/astrological-assets/pull/1) contains only metadata, rights reviews and tooling. When the owner has approved and imported the actual graphics, contributors may clone that pack **without access to `virgo-stars`**:
 
 ```powershell
 # Both repos should be sibling directories.
@@ -34,4 +34,4 @@ The asset server binds only to `127.0.0.1:4177`. It serves GET/HEAD requests und
 GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
 ```
 
-**The assets repository has not yet been created** and the interactive Angular demo is still planned. The commands above describe the intended workflow, not a ready-to-run end-to-end demo. See [asset repository decision](INDEPENDENT_ASSETS_REPOSITORY.md). For code-only tasks, the local asset pack is not required.
+**The asset repository exists but its original image/font files have not yet been imported**, and the interactive Angular demo is still planned. The commands above describe the intended workflow, not a ready-to-run end-to-end demo. See [asset repository decision](INDEPENDENT_ASSETS_REPOSITORY.md). For code-only tasks, the local asset pack is not required.
