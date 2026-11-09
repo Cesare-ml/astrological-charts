@@ -51,6 +51,8 @@ npm run test:demo
 
 On other shells use `CHART_TEST_BROWSER=firefox npm run test:demo`. `FIREFOX_PATH` can select a compatible Playwright Firefox executable explicitly. Clear `CHART_TEST_BROWSER` to return to Chromium.
 
+For a separate offline smoke test, generate the synthetic pack as above and run `npm run test:offline`. It verifies the pack manifest first, opens a local `file://` page in Firefox with the browser context offline, and exports all four chart modes with the `astrolabio` skin. It saves PNGs under `.local/demo-pack/offline-*.png` and fails if the page attempts any HTTP(S) request. Neither Angular's dev server nor the asset HTTP server is required. This uses the generated pack rather than approved original images.
+
 The browser test exercises 28 combinations twice, compares raw pixels between the two synthetic runs, saves screenshots under `.local/demo-screenshots` (or `.local/demo-screenshots-firefox`), checks nonblank canvases, downloads a 1600×1600 PNG, checks a mobile resize and simulates missing images and slow textures. The repeated-image comparison tolerates channel differences of at most two levels, and permits at most 0.01% of channels to exceed that threshold; this avoids failing over isolated browser rounding while detecting larger changes. It tests simultaneous service exports and redraw, failure recovery and cleanup of a repeating GSAP timeline. It counts WebGL texture creation/deletion calls during redraw as a lifecycle smoke check. It does **not** compare against approved production reference images, measure GPU memory, prove astrological correctness, or test real hardware. Browser WebGL output can vary by driver; saved screenshots are review artifacts, not approved visual baselines. `npm run test:demo-pack` verifies generated formats and manifest integrity without starting a browser.
 
 ## Known limits
@@ -59,6 +61,7 @@ The browser test exercises 28 combinations twice, compares raw pixels between th
 - The service queue covers operations issued through `GraficoRenderService` in the same loaded library instance; direct lower-level renderer calls and runtime changes to shared skin/asset configuration remain outside that guarantee. Serialization can increase latency.
 - Disposal covers completed scene geometry, materials, texture properties and registered timelines; partially constructed scenes after an exception and lifetime tests for every advanced mode remain open.
 - Repeated synthetic passes are checked in each browser separately; this is not a visual baseline against original artwork or a guarantee across browser/GPU versions.
+- The `file://` offline test exercises this library's service in Firefox using a test bundle. It is not the existing Astrolabio adapter, its packaging/update process, a minimal device asset subset, e-ink conversion, or hardware.
 - Build and test results must be repeated on the actual target environment and separately for earlier PRs in the stack.
 
 ## Verification record — 2026-11-09
