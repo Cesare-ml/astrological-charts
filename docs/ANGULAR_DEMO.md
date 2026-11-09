@@ -49,5 +49,9 @@ The browser test exercises 28 combinations, saves screenshots under `.local/demo
 - The seven skins and four modes passed only with the generated placeholder pack. Real artwork, visual fidelity, Firefox, e-ink and deployed Astrolabio remain untested.
 - The renderer still uses global dimensions and static state. Multiple instances and simultaneous interactive rendering/export need explicit concurrency tests; the demo disables its controls during its own operation.
 - Disposal is implemented for scene geometry, materials and texture properties after completed redraw/export, but timeline cleanup, partially constructed scenes after an exception, and lifetime tests for every advanced mode remain open.
-- Browser screenshot differences were observed in one of 28 comparisons around asynchronous textures; a stable visual baseline and texture loading synchronization are still needed.
+- One of 28 before/after screenshot comparisons differed; its cause was not established. Some textures load asynchronously, so a stable visual baseline and loading synchronization are still needed.
 - Build and test results must be repeated on the actual target environment and separately for earlier PRs in the stack.
+
+## Verification record — 2026-11-09
+
+On Windows, Node 22.18.0 and Chrome 156.0.8078.80 with software WebGL, a fresh local Git checkout of commit `019274b` passed `npm ci`, `npm run preflight`, `npm run build`, `npm run build:demo`, `npm run demo:pack` and, with both local servers running, `npm run test:demo`. The browser run took about 6.5 seconds for 28 chart/skin cases, a 1600×1600 export, zoom, mobile resize and a simulated missing asset. Instrumentation counted 2,148 texture-creation and 2,081 deletion calls during that run. These counts are an implementation smoke check, not memory usage or proof that all resources are released. The corresponding screenshots are local ignored test artifacts, not distributed artwork or approved baselines.
