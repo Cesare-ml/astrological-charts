@@ -1,25 +1,31 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { chromium } from 'playwright-core';
+import { chromium, firefox } from 'playwright-core';
 import sharp from 'sharp';
 import { build } from 'esbuild';
 
-const candidates = [process.env.CHROME_PATH, 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+const browserName = process.env.CHART_TEST_BROWSER || 'chromium';
+assert.ok(['chromium','firefox'].includes(browserName), 'CHART_TEST_BROWSER must be chromium or firefox');
+const candidates = browserName === 'firefox' ? [process.env.FIREFOX_PATH, firefox.executablePath()].filter(Boolean) : [process.env.CHROME_PATH, 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome',
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].filter(Boolean);
 const executablePath = candidates.find(existsSync);
-const output = '.local/demo-screenshots';
+const output = browserName === 'firefox' ? '.local/demo-screenshots-firefox' : '.local/demo-screenshots';
+function launchBrowser() {
+  assert.ok(executablePath, `Browser ${browserName} not found; set ${browserName === 'firefox' ? 'FIREFOX_PATH' : 'CHROME_PATH'}`);
+  return browserName === 'firefox'
+    ? firefox.launch({executablePath, headless:true, firefoxUserPrefs:{'webgl.disabled':false, 'webgl.force-enabled':true}})
+    : chromium.launch({executablePath, headless:true, args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
+}
 const skins = ['dark', 'dark-bn', 'light', 'light-bn', 'sun', 'astrolabio', 'astrolabio-girasole'];
 const modes = ['natal', 'transits', 'synastry', 'latitude'];
 
 test('synthetic Angular demo renders every chart and skin, exports PNG and reports missing assets', {timeout: 180000}, async () => {
-  assert.ok(executablePath, 'Chromium/Chrome not found; set CHROME_PATH to an installed browser executable');
   mkdirSync(output, {recursive: true});
-  const browser = await chromium.launch({executablePath, headless: true,
-    args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
+  const browser = await launchBrowser();
   const page = await browser.newPage({viewport: {width: 1200, height: 1000}, acceptDownloads: true});
   await page.addInitScript(() => {
     const stats = {created: 0, deleted: 0};
@@ -39,6 +45,7 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
   const started = performance.now();
   const modeImages = new Map();
   const imageHashes = new Map();
+  const referenceScreenshots = new Map();
   async function ready() {
     await page.waitForFunction(() => {
       const status = document.querySelector('[data-testid=status]')?.textContent || '';
@@ -57,6 +64,7 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
         const screenshot = await page.locator('canvas').screenshot({path: join(output, `${mode}-${skin}.png`)});
         const pixels = await sharp(screenshot).removeAlpha().raw().toBuffer();
         imageHashes.set(`${mode}/${skin}`, createHash('sha256').update(pixels).digest('hex'));
+        referenceScreenshots.set(`${mode}/${skin}`, screenshot);
         const {data, info} = await sharp(screenshot).resize(100, 100).removeAlpha().raw().toBuffer({resolveWithObject:true});
         const colors = new Set();
         for (let i = 0; i < data.length; i += info.channels) colors.add(`${data[i]},${data[i+1]},${data[i+2]}`);
@@ -69,9 +77,20 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
       await page.selectOption('#mode', mode); await ready();
       for (const skin of skins) {
         await page.selectOption('#skin', skin); await ready();
-        const pixels = await sharp(await page.locator('canvas').screenshot()).removeAlpha().raw().toBuffer();
-        assert.equal(createHash('sha256').update(pixels).digest('hex'), imageHashes.get(`${mode}/${skin}`),
-          `${mode}/${skin}: repeated synthetic rendering changed`);
+        const screenshot = await page.locator('canvas').screenshot();
+        const pixels = await sharp(screenshot).removeAlpha().raw().toBuffer();
+        const actualHash = createHash('sha256').update(pixels).digest('hex');
+        if (actualHash !== imageHashes.get(`${mode}/${skin}`)) {
+          const baseline = await sharp(referenceScreenshots.get(`${mode}/${skin}`)).removeAlpha().raw().toBuffer();
+          assert.equal(pixels.length, baseline.length, `${mode}/${skin}: screenshot dimensions changed`);
+          let substantial = 0;
+          for (let i = 0; i < pixels.length; i++) if (Math.abs(pixels[i] - baseline[i]) > 2) substantial++;
+          if (substantial > Math.ceil(pixels.length * 0.0001)) {
+            writeFileSync(join(output, `repeat-${mode}-${skin}.png`), screenshot);
+          }
+          assert.ok(substantial <= Math.ceil(pixels.length * 0.0001),
+            `${mode}/${skin}: repeated rendering has ${substantial} channels differing by more than 2`);
+        }
       }
     }
     const beforeZoom = await page.locator('canvas').screenshot();
@@ -96,18 +115,19 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
     for (let i = 0; i < mobile.data.length; i += mobile.info.channels) mobileColors.add(`${mobile.data[i]},${mobile.data[i+1]},${mobile.data[i+2]}`);
     assert.ok(mobileColors.size > 10, 'canvas is blank after the debounced mobile resize');
     assert.deepEqual(errors, []); assert.deepEqual(badResponses, []);
-    await page.route('**/assets/img/simboli-bianchi/segni/01.png', route => route.abort());
-    await page.selectOption('#mode', 'natal');
-    await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout: 30000});
-    assert.match(await page.locator('[data-testid=status]').textContent(), /simboli-bianchi\/segni\/01\.png/);
+    // A fresh browser context avoids reusing a symbol already cached by Firefox.
+    const missingPage = await browser.newPage();
+    await missingPage.route('**/assets/img/simboli-bianchi/segni/01.png', route => route.abort());
+    await missingPage.goto('http://127.0.0.1:4200/');
+    await missingPage.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout: 30000});
+    assert.match(await missingPage.locator('[data-testid=status]').textContent(), /simboli-bianchi\/segni\/01\.png/);
+    await missingPage.close();
     console.log(`28 chart/skin combinations repeated twice, PNG export and mobile viewport checked in ${Math.round(performance.now()-started)} ms.`);
   } finally { await browser.close(); }
 });
 
 test('render waits for a slow skin texture and reports its failure', {timeout: 60000}, async () => {
-  assert.ok(executablePath, 'Set CHROME_PATH to an installed Chrome or Chromium executable');
-  const browser = await chromium.launch({executablePath, headless:true,
-    args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
+  const browser = await launchBrowser();
   const page = await browser.newPage();
   let release;
   const hold = new Promise(resolve => { release = resolve; });
@@ -138,11 +158,9 @@ test('render waits for a slow skin texture and reports its failure', {timeout: 6
 });
 
 test('concurrent render and exports retain each canvas dimensions', {timeout: 90000}, async () => {
-  assert.ok(executablePath, 'Set CHROME_PATH to an installed Chrome or Chromium executable');
   const bundle = await build({entryPoints:['tests/fixtures/concurrency-harness.ts'], bundle:true,
     write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
-  const browser = await chromium.launch({executablePath, headless:true,
-    args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
+  const browser = await launchBrowser();
   const page = await browser.newPage();
   try {
     await page.goto('http://127.0.0.1:4200/');

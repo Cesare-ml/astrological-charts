@@ -50,7 +50,7 @@
     "@types/three": "0.170.0",
     "esbuild": "^0.28.2",
     "ng-packagr": "^20.3.0",
-    "playwright-core": "^1.65.0",
+    "playwright-core": "1.56.1",
     "sharp": "^0.34.5",
     "typescript": "5.8.3"
   }
