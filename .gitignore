@@ -17,3 +17,6 @@ Thumbs.db
 # Locally generated inventory metadata; host artwork stays in virgo-stars
 chart-assets-manifest*.json
 chart-assets.selection*.json
+
+# Developer-only generated synthetic PNGs and integrity manifest
+.local/
