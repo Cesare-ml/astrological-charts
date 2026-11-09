@@ -48,6 +48,7 @@ npm run build
 - [Derive the chart-only asset inventory from active TypeScript](docs/ASSET_SELECTION_AUTOMATION.md)
 - [Independent contributor asset access and proposed private asset repository](docs/INDEPENDENT_ASSETS_REPOSITORY.md)
 - [Three-repository integration checkpoint, release gates and open blockers](docs/MULTIREPO_INTEGRATION_CHECKPOINT.md)
+- [Asset-only local preview: 78 synthetic PNGs or an approved independent pack](docs/LOCAL_ASSET_PREVIEW.md)
 - [Integration plan — not active](docs/INTEGRATION_PLAN.md)
 - [Technical reference snapshots](docs/reference/README.md)
 
@@ -63,3 +64,13 @@ npm run build
 ## Rules
 
 Work on feature branches and submit pull requests. No production changes, AWS access, real users' birth data, unlicensed artwork, automatic deployment or publication. The maintainer approves compatibility and release decisions.
+
+## Browser preview of a synthetic asset pack
+
+Before the real images are reviewed/imported, Windows contributors can open a **local gallery of 78 generated checkerboard PNGs** using:
+
+```powershell
+powershell -NoProfile -File .\scripts\preview-synthetic.ps1
+```
+
+Then open `http://127.0.0.1:4177/__preview`. This is **only an asset contract smoke test**, not a full astrology chart rendered in Three.js. The script creates original synthetic images in git-ignored `.local/` and serves *only* files verified against the local SHA-256 manifest. See [preview guide](docs/LOCAL_ASSET_PREVIEW.md).
