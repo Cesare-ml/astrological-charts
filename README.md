@@ -46,6 +46,7 @@ npm run build
 - [Shared host-owned assets and canonical URLs](docs/SHARED_ASSET_ARCHITECTURE.md)
 - [Deterministic asset manifest and offline version comparison](docs/ASSET_MANIFEST.md)
 - [Derive the chart-only asset inventory from active TypeScript](docs/ASSET_SELECTION_AUTOMATION.md)
+- [Independent contributor asset access and proposed private asset repository](docs/INDEPENDENT_ASSETS_REPOSITORY.md)
 - [Integration plan — not active](docs/INTEGRATION_PLAN.md)
 - [Technical reference snapshots](docs/reference/README.md)
 
