@@ -12,9 +12,11 @@
     "preflight": "npm run check:extraction && npm run check:assets && npm run check:types && npm run test:assets",
     "test:asset-urls": "node --test tests/chart-asset-urls.test.mjs",
     "test:asset-manifest": "node --test tests/asset-manifest.test.mjs",
-    "test:assets": "npm run test:asset-urls && npm run test:asset-manifest && npm run test:asset-selection",
+    "test:assets": "npm run test:asset-urls && npm run test:asset-manifest && npm run test:asset-selection && npm run test:local-assets",
     "test:asset-selection": "node --test tests/derive-chart-asset-selection.test.mjs",
-    "derive:asset-selection": "node scripts/derive-chart-asset-selection.mjs"
+    "derive:asset-selection": "node scripts/derive-chart-asset-selection.mjs",
+    "dev:assets": "node scripts/serve-local-assets.mjs",
+    "test:local-assets": "node --test tests/serve-local-assets.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
