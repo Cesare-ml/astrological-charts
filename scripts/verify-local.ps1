@@ -21,11 +21,11 @@ try {
     $steps += ,@('run', 'check:assets')
     $steps += ,@('run', 'check:types')
     $steps += ,@('run', 'build')
-    foreach ($args in $steps) {
-        Write-Host ('> npm ' + ($args -join ' ')) -ForegroundColor Cyan
-        & npm.cmd @args
+    foreach ($stepArgs in $steps) {
+        Write-Host ('> npm ' + ($stepArgs -join ' ')) -ForegroundColor Cyan
+        & npm.cmd @stepArgs
         if ($LASTEXITCODE -ne 0) {
-            throw ('Verification stopped: npm ' + ($args -join ' ') + ' exited ' + $LASTEXITCODE)
+            throw ('Verification stopped: npm ' + ($stepArgs -join ' ') + ' exited ' + $LASTEXITCODE)
         }
     }
     Write-Host 'Local build/preflight completed. Visual output, actual asset loading, browser and Astrolabio compatibility are NOT validated.' -ForegroundColor Green
