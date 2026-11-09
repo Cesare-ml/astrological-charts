@@ -25,7 +25,7 @@ The code repository does **not** include the production icons, ring textures or 
 # Both repos should be sibling directories.
 git clone https://github.com/Cesare-ml/astrological-assets.git
 cd astrological-charts
-node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets
+node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json
 ```
 
 The asset server binds only to `127.0.0.1:4177`. It serves GET/HEAD requests under `/assets/img/` and `/assets/fonts/`, permits CORS from the Angular development origin `http://localhost:4200` / `http://127.0.0.1:4200`, and does not support uploading or listing files. Set the library's development asset base to:
@@ -35,3 +35,11 @@ GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
 ```
 
 **The asset repository exists but its original image/font files have not yet been imported**, and the interactive Angular demo is still planned. The commands above describe the intended workflow, not a ready-to-run end-to-end demo. See [asset repository decision](INDEPENDENT_ASSETS_REPOSITORY.md). For code-only tasks, the local asset pack is not required.
+
+## Immediate synthetic preview (does not require VirgoStars or real asset files)
+
+```powershell
+powershell -NoProfile -File .\scripts\preview-synthetic.ps1
+```
+
+Open `http://127.0.0.1:4177/__preview`. This generates 78 **original checkerboard PNG placeholders** with the exact preload filenames and a local verification manifest. The preview is an asset gallery only; it does not render a natal chart. When the private asset repo contains approved images, point the dev server at its `public/assets` **and** its `manifests/approved-assets.json`. Read [LOCAL_ASSET_PREVIEW.md](LOCAL_ASSET_PREVIEW.md).
