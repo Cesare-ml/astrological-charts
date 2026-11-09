@@ -47,6 +47,8 @@ export function verifyApprovedAssetPack(rootPath,manifest) {
   let totalBytes=0;
   for(const record of manifest.assets) {
     const path=validatePackPath(record?.path);
+    if(record.status!==undefined && record.status!=='approved')
+      throw new Error('Asset is not approved: '+path);
     const key=path.normalize('NFC').toLowerCase();
     if(folded.has(key)) throw new Error('Case-colliding or duplicate path: '+path);
     folded.add(key);

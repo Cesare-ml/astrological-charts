@@ -1,6 +1,8 @@
 # Preview indipendente degli asset astrologici — codice eseguibile senza VirgoStars
 
-**Stato: implementato nel branch candidato `feat/verified-asset-preview`, non ancora integrato e non ancora verificato con i file reali o l'intera build Angular.** Questa pagina descrive una galleria di prova **degli asset**, non un renderer di tema natale completo.
+**Stato:** il branch candidato `feat/verified-asset-preview` compila ed è stato provato con asset sintetici; non è integrato né verificato con i file reali. Questa pagina descrive la galleria **degli asset**; la distinta [demo Angular](ANGULAR_DEMO.md) usa il renderer completo con fixture sintetiche.
+
+Il server rifiuta record con uno `status` esplicito diverso da `approved`. I manifest generati dall'importatore senza campo `status` restano supportati; metadati e checksum non dimostrano da soli l'autorizzazione legale.
 
 ## Il problema risolto
 

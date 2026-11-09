@@ -95,6 +95,9 @@ test('requires an approved manifest with valid SHA-256 and safe local origins',a
     const unlicensed=structuredClone(manifest);
     unlicensed.assets[0].permissionBasis='';
     assert.throws(()=>createAssetServer({root,manifest:unlicensed}),/Missing explicit approval metadata/);
+    const pending=structuredClone(manifest);
+    pending.assets[0].status='pending';
+    assert.throws(()=>createAssetServer({root,manifest:pending}),/not approved/);
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
