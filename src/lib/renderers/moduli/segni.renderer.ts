@@ -3,7 +3,7 @@ import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
 import { SkinManager } from '../@skin-manager';
 import { Colori } from '../_colori.config';
 
-import {StatoCartaAstrale} from 'grafici-astrologici'
+import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer'
 
 export class SegniRender {
 

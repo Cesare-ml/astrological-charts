@@ -5,7 +5,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import {CaseRender} from '../moduli/case.renderer';
 import {SegniRender} from '../moduli/segni.renderer';
 import {TransitiRender} from '../moduli/transiti.renderer';
-import { SkinManager } from 'grafici-astrologici';
+import { SkinManager } from '../@skin-manager';
 import { AspettiRender } from '../moduli/aspetti.renderer';
 
 

@@ -1,4 +1,4 @@
-import { PosizioneLocalDB } from 'grafici-astrologici';
+import { PosizioneLocalDB } from './posizione-localdb.model';
 import {SettaggiAspettiAttivi,SettaggiAspettiOrbite, SettaggiElementiCelesti} from './settaggi.model';
 
 
