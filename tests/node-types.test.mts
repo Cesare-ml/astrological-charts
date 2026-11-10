@@ -22,8 +22,10 @@ const cliArgs: string[] = buildRenderArgs('chart.json','out.jpeg',
 const invalidSchema: ChartPayloadV1 = { schemaVersion:2, natal };
 // @ts-expect-error invalid mode must be rejected by TypeScript
 renderChart(payload,'out.png', { mode:'imaginary-chart-mode' });
-// @ts-expect-error planet longitude must be a number
 const invalidPlanet: ChartPayloadV1 = { schemaVersion:1,
-  natal:{ ...natal, planets:{ Sun:{longitude:'not degrees'} } },
+  natal:{ ...natal, planets:{ Sun:{
+    // @ts-expect-error planet longitude must be a number
+    longitude:'not degrees',
+  } } },
 };
 void image; void file; void cliArgs; void invalidSchema; void invalidPlanet;
