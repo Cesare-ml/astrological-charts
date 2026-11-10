@@ -47,6 +47,12 @@ export interface RenderOptions {
   skin?: string;
   /** Child Node.js render process timeout, 100–600000 ms. Default: 180000. */
   timeoutMs?: number;
+  /** Optional absolute or relative path to an owner-authorized external asset directory.
+   * Must be passed together with assetManifest. No public image redistribution.
+   */
+  assetRoot?: string;
+  /** Approved manifest with SHA-256/owner evidence; must accompany assetRoot. */
+  assetManifest?: string;
 }
 
 /** Convert source input/output and CLI options to a validated argument list. */
