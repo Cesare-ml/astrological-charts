@@ -39,11 +39,15 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
     const renderTransit = (transit) => renderer.generaImmagine(
       theme, transit, null, 'latitudini', transitOptions, {x: 400, y: 400}, 1);
     const transitZeroSun = await renderTransit(transitTheme);
-    const transitAbsentSun = await renderTransit(null);
+    // Keep the transit ring/grid and all options identical: only filter
+    // the Sun's invalid latitude. Using a null transit theme as the control
+    // also removes its grid and can falsely pass when 0° is still omitted.
+    transitTheme.planets.Sun.latitude = Number.NaN;
+    const transitFilteredSun = await renderTransit(transitTheme);
     transitTheme.planets.Sun.latitude = 2;
     const transitShiftedSun = await renderTransit(transitTheme);
     return { withSun, withoutSun, negativeZeroSun, shiftedSun,
-      transitZeroSun, transitAbsentSun, transitShiftedSun };
+      transitZeroSun, transitFilteredSun, transitShiftedSun };
   } finally {
     renderer.ngOnDestroy();
   }

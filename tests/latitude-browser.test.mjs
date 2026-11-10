@@ -53,21 +53,21 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     assert.match(readyStatus || '', /Rendered/, readyStatus || 'Demo has no render status');
     await page.addScriptTag({content:bundle.outputFiles[0].text});
     const {withSun, withoutSun, negativeZeroSun, shiftedSun,
-      transitZeroSun, transitAbsentSun, transitShiftedSun} =
+      transitZeroSun, transitFilteredSun, transitShiftedSun} =
       await page.evaluate(() => globalThis.runZeroLatitudeRenderProbe());
     assert.match(withSun, /^data:image\/png;base64,/);
     assert.match(withoutSun, /^data:image\/png;base64,/);
     assert.match(negativeZeroSun, /^data:image\/png;base64,/);
     assert.match(shiftedSun, /^data:image\/png;base64,/);
     assert.match(transitZeroSun, /^data:image\/png;base64,/);
-    assert.match(transitAbsentSun, /^data:image\/png;base64,/);
+    assert.match(transitFilteredSun, /^data:image\/png;base64,/);
     assert.match(transitShiftedSun, /^data:image\/png;base64,/);
     const a = Buffer.from(withSun.split(',')[1], 'base64');
     const b = Buffer.from(withoutSun.split(',')[1], 'base64');
     const z = Buffer.from(negativeZeroSun.split(',')[1], 'base64');
     const c = Buffer.from(shiftedSun.split(',')[1], 'base64');
     const t0 = Buffer.from(transitZeroSun.split(',')[1], 'base64');
-    const tn = Buffer.from(transitAbsentSun.split(',')[1], 'base64');
+    const tn = Buffer.from(transitFilteredSun.split(',')[1], 'base64');
     const t2 = Buffer.from(transitShiftedSun.split(',')[1], 'base64');
     // Reject empty/truncated or non-PNG data URLs before writing diagnostic artifacts.
     // A browser export returning a generic base64 payload must not look like a
@@ -75,7 +75,7 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
     for (const [label, png] of Object.entries({
       withSun:a, withoutSun:b, negativeZeroSun:z, shiftedSun:c,
-      transitZeroSun:t0, transitAbsentSun:tn, transitShiftedSun:t2,
+      transitZeroSun:t0, transitFilteredSun:tn, transitShiftedSun:t2,
     })) {
       assert.ok(png.length > 24 && png.subarray(0, 8).equals(pngSignature),
         `invalid or truncated PNG export: ${label}`);
@@ -91,7 +91,7 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     writeFileSync(join(output, 'latitude-zero-sun-disabled.png'), b);
     writeFileSync(join(output, 'latitude-positive-two-sun-enabled.png'), c);
     writeFileSync(join(output, 'latitude-transit-zero-sun-enabled.png'), t0);
-    writeFileSync(join(output, 'latitude-transit-sun-absent.png'), tn);
+    writeFileSync(join(output, 'latitude-transit-sun-filtered.png'), tn);
     writeFileSync(join(output, 'latitude-transit-positive-two-sun-enabled.png'), t2);
     const [first, second, negativeZero, shifted] = await Promise.all([
       sharp(a).removeAlpha().raw().toBuffer({resolveWithObject:true}),
@@ -122,7 +122,7 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
       `the zero-latitude Sun must move when latitude changes to +2° (changed channels: ${shiftedChannels})`);
     assert.ok(shiftedVsDisabledChannels > 30,
       `the +2° Sun must remain visible compared with a disabled Sun (changed channels: ${shiftedVsDisabledChannels})`);
-    // Compare transit-only changes while holding the natal Sun and options fixed.
+    // Compare transit-only changes with natal Sun, options and transit ring/grid fixed.
     const [tZero, tAbsent, tShifted] = await Promise.all([
       sharp(t0).removeAlpha().raw().toBuffer({resolveWithObject:true}),
       sharp(tn).removeAlpha().raw().toBuffer({resolveWithObject:true}),
@@ -140,11 +140,11 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
       if (Math.abs(tShifted.data[i] - tAbsent.data[i]) > 2) shiftedTransitVisible++;
     }
     assert.ok(transitVisible > 30,
-      `transit Sun at 0° must be visible compared with no transit theme (changed channels: ${transitVisible})`);
+      `transit Sun at 0° must be visible compared with the same transit ring after filtering only the Sun (changed channels: ${transitVisible})`);
     assert.ok(transitMoved > 30,
       `transit Sun must move when its latitude changes from 0° to +2° (changed channels: ${transitMoved})`);
     assert.ok(shiftedTransitVisible > 30,
-      `transit Sun at +2° must remain visible (changed channels: ${shiftedTransitVisible})`);
+      `transit Sun at +2° must remain visible against the filtered-Sun control (changed channels: ${shiftedTransitVisible})`);
 
     assert.deepEqual(pageErrors, [], 'unexpected Angular/Three.js page errors during latitude rendering');
     assert.deepEqual(assetErrors, [], 'synthetic image requests must succeed during latitude rendering');
