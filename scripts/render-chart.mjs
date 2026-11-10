@@ -280,6 +280,7 @@ async function main() {
     // requests failed. Never publish an approved-artwork PNG/JPEG with
     // silent missing textures or fallback placeholders.
     assetAudit.assertClean();
+    if (useExternalAssets) assetAudit.assertHasLoadedAssets();
     const png = await readFile(pngPath);
     const metadata = await sharp(png).metadata();
     if (metadata.format !== 'png' || !metadata.width || !metadata.height) {
