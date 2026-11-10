@@ -45,6 +45,7 @@ On Windows with Node 22.18.0, `npm ci`, `npm run preflight` and `npm run build` 
 - [Graphics asset audit](docs/ASSETS_AUDIT.md)
 - [Shared host-owned assets and canonical URLs](docs/SHARED_ASSET_ARCHITECTURE.md)
 - [Deterministic asset manifest and offline version comparison](docs/ASSET_MANIFEST.md)
+- [Derive the chart-only asset inventory from active TypeScript](docs/ASSET_SELECTION_AUTOMATION.md)
 - [Integration plan — not active](docs/INTEGRATION_PLAN.md)
 - [Technical reference snapshots](docs/reference/README.md)
 

@@ -74,3 +74,7 @@ Casi previsti: ordine deterministico, SHA-256, selezione, modifica file, duplica
 - Il manifest non concede licenze: il diritto di distribuire ciascuna immagine, specie texture e Risuonatore Solare, richiede un audit separato.
 - Non pubblicare manifest completi di file estranei al prodotto in una release open source.
 - Restano da realizzare: selezione automatica per skin, validazione degli asset esistenti, test WebGL/network, integrazione sito e Astrolabio.
+
+## Automatic chart-only selection (next candidate PR)
+
+Rather than maintaining `examples/chart-assets.selection.example.json` by hand, the candidate tool `scripts/derive-chart-asset-selection.mjs` derives the list from live `SkinManager`/preload references and known chart-only folders of the host. See [ASSET_SELECTION_AUTOMATION.md](ASSET_SELECTION_AUTOMATION.md). The selection is conservative, not a proven per-device minimum, and unresolved literal references block output.
