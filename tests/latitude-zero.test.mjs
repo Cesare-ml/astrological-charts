@@ -92,3 +92,47 @@ test('natal and transit latitude scenes both invoke the shared finite-latitude s
     [['temaRender', 'opzioni']],
     'both rings must use the real latitude selector rather than bypassing its finite-value filter');
 });
+
+test('transit PNG baseline filters only the Sun and preserves the transit ring', () => {
+  // A null transit theme removes the whole ring/grid and can make a missing
+  // 0° symbol look visible in a pixel-diff test. Guard against that mistake.
+  const fixture = ts.createSourceFile('latitude-zero-render-harness.ts',
+    readFileSync(new URL('./fixtures/latitude-zero-render-harness.ts', import.meta.url), 'utf8'),
+    ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const events = [];
+  let transitsEnabled = false;
+  let sameThemePassedToRing = false;
+  function visit(node) {
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      const target = node.left.getText(fixture);
+      if (target === 'transitTheme.planets.Sun.latitude') {
+        events.push(`latitude:${node.right.getText(fixture)}`);
+      } else if (target === 'transitOptions.mostraTransiti') {
+        transitsEnabled = node.right.getText(fixture) === 'true';
+      }
+    }
+    if (ts.isVariableDeclaration(node)) {
+      const name = node.name.getText(fixture);
+      if (name === 'renderTransit') {
+        const arrow = node.initializer;
+        sameThemePassedToRing = ts.isArrowFunction(arrow)
+          && ts.isCallExpression(arrow.body)
+          && arrow.body.arguments[1]?.getText(fixture) === 'transit';
+      }
+      if (['transitZeroSun', 'transitFilteredSun', 'transitShiftedSun'].includes(name)) {
+        const call = ts.isAwaitExpression(node.initializer) ? node.initializer.expression : null;
+        events.push(`render:${name}:${ts.isCallExpression(call) ?
+          call.arguments[0]?.getText(fixture) : 'not-a-call'}`);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(fixture);
+  assert.equal(transitsEnabled, true, 'transit ring must remain enabled for every comparison');
+  assert.equal(sameThemePassedToRing, true, 'the same passed theme must feed all transit renders');
+  assert.deepEqual(events, [
+    'latitude:0', 'render:transitZeroSun:transitTheme',
+    'latitude:Number.NaN', 'render:transitFilteredSun:transitTheme',
+    'latitude:2', 'render:transitShiftedSun:transitTheme',
+  ], 'only the transit Sun latitude may vary across the three PNG controls');
+});
