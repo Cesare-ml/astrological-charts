@@ -72,8 +72,9 @@
 - [ ] Run `npm run test:chart-asset-request-audit`; verify browser
       export rejects missing (404), modified (409) and failed local
       asset requests, including when the approved manifest omits
-      a symbol required by the selected chart mode/skin. Do not
-      substitute synthetic placeholders in an approved-artwork export.
+      a symbol required by the selected chart mode/skin. In
+      approved mode also reject zero successful local asset responses.
+      Do not substitute synthetic placeholders in an approved-artwork export.
 - [ ] Test the Astrolabio Node.js + offline Firefox `file://`
       adapter separately; never confuse the Chromium local demo with
       offline/e-ink device compatibility.
