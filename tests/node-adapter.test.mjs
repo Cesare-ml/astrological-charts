@@ -31,6 +31,8 @@ test('Node API rejects unknown schema, nonfinite numbers and unsafe timeouts', a
     'invalid.png'), /NaN or Infinity/);
   await assert.rejects(renderChart(payload, 'invalid.png', { timeoutMs: -1 }), /timeoutMs/);
   await assert.rejects(renderChart(payload, 'invalid.png', { timeoutMs: 999999 }), /timeoutMs/);
+  await assert.rejects(renderChartFile('chart.png', 'chart.png'),
+    /different file paths/);
 });
 
 test('Node.js forwards precomputed JSON and publishes a staged PNG only after a verified result', async () => {
