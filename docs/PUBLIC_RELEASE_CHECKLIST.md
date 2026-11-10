@@ -1,9 +1,6 @@
 # Public release checklist
 
-**Status: NOT CLEARED.** The maintainer plans to publish this repository,
-but a `LICENSE` file by itself is not permission to publish every
-tracked file. Do not flip the GitHub visibility, publish npm packages or
-release host artwork until each gate below has been reviewed.
+**Status: NOT CLEARED.** GitHub currently reports this repository as **public** (issue #20), although release rights and validation remain unapproved. A `LICENSE` file by itself does not grant permission to publish every tracked file. Do not treat current visibility as release approval, publish npm packages, or release host artwork until each gate below has been reviewed. The maintainer must review the visibility discrepancy and any necessary remediation.
 
 - [ ] Confirm the initial developer owns or has redistribution rights
       for every extracted TypeScript/Angular/Three.js source file, every
@@ -68,8 +65,7 @@ release host artwork until each gate below has been reviewed.
 - [ ] Review new public issues/PR templates, attribution display in
       the demo and any applicable launch/session branding under CPAL.
 - [ ] Review outstanding draft PRs and resolve incompatible changes.
-- [ ] Explicitly approve public visibility only after the audit,
-      with a rollback plan and source-availability obligations.
+- [ ] Resolve the already-public GitHub visibility discrepancy in issue #20; obtain explicit maintainer sign-off on source rights, remediation if needed, rollback plan and source-availability obligations before announcing a release.
 
 The repository is **not** the live VirgoStars site; public release
 must not change production integrations or deployed Astrolabio devices.
