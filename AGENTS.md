@@ -77,7 +77,7 @@ visibility, `package.json` private status, or publish a package.
     the old `Rendered` label. Run `npm run test:render-bridge` manually
     with Chrome and WebGL; never assert it passed without executing it.
 11. Do not treat a successful build as proof of visual correctness. Test browser, mobile PNG and headless/e-ink paths when relevant.
-11. Update docs for every meaningful feature or behavioral change. Report test commands executed and distinguish untested work.
+12. Update docs for every meaningful feature or behavioral change. Report test commands executed and distinguish untested work.
 
 ## Known technical risks
 
