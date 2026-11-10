@@ -1,6 +1,6 @@
 # Extraction status and release gates
 
-**Phase:** PRIVATE, NOT RELEASED. The Angular build and browser tests passed locally on Windows using synthetic and owner-authorized original images. Visual parity and production consumers remain unverified.
+**Phase:** PRIVATE, CPAL-1.0 LICENSE PREPARED, NOT RELEASED. The Angular build and browser tests passed locally on Windows using synthetic and owner-authorized original images. Visual parity and production consumers remain unverified.
 
 ## Extraction and current implementation
 
@@ -15,13 +15,14 @@
 
 ## Pending before describing the package as ready
 
-- Align `TemaRender` and `OpzioniGrafico` input contracts with actual renderer use.
+- Align the full legacy `TemaRender` and `OpzioniGrafico` contracts with renderer usage. The external JSON v1 adapter validates and maps the subset needed for Python-created charts, but does not guarantee every advanced option.
 - The owner authorized private sharing of imported artwork, including font-derived images; the font's license and public redistribution remain unresolved. Keep the current production source unchanged and validate the separate pack before any migration.
 - Compare the four chart modes and seven skins against approved real-artwork baselines; synthetic screenshots alone do not establish visual fidelity.
 - Verify no resource growth after repeated redraw and PNG export.
 - Rebuild VirgoStars web, mobile PNG, Astrolabio UI and actual headless/e-ink render before any consumer migration.
 - Decide strategy for version pinning and release notes; **no automatic updates to shipped devices**.
-- Agree on contributor IP terms before accepting outside contributions or making any public release.
+- Complete the source provenance and contributor IP review before public release; see `docs/PUBLIC_RELEASE_CHECKLIST.md`.
+- Validate the new Python JSON→Angular/Three.js→PNG/JPEG path with a real local browser run; schema unit tests do not prove end-to-end rendering.
 
 ## Deliberately not done
 
