@@ -18,6 +18,22 @@ const execFileAsync = promisify(execFile);
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const defaultRunner = join(projectRoot, 'scripts', 'render-chart.mjs');
 
+/**
+ * Single-process developer queue: every render uses the same local
+ * Angular/asset server ports and a Chromium session. Never start
+ * overlapping export subprocesses from this imported Node module.
+ *
+ * A failed job must NOT poison the queue. This only serializes calls
+ * inside one Node.js process, not different processes or direct CLI
+ * invocations; it is NOT a production browser pool or distributed lock.
+ */
+let pendingRender = Promise.resolve();
+function runSerially(task) {
+  const job = pendingRender.then(task);
+  pendingRender = job.then(() => undefined, () => undefined);
+  return job;
+}
+
 export function buildRenderArgs(input, output, { mode, skin } = {}) {
   if (typeof input !== 'string' || !input) throw new TypeError('A JSON input path is required.');
   if (typeof output !== 'string' || !output) throw new TypeError('A PNG/JPEG output path is required.');
@@ -78,30 +94,32 @@ export async function renderChartFile(input, output, options = {}) {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 600_000) {
     throw new TypeError('timeoutMs must be an integer from 100 to 600000 milliseconds.');
   }
-  // Stage next to the final image; a failed process cannot overwrite
-  // the user's existing chart or claim success without creating a file.
-  await mkdir(dirname(target), { recursive: true });
-  const stageDir = await mkdtemp(join(dirname(target), '.virgostars-chart-'));
-  const stageFile = join(stageDir, 'rendered' + ext);
-  const script = options.rendererScript ?? defaultRunner;
-  try {
-    const args = buildRenderArgs(input, stageFile, options);
-    const { stdout, stderr } = await execFileAsync(process.execPath, [script, ...args], {
-      cwd: projectRoot,
-      windowsHide: true,
-      timeout: timeoutMs,
-      maxBuffer: 8 * 1024 * 1024,
-    });
-    if (stdout) process.stdout.write(stdout);
-    if (stderr) process.stderr.write(stderr);
-    // Validate basic file format; the actual Chromium CLI validates image
-    // metadata with sharp before returning.
-    await verifyImage(stageFile, ext);
-    await rename(stageFile, target);
-    return target;
-  } finally {
-    await rm(stageDir, { recursive: true, force: true });
-  }
+  return runSerially(async () => {
+    // Stage next to the final image; a failed process cannot overwrite
+    // the user's existing chart or claim success without creating a file.
+    await mkdir(dirname(target), { recursive: true });
+    const stageDir = await mkdtemp(join(dirname(target), '.virgostars-chart-'));
+    const stageFile = join(stageDir, 'rendered' + ext);
+    const script = options.rendererScript ?? defaultRunner;
+    try {
+      const args = buildRenderArgs(input, stageFile, options);
+      const { stdout, stderr } = await execFileAsync(process.execPath, [script, ...args], {
+        cwd: projectRoot,
+        windowsHide: true,
+        timeout: timeoutMs,
+        maxBuffer: 8 * 1024 * 1024,
+      });
+      if (stdout) process.stdout.write(stdout);
+      if (stderr) process.stderr.write(stderr);
+      // Validate basic file format; the actual Chromium CLI validates image
+      // metadata with sharp before returning.
+      await verifyImage(stageFile, ext);
+      await rename(stageFile, target);
+      return target;
+    } finally {
+      await rm(stageDir, { recursive: true, force: true });
+    }
+  });
 }
 
 /**
