@@ -161,6 +161,23 @@ The bridge now waits for the selected mode and skin to finish rendering,
 not just for any previous chart to report completion. This test is
 manual and is not a production/Astrolabio certification.
 
+## Early error reporting for Python callers
+
+The Python wrapper uses the same Node CLI input validator as
+JavaScript. A malformed JSON chart, nonfinite position, latitude
+outside ±90°, missing house cusp or missing second chart for the
+requested transit/synastry mode is rejected **before the browser
+starts**. This avoids expensive WebGL setup just to discover a
+missing field. The wrapper already serializes JSON with
+`allow_nan=False`, and the CLI additionally enforces the
+1,000,000-byte input limit and JSON v1 schema. It never generates
+missing ephemerides automatically.
+
+For unit tests without a browser:
+`npm run test:validate-chart-input` and `npm run test:chart-input`.
+For actual PNG/JPEG rendering, use `npm run test:render-bridge`
+and run the Python sample separately, as documented above.
+
 ## Troubleshooting
 
 - `node was not found`: install Node.js and open a new terminal.
