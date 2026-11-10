@@ -23,7 +23,12 @@ release host artwork until each gate below has been reviewed.
 - [ ] Run `npm ci`, `npm run preflight`, `npm run build`,
       `npm run build:demo`, and a local synthetic browser export. Test
       a fresh public-reader checkout with no private dependencies.
-- [ ] Run `npm run test:node-adapter`,
+- [ ] Verify that concurrent Node.js requests from the same process
+      are serialized, that a failed request does not poison the queue,
+      and that multi-process/persistent backend rendering remains
+      explicitly unsupported until separate stress and locking tests.
+- [ ] Run `npm run test:node-concurrency` and
+      `npm run test:node-adapter`,
       `npm run test:local-render-services`,
       `npm run test:local-process-lifecycle`, and `npm run test:node-types`,
       then the programmatic
