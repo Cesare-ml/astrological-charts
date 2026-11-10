@@ -349,6 +349,11 @@ before publishing its PNG/JPEG. Diagnostics list only affected
 `/assets/...` paths, never private natal input data. This also
 catches a situation where the manifest itself is valid but a
 particular mode or skin references an asset it does not contain.
+In explicit approved-artwork mode, a render is also rejected if
+**no successful image response** was observed from the local asset
+server. This prevents a chart from appearing to succeed while it
+silently avoids the approved asset pack. This is a necessary loading
+check, not a pixel-by-pixel visual comparison.
 Use `npm run test:chart-asset-request-audit` for browser-free checks.
 
 The headless exporter waits for a newly completed Angular draw when
