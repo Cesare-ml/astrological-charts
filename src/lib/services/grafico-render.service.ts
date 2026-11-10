@@ -7,6 +7,8 @@ import {CartaAstraleCreaScena} from '../renderers/@carta-astrale/carta-astrale.r
 import { OggettiSempliciRender } from '../renderers/oggetti-semplici.renderer';
 import { GestoreImmagini } from '../renderers/gestore-immagini';
 import { stopSceneAnimations } from '../renderers/scene-animations';
+import { PlanetInteractionController } from '../renderers/planet-interaction.controller';
+import type { ChartAspectRelation, ChartPlanetInteractionEvent, ChartPlanetRef } from '../renderers/planet-interaction.types';
 //import {ElementiRender} from '../renderers/elementi.renderer';
 import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer';
 //import {OrePlanetarieRender} from '../renderers/ore-planetarie.renderer';
@@ -72,6 +74,10 @@ export class GraficoRenderService implements OnDestroy {
   private renderer: THREE.WebGLRenderer;
   public camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;
+  private planetController: PlanetInteractionController | null = null;
+  private planetListener: ((event: ChartPlanetInteractionEvent) => void) | null = null;
+  private crossChartAspects: ChartAspectRelation[] = [];
+  private pinnedPlanet: ChartPlanetRef | null = null;
   
   public scale = 1;
 
@@ -89,6 +95,23 @@ export class GraficoRenderService implements OnDestroy {
   resizeSub;
 
   public constructor() {}
+
+  /** Bridge pointer events to any Angular/frontend state store. */
+  public setPlanetInteractionListener(listener: ((event: ChartPlanetInteractionEvent) => void) | null): void {
+    this.planetListener = listener;
+  }
+
+  /** Use aspect results calculated upstream; this renderer never computes transit orbs. */
+  public setCrossChartAspects(aspects: readonly ChartAspectRelation[]): void {
+    this.crossChartAspects = aspects.slice();
+    this.planetController?.setRelations(this.crossChartAspects);
+  }
+
+  /** Programmatic focus for buttons/keyboard controls. null clears it. */
+  public highlightPlanet(planet: ChartPlanetRef | null): void {
+    this.pinnedPlanet = planet ? { ...planet } : null;
+    this.planetController?.highlight(this.pinnedPlanet);
+  }
 
   // ### ZOOM ###
   public setZoom(zoom: number): void {
@@ -113,6 +136,8 @@ export class GraficoRenderService implements OnDestroy {
 
   public ngOnDestroy(): void {
     ++this.drawGeneration;
+    this.planetController?.destroy();
+    this.planetController = null;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
     
     if(this.resizeSub) {
@@ -161,6 +186,12 @@ export class GraficoRenderService implements OnDestroy {
     this.camera.zoom = this.zoomValue;
     this.camera.updateProjectionMatrix();
     this.scene.add(this.camera);
+    this.planetController = new PlanetInteractionController(
+      this.canvas, this.camera, event => this.planetListener?.(event), () => this.render()
+    );
+    this.planetController.setRelations(this.crossChartAspects);
+    this.planetController.highlight(this.pinnedPlanet);
+    this.planetController.setScene(this.scene);
 
     this.aggiornaRisoluzioneRenderer();
 
@@ -271,12 +302,14 @@ export class GraficoRenderService implements OnDestroy {
         return;
       }
       if (!this.scene) this.scene = new THREE.Scene();
+      this.planetController?.setScene(null);
       disposeSceneResources(this.scene);
       this.scene.clear();
       const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
       this.scene.background = new THREE.Color(bgColor);
       if (this.camera) this.scene.add(this.camera);
       if (disegno) this.scene.add(disegno);
+      this.planetController?.setScene(this.scene);
       this.render();
     });
   }

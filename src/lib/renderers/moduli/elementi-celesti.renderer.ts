@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { ChartPlanetLayer } from '../planet-interaction.types';
 import gsap from 'gsap';
 import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
@@ -31,7 +32,8 @@ export class ElementiCelestiRender {
     offsDirezioniSemplificate=0,
     offsDirezioniSemplificateFasullo=0,
     isCerchiaLaLuna=false,
-    isElementiSinastria=false
+    isElementiSinastria=false,
+    interactionLayer: ChartPlanetLayer = 'natal'
   ): Promise<any> {
     var group = new THREE.Group();
     try {
@@ -294,6 +296,7 @@ export class ElementiCelestiRender {
       el.rotateZ(THREE.MathUtils.degToRad(elDegDiRender));
       el.translateY(raggioEclittica);
       el.rotation.z = 0;
+      el.userData['chartPlanet'] = { layer: interactionLayer, name: nome };
       group.add( el );
 
       /*
