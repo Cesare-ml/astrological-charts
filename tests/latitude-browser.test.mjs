@@ -44,9 +44,13 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     });
     const navigation = await page.goto('http://127.0.0.1:4200/', {waitUntil:'domcontentloaded'});
     assert.ok(navigation?.ok(), 'Angular demo must respond successfully at http://127.0.0.1:4200/');
+    // Surface an Angular render failure immediately, rather than waiting for
+    // the full 30 s "Rendered" timeout when the UI already reports an error.
     await page.waitForFunction(() =>
-      (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'),
+      /Rendered|Rendering failed/.test(document.querySelector('[data-testid=status]')?.textContent || ''),
       null, {timeout:30000});
+    const readyStatus = await page.locator('[data-testid=status]').textContent();
+    assert.match(readyStatus || '', /Rendered/, readyStatus || 'Demo has no render status');
     await page.addScriptTag({content:bundle.outputFiles[0].text});
     const {withSun, withoutSun, negativeZeroSun, shiftedSun} = await page.evaluate(() => globalThis.runZeroLatitudeRenderProbe());
     assert.match(withSun, /^data:image\/png;base64,/);
