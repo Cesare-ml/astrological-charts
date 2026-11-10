@@ -136,7 +136,14 @@ visibility, `package.json` private status, or publish a package.
 8. A collaborator without VirgoStars repository access may use `scripts/serve-local-assets.mjs` with a **separate approved chart-assets checkout**. Do not silently hotlink the production website, copy artwork into the renderer package or use private cloud credentials. The private `Cesare-ml/astrological-assets` repository contains owner-authorized images and a manifest for private collaboration; the original font is not included and public redistribution is not authorized. Always require a validated `manifests/approved-assets.json` to run the real local asset server. Use `scripts/preview-synthetic.ps1` for generated placeholder preview only; never claim it reproduces the chart's real visuals.
 9. Never add GitHub Actions, production deployments, publish-to-npm workflows, or scheduled jobs unless explicitly authorized by repository owner.
 10. Real PNG/JPEG bridge regression tests live in
-    `tests/render-bridge.browser.test.mjs`. The demo publishes its
+    `tests/render-bridge.browser.test.mjs` and cover natal/light,
+    transits/dark, synastry/light and latitude/dark; keep invented
+    coordinates with zero and positive/negative ecliptic latitude.
+    Also retain the browser-free local asset-request audit in
+    `tests/chart-asset-request-audit.test.mjs` and its CLI hook.
+    Never publish a PNG/JPEG when a mode/skin requests a missing
+    local symbol (404/409 or request failure).
+     The demo publishes its
     completed render revision and actual mode/skin on the status element;
     the exporter must await a **new completed revision** after importing
     JSON and selecting mode/skin. Do not replace this with a check of
