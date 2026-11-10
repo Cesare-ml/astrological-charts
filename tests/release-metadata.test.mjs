@@ -31,3 +31,24 @@ test('release checklist remains explicitly gated', async () => {
   assert.match(checklist, /NOT CLEARED/i);
   assert.match(checklist, /rights|provenance/i);
 });
+
+test('release metadata test is wired into the manual preflight and roadmap is discoverable', async () => {
+  const [packageText, readme, agents, roadmap] = await Promise.all([
+    read('package.json'), read('README.md'), read('AGENTS.md'),
+    read('docs/ROADMAP.md'),
+  ]);
+  const pkg = JSON.parse(packageText);
+  assert.equal(pkg.scripts['test:release-metadata'],
+    'node --test tests/release-metadata.test.mjs',
+    'release metadata guard must be directly runnable');
+  assert.match(pkg.scripts.preflight, /(?:^|\s|&&)npm run test:release-metadata(?:\s|&&|$)/,
+    'manual preflight must run the release guard');
+  for (const [name, content] of [['README', readme], ['AGENTS', agents]]) {
+    assert.match(content, /docs\/ROADMAP\.md/, name + ' must link to the roadmap');
+  }
+  for (const heading of ['M0', 'M1', 'M2', 'M3', 'M4']) {
+    assert.match(roadmap, new RegExp('## ' + heading + ' \\u2014 '),
+      'roadmap must retain milestone ' + heading);
+  }
+  assert.match(roadmap, /PUBLIC_RELEASE_CHECKLIST\.md/);
+});
