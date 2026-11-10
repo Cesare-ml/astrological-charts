@@ -28,7 +28,22 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
     const negativeZeroSun = await render();
     theme.planets.Sun.latitude = 2;
     const shiftedSun = await render();
-    return { withSun, withoutSun, negativeZeroSun, shiftedSun };
+
+    // Keep the natal Sun fixed at +2° and vary only the transit Sun.
+    // The same finite-latitude filter is used for natal and transit rings,
+    // but their symbol paths and scene branches differ.
+    const transitTheme = makeDemoTheme(90);
+    transitTheme.planets.Sun.latitude = 0;
+    const transitOptions = structuredClone(opts);
+    transitOptions.mostraTransiti = true;
+    const renderTransit = (transit) => renderer.generaImmagine(
+      theme, transit, null, 'latitudini', transitOptions, {x: 400, y: 400}, 1);
+    const transitZeroSun = await renderTransit(transitTheme);
+    const transitAbsentSun = await renderTransit(null);
+    transitTheme.planets.Sun.latitude = 2;
+    const transitShiftedSun = await renderTransit(transitTheme);
+    return { withSun, withoutSun, negativeZeroSun, shiftedSun,
+      transitZeroSun, transitAbsentSun, transitShiftedSun };
   } finally {
     renderer.ngOnDestroy();
   }
