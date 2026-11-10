@@ -49,7 +49,7 @@ test('same-process exports do not overlap and one failure cannot poison the queu
       const results = await Promise.allSettled(promises);
       assert.deepEqual(results.map(result=>result.status),
         ['fulfilled','rejected','fulfilled']);
-      assert.deepEqual((await readFile(log,'utf8')).trim().split('\\n'),
+      assert.deepEqual((await readFile(log,'utf8')).trim().split('\n'),
         ['start:A','done:A','start:B','failed:B','start:C','done:C']);
       assert.equal((await readFile(join(dir,'A.png'))).subarray(0,8).toString('hex'),
         '89504e470d0a1a0a');
