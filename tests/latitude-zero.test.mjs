@@ -30,18 +30,23 @@ test('latitude renderer keeps zero, negative zero and finite positive/negative l
     Mercury: { latitude: -2.5, longitude: 75 },
     Venus: { latitude: 3.2, longitude: 105 },
     Mars: { latitude: 1, longitude: 135 },
+    Ceres: { latitude: Number.MIN_VALUE },
+    Eris: { latitude: -Number.MIN_VALUE },
     Jupiter: { latitude: null },
     Saturn: { latitude: undefined },
     Uranus: { latitude: Number.NaN },
     Neptune: { latitude: Number.POSITIVE_INFINITY },
+    Chiron: { latitude: Number.NEGATIVE_INFINITY },
     Pluto: { latitude: '0' },
   };
   const enabled = Object.fromEntries(Object.keys(planets).map(name => [name, {att: name !== 'Mars'}]));
   const options = { settaggi: { elementi_celesti: enabled } };
   const selected = await new LatitudeSelectionProbe().getElementiCelesti({planets}, options);
-  assert.deepEqual(Object.keys(selected), ['Sun', 'Moon', 'Mercury', 'Venus']);
+  assert.deepEqual(Object.keys(selected), ['Sun', 'Moon', 'Mercury', 'Venus', 'Ceres', 'Eris']);
   assert.equal(selected.Sun, planets.Sun, 'zero latitude must preserve the source body');
   assert.equal(selected.Moon, planets.Moon, 'negative zero latitude must be valid');
+  assert.equal(selected.Ceres, planets.Ceres, 'smallest positive finite latitude must remain valid');
+  assert.equal(selected.Eris, planets.Eris, 'smallest negative finite latitude must remain valid');
   assert.ok(!Object.hasOwn(selected, 'Mars'), 'disabled body must stay hidden');
 });
 
