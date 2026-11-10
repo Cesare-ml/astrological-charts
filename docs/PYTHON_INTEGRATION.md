@@ -147,6 +147,20 @@ numbers from any independently licensed computation library in the
 meantime. `astrological-functions` is the separate future home for
 house systems and astrological operations.
 
+## Verify the shared renderer using a real browser
+
+Both Python and Node.js call the **same** Angular/Three.js rendering
+path. From the repository root, after `npm ci` and with Chrome and
+WebGL available, run `npm run test:render-bridge` to verify one real
+PNG and one JPEG output with synthetic data. This tests the Node-side
+rendering bridge that the Python wrapper uses; it does **not**
+run the Python wrapper itself. For an additional Python end-to-end
+check, run `python examples/python/example.py` and inspect its PNG.
+
+The bridge now waits for the selected mode and skin to finish rendering,
+not just for any previous chart to report completion. This test is
+manual and is not a production/Astrolabio certification.
+
 ## Troubleshooting
 
 - `node was not found`: install Node.js and open a new terminal.
