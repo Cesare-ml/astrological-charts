@@ -38,8 +38,15 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 
 ## M2 — Reliable visual rendering
 
-- [ ] Test natal, transits, synastry and latitude modes, including exactly 0° latitude.
+- [ ] Complete a real Chrome/browser run of natal, transits,
+      synastry and latitude modes, including exactly 0° latitude.
+      The four-mode PNG/JPEG matrix is now present in the manual
+      `tests/render-bridge.browser.test.mjs`; execution and visual
+      review of all four modes remain required.
 - [ ] Test light/dark skins, PNG and JPEG exports, and compare reproducible screenshots.
+  - A browser-free asset-request audit now rejects missing/failed
+    local images before a PNG/JPEG is published; the mock tests do
+    not prove all original VirgoStars assets exist on disk.
 - [ ] Verify accessibility: labels, keyboard navigation, focus indicators, contrast and nonvisual status feedback.
 - [ ] Measure WebGL resource disposal over repeated redraw/export and multiple canvases.
 
