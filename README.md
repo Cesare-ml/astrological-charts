@@ -5,6 +5,8 @@
 and Three.js. Source-code license: **CPAL-1.0** with required
 VirgoStars attribution (see [LICENSE](LICENSE) and [NOTICE](NOTICE)).
 
+See the [development milestones and roadmap](docs/ROADMAP.md) for prioritized work and contributor acceptance criteria.
+
 **Release status:** this repository is still **private** while source,
 dependency, artwork and contributor permissions are reviewed.
 The license and collaboration guides have been prepared for a future
