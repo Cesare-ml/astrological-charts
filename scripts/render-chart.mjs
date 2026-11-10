@@ -6,14 +6,15 @@
  * Starts temporary synthetic asset and demo servers when needed.
  */
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import sharp from 'sharp';
+import { matchesLocalChartDemo, matchesSyntheticAssetServer } from './verify-local-render-services.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -103,17 +104,26 @@ async function main() {
       await run(process.execPath, [join(root, 'scripts', 'generate-demo-pack.mjs'), '--out', pack]);
     }
     // Only use loopback; never upload input charts or fetch production assets.
-    if (!await live('http://127.0.0.1:4177/')) {
-      console.log('Starting local verified image server…');
+    const assetUrl = 'http://127.0.0.1:4177/';
+    const demoUrl = 'http://127.0.0.1:4200/';
+    const syntheticManifest = JSON.parse(readFileSync(manifest, 'utf8'));
+    if (!await live(assetUrl)) {
+      console.log('Starting local verified synthetic image server…');
       const assets = launch(process.execPath, [join(root, 'scripts', 'serve-local-assets.mjs'),
         '--root', join(pack, 'public', 'assets'), '--manifest', manifest], owned);
-      await waitFor('http://127.0.0.1:4177/', assets);
+      await waitFor(assetUrl, assets);
     }
-    if (!await live('http://127.0.0.1:4200/')) {
+    if (!await matchesSyntheticAssetServer(assetUrl, syntheticManifest)) {
+      throw new Error('Port 4177 is serving a different or invalid asset pack. Stop that local server before running the synthetic PNG/JPEG bridge.');
+    }
+    if (!await live(demoUrl)) {
       console.log('Starting local Angular demo…');
       const demo = launch(process.execPath, [join(root, 'node_modules', '@angular', 'cli', 'bin', 'ng.js'),
         'serve', 'demo', '--host', '127.0.0.1', '--port', '4200'], owned);
-      await waitFor('http://127.0.0.1:4200/', demo);
+      await waitFor(demoUrl, demo);
+    }
+    if (!await matchesLocalChartDemo(demoUrl)) {
+      throw new Error('Port 4200 is not serving the Astrological Charts Angular demo. Stop that local server and try again.');
     }
 
     browser = await chromium.launch({
