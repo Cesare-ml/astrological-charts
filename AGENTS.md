@@ -62,7 +62,11 @@ calculate missing planetary positions. Keep
 **Node.js concurrency contract:** `node/index.mjs` keeps a
 single in-process Promise queue for `renderChart()` and
 `renderChartFile()`; both must share it. A rejected render must
-not poison the queue or overwrite a valid existing file. Keep
+not poison the queue or overwrite a valid existing file. Queue
+reservation must happen before async file I/O or temporary-file
+creation. The object API must call a private in-queue implementation
+rather than recursively enqueueing the public file API (self-deadlock).
+Keep mixed object/file FIFO tests in
 `tests/node-concurrency.test.mjs` in the manual preflight.
 This is **not** a multi-process mutex or browser pool; never
 claim it handles production backend concurrency safely.
