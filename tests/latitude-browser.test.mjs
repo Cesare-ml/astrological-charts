@@ -73,10 +73,11 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
       {width:shifted.info.width, height:shifted.info.height, channels:shifted.info.channels});
     assert.deepEqual({width:first.info.width, height:first.info.height, channels:first.info.channels},
       {width:negativeZero.info.width, height:negativeZero.info.height, channels:negativeZero.info.channels});
-    let changedChannels = 0, shiftedChannels = 0, negativeZeroDifferences = 0;
+    let changedChannels = 0, shiftedChannels = 0, shiftedVsDisabledChannels = 0, negativeZeroDifferences = 0;
     for (let i = 0; i < first.data.length; i++) {
       if (Math.abs(first.data[i] - second.data[i]) > 2) changedChannels++;
       if (Math.abs(first.data[i] - shifted.data[i]) > 2) shiftedChannels++;
+      if (Math.abs(second.data[i] - shifted.data[i]) > 2) shiftedVsDisabledChannels++;
       if (Math.abs(first.data[i] - negativeZero.data[i]) > 2) negativeZeroDifferences++;
     }
     assert.ok(negativeZeroDifferences <= Math.ceil(first.data.length * 0.0001),
@@ -85,6 +86,8 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
       `the zero-latitude Sun should appear in the real Three.js ring (changed channels: ${changedChannels})`);
     assert.ok(shiftedChannels > 30,
       `the zero-latitude Sun must move when latitude changes to +2° (changed channels: ${shiftedChannels})`);
+    assert.ok(shiftedVsDisabledChannels > 30,
+      `the +2° Sun must remain visible compared with a disabled Sun (changed channels: ${shiftedVsDisabledChannels})`);
     assert.deepEqual(pageErrors, [], 'unexpected Angular/Three.js page errors during latitude rendering');
     assert.deepEqual(assetErrors, [], 'synthetic image requests must succeed during latitude rendering');
   } catch (error) {
