@@ -54,6 +54,20 @@ natal chart JSON. Keep the browser-free probe tests in
 `tests/verify-local-render-services.test.mjs`.
 The real Windows Chromium export remains a manual required test.
 
+**External asset headless export:** the default Node/Python
+bridge must continue using synthetic placeholders. To render
+owner-authorized private images, require an explicit pair of
+`--assets-root` and `--assets-manifest` paths (or Node
+`assetRoot`/`assetManifest`; Python `asset_root`/`asset_manifest`).
+Verify every local binary file and approval metadata before loading
+Chrome; start a new owned loopback server and refuse an existing
+service on port 4177. Never copy the external pack into the
+renderer or use production URLs, and never treat private sharing
+as a public redistribution license. Keep
+`tests/approved-render-assets.test.mjs`, Node argument tests and
+`tests/python_render_options_test.py` current; use a real
+Windows Chrome test separately to validate visual fidelity.
+
 **CLI dependency boundary:** `scripts/render-chart.mjs` must
 parse/validate JSON *before* importing browser-only `playwright-core`
 and `sharp`. The `--help` option and malformed-data diagnostics
