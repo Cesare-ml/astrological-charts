@@ -68,6 +68,40 @@ For scripts elsewhere, import the helper using its own correct
 relative path. The Node adapter is currently **source-only**, not
 a released npm package or a stable production API.
 
+### TypeScript support
+
+`node/index.d.mts` provides type declarations for the JavaScript
+entry point: `ChartPayloadV1`, `ChartCoordinates`,
+`PlanetCoordinates`, `RenderOptions` and the three Node functions.
+A TypeScript backend can import them without reimplementing the
+renderer. Both `.mjs` and `.d.mts` must stay together when vendored;
+no npm package export is declared yet.
+
+### Export reliability
+
+The Node helper stages output in a temporary directory **beside the
+requested file** and checks the expected PNG/JPEG signature before
+moving it into place. A process exiting successfully without writing
+an image is treated as failure; an existing final image is preserved
+on errors. This is only a basic signature check; the actual Chromium
+CLI additionally checks image metadata with `sharp`.
+
+Use `{timeoutMs: 180000}` for the default 3-minute Node subprocess
+limit, or set an integer between 100 and 600000 milliseconds. A
+subprocess timeout terminates the render command; investigate any
+local development servers it may have started if interrupted during
+initialization. This does **not** constitute a production-ready
+queue or browser pool.
+
+The standalone synthetic CLI **rejects port collisions** on 4177 or
+4200 instead of silently rendering with unrelated local services.
+Port 4177 is checked against several hashes in the generated synthetic
+manifest, and port 4200 must serve the expected Angular demo page.
+If you already run an approved *original artwork* server at 4177, stop
+it before running this synthetic-only helper, or use the separate
+interactive demo with your authorized assets. The CLI does not
+fall back to live VirgoStars resources.
+
 ### Also supported: existing JSON files
 
 If your program generates the shared JSON file, use:
