@@ -24,7 +24,8 @@ release host artwork until each gate below has been reviewed.
       `npm run build:demo`, and a local synthetic browser export. Test
       a fresh public-reader checkout with no private dependencies.
 - [ ] Run `npm run test:node-adapter`,
-      `npm run test:local-render-services`, and `npm run test:node-types`,
+      `npm run test:local-render-services`,
+      `npm run test:local-process-lifecycle`, and `npm run test:node-types`,
       then the programmatic
       Node.js-to-JSON-to-PNG example, and the Python-to-JSON-to-PNG
       example using the real demo,
