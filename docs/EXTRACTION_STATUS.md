@@ -36,3 +36,5 @@
 ## Rollback policy
 
 Until explicit sign-off, production continues using `shared/grafici-astrologici` in VirgoStars; reverting a branch or closing a PR in this repository cannot affect the live service.
+
+- Node.js subprocess output validation and localhost service checks have source-level and standalone test coverage in PR #19, but full browser/WebGL rendering remains unverified in this change.
