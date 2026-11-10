@@ -2,6 +2,22 @@
 
 The Angular workspace contains an application that imports the library's actual `GraficoRenderService`. It uses deterministic illustrative data created in `demo/fixtures.ts`, not birth data or calculated ephemerides. No VirgoStars checkout, account, backend, AWS credentials, or original artwork is needed for the synthetic mode. The generated checkerboards intentionally do not represent the actual symbols.
 
+## Use data calculated by Python or another program
+
+The demo now accepts a `schemaVersion: 1` JSON file via **Import your
+computed chart (JSON)**. The adapter validates fields and maps
+precomputed positions and house cusps to the legacy `TemaRender`.
+It does not compute astrology. Missing transit/synastry inputs are
+errors rather than quietly falling back to sample fixtures.
+See [Python→PNG/JPEG guide](PYTHON_INTEGRATION.md) and the
+non-programmer [quickstart](START_HERE.md).
+
+For automated export, `python examples/python/example.py` or
+`npm run render:chart -- --input my-chart.json --output my-chart.png`
+can start the local synthetic services, launch Chrome/Chromium,
+import input and write a PNG or JPEG. This requires a real browser
+and has not yet established production-artwork visual parity.
+
 ## Start with synthetic assets
 
 Requirements: Node 22.18 or another version supported by the package, npm and access to this private repository. From the repository root:
