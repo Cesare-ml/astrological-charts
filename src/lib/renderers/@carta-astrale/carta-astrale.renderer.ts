@@ -459,7 +459,9 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
     if (!stato) return null;
 
     const disegno = new THREE.Group();
-
+    // Geometry-only metadata for transient natal/transit aspect overlays.
+    // No impact on the existing aspect-rendering or exported PNG pixels.
+    disegno.userData['chartAspectRadius'] = stato.diametri.diametroCerchioAspetti / 2;
 
     // Aggiungi tutti i moduli principali
     const moduli = [

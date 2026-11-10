@@ -297,6 +297,11 @@ export class ElementiCelestiRender {
       el.translateY(raggioEclittica);
       el.rotation.z = 0;
       el.userData['chartPlanet'] = { layer: interactionLayer, name: nome };
+      // Retain the true rendered longitude direction, not the collision-shifted
+      // glyph center. An aspect focus can then use the inner aspect circle.
+      if (parametroDiRender === 'longitude') {
+        el.userData['chartAspectAngle'] = THREE.MathUtils.degToRad(elDegDiRender);
+      }
       group.add( el );
 
       /*

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Colori } from './_colori.config';
+import { chartAspectCirclePoint } from './planet-interaction.geometry';
 import {
   ChartAspectRelation, ChartPlanetRef, ChartPlanetInteractionEvent,
   chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet
@@ -13,6 +14,7 @@ export class PlanetInteractionController {
   private glyphs = new Map<string, THREE.Mesh[]>();
   private scales = new Map<THREE.Mesh, THREE.Vector3>();
   private lines: THREE.Line[] = [];
+  private aspectRing: { root: THREE.Object3D; radius: number } | null = null;
   private relations: readonly ChartAspectRelation[] = [];
   private hovered: ChartPlanetRef | null = null;
   private pinned: ChartPlanetRef | null = null;
@@ -37,8 +39,13 @@ export class PlanetInteractionController {
     this.canvas.style.cursor = this.cursor;
     this.scene = scene;
     this.glyphs.clear();
+    this.aspectRing = null;
     if (!scene) return;
     scene.traverse(obj => {
+      const radius: unknown = obj.userData['chartAspectRadius'];
+      if (!this.aspectRing && typeof radius === 'number' && Number.isFinite(radius) && radius > 0) {
+        this.aspectRing = { root: obj, radius };
+      }
       const ref: unknown = obj.userData['chartPlanet'];
       if (!(obj instanceof THREE.Mesh) || !isChartPlanetRef(ref)) return;
       const key = chartPlanetKey(ref);
@@ -70,6 +77,7 @@ export class PlanetInteractionController {
     this.scene = null;
     this.hovered = null;
     this.glyphs.clear();
+    this.aspectRing = null;
   }
 
   private send(type: ChartPlanetInteractionEvent['type'], planet: ChartPlanetRef): void {
@@ -126,6 +134,23 @@ export class PlanetInteractionController {
     this.lines = [];
   }
 
+  /** Prefer unshifted longitude directions at the canonical aspect-circle radius.
+   * The existing glyph renderer visually separates close planets; using glyph
+   * centers would skew their true angular relationships. The chart group's
+   * world matrix also preserves the southern-hemisphere mirroring.
+   * Missing metadata (e.g. latitude charts) safely falls back to glyph links.
+   */
+  private aspectEndpoint(from: THREE.Mesh, to: THREE.Mesh, first: boolean): THREE.Vector3 {
+    const selected = first ? from : to;
+    const a: unknown = from.userData['chartAspectAngle'];
+    const b: unknown = to.userData['chartAspectAngle'];
+    if (this.aspectRing && typeof a === 'number' && typeof b === 'number') {
+      const point = chartAspectCirclePoint(first ? a : b, this.aspectRing.radius);
+      if (point) return this.aspectRing.root.localToWorld(new THREE.Vector3(point.x, point.y, 0));
+    }
+    return selected.getWorldPosition(new THREE.Vector3());
+  }
+
   private updateVisuals(): void {
     this.clearVisuals();
     if (!this.scene) return;
@@ -150,9 +175,10 @@ export class PlanetInteractionController {
       const from = this.glyphs.get(chartPlanetKey(link.from))?.[0];
       const to = this.glyphs.get(chartPlanetKey(link.to))?.[0];
       if (!from || !to) continue;
-      const a = from.getWorldPosition(new THREE.Vector3());
-      const b = to.getWorldPosition(new THREE.Vector3());
-      a.z = b.z = 0.06;
+      const a = this.aspectEndpoint(from, to, true);
+      const b = this.aspectEndpoint(from, to, false);
+      // Lift both endpoints above the chart background for legibility.
+      a.z = b.z = Math.max(a.z, b.z) + 0.06;
       const geometry = new THREE.BufferGeometry().setFromPoints([a, b]);
       const color = (Colori.aspetti as Record<string, string>)[link.type] ?? '#b08a35';
       const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95, depthTest: false });
