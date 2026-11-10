@@ -129,11 +129,17 @@ async function main() {
         ? route.continue() : route.abort('blockedbyclient');
     });
     await page.goto('http://127.0.0.1:4200/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => {
+      const status = document.querySelector('[data-testid="status"]')?.textContent || '';
+      return (/Rendered|Rendering failed/.test(status)) &&
+        !document.querySelector('#mode')?.disabled;
+    }, undefined, { timeout: 60000 });
     await page.locator('#chart-file').setInputFiles(opts.input);
     await page.waitForFunction(() => {
       const source = document.querySelector('[data-testid="chart-source"]')?.textContent || '';
       const status = document.querySelector('[data-testid="status"]')?.textContent || '';
-      return source.includes('Imported:') && (/Rendered|Rendering failed/.test(status)) &&
+      return (source.includes('Imported:') || status.includes('Rendering failed')) &&
+        (/Rendered|Rendering failed/.test(status)) &&
         !document.querySelector('#mode')?.disabled;
     }, undefined, { timeout: 60000 });
     if (opts.mode) await page.selectOption('#mode', opts.mode);
