@@ -49,6 +49,10 @@ node examples/node/example.mjs --jpg
 ```
 
 Output: `.local/node-example.png` or `.local/node-example.jpg`.
+Multiple requests submitted through one imported Node.js module are queued
+rather than launched concurrently; this does not synchronize separate
+processes and is not a production browser pool.
+
 This developer adapter uses the existing Angular/Three.js renderer
 through a local headless Chrome/Chromium session, with image-format
 checks and staged output writes. TypeScript declaration support is
@@ -146,6 +150,7 @@ After `npm ci`, useful manual checks are:
 ```sh
 npm run test:chart-input
 npm run test:node-adapter
+npm run test:node-concurrency
 npm run test:local-render-services
 npm run test:local-process-lifecycle
 npm run test:node-types
