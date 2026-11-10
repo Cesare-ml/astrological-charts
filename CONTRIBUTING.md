@@ -28,7 +28,15 @@ public API, CPAL-1.0 credits and independent asset architecture.
 Explain each step in plain English, run tests, and open a draft PR.
 Do not deploy, merge or publish.”
 
-## Python contributors
+## JavaScript/Node.js and Python contributors
+
+You can write custom calculations in **Node.js** and pass precomputed
+coordinate objects directly to `node/index.mjs` to export PNG/JPEG.
+See [Node integration](docs/NODE_INTEGRATION.md). The existing
+Astrolabio Node backend uses a different offline Firefox renderer
+adapter, which must not be replaced without separate validation.
+
+### Python contributors
 
 You do not need Angular knowledge just to render existing charts:
 [Python integration](docs/PYTHON_INTEGRATION.md) explains the
