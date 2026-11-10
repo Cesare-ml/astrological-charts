@@ -31,17 +31,17 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
   try {
     page = await browser.newPage();
     page.on('pageerror', error => pageErrors.push(error.message));
-  // Only track our synthetic pack: unrelated dev-server requests (for example,
-  // a browser favicon) are not proof of missing chart artwork.
-  const assetBase = 'http://127.0.0.1:4177/assets/';
-  page.on('response', response => {
-    if (response.url().startsWith(assetBase) && response.status() >= 400)
-      assetErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
-  });
-  page.on('requestfailed', request => {
-    if (request.url().startsWith(assetBase))
-      assetErrors.push(`${request.failure()?.errorText ?? 'request failed'} ${new URL(request.url()).pathname}`);
-  });
+    // Only track our synthetic pack: unrelated dev-server requests (for example,
+    // a browser favicon) are not proof of missing chart artwork.
+    const assetBase = 'http://127.0.0.1:4177/assets/';
+    page.on('response', response => {
+      if (response.url().startsWith(assetBase) && response.status() >= 400)
+        assetErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
+    });
+    page.on('requestfailed', request => {
+      if (request.url().startsWith(assetBase))
+        assetErrors.push(`${request.failure()?.errorText ?? 'request failed'} ${new URL(request.url()).pathname}`);
+    });
     const navigation = await page.goto('http://127.0.0.1:4200/', {waitUntil:'domcontentloaded'});
     assert.ok(navigation?.ok(), 'Angular demo must respond successfully at http://127.0.0.1:4200/');
     await page.waitForFunction(() =>
