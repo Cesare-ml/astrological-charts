@@ -103,6 +103,23 @@ it before running this synthetic-only helper, or use the separate
 interactive demo with your authorized assets. The CLI does not
 fall back to live VirgoStars resources.
 
+### Automatic cleanup of development servers
+
+If this helper starts the Angular dev server or the manifest-verified
+synthetic asset server, it tracks those **new processes only**.
+Its shutdown tries to terminate the entire owned process tree:
+Windows uses `taskkill /T /F`, while macOS/Linux use a detached
+process group. This helps prevent Angular/Node children from staying
+open after exporting PNG/JPEG. Servers that you started in another
+terminal are **not** automatically terminated. If a spawned process
+fails at startup, the helper reports the error instead of waiting
+through the full server-readiness timeout.
+
+Run `npm run test:local-process-lifecycle` for the isolated lifecycle
+tests. They were exercised on Node.js/Linux; a real Windows and
+macOS smoke test is still required before claiming cross-platform
+validation. This is a developer bridge, not a production supervisor.
+
 ### Also supported: existing JSON files
 
 If your program generates the shared JSON file, use:
