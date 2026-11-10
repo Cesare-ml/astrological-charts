@@ -12,9 +12,13 @@ errors rather than quietly falling back to sample fixtures.
 See [Python→PNG/JPEG guide](PYTHON_INTEGRATION.md) and the
 non-programmer [quickstart](START_HERE.md).
 
-For automated export, `python examples/python/example.py` or
+For automated export, `node examples/node/example.mjs`,
+`python examples/python/example.py` or
 `npm run render:chart -- --input my-chart.json --output my-chart.png`
 can start the local synthetic services, launch Chrome/Chromium,
+via the same browser/WebGL renderer. Node.js code can also call
+`renderChart()` from `node/index.mjs` (see
+[Node integration](NODE_INTEGRATION.md)). They
 import input and write a PNG or JPEG. This requires a real browser
 and has not yet established production-artwork visual parity.
 
