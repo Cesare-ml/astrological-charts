@@ -19,6 +19,7 @@ try {
     }
     $steps += ,@('run', 'check:extraction')
     $steps += ,@('run', 'check:assets')
+    $steps += ,@('run', 'test:assets')
     $steps += ,@('run', 'check:types')
     $steps += ,@('run', 'build')
     foreach ($stepArgs in $steps) {
