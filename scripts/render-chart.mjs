@@ -74,6 +74,31 @@ async function waitFor(url, child) {
   throw new Error(`Local server not ready: ${url}. Check Node dependencies and port conflicts.`);
 }
 
+/** Wait for an actual *new* completed Angular draw, not a stale
+ * "Rendered" label from a previous chart mode or skin. */
+async function waitForCompletedChart(page, previousRevision, expected = {}) {
+  await page.waitForFunction(({ previousRevision, expected }) => {
+    const el = document.querySelector('[data-testid="status"]');
+    if (!el) return false;
+    const revision = Number(el.getAttribute('data-render-revision'));
+    if (!Number.isSafeInteger(revision) || revision <= previousRevision) return false;
+    if (document.querySelector('#mode')?.disabled) return false;
+    const status = el.textContent || '';
+    // Failed JSON import may not start a draw; surface its error immediately.
+    if (status.includes('Rendering failed')) return true;
+    if (!status.includes('Rendered')) return false;
+    if (expected.mode && el.getAttribute('data-render-mode') !== expected.mode) return false;
+    if (expected.skin && el.getAttribute('data-render-skin') !== expected.skin) return false;
+    if (expected.imported && !(document.querySelector('[data-testid="chart-source"]')?.textContent || '').includes('Imported:')) return false;
+    return true;
+  }, { previousRevision, expected }, { timeout: 60000 });
+  const status = await page.locator('[data-testid="status"]').textContent();
+  if (!status?.includes('Rendered') || status.includes('Rendering failed')) {
+    throw new Error(status || 'Chart render did not complete.');
+  }
+  return Number(await page.locator('[data-testid="status"]').getAttribute('data-render-revision'));
+}
+
 function chromeExecutable() {
   const candidates = [
     process.env.CHROME_PATH,
@@ -140,27 +165,31 @@ async function main() {
         ? route.continue() : route.abort('blockedbyclient');
     });
     await page.goto('http://127.0.0.1:4200/', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => {
-      const status = document.querySelector('[data-testid="status"]')?.textContent || '';
-      return (/Rendered|Rendering failed/.test(status)) &&
-        !document.querySelector('#mode')?.disabled;
-    }, undefined, { timeout: 60000 });
+    let revision = await waitForCompletedChart(page, -1);
     await page.locator('#chart-file').setInputFiles(opts.input);
-    await page.waitForFunction(() => {
-      const source = document.querySelector('[data-testid="chart-source"]')?.textContent || '';
-      const status = document.querySelector('[data-testid="status"]')?.textContent || '';
-      return (source.includes('Imported:') || status.includes('Rendering failed')) &&
-        (/Rendered|Rendering failed/.test(status)) &&
-        !document.querySelector('#mode')?.disabled;
-    }, undefined, { timeout: 60000 });
-    if (opts.mode) await page.selectOption('#mode', opts.mode);
-    if (opts.skin) await page.selectOption('#skin', opts.skin);
-    await page.waitForFunction(() => {
-      const status = document.querySelector('[data-testid="status"]')?.textContent || '';
-      return (/Rendered|Rendering failed/.test(status)) && !document.querySelector('#mode')?.disabled;
-    }, undefined, { timeout: 60000 });
-    let status = await page.locator('[data-testid="status"]').textContent();
-    if (!status?.includes('Rendered')) throw new Error(status || 'Chart did not render.');
+    revision = await waitForCompletedChart(page, revision, { imported: true });
+    if (opts.mode && await page.locator('#mode').inputValue() !== opts.mode) {
+      await page.selectOption('#mode', opts.mode);
+      revision = await waitForCompletedChart(page, revision, { mode: opts.mode });
+    }
+    if (opts.skin && await page.locator('#skin').inputValue() !== opts.skin) {
+      await page.selectOption('#skin', opts.skin);
+      revision = await waitForCompletedChart(page, revision, { skin: opts.skin });
+    }
+    // Assert the scene that is about to be exported matches the selected
+    // controls: asynchronous redraws must not fall back to a previous scene.
+    const snapshot = await page.locator('[data-testid="status"]').evaluate(element => ({
+      mode: element.getAttribute('data-render-mode'),
+      skin: element.getAttribute('data-render-skin'),
+      status: element.textContent || '',
+    }));
+    const finalMode = await page.locator('#mode').inputValue();
+    const finalSkin = await page.locator('#skin').inputValue();
+    if (snapshot.mode !== finalMode || snapshot.skin !== finalSkin ||
+        !snapshot.status.includes('Rendered')) {
+      throw new Error('Chart mode or skin changed before rendering was complete.');
+    }
+    let status = snapshot.status;
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 60000 }),
       page.getByRole('button', { name: 'Export PNG' }).click(),
