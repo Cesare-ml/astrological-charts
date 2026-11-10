@@ -9,6 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { renderChart } from '../node/index.mjs';
@@ -22,9 +23,11 @@ const natal = {
     ['Sun',15], ['Moon',75], ['Mercury',42], ['Venus',103], ['Mars',135],
     ['Jupiter',195], ['Saturn',255], ['Uranus',278], ['Neptune',308],
     ['Pluto',338],
-  ].map(([name, longitude]) => [name, {
-    longitude, latitude: 0, longitudeSpeed: 0.1, latitudeSpeed: 0,
-    declination: 0,
+  ].map(([name, longitude], index) => [name, {
+    longitude,
+    // Exercise exact-zero latitude alongside positive and negative inputs.
+    latitude: index % 3 === 0 ? 0 : index % 2 === 0 ? 2.25 : -1.5,
+    longitudeSpeed: 0.1, latitudeSpeed: 0, declination: 0,
   }])),
 };
 const shifted = (offset) => ({
@@ -43,14 +46,20 @@ const payload = {
 
 // Run manually with npm run test:render-bridge. This is intentionally
 // not part of preflight: every case launches real WebGL and local servers.
-test('external Node chart JSON produces genuine nonblank PNG/JPEG in selected modes',
-  { timeout: 480_000 }, async () => {
+test('Node bridge renders four distinct chart modes with genuine PNG/JPEG output',
+  { timeout: 900_000 }, async () => {
     const directory = await mkdtemp(join(tmpdir(), 'virgostars-real-bridge-'));
     try {
+      // All modes must render the requested, completed scene, not reuse
+      // a previous chart or silently replace absent secondary datasets.
+      // At least one light/skin pair is comparable without JPEG artifacts.
       const cases = [
         { mode: 'natal', skin: 'light', format: 'png' },
         { mode: 'transits', skin: 'dark', format: 'jpg' },
+        { mode: 'synastry', skin: 'light', format: 'png' },
+        { mode: 'latitude', skin: 'dark', format: 'png' },
       ];
+      const rendered = new Map();
       for (const { mode, skin, format } of cases) {
         const path = join(directory, `chart-${mode}-${skin}.${format}`);
         assert.equal(await renderChart(payload, path, {
@@ -65,8 +74,15 @@ test('external Node chart JSON produces genuine nonblank PNG/JPEG in selected mo
         const statistics = await sharp(path).stats();
         assert.ok(statistics.channels.some(channel => channel.stdev > 5),
           `${mode}/${skin}: the image appears blank`);
+        // Normalize file formats to decoded, resized RGB pixels; this
+        // confirms light-mode natal and synastry do not become the same
+        // image. JPEG is not compared pixel-perfectly to PNG.
+        const rgb = await sharp(path).resize(160, 160).removeAlpha().raw().toBuffer();
+        rendered.set(mode, createHash('sha256').update(rgb).digest('hex'));
         console.log(`Verified ${mode}/${skin}: ${info.width}x${info.height} ${info.format}`);
       }
+      assert.notEqual(rendered.get('natal'), rendered.get('synastry'),
+        'natal/light and synastry/light exported identical pixels; secondary chart may be ignored');
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
