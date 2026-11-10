@@ -9,7 +9,7 @@
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -95,6 +95,22 @@ export async function renderChartFile(input, output, options = {}) {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 600_000) {
     throw new TypeError('timeoutMs must be an integer from 100 to 600000 milliseconds.');
   }
+  // The programmatic file API must fail fast just like renderChart() and
+  // the direct CLI. Do not create output directories or start a child
+  // renderer for a malformed or oversized JSON file.
+  const sourceInfo = await stat(input);
+  if (!sourceInfo.isFile()) throw new TypeError('Chart JSON input must be a regular file.');
+  if (sourceInfo.size > MAX_CHART_JSON_BYTES) {
+    throw new TypeError('Chart JSON exceeds the 1 MB demo limit.');
+  }
+  const bytes = await readFile(input);
+  if (bytes.length > MAX_CHART_JSON_BYTES) {
+    throw new TypeError('Chart JSON exceeds the 1 MB demo limit.');
+  }
+  let payload;
+  try { payload = JSON.parse(bytes.toString('utf8')); }
+  catch (error) { throw new TypeError('Invalid chart JSON file: ' + error.message); }
+  validateChartPayloadV1(payload, options);
   return runSerially(async () => {
     // Stage next to the final image; a failed process cannot overwrite
     // the user's existing chart or claim success without creating a file.
