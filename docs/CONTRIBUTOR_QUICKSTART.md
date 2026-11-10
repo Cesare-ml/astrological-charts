@@ -19,7 +19,7 @@ Before submitting changes, read `AGENTS.md` and `CONTRIBUTING.md`. Make a new br
 
 The code repository does **not** include the production icons, ring textures or fonts. A successful `npm run build` will not automatically make the graphics demo work.
 
-**Private repository now exists:** `Cesare-ml/astrological-assets` has been created, but its [draft PR #1](https://github.com/Cesare-ml/astrological-assets/pull/1) contains only metadata, rights reviews and tooling. When the owner has approved and imported the actual graphics, contributors may clone that pack **without access to `virgo-stars`**:
+**Private repository now exists:** `Cesare-ml/astrological-assets` has integrated [PR #1](https://github.com/Cesare-ml/astrological-assets/pull/1) with metadata, rights reviews and tooling, but no original image files. When the owner has approved and imported the actual graphics, contributors may clone that pack **without access to `virgo-stars`**:
 
 ```powershell
 # Both repos should be sibling directories.
