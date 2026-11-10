@@ -19,7 +19,7 @@
     "check:types": "tsc -p tsconfig.lib.json --noEmit",
     "check:extraction": "node scripts/check-extraction.mjs",
     "check:assets": "node scripts/inventory-assets.mjs",
-    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:assets && npm run test:demo-pack && npm run test:demo-asset-coverage && npm run test:latitude-assets && npm run test:chart-input && npm run test:node-adapter && npm run test:local-render-services && npm run test:node-types && npm run test:local-process-lifecycle && npm run test:node-concurrency && npm run test:validate-chart-input && npm run test:chart-cli-validation && npm run test:approved-render-assets && npm run test:release-metadata",
+    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:assets && npm run test:demo-pack && npm run test:demo-asset-coverage && npm run test:latitude-assets && npm run test:chart-input && npm run test:node-adapter && npm run test:local-render-services && npm run test:node-types && npm run test:local-process-lifecycle && npm run test:node-concurrency && npm run test:validate-chart-input && npm run test:chart-cli-validation && npm run test:approved-render-assets && npm run test:release-metadata && npm run test:chart-asset-request-audit",
     "test:extraction": "node --test tests/extraction-imports.test.mjs",
     "test:asset-urls": "node --test tests/chart-asset-urls.test.mjs",
     "test:asset-manifest": "node --test tests/asset-manifest.test.mjs",
@@ -44,7 +44,8 @@
     "test:validate-chart-input": "node --test tests/validate-chart-input.test.mjs",
     "test:chart-cli-validation": "node --test tests/chart-cli-validation.test.mjs",
     "test:approved-render-assets": "node --test tests/approved-render-assets.test.mjs",
-    "test:release-metadata": "node --test tests/release-metadata.test.mjs"
+    "test:release-metadata": "node --test tests/release-metadata.test.mjs",
+    "test:chart-asset-request-audit": "node --test tests/chart-asset-request-audit.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
