@@ -4,7 +4,7 @@
 
 Develop only the Angular/Three.js astrological chart rendering library. Preserve its visual geometry, compatibility with VirgoStars and Astrolabio, and contributor freedom to propose improvements. A framework-agnostic rewrite is not requested.
 
-Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/src/`. This extracted repository is PRIVATE and not used by production until specifically integrated.
+Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/src/`. This extracted repository is currently **PUBLIC on GitHub** (verified 2026-11-10), but there is no `LICENSE` on `main` and the source has **not** passed the public-release rights audit. It is not used by production until separately integrated; do not interpret public visibility as permission to redistribute source or separate artwork.
 
 ## Rules
 
