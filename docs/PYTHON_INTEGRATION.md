@@ -163,6 +163,12 @@ manual and is not a production/Astrolabio certification.
 
 ## Early error reporting for Python callers
 
+The CLI imports the browser dependencies only **after** validating
+the file. Malformed-data errors are therefore available even before
+`npm ci`; this does not mean the renderer itself works without
+dependencies. Run `npm run test:chart-cli-validation` to exercise the
+standalone CLI error messages and help output.
+
 The Python wrapper uses the same Node CLI input validator as
 JavaScript. A malformed JSON chart, nonfinite position, latitude
 outside ±90°, missing house cusp or missing second chart for the
