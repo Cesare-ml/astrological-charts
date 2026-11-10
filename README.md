@@ -2,7 +2,7 @@
 
 Private collaborative **Angular 20 / TypeScript / Three.js** library extracted from VirgoStars' `grafici-astrologici` code.
 
-**Status:** initial source extraction exists on **[draft pull request #1](https://github.com/Cesare-ml/astrological-charts/pull/1)**. **NOT build-verified, NOT production-integrated, NOT released.** This repository remains private; no open-source licence or automatic deployments are configured.
+**Status:** the isolated extraction builds locally; it is **not visually validated, production-integrated or released**. This repository remains private; no open-source licence or automatic deployments are configured.
 
 ## Purpose
 
@@ -28,14 +28,14 @@ For invited contributors on Windows:
 - [Build and dependency policy](docs/BUILD_AND_DEPENDENCIES.md)
 
 ```bash
-npm install
+npm ci
 npm run check:extraction
 npm run check:assets
 npm run check:types
 npm run build
 ```
 
-**These commands have been prepared, not yet successfully executed in a clean checkout.** No CI or GitHub Actions is used.
+On Windows with Node 22.18.0, `npm ci`, `npm run preflight` and `npm run build` passed on the extraction candidate. Browser and consumer compatibility require separate tests. No CI or GitHub Actions is used.
 
 ## Documentation
 
