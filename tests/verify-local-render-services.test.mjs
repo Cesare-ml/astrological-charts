@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { matchesLocalChartDemo, matchesSyntheticAssetServer }
+import { matchesLocalChartDemo, matchesSyntheticAssetServer, waitForChartControls }
   from '../scripts/verify-local-render-services.mjs';
 
 const local = 'http://127.0.0.1:4177/';
@@ -54,4 +54,44 @@ test('local probes reject external hosts and unknown production manifests', asyn
   await assert.rejects(matchesSyntheticAssetServer(local,{
     ...manifest, source:{repository:'approved-real-artwork'},
   }), /generated synthetic/);
+});
+
+test('mounted Angular controls are checked before JSON import, with bounded timeout', async () => {
+  let requestedTimeout;
+  const fakePage = {
+    async waitForFunction(fn, arg, options) {
+      assert.equal(typeof fn, 'function');
+      assert.equal(arg, null);
+      requestedTimeout = options?.timeout;
+    },
+  };
+  await waitForChartControls(fakePage);
+  assert.equal(requestedTimeout, 12_000);
+});
+
+test('stale Angular server gives actionable diagnostics instead of a file-input timeout', async () => {
+  const fakePage = {
+    async waitForFunction() { throw new Error('controls never mounted'); },
+    async evaluate() {
+      return {title:'Astrological Charts demo',hasChartFile:false,
+        hasMode:true,hasSkin:true,hasStatus:true,hasCanvas:true};
+    },
+  };
+  await assert.rejects(waitForChartControls(fakePage, [
+    'Cannot load local demo app module (synthetic test message)',
+  ]), error => {
+    assert.match(error.message, /Port 4200 may host a stale or incompatible Angular demo/);
+    assert.match(error.message, /Import your computed chart/);
+    assert.match(error.message, /"hasChartFile":false/);
+    assert.match(error.message, /browser errors: Cannot load local demo app module/);
+    return true;
+  });
+});
+
+test('DOM readiness probe tolerates failed page inspection without hiding original problem', async () => {
+  const fakePage = {
+    async waitForFunction() { throw new Error('timeout'); },
+    async evaluate() { throw new Error('page closed'); },
+  };
+  await assert.rejects(waitForChartControls(fakePage), /"unavailable":true/);
 });
