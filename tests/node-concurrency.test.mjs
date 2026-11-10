@@ -68,3 +68,33 @@ test('same-process exports do not overlap and one failure cannot poison the queu
       await rm(dir,{recursive:true,force:true});
     }
   });
+
+
+test('mixed object/file calls preserve submission order despite asynchronous file preparation',
+  { timeout: 15_000 }, async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'virgostars-export-order-'));
+    try {
+      const log = join(dir, 'ordered.log');
+      const mock = join(dir, 'render.mjs');
+      await writeFile(mock, `
+        import {readFile,appendFile,writeFile} from 'node:fs/promises';
+        const args = process.argv.slice(2);
+        const option = name => args[args.indexOf(name) + 1];
+        const chart = JSON.parse(await readFile(option('--input'), 'utf8'));
+        await appendFile(${JSON.stringify(log)}, chart.tag + '\\n');
+        await writeFile(option('--output'), Buffer.from(${JSON.stringify(PNG_BASE64)}, 'base64'));
+      `);
+      const file = join(dir, 'B.json');
+      await writeFile(file, JSON.stringify({ schemaVersion: 1, natal, tag: 'B' }));
+      const jobs = [
+        renderChart({ schemaVersion: 1, natal, tag: 'A' }, join(dir, 'A.png'), {rendererScript: mock}),
+        renderChartFile(file, join(dir, 'B.png'), {rendererScript: mock}),
+        renderChart({ schemaVersion: 1, natal, tag: 'C' }, join(dir, 'C.png'), {rendererScript: mock}),
+      ];
+      const images = await Promise.all(jobs);
+      assert.equal(images.length, 3);
+      assert.deepEqual((await readFile(log, 'utf8')).trim().split('\n'), ['A', 'B', 'C']);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
