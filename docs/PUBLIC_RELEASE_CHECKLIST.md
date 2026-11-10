@@ -50,6 +50,10 @@ release host artwork until each gate below has been reviewed.
       and Angular acceptance/rejection rules, including zero-degree
       latitude and missing transits/synastry. Both are browser-free;
       also test malformed JSON via the real CLI before release.
+- [ ] On Windows, verify that a stale or incomplete Angular server
+      on port 4200 cannot pass the mounted-control readiness gate.
+      Confirm the CLI identifies missing `#chart-file` instead of
+      timing out on upload, then rerun against the current demo.
 - [ ] Run `npm run test:render-bridge` with a real Chrome/Chromium
       browser and working WebGL; confirm the natal/light PNG and
       transits/dark JPEG are both 1600×1600 and nonblank. This is
