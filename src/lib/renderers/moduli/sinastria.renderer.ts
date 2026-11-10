@@ -7,6 +7,7 @@ import {CaseRender} from './case.renderer';
 import {SegniRender} from './segni.renderer';
 import { SkinManager } from '../@skin-manager';
 import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer';
+import { stopSceneAnimations } from '../scene-animations';
 
 //import {AssiRender} from './assi.renderer';
 
@@ -25,6 +26,7 @@ export class SinastriaRender {
     diametroAnelloCase,
   ): Promise<any> {
     var group = new THREE.Group();
+    try {
 
     var as = 0;
     var mc = 0;
@@ -111,6 +113,8 @@ export class SinastriaRender {
       stato.opzioni.direzioniModalita == 'temaProgresso' && stato.opzioni.mostraDirezioni, //cerchia la luna
       true //isElementiSinastria
     );
+    // Own the completed animated subscene before the next awaited operation.
+    group.add(anelloElementiCelesti);
 
     var anelloSegni = await SegniRender.getAnelloSegniSinastria(
       as + (ascendenteTemaDiRiferimento-as) - offsSinastriaDeflettiva,
@@ -138,7 +142,6 @@ export class SinastriaRender {
       group.add( assi );
     }*/
 
-    group.add(anelloElementiCelesti);
     group.add(anelloSegni);
     if(anelloCase) {
       group.add(anelloCase);
@@ -157,5 +160,9 @@ export class SinastriaRender {
 */
 
     return group;
+    } catch (error) {
+      group.traverse(stopSceneAnimations);
+      throw error;
+    }
   }
 }

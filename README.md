@@ -2,7 +2,7 @@
 
 Private collaborative **Angular 20 / TypeScript / Three.js** library extracted from VirgoStars' `grafici-astrologici` code.
 
-**Status:** the isolated extraction builds locally; it is **not visually validated, production-integrated or released**. This repository remains private; no open-source licence or automatic deployments are configured.
+**Status:** the library and synthetic demo build locally after `npm ci`; they are **not visually validated against original artwork, production-integrated or released**. This repository remains private; no open-source licence or automatic deployments are configured.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ The imported source includes Three.js rendering of natal charts, transits, synas
 
 ## Start developing
 
-The extracted source is on `feat/import-virgostars-graphics` while PR #1 is in draft.
+For the full candidate, check out `feat/verified-asset-preview` or, after its integration, `main`. The [PR history](https://github.com/Cesare-ml/astrological-charts/pull/13) records the ordered extraction.
 
 For invited contributors on Windows:
 
@@ -35,7 +35,7 @@ npm run check:types
 npm run build
 ```
 
-On Windows with Node 22.18.0, `npm ci`, `npm run preflight` and `npm run build` passed on the extraction candidate. Browser and consumer compatibility require separate tests. No CI or GitHub Actions is used.
+These commands and `npm run preflight` passed on Windows with Node 22.18.0 against the candidate including the extraction-check fix and lockfile. The localhost tests require loopback access. This verifies the build and asset tooling, not the graphics output. No CI or GitHub Actions is used.
 
 ## Documentation
 
@@ -48,6 +48,8 @@ On Windows with Node 22.18.0, `npm ci`, `npm run preflight` and `npm run build` 
 - [Derive the chart-only asset inventory from active TypeScript](docs/ASSET_SELECTION_AUTOMATION.md)
 - [Independent contributor asset access and proposed private asset repository](docs/INDEPENDENT_ASSETS_REPOSITORY.md)
 - [Three-repository integration checkpoint, release gates and open blockers](docs/MULTIREPO_INTEGRATION_CHECKPOINT.md)
+- [Asset-only local preview: 78 synthetic PNGs or an approved independent pack](docs/LOCAL_ASSET_PREVIEW.md)
+- [Angular renderer demo and browser tests](docs/ANGULAR_DEMO.md)
 - [Integration plan — not active](docs/INTEGRATION_PLAN.md)
 - [Technical reference snapshots](docs/reference/README.md)
 
@@ -63,3 +65,15 @@ On Windows with Node 22.18.0, `npm ci`, `npm run preflight` and `npm run build` 
 ## Rules
 
 Work on feature branches and submit pull requests. No production changes, AWS access, real users' birth data, unlicensed artwork, automatic deployment or publication. The maintainer approves compatibility and release decisions.
+
+## Browser preview of a synthetic asset pack
+
+For the interactive renderer demo, including all four modes and seven selectable skins, follow [the Angular demo guide](docs/ANGULAR_DEMO.md). It uses locally generated placeholder assets; visual compatibility with the original artwork has not been verified.
+
+Before the real images are reviewed/imported, Windows contributors can open a **local gallery of 78 generated checkerboard PNGs** using:
+
+```powershell
+powershell -NoProfile -File .\scripts\preview-synthetic.ps1
+```
+
+Then open `http://127.0.0.1:4177/__preview`. This is **only an asset contract smoke test**, not a full astrology chart rendered in Three.js. The script creates original synthetic images in git-ignored `.local/` and serves *only* files verified against the local SHA-256 manifest. See [preview guide](docs/LOCAL_ASSET_PREVIEW.md).

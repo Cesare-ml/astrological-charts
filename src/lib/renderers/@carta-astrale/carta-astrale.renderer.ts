@@ -7,6 +7,7 @@ import { TransitiRender } from '../moduli/transiti.renderer';
 import { SkinManager } from '../@skin-manager';
 import { SinastriaRender } from '../moduli/sinastria.renderer';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
+import { stopSceneAnimations } from '../scene-animations';
 
 // ---------------------------
 // Stato globale per tutti i renderer
@@ -472,11 +473,14 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
         // puoi aggiungere altre funzioni come direzioni, lunazioni, ecc.
     ];
 
-    await aggiornaModuli(disegno, stato, moduli);
-
-    
-    if(temaRender.australInversion && !opzioni.mostraSinastria)
-      disegno.rotation.y = Math.PI;
-
-    return disegno;
+    try {
+        await aggiornaModuli(disegno, stato, moduli);
+        if(temaRender.australInversion && !opzioni.mostraSinastria)
+          disegno.rotation.y = Math.PI;
+        return disegno;
+    } catch (error) {
+        // A partial drawing is never returned to the service on failure.
+        disegno.traverse(stopSceneAnimations);
+        throw error;
+    }
 }

@@ -6,6 +6,7 @@ export class GestoreImmagini {
   /** @deprecated Historical raw prefix. Prefer configurePublicAssetsBase(). */
   public static assetsBase = "";
   private static pool = new Map<string, THREE.Texture>();
+  private static pendingTextures = new WeakMap<THREE.Texture, Promise<void>>();
   private static publicAssetsBase = '/assets/';
 
   /** The host owns these files; this only changes how URLs are resolved. */
@@ -20,14 +21,22 @@ export class GestoreImmagini {
     return this.assetsBase ? this.assetsBase + ref : resolveChartAssetUrl(ref, this.publicAssetsBase);
   }
 
-  public static getImg(ref: string): THREE.Texture {/*
-    if (!this.pool.has(ref)) {
-      const texture = new THREE.TextureLoader().load(ref);
-      this.pool.set(ref, texture);
-    }
-    return this.pool.get(ref)!;*/
-    //console.log(this.assetsBase + ref);
-    return new THREE.TextureLoader().load(this.resolveAssetUrl(ref));
+  public static getImg(ref: string): THREE.Texture {
+    const url = this.resolveAssetUrl(ref);
+    let loaded: () => void;
+    let failed: (error: Error) => void;
+    const ready = new Promise<void>((resolve, reject) => { loaded = resolve; failed = reject; });
+    // Direct callers may intentionally use a synchronous texture without waiting.
+    // Mark the rejection handled while retaining it for waitForTexture().
+    void ready.catch(() => {});
+    const texture = new THREE.TextureLoader().load(url, () => loaded(), undefined,
+      () => failed(new Error(`Unable to load chart asset: ${url}`)));
+    this.pendingTextures.set(texture, ready);
+    return texture;
+  }
+
+  public static waitForTexture(texture: THREE.Texture): Promise<void> {
+    return this.pendingTextures.get(texture) ?? Promise.resolve();
   }
 
   public static async loadAsync(ref: string): Promise<THREE.Texture> {
@@ -43,9 +52,9 @@ export class GestoreImmagini {
     return texture;*/
     
     const loader = new THREE.TextureLoader();
+    const url = this.resolveAssetUrl(ref);
     const promise = new Promise<THREE.Texture>((resolve, reject) => {
-      //console.log(this.assetsBase + ref);
-      loader.load(this.resolveAssetUrl(ref), resolve, undefined, reject);
+      loader.load(url, resolve, undefined, () => reject(new Error(`Unable to load chart asset: ${url}`)));
     });
     return promise;
   }

@@ -4,6 +4,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
+import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
 
 
 export class ElementiCelestiRender {
@@ -33,6 +34,7 @@ export class ElementiCelestiRender {
     isElementiSinastria=false
   ): Promise<any> {
     var group = new THREE.Group();
+    try {
     var elementiCelesti = ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,usaAssi,parametroDiRender,calcolaPartiArabe,offsDirezioniSemplificate);
 
     if(offsDirezioniSemplificateFasullo) {
@@ -178,6 +180,7 @@ export class ElementiCelestiRender {
         if(nome == partiArabeNomePianetaHighlight) {
           //animazione
           var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
+          registerSceneAnimation(group, tl);
           tl.to(el.material, {opacity: 0});
         } else {
           el.material.opacity = 0.3;
@@ -349,6 +352,7 @@ export class ElementiCelestiRender {
 
         //animazione
         var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
+        registerSceneAnimation(group, tl);
         tl.to(eld.material, {opacity: 0});
 
         var frecciaAdArco = OggettiSempliciRender.lanciaFrecciaAdArco(
@@ -368,6 +372,12 @@ export class ElementiCelestiRender {
     }*/
 
     return group;
+    } catch (error) {
+      // The group is not returned to the service when construction fails, so
+      // its animations must be stopped here rather than during scene disposal.
+      stopSceneAnimations(group);
+      throw error;
+    }
   }
 
   public static ciclo(pianeti) {

@@ -1,6 +1,6 @@
 # Extraction status and release gates
 
-**Phase:** PRIVATE SOURCE EXTRACTED; isolated build verified, rendering and consumers unverified, not published or production-integrated.
+**Phase:** PRIVATE STACKED CANDIDATE; Angular build and local asset tests passed on Windows at the top of the stack, but rendering is unverified, not published and not production-integrated.
 
 ## Imported in this PR
 
@@ -12,7 +12,7 @@
 
 ## Pending before describing the package as ready
 
-- Repeat the locked installation and build on supported contributor environments and verify rendering.
+- Revalidate each earlier PR head independently before merging the stack. The passing top-of-stack check includes a correction for commented imports and does not prove that PR #1 alone passes.
 - Align `TemaRender` and `OpzioniGrafico` input contracts with actual renderer use.
 - Audit symbol/texture/font/resonator asset rights. Keep the single authoritative source in `virgo-stars/public/assets`; plan an asset manifest for web/Astrolabio and a private demo without duplicating production artwork.
 - Add synthetic chart fixtures and visual snapshots for natal, synastry, transits and latitudes.
@@ -27,7 +27,7 @@
 - No historical Git repository clone or legacy renderer copies.
 - No production skin assets or fonts copied; instead, `resolveChartAssetUrl` and `GestoreImmagini.configurePublicAssetsBase` provide a host-owned URL contract. Browser URL tests have been added but full WebGL and site/hardware integration have not been validated.
 - No public license; no GitHub Actions; no auto-deploy; no npm publishing.
-- No browser, visual or production-consumer compatibility is implied by the isolated build.
+- No browser, headless, visual or production consumer compatibility is claimed by the local build and asset tests.
 
 ## Rollback policy
 
