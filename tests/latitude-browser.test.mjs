@@ -69,6 +69,17 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     const t0 = Buffer.from(transitZeroSun.split(',')[1], 'base64');
     const tn = Buffer.from(transitAbsentSun.split(',')[1], 'base64');
     const t2 = Buffer.from(transitShiftedSun.split(',')[1], 'base64');
+    // Reject empty/truncated or non-PNG data URLs before writing diagnostic artifacts.
+    // A browser export returning a generic base64 payload must not look like a
+    // successful Three.js PNG regression capture.
+    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    for (const [label, png] of Object.entries({
+      withSun:a, withoutSun:b, negativeZeroSun:z, shiftedSun:c,
+      transitZeroSun:t0, transitAbsentSun:tn, transitShiftedSun:t2,
+    })) {
+      assert.ok(png.length > 24 && png.subarray(0, 8).equals(pngSignature),
+        `invalid or truncated PNG export: ${label}`);
+    }
     writeFileSync(join(output, 'latitude-zero-sun-enabled.png'), a);
     writeFileSync(join(output, 'latitude-negative-zero-sun-enabled.png'), z);
     writeFileSync(join(output, 'latitude-zero-sun-disabled.png'), b);
