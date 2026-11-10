@@ -206,3 +206,41 @@ test('a scene that fails after creating an animation does not leak its timeline'
     await page.close();
   } finally { await browser.close(); }
 });
+
+test('a planet at latitude zero changes the actual synthetic Three.js latitude PNG', {timeout: 90000}, async () => {
+  mkdirSync(output, {recursive: true});
+  const bundle = await build({entryPoints:['tests/fixtures/latitude-zero-render-harness.ts'],
+    bundle:true, write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await page.waitForFunction(() =>
+      (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'),
+      {timeout:30000});
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const {withSun, withoutSun} = await page.evaluate(() => globalThis.runZeroLatitudeRenderProbe());
+    assert.match(withSun, /^data:image\/png;base64,/);
+    assert.match(withoutSun, /^data:image\/png;base64,/);
+    const a = Buffer.from(withSun.split(',')[1], 'base64');
+    const b = Buffer.from(withoutSun.split(',')[1], 'base64');
+    const [first, second] = await Promise.all([
+      sharp(a).removeAlpha().raw().toBuffer({resolveWithObject:true}),
+      sharp(b).removeAlpha().raw().toBuffer({resolveWithObject:true}),
+    ]);
+    assert.equal(first.info.width, 400);
+    assert.equal(first.info.height, 400);
+    assert.deepEqual({width:first.info.width, height:first.info.height, channels:first.info.channels},
+      {width:second.info.width, height:second.info.height, channels:second.info.channels});
+    let changedChannels = 0;
+    for (let i = 0; i < first.data.length; i++) {
+      if (Math.abs(first.data[i] - second.data[i]) > 2) changedChannels++;
+    }
+    assert.ok(changedChannels > 30,
+      `the zero-latitude Sun should appear in the real Three.js ring (changed channels: ${changedChannels})`);
+    writeFileSync(join(output, 'latitude-zero-sun-enabled.png'), a);
+    writeFileSync(join(output, 'latitude-zero-sun-disabled.png'), b);
+  } finally {
+    await browser.close();
+  }
+});
