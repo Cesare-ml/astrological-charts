@@ -1,8 +1,8 @@
 # Astrological Charts
 
-Private collaborative **Angular 20 / TypeScript / Three.js** library extracted from VirgoStars' `grafici-astrologici` code.
+Publicly readable **Angular 20 / TypeScript / Three.js** collaboration repository extracted from VirgoStars' `grafici-astrologici` code. Public visibility does **not** mean the source has been cleared for open-source reuse.
 
-**Status:** the library and synthetic demo build locally after `npm ci`; they are **not visually validated against original artwork, production-integrated or released**. This repository remains private; no open-source licence or automatic deployments are configured.
+**Status (GitHub metadata checked 2026-11-10):** this repository is **public** but **not cleared for an open-source release**. No `LICENSE` is committed on `main`, and `package.json` still has `private: true`. Source and third-party redistribution rights require review; visibility alone does not grant reuse rights. Library/demo builds have been reported locally, but original-artwork parity, production integration and Astrolabio compatibility are unverified. No npm release or automatic deployment is configured. See [audit gate #20](https://github.com/Cesare-ml/astrological-charts/issues/20).
 
 ## Purpose
 

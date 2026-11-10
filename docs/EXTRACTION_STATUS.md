@@ -1,6 +1,6 @@
 # Extraction status and release gates
 
-**Phase:** PRIVATE, NOT RELEASED. The Angular build and browser tests passed locally on Windows using synthetic and owner-authorized original images. Visual parity and production consumers remain unverified.
+**Phase (checked 2026-11-10): GitHub PUBLIC; source license/public-release audit NOT COMPLETED.** `main` has no `LICENSE`, and the npm package remains `private: true`. Angular build and browser tests were reported locally on Windows using synthetic and owner-authorized original images. Visual parity and production consumers remain unverified. Public visibility should be reviewed against source, third-party dependency and Git-history rights; see [audit gate #20](https://github.com/Cesare-ml/astrological-charts/issues/20).
 
 ## Extraction and current implementation
 
