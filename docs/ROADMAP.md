@@ -21,9 +21,10 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
   - Keep the private asset checkout separate from the public renderer. Never commit copied PNGs, fonts, manifest-derived private inventories or personal data here. Use generated synthetic assets for public examples and tests.
   - Record the checked asset repository revision, manifest revision, verification command, results and any unresolved permissions in the release review; do not mark this item complete from source inspection alone.
 - [ ] Run a clean-checkout build and browser tests on Windows and at least one other platform.
+- [ ] Resolve issue #20: GitHub reports public visibility while release documentation and rights gates remain incomplete.
 - [ ] Obtain maintainer sign-off on every item in the [release checklist](PUBLIC_RELEASE_CHECKLIST.md).
 
-**Exit criterion:** maintainer explicitly approves public visibility after provenance, security, license and functional checks. Repository visibility alone is not a release.
+**Exit criterion:** maintainer explicitly clears provenance, security, license and functional checks and resolves the currently public GitHub visibility discrepancy (issue #20). Repository visibility alone is not a release.
 
 ## M1 — Reproducible standalone development
 
