@@ -35,6 +35,11 @@ release host artwork until each gate below has been reviewed.
       Node.js-to-JSON-to-PNG example, and the Python-to-JSON-to-PNG
       example using the real demo,
       then verify the output dimensions and JPEG conversion.
+- [ ] Run `npm run test:validate-chart-input` and
+      `npm run test:chart-input` to verify matching Node/Python
+      and Angular acceptance/rejection rules, including zero-degree
+      latitude and missing transits/synastry. Both are browser-free;
+      also test malformed JSON via the real CLI before release.
 - [ ] Run `npm run test:render-bridge` with a real Chrome/Chromium
       browser and working WebGL; confirm the natal/light PNG and
       transits/dark JPEG are both 1600×1600 and nonblank. This is
