@@ -63,11 +63,17 @@
       commit output images or asset inventories. Confirm occupied
       port 4177 causes a clean error, no fallback to production
       URLs and cleanup of **only owned** services.
-- [ ] Run `npm run test:render-bridge` with a real Chrome/Chromium
-      browser and working WebGL; confirm the natal/light PNG and
-      transits/dark JPEG are both 1600×1600 and nonblank. This is
-      manual, not part of preflight. Then separately run the Python
-      wrapper and record the tested OS/browser.
+- [ ] Run `npm run test:render-bridge` with real Chrome/Chromium
+      and WebGL; confirm all four cases: natal/light PNG,
+      transits/dark JPEG, synastry/light PNG and latitude/dark PNG
+      are 1600×1600, nonblank, and natal/light differs from
+      synastry/light. This is manual, not part of preflight.
+      Record the OS/browser and separately test Python.
+- [ ] Run `npm run test:chart-asset-request-audit`; verify browser
+      export rejects missing (404), modified (409) and failed local
+      asset requests, including when the approved manifest omits
+      a symbol required by the selected chart mode/skin. Do not
+      substitute synthetic placeholders in an approved-artwork export.
 - [ ] Test the Astrolabio Node.js + offline Firefox `file://`
       adapter separately; never confuse the Chromium local demo with
       offline/e-ink device compatibility.
