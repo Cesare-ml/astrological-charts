@@ -42,6 +42,14 @@ With both servers running, install Chrome/Chromium and set `CHROME_PATH` to its 
 npm run test:demo
 ```
 
+For a faster **focused check of the latitude-0° Three.js PNG regression only**, run:
+
+```sh
+npm run test:latitude-browser
+```
+
+This filters the existing Playwright suite by its exact test name using Node's `--test-name-pattern` flag; it **does not** run the 28 chart/skin combinations or other browser tests. The same local asset and Angular demo servers (`npm run demo:assets` and `npm run demo`), npm dependencies and a supported Chrome/Chromium executable are required. Use `CHART_TEST_BROWSER=firefox` (or `$env:CHART_TEST_BROWSER = 'firefox'` in PowerShell) for Firefox. It writes four diagnostic PNGs in the ignored local browser-screenshot folder; neither screenshots nor synthetic assets are committed. If the test is renamed, update the script's test-name pattern at the same time so the filter does not silently select zero tests. This browser regression is separate from `npm run test:latitude`, which needs no server.
+
 To run the same suite with the Playwright-managed Firefox (Playwright Core is pinned to 1.56.1, matching the inspected Astrolabio environment), install its browser with `npx playwright-core install firefox`, then select it. In PowerShell:
 
 ```powershell
