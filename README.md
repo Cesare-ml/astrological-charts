@@ -147,6 +147,7 @@ After `npm ci`, useful manual checks are:
 npm run test:chart-input
 npm run test:node-adapter
 npm run test:local-render-services
+npm run test:local-process-lifecycle
 npm run test:node-types
 npm run preflight
 npm run build
