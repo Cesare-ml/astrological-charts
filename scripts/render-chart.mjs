@@ -135,13 +135,13 @@ async function main() {
       const status = document.querySelector('[data-testid="status"]')?.textContent || '';
       return source.includes('Imported:') && (/Rendered|Rendering failed/.test(status)) &&
         !document.querySelector('#mode')?.disabled;
-    }, { timeout: 60000 });
+    }, undefined, { timeout: 60000 });
     if (opts.mode) await page.selectOption('#mode', opts.mode);
     if (opts.skin) await page.selectOption('#skin', opts.skin);
     await page.waitForFunction(() => {
       const status = document.querySelector('[data-testid="status"]')?.textContent || '';
       return (/Rendered|Rendering failed/.test(status)) && !document.querySelector('#mode')?.disabled;
-    }, { timeout: 60000 });
+    }, undefined, { timeout: 60000 });
     let status = await page.locator('[data-testid="status"]').textContent();
     if (!status?.includes('Rendered')) throw new Error(status || 'Chart did not render.');
     const [download] = await Promise.all([
