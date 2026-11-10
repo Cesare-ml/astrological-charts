@@ -19,6 +19,7 @@ export function createChartAssetRequestAudit(assetBase = 'http://127.0.0.1:4177/
   }
   const failures = new Map();
   let count = 0;
+  let successfulAssetResponses = 0;
 
   function localPath(url) {
     try {
@@ -42,10 +43,22 @@ export function createChartAssetRequestAudit(assetBase = 'http://127.0.0.1:4177/
 
   return {
     recordResponse(url, status) {
-      if (Number.isInteger(status) && status >= 400) add(url, 'HTTP ' + status);
+      if (!Number.isInteger(status)) return;
+      if (status >= 400) add(url, 'HTTP ' + status);
+      else if (status >= 200 && status < 400 && localPath(url)) {
+        successfulAssetResponses++;
+      }
     },
     recordFailure(url) {
       add(url, 'request failed');
+    },
+    assertHasLoadedAssets() {
+      if (successfulAssetResponses === 0) {
+        throw new Error(
+          'The chart requested no successfully served local assets from 127.0.0.1:4177. ' +
+          'Check the Angular asset base and chart symbols before exporting private artwork.'
+        );
+      }
     },
     assertClean() {
       if (count === 0) return;
