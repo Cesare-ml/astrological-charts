@@ -71,7 +71,8 @@ The Node.js API and the JSON CLI used by Python now validate
 a nonempty date label, ascendant/MC, exactly 12 house cusps, at least
 one planet with finite longitude, latitude bounds and complete second
 chart input for transits/synastry. The numeric positions remain
-unaltered by prevalidation. Use `npm run test:validate-chart-input`
+unaltered by prevalidation. Use `npm run test:validate-chart-input` and
+`npm run test:chart-cli-validation`
 for the isolated validation tests.
 
 The renderer **does not compute planetary positions**. Feed it
