@@ -51,3 +51,29 @@ test('latitude runner recognizes a marker split across real HTTP chunks', async 
     assert.equal(await reachable(`http://127.0.0.1:${port}/__preview`, 'approved asset preview'), true);
   });
 });
+
+test('latitude runner bounds streaming responses that never finish', {timeout: 8000}, async () => {
+  let drip;
+  try {
+    await withLocalServer((_req, res) => {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.write('approved asset preview');
+      drip = setInterval(() => res.write('.'), 80);
+      res.once('close', () => clearInterval(drip));
+    }, async port => {
+      const started = Date.now();
+      assert.equal(await reachable(`http://127.0.0.1:${port}/__preview`, 'approved asset preview'), false);
+      assert.ok(Date.now() - started < 5000, 'a never-ending response must not hang readiness');
+    });
+  } finally { clearInterval(drip); }
+});
+
+test('latitude runner rejects an incomplete HTTP response', async () => {
+  await withLocalServer((_req, res) => {
+    res.writeHead(200, {'Content-Type': 'text/html', 'Content-Length': '1024'});
+    res.write('approved asset preview');
+    res.destroy();
+  }, async port => {
+    assert.equal(await reachable(`http://127.0.0.1:${port}/__preview`, 'approved asset preview'), false);
+  });
+});

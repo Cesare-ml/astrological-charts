@@ -17,9 +17,11 @@ export function portInUse(port) {
 export function reachable(url, expectedMarker) {
   return new Promise(resolveReady => {
     let settled = false;
+    let hardDeadline;
     const finish = ready => {
       if (settled) return;
       settled = true;
+      clearTimeout(hardDeadline);
       resolveReady(ready);
     };
     const req = get(url, {timeout: 1500}, response => {
@@ -32,8 +34,12 @@ export function reachable(url, expectedMarker) {
       });
       response.once('end', () => finish(ok && prefix.includes(expectedMarker)));
       response.once('error', () => finish(false));
+      response.once('close', () => { if (!response.complete) finish(false); });
     });
     req.once('error', () => finish(false));
     req.once('timeout', () => { req.destroy(); finish(false); });
+    // A server that trickles a byte every second can evade socket inactivity
+    // timeouts indefinitely. Bound the entire readiness request as well.
+    hardDeadline = setTimeout(() => { req.destroy(); finish(false); }, 3000);
   });
 }
