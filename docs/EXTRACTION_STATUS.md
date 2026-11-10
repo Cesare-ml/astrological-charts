@@ -15,21 +15,22 @@
 
 ## Pending before describing the package as ready
 
-- Align the full legacy `TemaRender` and `OpzioniGrafico` contracts with renderer usage. The external JSON v1 adapter validates and maps the subset needed for Python-created charts, but does not guarantee every advanced option.
+- Align the full legacy `TemaRender` and `OpzioniGrafico` contracts with renderer usage. The external JSON v1 adapter validates and maps the subset needed for Node.js- and Python-created charts, but does not guarantee every advanced option.
 - The owner authorized private sharing of imported artwork, including font-derived images; the font's license and public redistribution remain unresolved. Keep the current production source unchanged and validate the separate pack before any migration.
 - Compare the four chart modes and seven skins against approved real-artwork baselines; synthetic screenshots alone do not establish visual fidelity.
 - Verify no resource growth after repeated redraw and PNG export.
 - Rebuild VirgoStars web, mobile PNG, Astrolabio UI and actual headless/e-ink render before any consumer migration.
 - Decide strategy for version pinning and release notes; **no automatic updates to shipped devices**.
 - Complete the source provenance and contributor IP review before public release; see `docs/PUBLIC_RELEASE_CHECKLIST.md`.
-- Validate the new Python JSON→Angular/Three.js→PNG/JPEG path with a real local browser run; schema unit tests do not prove end-to-end rendering.
+- Validate the new Node.js and Python JSON→Angular/Three.js→PNG/JPEG paths with a real local browser run; schema unit tests do not prove end-to-end rendering.
 
 ## Deliberately not done
 
 - No backend, account database, user data, `.env` or deployment infrastructure imported.
 - No historical Git repository clone or legacy renderer copies.
 - No production skin assets or fonts copied; instead, `resolveChartAssetUrl` and `GestoreImmagini.configurePublicAssetsBase` provide a host-owned URL contract. Synthetic WebGL tests do not validate site or hardware integration.
-- No public license; no GitHub Actions; no auto-deploy; no npm publishing.
+- CPAL-1.0 prepared for the source code; repository not made public.
+  No GitHub Actions, auto-deploy or npm publishing.
 - Local browser and offline smoke results do not establish production-consumer, visual-baseline or device compatibility.
 
 ## Rollback policy
