@@ -50,7 +50,10 @@ node examples/node/example.mjs --jpg
 
 Output: `.local/node-example.png` or `.local/node-example.jpg`.
 This developer adapter uses the existing Angular/Three.js renderer
-through a local headless Chrome/Chromium session; **it is not a native
+through a local headless Chrome/Chromium session, with image-format
+checks and staged output writes. TypeScript declaration support is
+included in `node/index.d.mts`; this remains a developer preview.
+**It is not a native
 Node.js WebGL renderer** or an already released npm package. Read
 [Node integration and Astrolabio architecture](docs/NODE_INTEGRATION.md)
 before deploying it as a backend service.
@@ -143,6 +146,7 @@ After `npm ci`, useful manual checks are:
 ```sh
 npm run test:chart-input
 npm run test:node-adapter
+npm run test:local-render-services
 npm run preflight
 npm run build
 npm run build:demo
