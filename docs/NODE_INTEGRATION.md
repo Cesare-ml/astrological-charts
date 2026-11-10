@@ -171,6 +171,46 @@ parity with original VirgoStars artwork or compatibility with the
 Astrolabio's offline Firefox/e-ink adapter. Record the OS, browser
 version and result in the review PR.
 
+## Multiple exports from one Node.js process
+
+The developer adapter now **serializes all calls to `renderChart()`
+and `renderChartFile()` within the same Node.js process**. This
+prevents two in-process requests from launching competing copies of
+the local Angular/asset servers on ports 4200 and 4177. The queue
+continues after one request fails, without losing or fabricating any
+other request's chart output. Input data remain separate, and a
+failed render cannot replace an existing image.
+
+```javascript
+import { renderChart } from './node/index.mjs';
+
+// All four requests share one queue in this process.
+// Coordinates must already be calculated by your program.
+const results = await Promise.allSettled([
+  renderChart(firstComputedChart, 'first.png'),
+  renderChart(secondComputedChart, 'second.png'),
+  renderChart(thirdComputedChart, 'third.jpg'),
+  renderChart(fourthComputedChart, 'fourth.png'),
+]);
+console.log(results.map(item => item.status));
+```
+
+The queue is **strictly in-memory and process-local**. It does
+**not** coordinate two Node.js processes, multiple worker threads,
+separate Python subprocesses, direct CLI invocations or multiple
+servers. It has no persisted jobs, cancellation, backpressure,
+multi-tenant isolation or production throughput guarantees.
+The browser is still launched for every operation. A real
+VirgoStars backend implementation will need a tested persistent
+renderer pool and an explicit cross-process ownership/locking
+strategy before handling concurrent user requests.
+
+Run `npm run test:node-concurrency` to exercise three overlapping
+mock exports (one intentionally fails) and verify that requests
+complete in order without overlapping. This test is included in
+`npm run preflight` and does **not** need a browser. Use
+`npm run test:render-bridge` separately for real WebGL exports.
+
 ## Production-oriented design
 
 This draft helper is suited to a **developer workstation or offline
