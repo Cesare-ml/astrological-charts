@@ -50,6 +50,17 @@ With both servers running, install Chrome/Chromium and set `CHROME_PATH` to its 
 npm run test:demo
 ```
 
+### One-command local latitude test
+
+For a **manual** run that starts both servers, generates the synthetic pack if absent, executes the focused Playwright PNG test and shuts down only the processes it started:
+
+```powershell
+npm ci
+npm run test:latitude:local
+```
+
+This works in PowerShell or a compatible terminal on Windows/macOS/Linux. The runner checks that ports **4177 and 4200** are free and refuses to interfere with other processes using them; stop any manually running demo servers first. If `.local/demo-pack` exists but its manifest is missing, it fails instead of deleting or overwriting local data. It requires an installed browser (set `CHROME_PATH`, or use `CHART_TEST_BROWSER=firefox` and `FIREFOX_PATH` if appropriate). It preserves the Playwright test's exit failure status and cleans up child servers on success or failure. It does **not** run `npm run preflight`, `npm run build`, production data, or device tests; run those quality gates separately before any merge.
+
 For a faster **focused check of the latitude-0° Three.js PNG regression only**, run:
 
 ```sh
