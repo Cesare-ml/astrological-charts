@@ -11,6 +11,7 @@
     "demo:pack": "node scripts/generate-demo-pack.mjs --out .local/demo-pack",
     "demo:assets": "node scripts/serve-local-assets.mjs --root .local/demo-pack/public/assets --manifest .local/demo-pack/manifests/approved-assets.json",
     "test:demo": "node --test tests/demo-browser.test.mjs",
+    "benchmark:demo": "node scripts/benchmark-demo.mjs",
     "test:extraction-browser": "node tests/extraction-browser-smoke.mjs",
     "test:offline": "node --test tests/offline-browser.test.mjs",
     "check:types": "tsc -p tsconfig.lib.json --noEmit",
