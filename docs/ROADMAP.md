@@ -42,6 +42,11 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 ## M3 — Stable integrations
 
 - [ ] Stabilize the versioned precomputed chart-input schema without duplicating astronomical calculations.
+- [x] Add early JSON v1 shape validation for Node.js/Python, with
+      browser-independent rejection tests and Angular-parser parity
+      fixtures in draft PR #19. **Still required:** execute full
+      repository tests, browsers and contributor acceptance checks.
+
 - [ ] Verify the Node.js image-export API, Python wrapper and failure handling with actual browser exports.
 - [ ] Document the separation between this developer bridge and the existing offline Astrolabio Firefox integration.
 - [ ] Validate cross-platform paths, concurrent process limitations and clean shutdown.
