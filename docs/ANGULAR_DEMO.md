@@ -34,6 +34,12 @@ Then start `npm run demo` in a separate terminal. The server verifies the suppli
 
 The default base is `http://127.0.0.1:4177/assets/`; change it in the UI or use the `assets` query parameter. The displayed manifest label is informational: the actual manifest is selected at server startup, not verified by the browser label. No public website is used as a fallback.
 
+## Accessibility and project credits
+
+The canvas is exposed as a labelled image to assistive technology. Its label follows the selected chart mode and skin and explicitly identifies the data as synthetic, not astronomical calculations. Successful progress uses a polite status region; rendering or asset-load failures use an alert region. Keyboard users get a visible focus outline on form controls, buttons and the credits link. The demo footer retains a visible [VirgoStars](https://github.com/Cesare-ml/virgo-stars) project credit; the link is navigated only when activated and does not fetch production resources while rendering.
+
+The existing Playwright `npm run test:demo` suite now checks the initial accessible canvas, label updates for all 28 mode/skin combinations, the project credit and error announcements. These checks do not establish screen-reader compatibility across devices; keyboard navigation and NVDA/VoiceOver should still be tested manually. The chart remains an image, not an accessible per-planet data table, and the values remain illustrative.
+
 ## Local verification
 
 With both servers running, install Chrome/Chromium and set `CHROME_PATH` to its executable if it is not in a standard location, then:
