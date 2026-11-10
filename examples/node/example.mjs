@@ -5,7 +5,7 @@
  * Values are invented sample positions, NOT real ephemerides.
  * Copyright (c) 2026 Cesare-ml (VirgoStars project). CPAL-1.0.
  */
-import { renderChart } from './virgostars-charts.mjs';
+import { renderChart } from '../../node/index.mjs';
 
 const computedLongitudes = {
   Sun: 15, Moon: 75, Mercury: 42, Venus: 103, Mars: 135,
