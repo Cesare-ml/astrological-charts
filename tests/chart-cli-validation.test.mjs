@@ -90,3 +90,28 @@ test('CLI rejects missing option values and duplicate flags without attempting r
       'invalid command-line options must fail before checking filesystem');
   }
 });
+
+test('external assets require an explicit root and manifest together', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'virgostars-cli-pack-pair-'));
+  try {
+    const input = join(dir, 'chart.json');
+    await writeFile(input, JSON.stringify({schemaVersion:1,natal}));
+    for (const args of [
+      ['--assets-root', '../astrological-assets/public/assets'],
+      ['--assets-manifest', '../astrological-assets/manifests/approved-assets.json'],
+    ]) {
+      await assert.rejects(
+        execFileAsync(process.execPath,[cli,'--input',input,'--validate-only',...args],{cwd:root}),
+        /Provide --assets-root and --assets-manifest together/);
+    }
+    const {stdout} = await execFileAsync(process.execPath, [
+      cli,'--input',input,'--validate-only',
+      '--assets-root','../astrological-assets/public/assets',
+      '--assets-manifest','../astrological-assets/manifests/approved-assets.json',
+    ],{cwd:root});
+    assert.match(stdout,/Valid chart JSON v1/);
+    // validate-only checks JSON/flag shape, not binary image integrity.
+  } finally {
+    await rm(dir,{recursive:true,force:true});
+  }
+});
