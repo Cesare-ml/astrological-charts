@@ -25,7 +25,9 @@ release host artwork until each gate below has been reviewed.
       a fresh public-reader checkout with no private dependencies.
 - [ ] Verify that concurrent Node.js requests from the same process
       are serialized, that a failed request does not poison the queue,
-      and that multi-process/persistent backend rendering remains
+      that mixed object/file API calls preserve submission order
+      despite asynchronous filesystem operations, and that
+      multi-process/persistent backend rendering remains
       explicitly unsupported until separate stress and locking tests.
 - [ ] Run `npm run test:node-concurrency` and
       `npm run test:node-adapter`,
