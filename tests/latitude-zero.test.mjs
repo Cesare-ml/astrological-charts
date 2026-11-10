@@ -58,3 +58,37 @@ test('missing planets are ignored while finite latitude zero remains selectable'
   const selected = await new LatitudeSelectionProbe().getElementiCelesti({planets}, options);
   assert.deepEqual(Object.keys(selected), ['Venus']);
 });
+
+test('natal and transit latitude scenes both invoke the shared finite-latitude selector', () => {
+  const methodNamed = name => renderer.members.find(node =>
+    ts.isMethodDeclaration(node) && node.name?.getText(source) === name);
+  const scene = methodNamed('creaScena');
+  const ring = methodNamed('getAnelloElementiCelesti');
+  assert.ok(scene?.body, 'latitude scene builder must remain present');
+  assert.ok(ring?.body, 'latitude ring builder must remain present');
+
+  const callsNamed = (body, methodName) => {
+    const calls = [];
+    function visit(node) {
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+        && node.expression.name.text === methodName) calls.push(node);
+      ts.forEachChild(node, visit);
+    }
+    visit(body);
+    return calls;
+  };
+
+  const ringCalls = callsNamed(scene.body, 'getAnelloElementiCelesti');
+  assert.deepEqual(ringCalls.map(call => [
+    call.arguments[0]?.getText(source),
+    call.arguments.at(-1)?.getText(source),
+  ]), [
+    ['temaRender', 'false'],
+    ['temaRenderTransiti', 'true'],
+  ], 'the same ring builder must serve natal and transit themes');
+
+  const selectorCalls = callsNamed(ring.body, 'getElementiCelesti');
+  assert.deepEqual(selectorCalls.map(call => call.arguments.map(arg => arg.getText(source))),
+    [['temaRender', 'opzioni']],
+    'both rings must use the real latitude selector rather than bypassing its finite-value filter');
+});
