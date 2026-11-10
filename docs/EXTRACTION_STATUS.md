@@ -24,6 +24,7 @@
 - Complete the source provenance and contributor IP review before public release; see `docs/PUBLIC_RELEASE_CHECKLIST.md`.
 - Validate the new Node.js and Python JSON→Angular/Three.js→PNG/JPEG paths with a real local browser run; schema unit tests do not prove end-to-end rendering.
 - Node.js process-output safety and local service identity checks have standalone test coverage in draft PR #19, but that is not browser/WebGL integration evidence.
+- A single-process Node.js render queue is implemented and covered by mock-concurrency tests. Multi-process locking, worker pools and production load tests remain unimplemented.
 
 ## Deliberately not done
 
