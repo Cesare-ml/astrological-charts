@@ -31,6 +31,14 @@ transit/synastry chart is missing. Do not invent available
 VirgoStars-Ephemeris Rust/Python/Node integrations: cross-language
 bindings remain planned, not released.
 
+**Node.js concurrency contract:** `node/index.mjs` keeps a
+single in-process Promise queue for `renderChart()` and
+`renderChartFile()`; both must share it. A rejected render must
+not poison the queue or overwrite a valid existing file. Keep
+`tests/node-concurrency.test.mjs` in the manual preflight.
+This is **not** a multi-process mutex or browser pool; never
+claim it handles production backend concurrency safely.
+
 **Three runtime contexts:** Angular frontend uses the existing Angular
 service; general Node.js programs can use `node/index.mjs` with the
 same versioned JSON format; the real Astrolabio Node backend uses a
