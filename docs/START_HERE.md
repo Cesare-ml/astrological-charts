@@ -57,6 +57,24 @@ positions. Read the
 [Node.js integration guide](NODE_INTEGRATION.md) to pass the output
 of your own JavaScript calculations into `renderChart()`.
 
+### Show original artwork from your authorized local checkout
+
+The normal example deliberately uses synthetic checkerboard icons. If
+you have the private, separately approved `astrological-assets`
+repository next to `astrological-charts` on your own computer, you
+can explicitly request its original images without copying them:
+
+```powershell
+node examples/node/example.mjs --approved-assets
+```
+
+This creates `.local/node-example-approved.png`. The script verifies
+the external asset manifest against the actual binary files and stops
+if port 4177 belongs to another process. Close any old asset server
+**you** started before running it. The original assets remain private
+and are not published or downloaded by this command. See
+[NODE_INTEGRATION.md](NODE_INTEGRATION.md) for additional details.
+
 ### Alternatively, from Python
 
 Install Python 3.10+ and run once:
