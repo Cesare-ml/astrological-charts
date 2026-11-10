@@ -102,11 +102,22 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     opts.temaGrafico = this.skin;
     opts.mostraTransiti = this.mode === 'transits';
     opts.mostraSinastria = this.mode === 'synastry';
-    for (const body of new Set([...demoBodies, ...Object.keys(this.radix.planets ?? {})])) {
-      if (opts.settaggi.elementi_celesti[body]) {
-        opts.settaggi.elementi_celesti[body].att = true;
-        opts.settaggi.elementi_celesti[body].aspVerso = true;
+    // Never enable planets absent from the user's computed dataset.
+    const supplied = new Set([
+      ...Object.keys(this.radix.planets ?? {}),
+      ...(this.mode === 'transits' ? Object.keys(this.transit?.planets ?? {}) : []),
+      ...(this.mode === 'synastry' ? Object.keys(this.synastry?.planets ?? {}) : []),
+    ]);
+    for (const body of demoBodies) {
+      const option = opts.settaggi.elementi_celesti[body];
+      if (option) {
+        option.att = supplied.has(body);
+        option.aspVerso = supplied.has(body);
       }
+    }
+    for (const body of supplied) {
+      const option = opts.settaggi.elementi_celesti[body];
+      if (option) { option.att = true; option.aspVerso = true; }
     }
     return opts;
   }
