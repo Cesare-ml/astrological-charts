@@ -26,8 +26,22 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     bundle:true, write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
   const browser = await launchBrowser();
   const page = await browser.newPage();
+  const pageErrors = [], assetErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  // Only track our synthetic pack: unrelated dev-server requests (for example,
+  // a browser favicon) are not proof of missing chart artwork.
+  const assetBase = 'http://127.0.0.1:4177/assets/';
+  page.on('response', response => {
+    if (response.url().startsWith(assetBase) && response.status() >= 400)
+      assetErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
+  });
+  page.on('requestfailed', request => {
+    if (request.url().startsWith(assetBase))
+      assetErrors.push(`${request.failure()?.errorText ?? 'request failed'} ${new URL(request.url()).pathname}`);
+  });
   try {
-    await page.goto('http://127.0.0.1:4200/');
+    const navigation = await page.goto('http://127.0.0.1:4200/', {waitUntil:'domcontentloaded'});
+    assert.ok(navigation?.ok(), 'Angular demo must respond successfully at http://127.0.0.1:4200/');
     await page.waitForFunction(() =>
       (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'),
       null, {timeout:30000});
@@ -71,6 +85,13 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
       `the zero-latitude Sun should appear in the real Three.js ring (changed channels: ${changedChannels})`);
     assert.ok(shiftedChannels > 30,
       `the zero-latitude Sun must move when latitude changes to +2° (changed channels: ${shiftedChannels})`);
+    assert.deepEqual(pageErrors, [], 'unexpected Angular/Three.js page errors during latitude rendering');
+    assert.deepEqual(assetErrors, [], 'synthetic image requests must succeed during latitude rendering');
+  } catch (error) {
+    // Include the latest demo status and network failures even when the render
+    // throws before the final assertions; PNGs are saved earlier when available.
+    const status = await page.locator('[data-testid=status]').textContent().catch(() => 'unavailable');
+    throw new Error(`latitude WebGL probe failed (demo status: ${status}; page errors: ${pageErrors.join('; ') || 'none'}; asset errors: ${assetErrors.join('; ') || 'none'})`, {cause:error});
   } finally {
     await browser.close();
   }
