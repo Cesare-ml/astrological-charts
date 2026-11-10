@@ -1,6 +1,6 @@
 # Contributing to Astrological Charts
 
-This repository is private and shared by invitation. Contributions with Codex, Claude Code, or other AI tools are welcome. The maintainer retains final review and merge control.
+This repository is currently **publicly readable**, but release rights and open-source licensing on `main` remain unresolved. Public visibility alone does not authorize reuse, relicensing or redistribution. Contributions with Codex, Claude Code, or other AI tools are welcome. The maintainer retains final review and merge control.
 
 ## Workflow
 
@@ -18,7 +18,7 @@ AI-assisted contributions are welcome, but their author is responsible for revie
 
 ## Public release and intellectual property
 
-The repository is private and has no open-source license at this stage. Do not relicense or publish it. Before accepting external contributions, establish written permission/terms allowing VirgoStars to use, modify, commercially distribute, and potentially open-source accepted contributions in future. Each contributor confirms they have the right to contribute their work and that new assets are properly licensed.
+The GitHub repository is already public, but has no open-source `LICENSE` on `main` and has not passed the source-rights/public-release gate. Do not publish packages, change the license or redistribute third-party artwork on the assumption that public GitHub visibility is sufficient. Before accepting external contributions, establish written permission/terms allowing VirgoStars to use, modify, commercially distribute, and potentially open-source accepted contributions in future. Each contributor confirms they have the right to contribute their work and that new assets are properly licensed.
 
 ## Review gates
 
