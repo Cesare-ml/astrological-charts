@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { matchesLocalChartDemo, matchesSyntheticAssetServer, matchesManifestAssetServer, waitForChartControls } from './verify-local-render-services.mjs';
 import { loadVerifiedExternalRenderPack } from './approved-render-assets.mjs';
+import { createChartAssetRequestAudit } from './chart-asset-request-audit.mjs';
 import { validateChartPayloadV1, MAX_CHART_JSON_BYTES } from './validate-chart-input.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -224,6 +225,9 @@ async function main() {
       args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
     });
     const page = await browser.newPage({ viewport: { width: 1200, height: 1000 }, acceptDownloads: true });
+    const assetAudit = createChartAssetRequestAudit(assetUrl);
+    page.on('response', response => assetAudit.recordResponse(response.url(), response.status()));
+    page.on('requestfailed', request => assetAudit.recordFailure(request.url()));
     const browserErrors = [];
     page.on('pageerror', error => {
       browserErrors.push(String(error.message));
@@ -272,6 +276,10 @@ async function main() {
     await download.saveAs(pngPath);
     status = await page.locator('[data-testid="status"]').textContent();
     if (status?.includes('failed')) throw new Error(status);
+    // An import can appear rendered while one or more optional symbol
+    // requests failed. Never publish an approved-artwork PNG/JPEG with
+    // silent missing textures or fallback placeholders.
+    assetAudit.assertClean();
     const png = await readFile(pngPath);
     const metadata = await sharp(png).metadata();
     if (metadata.format !== 'png' || !metadata.width || !metadata.height) {
