@@ -17,6 +17,12 @@ const file: Promise<string> = renderChartFile('chart.json', 'chart.jpg',
   { mode:'transits' });
 const cliArgs: string[] = buildRenderArgs('chart.json','out.jpeg',
   { mode:'latitude' });
+const externalAssetArgs: string[] = buildRenderArgs('chart.json', 'private.png',
+  {assetRoot:'../astrological-assets/public/assets',
+    assetManifest:'../astrological-assets/manifests/approved-assets.json'});
+// @ts-expect-error assetRoot must be a path string
+renderChart(payload, 'out.png', {assetRoot: 42});
+void externalAssetArgs;
 
 // @ts-expect-error schemaVersion 2 is not supported
 const invalidSchema: ChartPayloadV1 = { schemaVersion:2, natal };
