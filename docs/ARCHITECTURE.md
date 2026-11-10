@@ -3,18 +3,23 @@
 Source: `Cesare-ml/virgo-stars/docs/graphics/` (reference documentation, Aug 2026). The original repo remains authoritative for production.
 
 ```text
-              Precomputed positions and house cusps
-             (Node.js, Python, Rust bindings in future)
-                                |
-                JSON v1 -> TemaRender adapter
-                                |
-             Angular / TypeScript / Three.js renderer
-                                |
-             +------------------+-----------------+
-             |                  |                 |
-     VirgoStars frontend   Node.js helper    Astrolabio adapter
-     Angular service       Chromium demo     Offline Firefox/file://
-     Browser/UI + PNG      PNG/JPEG          PNG/e-ink pipeline
+              Precomputed chart positions + house cusps
+                                   |
+               +-------------------+------------------+
+               |                   |                  |
+       Angular frontend      Node/Python users    Astrolabio backend
+       existing TemaRender   JSON v1 -> TemaRender  legacy TemaRender
+               |                   |                  |
+       Angular render service Chromium browser    Firefox offline/file://
+               |                   |                  |
+               +-------------------+------------------+
+                                   |
+                    Shared TypeScript/Three.js
+                    chart scene/rendering modules
+                                   |
+                              UI / PNG
+                          (JPEG conversion in
+                           developer Node bridge)
 ```
 
 Node.js or Python can pass computed positions and house cusps through JSON v1 (`demo/chart-input.ts`), then use the local Chromium bridge (`scripts/render-chart.mjs`) for the existing Angular renderer's PNG/JPEG output. The Node programmatic wrapper is `node/index.mjs`. This is an
