@@ -14,7 +14,7 @@ import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { matchesLocalChartDemo, matchesSyntheticAssetServer, matchesManifestAssetServer, waitForChartControls } from './verify-local-render-services.mjs';
-import { verifyApprovedAssetPack } from './verified-asset-pack.mjs';
+import { loadVerifiedExternalRenderPack } from './approved-render-assets.mjs';
 import { validateChartPayloadV1, MAX_CHART_JSON_BYTES } from './validate-chart-input.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -153,6 +153,11 @@ async function main() {
     console.log('No browser started. No ephemerides or other astronomy calculations were performed.');
     return;
   }
+  // Check the complete approved binary pack before loading browser dependencies.
+  // This also rejects missing/private packs without an implicit download.
+  const approved = opts.assetsRoot
+    ? loadVerifiedExternalRenderPack(opts.assetsRoot, opts.assetsManifest)
+    : null;
   if (!existsSync(join(root, 'node_modules', '@angular', 'cli', 'bin', 'ng.js'))) {
     throw new Error('Dependencies missing. Run "npm ci" in the astrological-charts directory first.');
   }
@@ -179,13 +184,9 @@ async function main() {
     // Only use loopback; never upload input charts or fetch production assets.
     const assetUrl = 'http://127.0.0.1:4177/';
     const demoUrl = 'http://127.0.0.1:4200/';
-    const assetManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    const assetManifest = approved?.manifest ?? JSON.parse(readFileSync(manifestPath, 'utf8'));
     if (useExternalAssets) {
-      if (assetManifest?.source?.repository === 'synthetic-local-fixtures') {
-        throw new Error('The explicit asset mode is for an approved external pack, not the synthetic fixtures.');
-      }
-      const verified = verifyApprovedAssetPack(assetsRoot, assetManifest);
-      console.log(`Verified ${verified.count} external asset files using the local manifest and SHA-256.`);
+      console.log(`Verified ${approved.verified.count} external asset files using the local manifest and SHA-256.`);
       // Never reuse a running service in external mode: sampled requests
       // alone do not prove ownership of every file served on that port.
       if (await live(assetUrl)) {
