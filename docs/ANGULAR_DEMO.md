@@ -1,6 +1,6 @@
 # Independent Angular renderer demo
 
-The draft branch `feat/verified-asset-preview` contains an Angular application that imports the library's actual `GraficoRenderService`. It uses deterministic illustrative data created in `demo/fixtures.ts`, not birth data or calculated ephemerides. No VirgoStars checkout, account, backend, AWS credentials, or original artwork is needed for the synthetic mode. The generated checkerboards intentionally do not represent the actual symbols.
+The Angular workspace contains an application that imports the library's actual `GraficoRenderService`. It uses deterministic illustrative data created in `demo/fixtures.ts`, not birth data or calculated ephemerides. No VirgoStars checkout, account, backend, AWS credentials, or original artwork is needed for the synthetic mode. The generated checkerboards intentionally do not represent the actual symbols.
 
 ## Start with synthetic assets
 
@@ -54,6 +54,8 @@ On other shells use `CHART_TEST_BROWSER=firefox npm run test:demo`. `FIREFOX_PAT
 For a separate offline smoke test, generate the synthetic pack as above and run `npm run test:offline`. It verifies the pack manifest first, opens a local `file://` page in Firefox with the browser context offline, and exports all four chart modes with the `astrolabio` skin. It saves PNGs under `.local/demo-pack/offline-*.png` and fails if the page attempts any HTTP(S) request. Neither Angular's dev server nor the asset HTTP server is required. This uses the generated pack rather than approved original images.
 
 The browser test exercises 28 combinations twice, compares raw pixels between the two synthetic runs, saves screenshots under `.local/demo-screenshots` (or `.local/demo-screenshots-firefox`), checks nonblank canvases, downloads a 1600×1600 PNG, checks a mobile resize and simulates missing images and slow textures. The repeated-image comparison tolerates channel differences of at most two levels, and permits at most 0.01% of channels to exceed that threshold; this avoids failing over isolated browser rounding while detecting larger changes. It tests simultaneous service exports and redraw, failure recovery and cleanup of a repeating GSAP timeline. It counts WebGL texture creation/deletion calls during redraw as a lifecycle smoke check. It does **not** compare against approved production reference images, measure GPU memory, prove astrological correctness, or test real hardware. Browser WebGL output can vary by driver; saved screenshots are review artifacts, not approved visual baselines. `npm run test:demo-pack` verifies generated formats and manifest integrity without starting a browser.
+
+To smoke-test the earlier extraction independently, keep the two local demo servers running and set `CHART_EXTRACT_DIR` to a separate checkout of the extraction branch, then run `npm run test:extraction-browser`. For example, in PowerShell: `$env:CHART_EXTRACT_DIR = '../charts-pr1-smoke'`. The harness bundles that checkout's source with the current workspace's development dependencies and exercises 28 chart/skin combinations and a 400×400 PNG at scale 1. This is a synthetic rendering smoke test, not a visual baseline, lifecycle audit or a test of scale-2 export. The extraction checkout's own locked build should be checked separately.
 
 ## Known limits
 

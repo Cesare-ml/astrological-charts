@@ -48,4 +48,4 @@ This extraction has **no production activation**. The live VirgoStars website an
 
 ## Local verification
 
-An invited contributor can run `scripts/verify-local.ps1` on Windows. This is *not yet evidence of a successful build*: record actual commands and results in PR #1.
+An invited contributor can run `scripts/verify-local.ps1` on Windows. The extraction branch passed `npm ci`, preflight and build on Windows/Node 22.18.0; contributors should record their own results and not infer visual compatibility from the build.

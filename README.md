@@ -2,7 +2,7 @@
 
 Private collaborative **Angular 20 / TypeScript / Three.js** library extracted from VirgoStars' `grafici-astrologici` code.
 
-**Status:** the stacked draft through [PR #13](https://github.com/Cesare-ml/astrological-charts/pull/13) builds locally after `npm ci`; it is **not visually validated, production-integrated or released**. Earlier PR heads have not independently passed this verification. This repository remains private; no open-source licence or automatic deployments are configured.
+**Status:** the library and synthetic demo build locally after `npm ci`; they are **not visually validated against original artwork, production-integrated or released**. This repository remains private; no open-source licence or automatic deployments are configured.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ The imported source includes Three.js rendering of natal charts, transits, synas
 
 ## Start developing
 
-For the current stacked candidate, check out `feat/verified-asset-preview`. PR #1 and the subsequent branches remain separate draft steps.
+For the full candidate, check out `feat/verified-asset-preview` or, after its integration, `main`. The [PR history](https://github.com/Cesare-ml/astrological-charts/pull/13) records the ordered extraction.
 
 For invited contributors on Windows:
 

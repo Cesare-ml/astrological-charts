@@ -16,9 +16,9 @@
 git clone https://github.com/Cesare-ml/astrological-charts.git
 git clone https://github.com/Cesare-ml/astrological-assets.git
 
-# Branches reflect current draft work, not released/main functionality.
+# Use the full candidate branch until PR #13 is integrated; no release is implied.
 cd astrological-charts
-git switch feat/independent-assets-dev
+git switch feat/verified-asset-preview
 npm install
 npm run test:assets
 node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json
@@ -29,7 +29,7 @@ The [Angular demo](ANGULAR_DEMO.md) configures the asset base and renders genera
 ## Current integration order
 
 ```text
-astrological-charts #1 -> #8 -> #9 -> #10 -> #11     (stacked draft PRs)
+astrological-charts #1 -> #8 -> #9 -> #10 -> #11 -> #13     (ordered PR history)
              |
              +----> independent synthetic Angular demo (candidate; real visuals unverified)
                           |
