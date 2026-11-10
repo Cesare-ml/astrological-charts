@@ -84,6 +84,27 @@ no transits or ephemerides are invented. Both `renderChart()` and
 subprocess. For real PNG/JPEG output, install the dependencies and
 use the documented export commands.
 
+### Opt-in export with your own authorized artwork
+
+The default Node/Python examples still render **synthetic placeholders**.
+For owners with a separate checked-out `astrological-assets` folder
+alongside this repository, use:
+
+```sh
+node examples/node/example.mjs --approved-assets
+node examples/node/example.mjs --approved-assets --jpg
+```
+
+These commands require the separate approved manifest and verify
+**every local binary file against its SHA-256** before opening Chrome.
+They produce `.local/node-example-approved.png` or `.jpg`.
+The external pack is never copied or bundled into this repository.
+Do not run `npm run demo:assets:repo` simultaneously: the CLI refuses
+to reuse port 4177 in external mode. Close only your own old local
+server before exporting. See [Node.js integration](docs/NODE_INTEGRATION.md)
+for explicit `--assets-root`/`--assets-manifest` paths and limitations.
+Private sharing permission is not a public redistribution license.
+
 The renderer **does not compute planetary positions**. Feed it
 precomputed longitude/latitude coordinates, angles and house cusps
 from Python (or another language) and it produces a graphic with the
