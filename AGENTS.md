@@ -42,6 +42,18 @@ creation. Keep the negative fixtures in
 `tests/node-adapter.test.mjs` and `tests/chart-cli-validation.test.mjs`;
 reject incomplete and duplicate CLI flags.
 
+**Live-browser readiness on Windows:** a pre-existing server on
+port 4200 can pass the HTML identity probe while its Angular bundle
+does not contain the JSON import input. Before calling
+`page.locator('#chart-file').setInputFiles()`, use
+`waitForChartControls()` from
+`scripts/verify-local-render-services.mjs` to check the mounted
+import input, mode, skin, render status and canvas. Preserve clear,
+privacy-safe DOM/JavaScript error diagnostics; do not print imported
+natal chart JSON. Keep the browser-free probe tests in
+`tests/verify-local-render-services.test.mjs`.
+The real Windows Chromium export remains a manual required test.
+
 **CLI dependency boundary:** `scripts/render-chart.mjs` must
 parse/validate JSON *before* importing browser-only `playwright-core`
 and `sharp`. The `--help` option and malformed-data diagnostics
