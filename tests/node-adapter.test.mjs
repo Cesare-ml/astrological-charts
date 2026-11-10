@@ -104,7 +104,8 @@ test('Node.js caller can bound a nonresponsive render process', async () => {
     await writeFile(slow, 'await new Promise(resolve=>setTimeout(resolve,5000));');
     await assert.rejects(
       renderChartFile(input, output, { rendererScript: slow, timeoutMs: 150 }),
-      /timed out|killed|ETIMEDOUT/,
+      error => error?.killed === true || error?.signal === 'SIGTERM' ||
+        error?.code === 'ETIMEDOUT',
     );
     await assert.rejects(access(output), /ENOENT/);
     assert.ok(!(await readdir(dir)).some(name=>name.startsWith('.virgostars-chart-')));
