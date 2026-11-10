@@ -136,3 +136,67 @@ test('transit PNG baseline filters only the Sun and preserves the transit ring',
     'latitude:2', 'render:transitShiftedSun:transitTheme',
   ], 'only the transit Sun latitude may vary across the three PNG controls');
 });
+
+test('latitude symbols remain visible without a finite nonzero speed indicator', async () => {
+  // Execute the renderer's actual TypeScript ring and selection methods with
+  // only the WebGL-dependent primitives stubbed. Invalid arrow endpoints must
+  // fail the test before any Three.js buffer geometry can be constructed.
+  const ringMethod = renderer.members.find(node =>
+    ts.isMethodDeclaration(node) && node.name?.getText(source) === 'getAnelloElementiCelesti');
+  assert.ok(ringMethod?.body, 'latitude ring renderer method must exist');
+  const isolated = `class LatitudiniRender {
+    static lr;
+    ${method.getText(source)}
+    ${ringMethod.getText(source)}
+  }`;
+  const js = ts.transpileModule(isolated, {
+    compilerOptions: {module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022},
+  }).outputText;
+  const directions = [];
+  let symbolCount = 0;
+  const fakeThree = {
+    Group: class { children = []; add(child) { this.children.push(child); } },
+    Vector2: class { constructor(x, y) { this.x = x; this.y = y; } },
+    MathUtils: {degToRad: degrees => degrees * Math.PI / 180},
+  };
+  const primitive = {
+    getCerchio: () => ({kind: 'grid'}),
+    getImg: async () => {
+      symbolCount++;
+      return {rotation: {z: 0}, rotateZ() {}, translateY() {}};
+    },
+    getLineaGrossa: (start, end) => {
+      for (const coordinate of [start.x, start.y, end.x, end.y]) {
+        assert.ok(Number.isFinite(coordinate), 'speed indicator must not contain NaN or infinity');
+      }
+      directions.push([start.y, end.y]);
+      return {rotateZ() {}, translateY() {}, translateZ() {}};
+    },
+  };
+  const skins = {skins: {light: {latitudini: {elementiCelesti: {
+    coloreGriglia: '#ddd', coloreEclittica: '#333',
+  }}}}};
+  const Class = new Function('THREE', 'OggettiSempliciRender',
+    'SkinManager', 'latitudePlanetAsset', js + '\nreturn LatitudiniRender;')(
+    fakeThree, primitive, skins, () => 'synthetic-asset-path');
+  Class.lr = new Class();
+  const planets = {
+    Sun: {longitude: 15, latitude: 0},
+    Moon: {longitude: 30, latitude: -0, latitudeSpeed: 0},
+    Mercury: {longitude: 45, latitude: 0, latitudeSpeed: 0.04},
+    Venus: {longitude: 60, latitude: 0, latitudeSpeed: -0.02},
+    Mars: {longitude: 75, latitude: 0, latitudeSpeed: Number.NaN},
+    Jupiter: {longitude: 90, latitude: 0, latitudeSpeed: Number.POSITIVE_INFINITY},
+  };
+  const opzioni = {temaGrafico:'light', settaggi:{
+    skin_id:'light',
+    elementi_celesti: Object.fromEntries(Object.keys(planets).map(name => [name, {att:true}])),
+  }};
+  const ring = await Class.lr.getAnelloElementiCelesti(
+    {planets}, 0, opzioni, 0.5, 3, 1, false);
+  assert.equal(symbolCount, 6, 'every body with valid latitude must keep its symbol');
+  assert.deepEqual(directions, [[0.01, 0.04], [-0.01, -0.04]],
+    'only finite nonzero latitude speeds should create directional markers');
+  assert.equal(ring.children.length, 18 + 6 + 2,
+    'ring must contain 18 latitude grid circles, six symbols and two arrows');
+});

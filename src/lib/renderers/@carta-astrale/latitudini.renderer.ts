@@ -208,14 +208,23 @@ export class LatitudiniRender {
       }
       if(nome == 'Mercury' || nome == 'Moon')
         colore = '#555';
-      var speedSign = Math.sign(elementiCelesti[nome].latitudeSpeed);
-      var linea = OggettiSempliciRender.getLineaGrossa(new THREE.Vector2(0,speedSign*0.01),new THREE.Vector2(0,speedSign*0.04),colore,2);
-      linea.rotateZ(THREE.MathUtils.degToRad(elLongDiRender));
-      linea.translateY(yPos);
-      linea.translateZ(0.00001);
-
-      group.add( el );
-      group.add(linea);
+      group.add(el);
+      // A body can have a valid latitude without a known latitude speed.
+      // Avoid NaN vertices in the Three.js fat-line geometry; zero speed
+      // also has no direction to indicate, so it needs no degenerate line.
+      const latitudeSpeed = elementiCelesti[nome].latitudeSpeed;
+      if (Number.isFinite(latitudeSpeed) && latitudeSpeed !== 0) {
+        const speedSign = Math.sign(latitudeSpeed);
+        const linea = OggettiSempliciRender.getLineaGrossa(
+          new THREE.Vector2(0, speedSign * 0.01),
+          new THREE.Vector2(0, speedSign * 0.04),
+          colore, 2
+        );
+        linea.rotateZ(THREE.MathUtils.degToRad(elLongDiRender));
+        linea.translateY(yPos);
+        linea.translateZ(0.00001);
+        group.add(linea);
+      }
     }
 
     //Fasi Sinodiche Latitudinali
