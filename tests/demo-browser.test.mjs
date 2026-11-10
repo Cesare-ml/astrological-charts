@@ -228,6 +228,10 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     const b = Buffer.from(withoutSun.split(',')[1], 'base64');
     const z = Buffer.from(negativeZeroSun.split(',')[1], 'base64');
     const c = Buffer.from(shiftedSun.split(',')[1], 'base64');
+    writeFileSync(join(output, 'latitude-zero-sun-enabled.png'), a);
+    writeFileSync(join(output, 'latitude-negative-zero-sun-enabled.png'), z);
+    writeFileSync(join(output, 'latitude-zero-sun-disabled.png'), b);
+    writeFileSync(join(output, 'latitude-positive-two-sun-enabled.png'), c);
     const [first, second, negativeZero, shifted] = await Promise.all([
       sharp(a).removeAlpha().raw().toBuffer({resolveWithObject:true}),
       sharp(b).removeAlpha().raw().toBuffer({resolveWithObject:true}),
@@ -254,10 +258,6 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
       `the zero-latitude Sun should appear in the real Three.js ring (changed channels: ${changedChannels})`);
     assert.ok(shiftedChannels > 30,
       `the zero-latitude Sun must move when latitude changes to +2° (changed channels: ${shiftedChannels})`);
-    writeFileSync(join(output, 'latitude-zero-sun-enabled.png'), a);
-    writeFileSync(join(output, 'latitude-negative-zero-sun-enabled.png'), z);
-    writeFileSync(join(output, 'latitude-zero-sun-disabled.png'), b);
-    writeFileSync(join(output, 'latitude-positive-two-sun-enabled.png'), c);
   } finally {
     await browser.close();
   }
