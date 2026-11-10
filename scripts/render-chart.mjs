@@ -34,8 +34,10 @@ function args(argv) {
       opts.validateOnly = true;
       continue;
     }
-    if (!['--input', '--output', '--skin', '--mode'].includes(argv[i]) || !argv[i + 1]) {
-      throw new Error(`Unknown/missing argument: ${argv[i]}. Run with --help.`);
+    if (!['--input', '--output', '--skin', '--mode'].includes(argv[i]) ||
+        !argv[i + 1] || argv[i + 1].startsWith('--') ||
+        Object.hasOwn(opts, argv[i].slice(2))) {
+      throw new Error(`Unknown, duplicate or missing argument: ${argv[i]}. Run with --help.`);
     }
     opts[argv[i].slice(2)] = argv[++i];
   }
