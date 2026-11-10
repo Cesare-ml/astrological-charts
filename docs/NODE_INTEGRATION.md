@@ -109,6 +109,29 @@ actual Angular parser `demo/chart-input.ts` through
 It does not establish a versioned general-purpose schema library
 or replace the browser's own checks.
 
+### Validate without rendering
+
+After writing a JSON v1 file, run the validation-only command. It
+requires Node.js but **no browser, npm install or file output**:
+
+```sh
+node scripts/render-chart.mjs --input computed-chart.json --validate-only
+node scripts/render-chart.mjs --input computed-chart.json --validate-only --mode transits
+```
+
+The optional `--mode` is checked against the supplied records:
+`transits` or `synastry` requires a matching second chart.
+`--validate-only` never creates or overwrites the output image,
+even if `--output` is supplied. It confirms input shape/ranges,
+not ephemeris accuracy, chart appearance or permission to publish
+data. Duplicate CLI flags and missing values are rejected.
+
+The programmatic `renderChartFile()` API now reads and validates a
+JSON file in the calling Node process **before** creating staging
+directories or spawning a child renderer, just as `renderChart()`
+validates its object input. The standalone CLI validates again if
+the file changes between these checks.
+
 ### Export reliability
 
 The Node helper stages output in a temporary directory **beside the
