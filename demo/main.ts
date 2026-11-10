@@ -25,6 +25,7 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         </select>
         <div class="buttons"><button (click)="zoom(-1)" [disabled]="busy" aria-label="Zoom out">−</button>
           <button (click)="zoom(1)" [disabled]="busy" aria-label="Zoom in">+</button>
+          <button (click)="resetZoom()" [disabled]="busy" aria-label="Reset zoom" title="Reset zoom to 100%">Reset</button>
           <button class="primary" (click)="exportPng()" [disabled]="busy">Export PNG</button></div>
         <h2>Asset diagnostics</h2>
         <p class="muted">The included local server validates its manifest before serving assets. Placeholders are not the original artwork.</p>
@@ -72,6 +73,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     catch (error) { this.showError(error); }
   }
   zoom(direction: number): void { direction > 0 ? this.renderer.zoomIn(0.15) : this.renderer.zoomOut(0.15); }
+  resetZoom(): void { this.renderer.setZoom(1); }
   private options(): any {
     const opts = structuredClone(defaultOpzioniGrafico) as any;
     opts.settaggi.skin_id = this.skin;
