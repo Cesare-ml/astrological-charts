@@ -53,25 +53,37 @@ function portInUse(port) {
   });
 }
 
-function reachable(url) {
+function reachable(url, expectedMarker) {
   return new Promise(resolveReady => {
+    let settled = false;
+    const finish = ready => {
+      if (settled) return;
+      settled = true;
+      resolveReady(ready);
+    };
     const req = get(url, {timeout: 1500}, response => {
-      response.resume();
-      response.once('end', () => resolveReady(response.statusCode >= 200 && response.statusCode < 400));
-      response.once('error', () => resolveReady(false));
+      const ok = response.statusCode >= 200 && response.statusCode < 400;
+      let prefix = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => {
+        // Identity markers occur in the first lines of the demo and asset preview.
+        if (prefix.length < 8192) prefix += chunk.slice(0, 8192 - prefix.length);
+      });
+      response.once('end', () => finish(ok && prefix.includes(expectedMarker)));
+      response.once('error', () => finish(false));
     });
-    req.once('error', () => resolveReady(false));
-    req.once('timeout', () => { req.destroy(); resolveReady(false); });
+    req.once('error', () => finish(false));
+    req.once('timeout', () => { req.destroy(); finish(false); });
   });
 }
 
-async function waitForReady(url, child, seconds) {
+async function waitForReady(url, child, seconds, expectedMarker) {
   const deadline = Date.now() + seconds * 1000;
   while (Date.now() < deadline) {
     if (interrupted) throw new Error('Validation interrupted.');
     if (child.exitCode !== null || child.signalCode !== null)
       throw new Error(`Local server exited before becoming ready: ${url}`);
-    if (await reachable(url)) return;
+    if (await reachable(url, expectedMarker)) return;
     await new Promise(resolveWait => setTimeout(resolveWait, 400));
   }
   throw new Error(`Local server did not become ready: ${url}`);
@@ -111,15 +123,15 @@ try {
     console.log('Generating an original synthetic asset pack...');
     await runScript('demo:pack');
   }
-  for (const [script, url, seconds] of [
-    ['demo:assets', 'http://127.0.0.1:4177/__preview', 60],
-    ['demo', 'http://127.0.0.1:4200/', 120],
+  for (const [script, url, seconds, expectedMarker] of [
+    ['demo:assets', 'http://127.0.0.1:4177/__preview', 60, 'approved asset preview'],
+    ['demo', 'http://127.0.0.1:4200/', 120, 'Astrological Charts demo'],
   ]) {
     console.log(`Starting ${script} on localhost...`);
     const child = npmProcess(script);
     started.push(child);
     child.on('error', error => console.error(`${script} could not start: ${error.message}`));
-    await waitForReady(url, child, seconds);
+    await waitForReady(url, child, seconds, expectedMarker);
   }
   console.log('Local demo and synthetic assets are ready; running the latitude PNG regression...');
   await runScript('test:latitude-browser');
