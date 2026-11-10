@@ -1,6 +1,6 @@
 # Extraction status and release gates
 
-**Phase:** INTEGRATED IN PRIVATE `main`, NOT RELEASED. The Angular build and synthetic browser tests passed locally on Windows. Original-artwork rendering and production consumers remain unverified.
+**Phase:** PRIVATE, NOT RELEASED. The Angular build and browser tests passed locally on Windows using synthetic and owner-authorized original images. Visual parity and production consumers remain unverified.
 
 ## Extraction and current implementation
 
@@ -10,13 +10,13 @@
 - Contributor instructions, PR template and upstream technical reference snapshots.
 - Extraction source-integrity script (`npm run check:extraction`); this **does not** test the renderer.
 - An independent Angular demo renders natal, transit, synastry and latitude fixtures with seven selectable skins and PNG export using locally generated placeholder assets.
-- Browser smoke tests exercise synthetic rendering on Chromium and Firefox; the separate Firefox offline test uses local synthetic files and does not exercise the shipped Astrolabio adapter.
+- Browser smoke tests exercise Chromium and Firefox with both synthetic and private original images; the separate Firefox offline test uses local synthetic files and does not exercise the shipped Astrolabio adapter.
 - The extraction and downstream PRs were integrated in order after their local preflight and build checks. The extracted #1 renderer also passed a synthetic browser smoke test; those checks do not establish original-artwork fidelity.
 
 ## Pending before describing the package as ready
 
 - Align `TemaRender` and `OpzioniGrafico` input contracts with actual renderer use.
-- Audit symbol/texture/font/resonator asset rights. Keep the single authoritative source in `virgo-stars/public/assets`; plan an asset manifest for web/Astrolabio and a private demo without duplicating production artwork.
+- The owner authorized private sharing of imported artwork, including font-derived images; the font's license and public redistribution remain unresolved. Keep the current production source unchanged and validate the separate pack before any migration.
 - Compare the four chart modes and seven skins against approved real-artwork baselines; synthetic screenshots alone do not establish visual fidelity.
 - Verify no resource growth after repeated redraw and PNG export.
 - Rebuild VirgoStars web, mobile PNG, Astrolabio UI and actual headless/e-ink render before any consumer migration.
@@ -29,7 +29,7 @@
 - No historical Git repository clone or legacy renderer copies.
 - No production skin assets or fonts copied; instead, `resolveChartAssetUrl` and `GestoreImmagini.configurePublicAssetsBase` provide a host-owned URL contract. Synthetic WebGL tests do not validate site or hardware integration.
 - No public license; no GitHub Actions; no auto-deploy; no npm publishing.
-- Local browser and offline smoke results do not establish production-consumer, real-artwork or device compatibility.
+- Local browser and offline smoke results do not establish production-consumer, visual-baseline or device compatibility.
 
 ## Rollback policy
 

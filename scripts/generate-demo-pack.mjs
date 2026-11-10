@@ -9,17 +9,21 @@ import { generateSyntheticPack, makeSyntheticPng } from './generate-synthetic-pa
 
 const skins = ['dark', 'dark-bn', 'light', 'light-bn', 'sun', 'astrolabio', 'astrolabio-girasole'];
 const bodies = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
+const ringBodies = [...bodies, 'true node'];
+const circleBodies = [...bodies, 'AS', 'Chiron', 'DS', 'IC', 'MC', 'mean Apogee', 'mean Node',
+  'mean Node Sud', 'mean Perigee', 'osc. Apogee', 'osc. Perigee', 'true node', 'true Node Sud'];
 
 export async function generateDemoPack(outputDir) {
   const result = generateSyntheticPack(outputDir);
   const additional = [
     'img/risuonatore-solare-vetro-satinato.png',
     'img/risuonatore-solare-vetro-giallo-satinato.png',
-    'img/risuonatore-solare-bianco.png',
+    'img/risuonatore-solare-bn.png',
     'img/textures/texture-oro-1.jpg',
     'img/textures/texture-oro-2.jpg',
     'img/textures/texture-oro-3.webp',
-    ...skins.flatMap(skin => bodies.flatMap(body => [
+    ...['dark', 'light'].flatMap(theme => circleBodies.map(body => `img/symbols/planets/${theme}/_circle/${body}.png`)),
+    ...skins.flatMap(skin => ringBodies.flatMap(body => [
       `img/simboli/elementi-celesti/${skin}/cerchio/${body}.png`,
       `img/simboli/elementi-celesti/${skin}/cerchio/anello/${body}.png`,
     ])),

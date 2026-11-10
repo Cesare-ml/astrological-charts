@@ -6,11 +6,11 @@
 
 - **Production host:** `Cesare-ml/virgo-stars`, `master`. Current normative code at `shared/grafici-astrologici/src` and artwork at `public/assets`. Site frontend and shipped Astrolabio remain unaffected.
 - **Renderer code:** `Cesare-ml/astrological-charts`. Angular 20, TypeScript, Three.js, skins, module rendering, canonical URL resolution, tests and browser-dev asset server. **No real PNG/font files inside the package.**
-- **Art:** `Cesare-ml/astrological-assets`, private. Metadata, approval gates and rights audit prepared; actual binary artwork is **not yet imported**. Includes [78 pending review records](https://github.com/Cesare-ml/astrological-assets/blob/main/catalog/reviews/simboli-bianchi.pending.json) — 12 zodiac, 12 house, 50 celestial body and four element images.
+- **Art:** `Cesare-ml/astrological-assets`, private. It contains 1,013 owner-authorized images and a SHA-256 manifest for private collaboration. The original font with unknown license is not included; public redistribution is not authorized. The initial 78-record pending review is historical, and the current approvals are recorded separately.
 
 **Important:** having access to the renderer repository is insufficient for a visually identical chart. A contributor must be able to access the approved asset pack, or use intentionally separate synthetic assets for limited functional testing. The collaborator must not require access to the private VirgoStars monorepo.
 
-## Planned contributor setup (once asset binaries are approved)
+## Contributor setup with the private asset pack
 
 ```powershell
 git clone https://github.com/Cesare-ml/astrological-charts.git
@@ -23,7 +23,7 @@ npm run test:assets
 node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json
 ```
 
-The [Angular demo](ANGULAR_DEMO.md) configures the asset base and renders generated natal/transit/synastry/latitude fixtures. The real asset pack remains pending; synthetic success does not verify the original visuals.
+The [Angular demo](ANGULAR_DEMO.md) configures the asset base and renders generated natal/transit/synastry/latitude fixtures. Browser tests have exercised the real private pack; approved visual baselines and production-device integration remain unverified.
 
 ## Current integration order
 
@@ -32,7 +32,7 @@ astrological-charts #1 -> #8 -> #9 -> #10 -> #11 -> #13     (ordered PR history)
              |
              +----> independent synthetic Angular demo (integrated; real visuals unverified)
                           |
-astrological-assets #1 --+----> reviewed asset subset (not done)
+astrological-assets ------+----> owner-authorized private image subset
                           |
                           +----> VirgoStars staging build (not done)
                                        |
@@ -56,8 +56,8 @@ The upstream has a separate **documentation-only** [VirgoStars PR #155](https://
 ## Pending technical blockers
 
 - The integrated stack passed local build and synthetic browser tests on Windows (Node 22.18.0); rendering with original assets remains unverified.
-- A source mismatch exists: `risuonatore-solare-bianco.png` referenced by `dark-bn`/`light-bn` is not in the inspected assets tree; `risuonatore-solare-bn.png` exists. Do not automatically rename.
-- `astrological-assets` has not received legally approved PNG/fonts or a verified complete manifest.
+- The owner selected `risuonatore-solare-bn.png` for the two monochrome skins in this renderer. Visual parity still needs independent review; upstream production code is unchanged.
+- The private pack has an integrity-verified image manifest, but font files, public redistribution rights and full advanced-option coverage remain outside its current scope.
 - Asset selection based on static references is conservative and can miss some dynamic filenames.
 - Browser cache and GPU texture lifecycle are different concerns.
 - The intended single-copy web build must be validated with the [asset collision guard](https://github.com/Cesare-ml/astrological-assets/blob/main/scripts/check-web-asset-collisions.mjs) before cutover.
@@ -75,8 +75,8 @@ No script or documentation here has activated a production change.
 
 On 2026-11-09 the top of PR #13, including its extraction-check correction and lockfile, passed `npm ci`, `npm run preflight` and `npm run build` on Windows/Node 22.18.0. The asset-server tests required access to loopback; they initially failed inside the restricted sandbox and passed with loopback enabled. Inspection of the library `dist` found no PNG, JPEG, WebP, TTF or WOFF files. This does not verify a future VirgoStars build or rendering fidelity.
 
-The active upstream `dark-bn` and `light-bn` skins reference `risuonatore-solare-bianco.png`; the local upstream tree contains `risuonatore-solare-bn.png` instead. The latter is a monochrome resonator image, but its intended equivalence cannot be established from the filename or appearance alone; no alias or rename is authorized by this observation.
+The active upstream `dark-bn` and `light-bn` skins reference `risuonatore-solare-bianco.png`; the local upstream tree contains `risuonatore-solare-bn.png` instead. The owner authorized the independent renderer to reference the latter. No change was made to upstream production, and original visual parity remains a separate check.
 
 ## Self-contained synthetic preview
 
-The [local asset preview](LOCAL_ASSET_PREVIEW.md) provides a real `/__preview` gallery served from a **manifest-verified, approved-only allowlist** of locally generated PNG placeholders. `scripts/preview-synthetic.ps1` can start it on Windows without `virgo-stars` or copying production artwork. The manifest validator rejects missing rights metadata, hashes or file paths. **This gallery is an asset smoke test, not the separate Angular chart demo or an Astrolabio test.** No real PNGs have been transferred yet.
+The [local asset preview](LOCAL_ASSET_PREVIEW.md) provides a `/__preview` gallery served from a **manifest-verified, approved-only allowlist**. `scripts/preview-synthetic.ps1` starts it with locally generated placeholders; an authorized collaborator can also serve the separate private image pack. The manifest validator rejects missing rights metadata, hashes or file paths. **This gallery is an asset smoke test, not the separate Angular chart demo or an Astrolabio test.**

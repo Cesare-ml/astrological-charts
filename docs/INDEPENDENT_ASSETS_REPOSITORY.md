@@ -1,6 +1,6 @@
 # Scelta architetturale: archivio asset separato per collaboratori
 
-**Decisione in attuazione, non ancora applicata a VirgoStars:** il repository dedicato **[`Cesare-ml/astrological-assets`](https://github.com/Cesare-ml/astrological-assets)** è stato creato il 9 novembre 2026 ed è privato. La sua [PR #1](https://github.com/Cesare-ml/astrological-assets/pull/1) prepara il catalogo dei file e l'importazione controllata, ma **non contiene ancora i PNG/font originali**. La sorgente dei file in produzione resta `Cesare-ml/virgo-stars/public/assets`.
+**Decisione in attuazione, non ancora applicata a VirgoStars:** il repository dedicato **[`Cesare-ml/astrological-assets`](https://github.com/Cesare-ml/astrological-assets)** è privato e contiene immagini autorizzate dal proprietario per la collaborazione privata, con manifest SHA-256. Il font di origine dalla licenza sconosciuta non è incluso. La sorgente dei file in produzione resta `Cesare-ml/virgo-stars/public/assets`.
 
 Questa decisione nasce da un requisito concreto: un collaboratore che ha accesso solo a `astrological-charts` deve poter visualizzare i grafici correttamente, anche quando non può leggere `virgo-stars`.
 
@@ -28,7 +28,7 @@ astrological-charts/             # CODICE Angular + Three.js, zero immagini di p
 
 astrological-assets/             # Archivio privato, versione indipendente
   README.md
-  ASSET-LICENSES.md
+  catalog/approvals.json
   public/assets/
     img/
       simboli-bianchi/
@@ -38,7 +38,7 @@ astrological-assets/             # Archivio privato, versione indipendente
       risuonatore-solare-*.png  # Solo file con diritti verificati
     fonts/                      # Solo quelli realmente necessari ai renderer
   manifests/
-    charts-assets.json          # Metadati, mai dati utenti
+    approved-assets.json        # Metadati, mai dati utenti
 ```
 
 Non copiare l'intero `virgo-stars/public`: contiene anche risorse non pertinenti e potenzialmente materiali soggetti a diritti diversi. La proposta richiede un inventario e una revisione dei file selezionati prima del trasferimento. I nomi e le directory devono mantenere la stessa struttura dei riferimenti esistenti.
@@ -52,20 +52,19 @@ git clone https://github.com/Cesare-ml/astrological-charts.git
 git clone https://github.com/Cesare-ml/astrological-assets.git
 
 cd astrological-charts
-git switch feat/independent-assets-dev
-
-node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json
+npm ci
+npm run demo:assets:repo
 ```
 
 Il server restituisce gli asset su `http://127.0.0.1:4177/assets/...`, espone soltanto richieste GET/HEAD locali e limita gli origin dei browser. Nessun account AWS, endpoint backend, password o token è necessario.
 
-La futura demo Angular potrà usare:
+La demo Angular configura il server locale tramite:
 
 ```ts
 GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
 ```
 
-Questa impostazione va usata **solo** nella demo locale, non nel sito live. Il server non è un servizio di produzione né un CDN. La demo deve comunque essere implementata e testata.
+Questa impostazione va usata **solo** nella demo locale, non nel sito live. Il server non è un servizio di produzione né un CDN. La demo e i test sono descritti in [ANGULAR_DEMO.md](ANGULAR_DEMO.md).
 
 ## VirgoStars non deve caricare due copie
 
@@ -94,12 +93,12 @@ L'Astrolabio dovrà ottenere **una copia locale per dispositivo** del solo sotto
 
 Il repository `astrological-charts` contiene il **server di sviluppo locale** e test che permettono l'uso di una cartella di asset indipendente dal repository `virgo-stars`.
 
-Non sono stati creati il repository degli asset, una copia dei file grafici, il collegamento automatico della build VirgoStars, una demo Angular integrata o un CDN. La decisione di aprire pubblicamente qualsiasi repository rimane separata e richiede una revisione delle licenze.
+Sono disponibili il repository privato degli asset, un pacchetto di immagini autorizzate e una demo Angular. Non sono stati attivati il collegamento della build VirgoStars o un CDN. La decisione di aprire pubblicamente qualsiasi repository rimane separata e richiede una revisione delle licenze.
 
 ## Nota sui permessi di accesso
 
 Il repository è sotto un account GitHub personale; la documentazione ufficiale GitHub avverte che i collaboratori di repository privati personali possono ottenere accesso in scrittura anziché un ruolo strettamente read-only. Se è indispensabile la sola lettura, valutare una organizzazione GitHub con ruoli separati prima degli inviti. Non confondere repo **privato** con repo **sola lettura**.
 
-## Local proof of independent asset access (candidate PR)
+## Local proof of independent asset access
 
-While real artwork is still unapproved, `astrological-charts/scripts/preview-synthetic.ps1` creates 78 **original synthetic** PNGs in git-ignored `.local/` and serves them in a manifest-gated preview at `http://127.0.0.1:4177/__preview`. No VirgoStars repository access is needed. See [LOCAL_ASSET_PREVIEW.md](LOCAL_ASSET_PREVIEW.md). The actual Angular chart demo and production asset cutover are still pending.
+`astrological-charts/scripts/preview-synthetic.ps1` creates 78 **original synthetic** PNGs in git-ignored `.local/` and serves them in a manifest-gated preview at `http://127.0.0.1:4177/__preview`. The separate demo can also use the private approved pack without VirgoStars repository access. See [LOCAL_ASSET_PREVIEW.md](LOCAL_ASSET_PREVIEW.md). Production cutover remains pending.

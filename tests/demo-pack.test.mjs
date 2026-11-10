@@ -11,10 +11,11 @@ test('demo pack has independently generated, verified PNG, JPEG and WebP fixture
   const dir = mkdtempSync(join(tmpdir(), 'chart-demo-pack-'));
   try {
     const pack = await generateDemoPack(join(dir, 'pack'));
-    assert.equal(pack.manifest.assets.length, 392);
-    assert.equal(verifyApprovedAssetPack(pack.root, pack.manifest).count, 392);
+    assert.equal(pack.manifest.assets.length, 452);
+    assert.equal(verifyApprovedAssetPack(pack.root, pack.manifest).count, 452);
     for (const [path, format] of [
-      ['img/risuonatore-solare-bianco.png','png'],
+      ['img/risuonatore-solare-bn.png','png'],
+      ['img/symbols/planets/light/_circle/Sun.png','png'],
       ['img/textures/texture-oro-1.jpg','jpeg'],
       ['img/textures/texture-oro-3.webp','webp'],
     ]) {

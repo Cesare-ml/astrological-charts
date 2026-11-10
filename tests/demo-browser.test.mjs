@@ -23,7 +23,7 @@ function launchBrowser() {
 const skins = ['dark', 'dark-bn', 'light', 'light-bn', 'sun', 'astrolabio', 'astrolabio-girasole'];
 const modes = ['natal', 'transits', 'synastry', 'latitude'];
 
-test('synthetic Angular demo renders every chart and skin, exports PNG and reports missing assets', {timeout: 180000}, async () => {
+test('Angular demo renders every chart and skin, exports PNG and reports missing assets', {timeout: 180000}, async () => {
   mkdirSync(output, {recursive: true});
   const browser = await launchBrowser();
   const page = await browser.newPage({viewport: {width: 1200, height: 1000}, acceptDownloads: true});
@@ -155,6 +155,28 @@ test('render waits for a slow skin texture and reports its failure', {timeout: 6
     await page.route('**/assets/img/textures/texture-oro-3.webp', route => route.abort());
     assert.match(await page.evaluate(() => globalThis.runMissingTextureExport()), /texture-oro-3\.webp/);
   } finally { release(); await browser.close(); }
+});
+
+test('latitude charts with transits use the circular and ring assets for every skin', {timeout:90000}, async () => {
+  const bundle = await build({entryPoints:['tests/fixtures/latitude-transits-harness.ts'], bundle:true,
+    write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'), {timeout:30000});
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    for (const skin of skins) {
+      const png = await page.evaluate(value => globalThis.renderLatitudeTransits(value), skin);
+      assert.match(png, /^data:image\/png;base64,/, skin);
+      const image = Buffer.from(png.split(',')[1], 'base64');
+      assert.ok((await sharp(image).stats()).channels.some(channel => channel.stdev > 5), `${skin}: blank export`);
+    }
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
 });
 
 test('concurrent render and exports retain each canvas dimensions', {timeout: 90000}, async () => {
