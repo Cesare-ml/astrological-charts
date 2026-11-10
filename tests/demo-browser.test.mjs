@@ -219,16 +219,19 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
       (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'),
       null, {timeout:30000});
     await page.addScriptTag({content:bundle.outputFiles[0].text});
-    const {withSun, withoutSun, shiftedSun} = await page.evaluate(() => globalThis.runZeroLatitudeRenderProbe());
+    const {withSun, withoutSun, negativeZeroSun, shiftedSun} = await page.evaluate(() => globalThis.runZeroLatitudeRenderProbe());
     assert.match(withSun, /^data:image\/png;base64,/);
     assert.match(withoutSun, /^data:image\/png;base64,/);
+    assert.match(negativeZeroSun, /^data:image\/png;base64,/);
     assert.match(shiftedSun, /^data:image\/png;base64,/);
     const a = Buffer.from(withSun.split(',')[1], 'base64');
     const b = Buffer.from(withoutSun.split(',')[1], 'base64');
+    const z = Buffer.from(negativeZeroSun.split(',')[1], 'base64');
     const c = Buffer.from(shiftedSun.split(',')[1], 'base64');
-    const [first, second, shifted] = await Promise.all([
+    const [first, second, negativeZero, shifted] = await Promise.all([
       sharp(a).removeAlpha().raw().toBuffer({resolveWithObject:true}),
       sharp(b).removeAlpha().raw().toBuffer({resolveWithObject:true}),
+      sharp(z).removeAlpha().raw().toBuffer({resolveWithObject:true}),
       sharp(c).removeAlpha().raw().toBuffer({resolveWithObject:true}),
     ]);
     assert.equal(first.info.width, 400);
@@ -237,16 +240,22 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
       {width:second.info.width, height:second.info.height, channels:second.info.channels});
     assert.deepEqual({width:first.info.width, height:first.info.height, channels:first.info.channels},
       {width:shifted.info.width, height:shifted.info.height, channels:shifted.info.channels});
-    let changedChannels = 0, shiftedChannels = 0;
+    assert.deepEqual({width:first.info.width, height:first.info.height, channels:first.info.channels},
+      {width:negativeZero.info.width, height:negativeZero.info.height, channels:negativeZero.info.channels});
+    let changedChannels = 0, shiftedChannels = 0, negativeZeroDifferences = 0;
     for (let i = 0; i < first.data.length; i++) {
       if (Math.abs(first.data[i] - second.data[i]) > 2) changedChannels++;
       if (Math.abs(first.data[i] - shifted.data[i]) > 2) shiftedChannels++;
+      if (Math.abs(first.data[i] - negativeZero.data[i]) > 2) negativeZeroDifferences++;
     }
+    assert.ok(negativeZeroDifferences <= Math.ceil(first.data.length * 0.0001),
+      `positive and negative zero must render identically within pixel tolerance (different channels: ${negativeZeroDifferences})`);
     assert.ok(changedChannels > 30,
       `the zero-latitude Sun should appear in the real Three.js ring (changed channels: ${changedChannels})`);
     assert.ok(shiftedChannels > 30,
       `the zero-latitude Sun must move when latitude changes to +2° (changed channels: ${shiftedChannels})`);
     writeFileSync(join(output, 'latitude-zero-sun-enabled.png'), a);
+    writeFileSync(join(output, 'latitude-negative-zero-sun-enabled.png'), z);
     writeFileSync(join(output, 'latitude-zero-sun-disabled.png'), b);
     writeFileSync(join(output, 'latitude-positive-two-sun-enabled.png'), c);
   } finally {
