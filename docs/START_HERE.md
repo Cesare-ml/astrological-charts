@@ -112,6 +112,10 @@ change, expected behavior and whether it should work in PNG exports.
 - **Validation:** `npm run preflight`, `npm run build`, `npm run
   build:demo`, and browser screenshots when images are affected.
 
+If an automated PNG/JPEG command says port 4177 or 4200 is already
+in use, close the unrelated local server and try again. The exporter
+refuses to use an unknown asset pack or a different web app.
+
 If a command fails, copy the exact console error to your assistant
 rather than guessing or deleting repository files.
 
