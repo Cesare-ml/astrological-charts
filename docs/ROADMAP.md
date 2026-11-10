@@ -16,6 +16,10 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 - [x] Prepare CPAL-1.0 licensing and visible VirgoStars attribution in the current draft PR; maintainer legal review remains required.
 - [ ] Audit all public-facing documentation for accurate English wording, links, and release-status statements.
 - [ ] Verify external asset ownership, manifest, SHA-256 checksums and missing-resource behavior. Never copy unapproved images or fonts into this repository.
+  - Source of truth: `Cesare-ml/astrological-assets/manifests/approved-assets.json` (schema v1). Its `source.repository` describes asset provenance, **not** permission to publish those files.
+  - Review each selected asset's path, byte length, SHA-256 and permission basis; reject missing entries, mismatched bytes/hashes and unknown rights. Verify hashes against the **actual binary files** in a separately authorized checkout. Reading the JSON manifest alone is not a checksum validation.
+  - Keep the private asset checkout separate from the public renderer. Never commit copied PNGs, fonts, manifest-derived private inventories or personal data here. Use generated synthetic assets for public examples and tests.
+  - Record the checked asset repository revision, manifest revision, verification command, results and any unresolved permissions in the release review; do not mark this item complete from source inspection alone.
 - [ ] Run a clean-checkout build and browser tests on Windows and at least one other platform.
 - [ ] Obtain maintainer sign-off on every item in the [release checklist](PUBLIC_RELEASE_CHECKLIST.md).
 
