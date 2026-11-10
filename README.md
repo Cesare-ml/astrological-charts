@@ -8,8 +8,6 @@ Private collaborative **Angular 20 / TypeScript / Three.js** library extracted f
 
 Invite known contributors to develop the astrological renderer using Codex, Claude Code and other AI tools. Angular is the official framework; rewriting for React/Vue or an agnostic core is not a current goal.
 
-Source repository: `Cesare-ml/virgo-stars`, subtree `shared/grafici-astrologici/`. Live VirgoStars and Astrolabio continue to use that original source until separately approved.
-
 ## Current capability
 
 The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
