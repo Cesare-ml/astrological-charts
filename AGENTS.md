@@ -1,5 +1,7 @@
 # Astrological Charts — instructions for AI coding agents
 
+Read the [milestone roadmap](docs/ROADMAP.md) and check existing draft PRs before selecting work. Public-release tasks must pass the [release checklist](docs/PUBLIC_RELEASE_CHECKLIST.md).
+
 ## Mission and scope
 
 Develop only the Angular/Three.js astrological chart rendering library. Preserve its visual geometry, compatibility with VirgoStars and Astrolabio, and contributor freedom to propose improvements. A framework-agnostic rewrite is not requested.
