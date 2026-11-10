@@ -51,3 +51,26 @@ test('CLI rejects malformed precomputed JSON before starting local web services'
     }
   }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('validate-only accepts complete charts without npm, browser or output image', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'virgostars-valid-chart-'));
+  try {
+    const input = join(dir, 'chart.json');
+    const output = join(dir, 'should-not-exist.png');
+    await writeFile(input, JSON.stringify({schemaVersion: 1, natal}));
+    const {stdout} = await execFileAsync(process.execPath, [
+      cli, '--input', input, '--validate-only', '--output', output,
+    ], {cwd: root});
+    assert.match(stdout, /Valid chart JSON v1/);
+    assert.match(stdout, /No browser started/);
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        cli, '--input', input, '--validate-only', '--mode', 'transits',
+      ], {cwd: root}), /transits data is required/);
+    const {access} = await import('node:fs/promises');
+    await assert.rejects(access(output), /ENOENT/,
+      'validate-only must never generate or overwrite a chart image');
+  } finally {
+    await rm(dir, {recursive: true, force: true});
+  }
+});
