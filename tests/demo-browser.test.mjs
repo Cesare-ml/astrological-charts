@@ -217,7 +217,7 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     await page.goto('http://127.0.0.1:4200/');
     await page.waitForFunction(() =>
       (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'),
-      {timeout:30000});
+      null, {timeout:30000});
     await page.addScriptTag({content:bundle.outputFiles[0].text});
     const {withSun, withoutSun} = await page.evaluate(() => globalThis.runZeroLatitudeRenderProbe());
     assert.match(withSun, /^data:image\/png;base64,/);
