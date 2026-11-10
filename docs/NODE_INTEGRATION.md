@@ -142,6 +142,35 @@ The **format is shared**, not Python-specific. A real transit or
 synastry chart requires complete second-chart input. The adapter
 validates the data and does not silently invent missing positions.
 
+## Real-browser verification before integration
+
+After `npm ci`, run this **manually** with Chrome/Chromium and
+working local WebGL:
+
+```sh
+npm run test:render-bridge
+```
+
+This test uses **invented** natal and transit positions and only
+generated checkerboard graphics. It calls the public Node.js
+`renderChart()` API, starts the existing local Angular/Three.js
+renderer, exports a **1600×1600 PNG (natal/light)** and a
+**1600×1600 JPEG (transits/dark)**, then verifies their actual formats
+and nonblank pixel variation with `sharp`. The files are kept in a
+temporary test directory and removed on completion.
+
+The headless exporter waits for a newly completed Angular draw when
+JSON is imported or the chart mode/skin changes, using a revision and
+the completed mode/skin from the demo rather than trusting an old
+"Rendered" message. Import failures terminate the export with an error.
+
+This test is intentionally **not part of `npm run preflight`**:
+it requires a browser and WebGL and is different from the lightweight
+Node.js unit tests. A passing synthetic test does not prove visual
+parity with original VirgoStars artwork or compatibility with the
+Astrolabio's offline Firefox/e-ink adapter. Record the OS, browser
+version and result in the review PR.
+
 ## Production-oriented design
 
 This draft helper is suited to a **developer workstation or offline
