@@ -161,6 +161,22 @@ The bridge now waits for the selected mode and skin to finish rendering,
 not just for any previous chart to report completion. This test is
 manual and is not a production/Astrolabio certification.
 
+## Check Python-generated charts without Chrome
+
+If a Python script has written `computed-chart.json`, Node.js can
+validate it before any browser or graphics dependencies are installed:
+
+```sh
+node scripts/render-chart.mjs --input computed-chart.json --validate-only
+```
+
+For a transit chart, append `--mode transits`; it rejects the file
+unless the complete second chart is supplied. The command makes no
+PNG/JPEG output and does not perform astronomy. The actual Python
+render wrapper still requires `npm ci`, Chrome/Chromium and WebGL.
+The browser-free CLI and malformed-option behavior is covered by
+`npm run test:chart-cli-validation`.
+
 ## Early error reporting for Python callers
 
 The CLI imports the browser dependencies only **after** validating
