@@ -68,6 +68,10 @@ async function verifyImage(path, extension) {
 }
 
 export async function renderChartFile(input, output, options = {}) {
+  buildRenderArgs(input, output, options);
+  if (resolve(input) === resolve(output)) {
+    throw new TypeError('Input JSON and output image must use different file paths.');
+  }
   const target = resolve(output);
   const ext = extname(target).toLowerCase();
   const timeoutMs = options.timeoutMs ?? 180_000;
@@ -76,7 +80,6 @@ export async function renderChartFile(input, output, options = {}) {
   }
   // Stage next to the final image; a failed process cannot overwrite
   // the user's existing chart or claim success without creating a file.
-  buildRenderArgs(input, output, options);
   await mkdir(dirname(target), { recursive: true });
   const stageDir = await mkdtemp(join(dirname(target), '.virgostars-chart-'));
   const stageFile = join(stageDir, 'rendered' + ext);
