@@ -23,6 +23,20 @@ test('Node argument formatting preserves mode, skin and image path', () => {
     buildRenderArgs('chart.json', 'out.png', { mode: 'transits', skin: 'light' }),
     ['--input', resolve('chart.json'), '--output', resolve('out.png'),
       '--mode', 'transits', '--skin', 'light']);
+  const externalArgs = buildRenderArgs('chart.json', 'private.png', {
+    assetRoot: '../astrological-assets/public/assets',
+    assetManifest: '../astrological-assets/manifests/approved-assets.json',
+  });
+  assert.deepEqual(externalArgs.slice(-4), [
+    '--assets-root', resolve('../astrological-assets/public/assets'),
+    '--assets-manifest', resolve('../astrological-assets/manifests/approved-assets.json'),
+  ]);
+  assert.throws(() => buildRenderArgs('chart.json', 'private.png',
+    {assetRoot: '../astrological-assets/public/assets'}), /provided together/);
+  assert.throws(() => buildRenderArgs('chart.json', 'private.png',
+    {assetManifest: '../astrological-assets/manifests/approved-assets.json'}), /provided together/);
+  assert.throws(() => buildRenderArgs('chart.json', 'private.png',
+    {assetRoot: '', assetManifest: 'manifest.json'}), /non-empty paths/);
   assert.throws(() => buildRenderArgs('data.json', 'test.svg'), /png, .jpg or .jpeg/);
   assert.throws(() => buildRenderArgs('data.json', 'test.png', { mode: 'not-a-mode' }), /Invalid mode/);
 });
