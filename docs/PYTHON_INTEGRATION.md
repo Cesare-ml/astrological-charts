@@ -1,5 +1,11 @@
 # Use Astrological Charts from Python — PNG and JPEG
 
+This is **one of several supported development entry points**.
+If you use JavaScript/Node.js instead, see
+[Node.js integration](NODE_INTEGRATION.md) and
+`node examples/node/example.mjs`. Both languages use the same JSON v1
+contract and the same chart renderer.
+
 You **do not need to learn Angular or TypeScript** to generate an image.
 Your Python code calculates (or reads) positions and twelve house cusps,
 and Astrological Charts uses the real Angular/Three.js renderer to draw
