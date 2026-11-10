@@ -9,7 +9,7 @@
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,17 +45,60 @@ export function buildRenderArgs(input, output, { mode, skin } = {}) {
  * The internal `rendererScript` override is for isolated offline tests.
  * Do not pass arbitrary scripts or untrusted option objects.
  */
+async function verifyImage(path, extension) {
+  let details;
+  try { details = await stat(path); }
+  catch { throw new Error('The chart renderer finished without creating an image file.'); }
+  if (!details.isFile() || details.size < 32) {
+    throw new Error('The chart renderer created an empty or incomplete image.');
+  }
+  const handle = await open(path, 'r');
+  const signature = Buffer.alloc(8);
+  try {
+    const { bytesRead } = await handle.read(signature, 0, signature.length, 0);
+    if (bytesRead !== signature.length) throw new Error('The chart image is truncated.');
+    const png = signature.equals(Buffer.from('89504e470d0a1a0a', 'hex'));
+    const jpeg = signature[0] === 0xff && signature[1] === 0xd8 && signature[2] === 0xff;
+    if (extension === '.png' ? !png : !jpeg) {
+      throw new Error('The chart renderer did not produce the requested PNG/JPEG format.');
+    }
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function renderChartFile(input, output, options = {}) {
-  const args = buildRenderArgs(String(input), String(output), options);
+  const target = resolve(output);
+  const ext = extname(target).toLowerCase();
+  const timeoutMs = options.timeoutMs ?? 180_000;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 600_000) {
+    throw new TypeError('timeoutMs must be an integer from 100 to 600000 milliseconds.');
+  }
+  // Stage next to the final image; a failed process cannot overwrite
+  // the user's existing chart or claim success without creating a file.
+  buildRenderArgs(input, output, options);
+  await mkdir(dirname(target), { recursive: true });
+  const stageDir = await mkdtemp(join(dirname(target), '.virgostars-chart-'));
+  const stageFile = join(stageDir, 'rendered' + ext);
   const script = options.rendererScript ?? defaultRunner;
-  const { stdout, stderr } = await execFileAsync(process.execPath, [script, ...args], {
-    cwd: projectRoot,
-    windowsHide: true,
-    maxBuffer: 8 * 1024 * 1024,
-  });
-  if (stdout) process.stdout.write(stdout);
-  if (stderr) process.stderr.write(stderr);
-  return resolve(String(output));
+  try {
+    const args = buildRenderArgs(input, stageFile, options);
+    const { stdout, stderr } = await execFileAsync(process.execPath, [script, ...args], {
+      cwd: projectRoot,
+      windowsHide: true,
+      timeout: timeoutMs,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    if (stdout) process.stdout.write(stdout);
+    if (stderr) process.stderr.write(stderr);
+    // Validate basic file format; the actual Chromium CLI validates image
+    // metadata with sharp before returning.
+    await verifyImage(stageFile, ext);
+    await rename(stageFile, target);
+    return target;
+  } finally {
+    await rm(stageDir, { recursive: true, force: true });
+  }
 }
 
 /**
