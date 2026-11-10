@@ -51,6 +51,18 @@
       on port 4200 cannot pass the mounted-control readiness gate.
       Confirm the CLI identifies missing `#chart-file` instead of
       timing out on upload, then rerun against the current demo.
+- [ ] Run `npm run test:approved-render-assets` and the optional
+      Python `python -m unittest discover -s tests -p
+      'python_render_options_test.py'`. Verify paired-path
+      failure behavior, corrupted bytes and rejection of synthetic
+      manifest identity in external mode.
+- [ ] With a locally authorized separate `astrological-assets`
+      checkout, test `node examples/node/example.mjs --approved-assets`
+      using actual binary hashes and manually compare the real
+      planet/zodiac glyphs to the synthetic placeholders. Do not
+      commit output images or asset inventories. Confirm occupied
+      port 4177 causes a clean error, no fallback to production
+      URLs and cleanup of **only owned** services.
 - [ ] Run `npm run test:render-bridge` with a real Chrome/Chromium
       browser and working WebGL; confirm the natal/light PNG and
       transits/dark JPEG are both 1600×1600 and nonblank. This is
