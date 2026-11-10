@@ -80,6 +80,12 @@ no npm package export is declared yet. Check the declarations locally with
 
 ### Fail-fast chart validation
 
+The CLI now loads Playwright and Sharp **lazily after**
+parsing and validating the JSON input. Consequently `--help` and
+malformed-input diagnostics do not depend on having run `npm ci`.
+Successful rendering still requires the installed dependencies,
+Chrome/Chromium and WebGL.
+
 The Node API validates the complete precomputed JSON v1 shape before
 writing its temporary JSON file. The standalone CLI (also used by the
 Python wrapper) checks the input file's byte size, JSON syntax, chart
@@ -98,7 +104,8 @@ The browser parser still normalizes longitude into 0–360 degrees.
 `scripts/validate-chart-input.mjs` is deliberately a **shape validator
 only**, not a second astronomical engine. Keep it aligned with the
 actual Angular parser `demo/chart-input.ts` through
-`npm run test:chart-input` and `npm run test:validate-chart-input`.
+`npm run test:chart-input`, `npm run test:validate-chart-input` and
+`npm run test:chart-cli-validation`.
 It does not establish a versioned general-purpose schema library
 or replace the browser's own checks.
 
