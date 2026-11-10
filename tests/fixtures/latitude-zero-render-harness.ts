@@ -24,9 +24,11 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
     // Control: the identical body at a different valid latitude must move
     // rather than being silently omitted by the renderer.
     opts.settaggi.elementi_celesti.Sun.att = true;
+    theme.planets.Sun.latitude = -0;
+    const negativeZeroSun = await render();
     theme.planets.Sun.latitude = 2;
     const shiftedSun = await render();
-    return { withSun, withoutSun, shiftedSun };
+    return { withSun, withoutSun, negativeZeroSun, shiftedSun };
   } finally {
     renderer.ngOnDestroy();
   }
