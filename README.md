@@ -66,6 +66,14 @@ before deploying it as a backend service.
 
 ## Draw from Python — PNG or JPEG
 
+The Node.js API and the JSON CLI used by Python now validate
+`schemaVersion: 1` chart structure **before launching a browser**:
+a nonempty date label, ascendant/MC, exactly 12 house cusps, at least
+one planet with finite longitude, latitude bounds and complete second
+chart input for transits/synastry. The numeric positions remain
+unaltered by prevalidation. Use `npm run test:validate-chart-input`
+for the isolated validation tests.
+
 The renderer **does not compute planetary positions**. Feed it
 precomputed longitude/latitude coordinates, angles and house cusps
 from Python (or another language) and it produces a graphic with the
@@ -150,6 +158,7 @@ without approval.**
 After `npm ci`, useful manual checks are:
 
 ```sh
+npm run test:validate-chart-input
 npm run test:chart-input
 npm run test:node-adapter
 npm run test:node-concurrency
