@@ -176,10 +176,14 @@ test('render waits for a slow skin texture and reports its failure', {timeout: 6
     await page.selectOption('#skin','sun');
     await hit;
     await page.waitForTimeout(500);
+    assert.equal(await page.locator('.stage').getAttribute('aria-busy'), 'true',
+      'the canvas region must remain busy while a texture is pending');
     assert.match(await page.locator('[data-testid=status]').textContent(), /Rendering/, 'must not report completion before texture load');
     release();
     await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout:30000});
     assert.match(await page.locator('[data-testid=status]').textContent(), /texture-oro-3\.webp/);
+    assert.equal(await page.locator('.stage').getAttribute('aria-busy'), 'false',
+      'the canvas region must clear busy state after a failed texture load');
     await page.unroute('**/assets/img/textures/texture-oro-3.webp');
     await page.selectOption('#skin','light');
     await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'), {timeout:30000});
