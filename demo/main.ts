@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Cesare-ml (VirgoStars project). CPAL-1.0; see ../LICENSE. */
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, ViewChild, inject, provideZonelessChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
@@ -12,7 +13,8 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
   template: `
   <main>
     <header><div><p class="eyebrow">ASTROLOGICAL CHARTS · DEVELOPMENT</p><h1>Renderer laboratory</h1>
-      <p>Deterministic synthetic chart data · no account or backend</p></div><span class="version">Library 0.0.1</span></header>
+      <p>Deterministic synthetic chart data · no account or backend</p>
+      <p class="muted">Powered by <a href="https://www.virgostars.it/" target="_blank" rel="noopener noreferrer">VirgoStars</a></p></div><span class="version">Library 0.0.1</span></header>
     <section class="workspace">
       <aside>
         <label for="mode">Chart</label>
@@ -56,8 +58,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
   sourceLabel = 'Illustrative synthetic fixture';
   private radix = makeDemoTheme(0);
-  private transit = makeDemoTheme(24);
-  private synastry = makeDemoTheme(71);
+  private transit: ReturnType<typeof makeDemoTheme> | null = makeDemoTheme(24);
+  private synastry: ReturnType<typeof makeDemoTheme> | null = makeDemoTheme(71);
 
   ngAfterViewInit(): void {
     try {
