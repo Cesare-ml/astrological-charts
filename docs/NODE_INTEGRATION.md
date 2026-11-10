@@ -235,6 +235,13 @@ continues after one request fails, without losing or fabricating any
 other request's chart output. Input data remain separate, and a
 failed render cannot replace an existing image.
 
+The queue slot is reserved **before** asynchronous file reads or
+temporary JSON creation. Consequently, mixed `renderChart()` and
+`renderChartFile()` calls within one process retain submission order
+even when filesystem calls take different amounts of time. Both APIs
+use a private in-queue operation: a queued task must **not** invoke
+another public queued method, because that would self-deadlock.
+
 ```javascript
 import { renderChart } from './node/index.mjs';
 
