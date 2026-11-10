@@ -13,6 +13,8 @@ aside label { display: block; font-weight: 650; margin: 12px 0 6px; }
 select, input, button { font: inherit; color: inherit; background: #282c3b; border: 1px solid #424759; border-radius: 8px; padding: 10px; }
 select, input { width: 100%; }
 button { cursor: pointer; } button:disabled { opacity: .55; cursor: wait; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid #dbcaff; outline-offset: 3px; }
+footer a { color: #dbcaff; text-underline-offset: 3px; }
 .buttons { display: flex; gap: 8px; margin: 20px 0 28px; }
 .buttons button { flex: 1; } .buttons .primary { flex: 3; color: #171322; background: #bfabff; border-color: #bfabff; font-weight: 700; }
 h2 { font-size: 16px; margin: 0; } .muted, footer { color: #a3a8b8; font-size: 13px; }

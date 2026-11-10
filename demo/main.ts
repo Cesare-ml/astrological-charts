@@ -25,17 +25,18 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         </select>
         <div class="buttons"><button (click)="zoom(-1)" [disabled]="busy" aria-label="Zoom out">−</button>
           <button (click)="zoom(1)" [disabled]="busy" aria-label="Zoom in">+</button>
+          <button (click)="resetZoom()" [disabled]="busy" aria-label="Reset zoom" title="Reset zoom to 100%">Reset</button>
           <button class="primary" (click)="exportPng()" [disabled]="busy">Export PNG</button></div>
         <h2>Asset diagnostics</h2>
         <p class="muted">The included local server validates its manifest before serving assets. Placeholders are not the original artwork.</p>
         <label for="base">Asset base URL</label>
         <input id="base" [value]="assetBase" (change)="changeBase($event)" [disabled]="busy">
         <p class="muted">Manifest: {{manifestLabel}}</p>
-        <p class="status" [class.error]="error" role="status" data-testid="status">{{error || status}}</p>
+        <p class="status" [class.error]="error" [attr.role]="error ? 'alert' : 'status'" aria-atomic="true" data-testid="status">{{error || status}}</p>
       </aside>
-      <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart"></canvas></section>
+      <section class="stage" aria-label="Chart canvas" [attr.aria-busy]="busy"><canvas #canvas data-testid="chart" role="img" [attr.aria-label]="chartDescription">Synthetic chart preview.</canvas></section>
     </section>
-    <footer>Fixture positions are illustrative; they are not astronomical calculations. Synthetic assets do not establish visual fidelity.</footer>
+    <footer>Fixture positions are illustrative; they are not astronomical calculations. Synthetic assets do not establish visual fidelity. Renderer credits: <a href="https://github.com/Cesare-ml/virgo-stars" rel="noopener noreferrer">VirgoStars</a>.</footer>
   </main>`
 })
 class DemoComponent implements AfterViewInit, OnDestroy {
@@ -48,6 +49,9 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   busy = false;
   status = 'Preparing renderer…';
   error = '';
+  get chartDescription(): string {
+    return `Synthetic ${this.mode} astrological chart using the ${this.skin} skin. Illustrative positions; not astronomical calculations.`;
+  }
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
   private readonly radix = makeDemoTheme(0);
@@ -69,6 +73,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     catch (error) { this.showError(error); }
   }
   zoom(direction: number): void { direction > 0 ? this.renderer.zoomIn(0.15) : this.renderer.zoomOut(0.15); }
+  resetZoom(): void { this.renderer.setZoom(1); }
   private options(): any {
     const opts = structuredClone(defaultOpzioniGrafico) as any;
     opts.settaggi.skin_id = this.skin;

@@ -57,10 +57,45 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
   try {
     await page.goto('http://127.0.0.1:4200/', {waitUntil: 'domcontentloaded'});
     await ready();
+    assert.equal(await page.getByRole('img', {name: /Synthetic natal astrological chart using the light skin/}).count(), 1,
+      'the WebGL canvas should have an accessible synthetic-chart description');
+    assert.equal(await page.getByRole('link', {name: 'VirgoStars'}).getAttribute('href'),
+      'https://github.com/Cesare-ml/virgo-stars', 'the renderer must retain visible VirgoStars credits');
+    assert.equal(await page.locator('[data-testid=status]').getAttribute('role'), 'status');
+    // Verify actual keyboard navigation and computed focus styling, not only CSS text.
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'mode',
+      'first Tab should focus the chart mode selector');
+    const focusOutline = await page.locator('#mode').evaluate(element => {
+      const style = getComputedStyle(element);
+      return {width: parseFloat(style.outlineWidth), style: style.outlineStyle};
+    });
+    assert.ok(focusOutline.width >= 3 && focusOutline.style !== 'none',
+      `keyboard focus outline must be visible: ${JSON.stringify(focusOutline)}`);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'skin',
+      'second Tab should focus the skin selector');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Zoom out');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Zoom in');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Reset zoom',
+      'the zoom reset must be keyboard accessible');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Export PNG');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'base');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'VirgoStars',
+      'the project credit should be reachable by keyboard');
     for (const mode of modes) {
       await page.selectOption('#mode', mode); await ready();
       for (const skin of skins) {
         await page.selectOption('#skin', skin); await ready();
+        assert.equal(await page.locator('canvas').getAttribute('aria-label'),
+          `Synthetic ${mode} astrological chart using the ${skin} skin. Illustrative positions; not astronomical calculations.`,
+          `${mode}/${skin}: accessible canvas description is stale`);
         const screenshot = await page.locator('canvas').screenshot({path: join(output, `${mode}-${skin}.png`)});
         const pixels = await sharp(screenshot).removeAlpha().raw().toBuffer();
         imageHashes.set(`${mode}/${skin}`, createHash('sha256').update(pixels).digest('hex'));
@@ -97,6 +132,17 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
     await page.getByRole('button', {name:'Zoom in'}).click();
     const afterZoom = await page.locator('canvas').screenshot();
     assert.notDeepEqual(beforeZoom, afterZoom, 'zoom should change the chart');
+    await page.getByRole('button', {name:'Reset zoom'}).click();
+    const restoredZoom = await page.locator('canvas').screenshot();
+    const originalPixels = await sharp(beforeZoom).removeAlpha().raw().toBuffer();
+    const restoredPixels = await sharp(restoredZoom).removeAlpha().raw().toBuffer();
+    assert.equal(restoredPixels.length, originalPixels.length, 'reset zoom changed canvas dimensions');
+    let resetDifferences = 0;
+    for (let i = 0; i < restoredPixels.length; i++) {
+      if (Math.abs(restoredPixels[i] - originalPixels[i]) > 2) resetDifferences++;
+    }
+    assert.ok(resetDifferences <= Math.ceil(originalPixels.length * 0.0001),
+      `reset zoom must recover the original chart view (${resetDifferences} differing channels)`);
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', {name:'Export PNG'}).click()]);
     const png = join(output, 'export.png'); await download.saveAs(png);
     const metadata = await sharp(png).metadata();
@@ -121,6 +167,8 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
     await missingPage.goto('http://127.0.0.1:4200/');
     await missingPage.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout: 30000});
     assert.match(await missingPage.locator('[data-testid=status]').textContent(), /simboli-bianchi\/segni\/01\.png/);
+    assert.equal(await missingPage.locator('[data-testid=status]').getAttribute('role'), 'alert',
+      'asset errors should be announced to assistive technology');
     await missingPage.close();
     console.log(`28 chart/skin combinations repeated twice, PNG export and mobile viewport checked in ${Math.round(performance.now()-started)} ms.`);
   } finally { await browser.close(); }
@@ -142,10 +190,14 @@ test('render waits for a slow skin texture and reports its failure', {timeout: 6
     await page.selectOption('#skin','sun');
     await hit;
     await page.waitForTimeout(500);
+    assert.equal(await page.locator('.stage').getAttribute('aria-busy'), 'true',
+      'the canvas region must remain busy while a texture is pending');
     assert.match(await page.locator('[data-testid=status]').textContent(), /Rendering/, 'must not report completion before texture load');
     release();
     await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout:30000});
     assert.match(await page.locator('[data-testid=status]').textContent(), /texture-oro-3\.webp/);
+    assert.equal(await page.locator('.stage').getAttribute('aria-busy'), 'false',
+      'the canvas region must clear busy state after a failed texture load');
     await page.unroute('**/assets/img/textures/texture-oro-3.webp');
     await page.selectOption('#skin','light');
     await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'), {timeout:30000});
