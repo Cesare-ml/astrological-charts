@@ -332,13 +332,24 @@ working local WebGL:
 npm run test:render-bridge
 ```
 
-This test uses **invented** natal and transit positions and only
-generated checkerboard graphics. It calls the public Node.js
-`renderChart()` API, starts the existing local Angular/Three.js
-renderer, exports a **1600×1600 PNG (natal/light)** and a
-**1600×1600 JPEG (transits/dark)**, then verifies their actual formats
-and nonblank pixel variation with `sharp`. The files are kept in a
-temporary test directory and removed on completion.
+This test uses **invented** natal, transit and synastry positions,
+including exactly zero and nonzero positive/negative latitude, and
+only generated checkerboard graphics. It calls the public Node.js
+`renderChart()` API and exercises **all four render modes**:
+natal/light PNG, transits/dark JPEG, synastry/light PNG and
+latitude/dark PNG. Every export must be 1600×1600, nonblank and
+match the requested file format. The natal/light and synastry/light
+decoded pixel hashes must differ so the second chart cannot be
+silently ignored. The temporary outputs are removed after the test.
+
+Every headless export also monitors asset requests to the local
+`127.0.0.1:4177` server. A missing image (HTTP 404), modified image
+(HTTP 409), or failed local asset request now rejects the export
+before publishing its PNG/JPEG. Diagnostics list only affected
+`/assets/...` paths, never private natal input data. This also
+catches a situation where the manifest itself is valid but a
+particular mode or skin references an asset it does not contain.
+Use `npm run test:chart-asset-request-audit` for browser-free checks.
 
 The headless exporter waits for a newly completed Angular draw when
 JSON is imported or the chart mode/skin changes, using a revision and
