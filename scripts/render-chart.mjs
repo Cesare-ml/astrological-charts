@@ -20,6 +20,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 function usage() {
   console.log('Usage: node scripts/render-chart.mjs --input chart.json --output chart.png [--mode natal|transits|synastry|latitude] [--skin light|dark|...]');
+  console.log('       node scripts/render-chart.mjs --input chart.json --validate-only [--mode natal|transits|synastry|latitude]');
+
   console.log('Requires Node dependencies (npm ci), Chrome/Chromium and local WebGL support.');
 }
 
@@ -27,17 +29,29 @@ function args(argv) {
   const opts = {};
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--help' || argv[i] === '-h') { usage(); process.exit(0); }
+    if (argv[i] === '--validate-only') {
+      if (opts.validateOnly) throw new Error('Duplicate --validate-only argument.');
+      opts.validateOnly = true;
+      continue;
+    }
     if (!['--input', '--output', '--skin', '--mode'].includes(argv[i]) || !argv[i + 1]) {
       throw new Error(`Unknown/missing argument: ${argv[i]}. Run with --help.`);
     }
     opts[argv[i].slice(2)] = argv[++i];
   }
-  if (!opts.input || !opts.output) throw new Error('Provide --input and --output. See --help.');
+  if (!opts.input || (!opts.output && !opts.validateOnly)) {
+    throw new Error('Provide --input and --output, or --validate-only. See --help.');
+  }
   opts.input = resolve(process.cwd(), opts.input);
-  opts.output = resolve(process.cwd(), opts.output);
+  if (opts.output) opts.output = resolve(process.cwd(), opts.output);
   if (!existsSync(opts.input)) throw new Error(`Input file not found: ${opts.input}`);
-  const format = extname(opts.output).toLowerCase();
-  if (!['.png', '.jpg', '.jpeg'].includes(format)) throw new Error('Output extension must be .png, .jpg or .jpeg.');
+  const format = opts.output ? extname(opts.output).toLowerCase() : null;
+  if (!opts.validateOnly && !['.png', '.jpg', '.jpeg'].includes(format)) {
+    throw new Error('Output extension must be .png, .jpg or .jpeg.');
+  }
+  if (opts.validateOnly && opts.output && !['.png', '.jpg', '.jpeg'].includes(format)) {
+    throw new Error('Output extension must be .png, .jpg or .jpeg.');
+  }
   if (opts.mode && !['natal', 'transits', 'synastry', 'latitude'].includes(opts.mode)) {
     throw new Error('Invalid --mode; choose natal, transits, synastry or latitude.');
   }
@@ -123,6 +137,11 @@ function chromeExecutable(chromium) {
 
 async function main() {
   const opts = args(process.argv.slice(2));
+  if (opts.validateOnly) {
+    console.log('Valid chart JSON v1: precomputed coordinates, houses and requested mode accepted.');
+    console.log('No browser started. No ephemerides or other astronomy calculations were performed.');
+    return;
+  }
   if (!existsSync(join(root, 'node_modules', '@angular', 'cli', 'bin', 'ng.js'))) {
     throw new Error('Dependencies missing. Run "npm ci" in the astrological-charts directory first.');
   }
