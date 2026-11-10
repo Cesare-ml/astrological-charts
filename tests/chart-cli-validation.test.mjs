@@ -74,3 +74,19 @@ test('validate-only accepts complete charts without npm, browser or output image
     await rm(dir, {recursive: true, force: true});
   }
 });
+
+test('CLI rejects missing option values and duplicate flags without attempting rendering', async () => {
+  const options = [
+    ['--input', '--validate-only'],
+    ['--input', 'x.json', '--mode', '--validate-only'],
+    ['--input', 'x.json', '--input', 'y.json', '--validate-only'],
+    ['--input', 'x.json', '--validate-only', '--validate-only'],
+    ['--validate-only', '--output', '--mode'],
+  ];
+  for (const args of options) {
+    await assert.rejects(
+      execFileAsync(process.execPath, [cli, ...args], {cwd: root}),
+      /Unknown, duplicate or missing argument|Duplicate --validate-only/,
+      'invalid command-line options must fail before checking filesystem');
+  }
+});
