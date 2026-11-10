@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
+import { validateChartPayloadV1 } from '../scripts/validate-chart-input.mjs';
 
 // Compile the actual checked-in TypeScript parser, not a reimplementation.
 const tsSource = readFileSync(new URL('../demo/chart-input.ts', import.meta.url), 'utf8');
@@ -60,4 +61,28 @@ test('invalid fields fail explicitly, including malformed houses and nonfinite c
   assert.throws(() => parseChartPayload({ schemaVersion: 1, natal: {
     ...chart(), planets: {},
   }}), /at least one/);
+});
+
+test('CLI prevalidation and Angular parser agree on shared JSON v1 fixtures',()=>{
+  const cases=[
+    [{schemaVersion:1,natal:chart()},true],
+    [{schemaVersion:1,natal:chart(),mode:'latitude'},true],
+    [{schemaVersion:1,natal:chart(),mode:'transits',transits:chart()},true],
+    [{schemaVersion:1,natal:chart(),mode:'synastry',synastry:chart()},true],
+    [{schemaVersion:1,natal:chart(),mode:'transits'},false],
+    [{schemaVersion:1,natal:chart(),mode:'synastry'},false],
+    [{schemaVersion:1,natal:{...chart(),datetime:''}},false],
+    [{schemaVersion:1,natal:{...chart(),houseCusps:[12]}},false],
+    [{schemaVersion:1,natal:{...chart(),planets:{Sun:{longitude:12,latitude:-91}}}},false],
+    [{schemaVersion:1,natal:{...chart(),planets:{Sun:{longitude:NaN}}}},false],
+    [{schemaVersion:1,natal:{...chart(),australInversion:'yes'}},false],
+    [{schemaVersion:1,natal:chart(),skin:'  '},false],
+    [{schemaVersion:1,natal:chart(),mode:'unknown'},false],
+  ];
+  for(const [input,expected] of cases){
+    const clientValid=(()=>{try{parseChartPayload(input);return true;}catch{return false;}})();
+    const serverValid=(()=>{try{validateChartPayloadV1(input);return true;}catch{return false;}})();
+    assert.equal(clientValid,expected,'Angular accepted an unexpected fixture');
+    assert.equal(serverValid,clientValid,'Node prevalidation and Angular parser diverged');
+  }
 });
