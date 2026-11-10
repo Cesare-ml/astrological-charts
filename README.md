@@ -154,6 +154,12 @@ npm run build
 npm run build:demo
 ```
 
+For an **opt-in integration test with actual Chrome/WebGL**,
+run `npm run test:render-bridge`. It launches the Node adapter with
+invented chart positions, exports PNG/JPEG and checks image dimensions
+and pixel variation. This test is not included in `preflight` because
+it requires a real graphical browser runtime.
+
 Browser visual tests require the two local servers and Chrome/Firefox
 as explained in [the demo guide](docs/ANGULAR_DEMO.md).
 A successful compilation alone is **not** proof of the same pixels
