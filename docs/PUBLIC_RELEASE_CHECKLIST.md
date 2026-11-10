@@ -35,6 +35,13 @@ release host artwork until each gate below has been reviewed.
       Node.js-to-JSON-to-PNG example, and the Python-to-JSON-to-PNG
       example using the real demo,
       then verify the output dimensions and JPEG conversion.
+- [ ] Verify `node scripts/render-chart.mjs --input valid-chart.json
+      --validate-only` works without Chrome or npm-installed graphics
+      dependencies; ensure it produces no image and rejects incomplete
+      mode overrides and duplicate/missing flags.
+- [ ] Verify direct `renderChartFile()` calls reject malformed and
+      oversized JSON **before** creating output folders or spawning
+      the renderer; preserve existing images on failures.
 - [ ] Run `npm run test:validate-chart-input`,
       `npm run test:chart-cli-validation` and
       `npm run test:chart-input` to verify matching Node/Python
