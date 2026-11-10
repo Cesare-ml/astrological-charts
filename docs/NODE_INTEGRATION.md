@@ -1,0 +1,121 @@
+# Node.js integration — Angular frontend, custom scripts and Astrolabio
+
+Astrological Charts is a **single chart-rendering codebase** used in
+multiple runtime environments. Angular is the implementation framework
+for the Three.js scene renderer; **Node.js can prepare the data and
+orchestrate image export**, including in standalone JavaScript apps.
+Node.js itself cannot execute the Angular browser/WebGL scene renderer
+without a compatible browser environment or a separately implemented
+rendering adapter.
+
+There are **three distinct paths**; do not confuse them:
+
+| Consumer | How it uses Astrological Charts | Status |
+| --- | --- | --- |
+| VirgoStars Angular frontend | Angular service and shared Three.js renderers | Existing upstream integration; this extracted repo is not deployed |
+| Node.js scripts/backend (new) | `node/index.mjs` with JSON v1 → local Chromium/Angular demo → PNG/JPEG | Draft PR, not end-to-end tested |
+| Astrolabio Node.js backend | Existing bundled renderer invoked in headless Firefox with offline `file://` assets and e-ink delivery | Existing separate upstream adapter; migration not performed |
+
+**Important:** the Astrolabio headless adapter documented in
+[INTEGRATION_PLAN.md](INTEGRATION_PLAN.md) directly calls
+`CartaAstraleCreaScena`, overrides image-loading behavior and uses
+Firefox. It does **not** currently call the new
+`node/index.mjs` helper. The desktop synthetic demo cannot replace
+its offline/e-ink path without a separate, reviewed compatibility test.
+
+## Quick start: precomputed data to PNG/JPEG in Node.js
+
+Install Node.js 22 LTS (or compatible version listed in `package.json`)
+and Chrome/Chromium. In a checkout of this repository:
+
+```sh
+npm ci
+node examples/node/example.mjs
+node examples/node/example.mjs --jpg
+```
+
+The output appears in `.local/node-example.png` or
+`.local/node-example.jpg`. It uses made-up planetary coordinates
+and locally generated placeholder artwork — not actual ephemerides.
+The helper creates a synthetic asset pack if missing, launches local
+Angular and asset servers when needed, and uses the **real** Three.js
+PNG exporter plus JPEG conversion. No private data or original assets
+are required.
+
+Your **own Node.js computations** can provide an ordinary JavaScript
+object:
+
+```javascript
+import { renderChart } from './node/index.mjs';
+
+// Illustrative numbers only. Replace these with your own calculated data.
+const computedChart = {
+  datetime: '2000-01-01T12:00:00Z',
+  ascendant: 20,
+  midheaven: 290,
+  houseCusps: Array.from({length: 12}, (_, i) => (20 + i * 30) % 360),
+  planets: {
+    Sun: {longitude: 15, latitude: 0},
+    Moon: {longitude: 75, latitude: -2.1},
+  },
+};
+await renderChart({ schemaVersion: 1, natal: computedChart }, 'chart.png',
+  { mode: 'natal', skin: 'light' });
+```
+
+This example assumes your script is at the root of this checkout.
+For scripts elsewhere, import the helper using its own correct
+relative path. The Node adapter is currently **source-only**, not
+a released npm package or a stable production API.
+
+### Also supported: existing JSON files
+
+If your program generates the shared JSON file, use:
+
+```javascript
+import { renderChartFile } from './node/index.mjs';
+await renderChartFile('computed-chart.json', 'computed-chart.jpg',
+  { mode: 'transits', skin: 'dark' });
+```
+
+The CLI works too:
+
+```sh
+npm run render:chart -- --input computed-chart.json --output computed-chart.png
+```
+
+The format is documented in
+[the JSON v1 contract](PYTHON_INTEGRATION.md#json-data-contract-schemaversion-1).
+The **format is shared**, not Python-specific. A real transit or
+synastry chart requires complete second-chart input. The adapter
+validates the data and does not silently invent missing positions.
+
+## Production-oriented design
+
+This draft helper is suited to a **developer workstation or offline
+batch experiments**, not a production web service. It currently
+spawns one Chromium browser and local Angular/asset servers per
+operation (unless already running); this has startup cost and is
+not suitable for high-volume concurrent requests.
+
+To support the live VirgoStars Node backend and Astrolabio safely
+later, a dedicated versioned `@virgostars/charts-node`-style adapter
+(or equivalent export) should be considered with:
+
+1. A persistent, bounded browser/renderer pool or a tested offline
+   browser adapter (not unbounded per-request spawning).
+2. Process isolation, trusted asset roots, cleanup, request/time
+   limits, data/size validation and versioned JSON contracts.
+3. A complete offline Firefox `file://` test matching the shipped
+   Astrolabio bundle, including original asset manifest/hash and
+   e-ink output comparison.
+4. Tests for all chart modes, skins, no-web access, browser lifecycle,
+   PNG/JPEG results and compatibility with production consumers.
+5. Changes confined to this repo until approved integration and
+   rollback planning in `virgo-stars`.
+
+**Never use the synthetic local demo as proof of Astrolabio
+compatibility**. The actual production adapter is not modified
+by this PR. An independent Node.js calculation library may still
+produce coordinates for this renderer, and the Rust engine can later
+expose shared astronomy through Node/WASM and Python bindings.
