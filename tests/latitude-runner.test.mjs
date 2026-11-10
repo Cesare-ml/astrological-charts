@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createServer } from 'node:http';
-import { portInUse, reachable } from '../scripts/latitude-local-readiness.mjs';
+import { portInUse, reachable, browserModes } from '../scripts/latitude-local-readiness.mjs';
 
 async function withLocalServer(handler, run) {
   const server = createServer(handler);
@@ -76,4 +76,17 @@ test('latitude runner rejects an incomplete HTTP response', async () => {
   }, async port => {
     assert.equal(await reachable(`http://127.0.0.1:${port}/__preview`, 'approved asset preview'), false);
   });
+});
+
+test('latitude browser selection uses one browser by default and honours Firefox', () => {
+  assert.deepEqual(browserModes([], {}), ['chromium']);
+  assert.deepEqual(browserModes([], {CHART_TEST_BROWSER:'firefox'}), ['firefox']);
+});
+
+test('latitude browser selection runs both sequentially and rejects unsupported arguments', () => {
+  assert.deepEqual(browserModes(['--both'], {CHART_TEST_BROWSER:'firefox'}),
+    ['chromium', 'firefox']);
+  assert.throws(() => browserModes(['--both', '--unknown']), /Usage/);
+  assert.throws(() => browserModes(['--unknown']), /Usage/);
+  assert.throws(() => browserModes([], {CHART_TEST_BROWSER:'safari'}), /chromium or firefox/);
 });

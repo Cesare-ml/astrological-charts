@@ -3,7 +3,7 @@
 // No network calls beyond localhost, production assets, deploys or CI.
 import { spawn, execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { portInUse, reachable } from './latitude-local-readiness.mjs';
+import { portInUse, reachable, browserModes } from './latitude-local-readiness.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,22 +15,22 @@ const started = [];
 let activeTest = null;
 let interrupted = false;
 
-function npmProcess(script) {
+function npmProcess(script, extraEnv = {}) {
   // npm_execpath comes from the invoking `npm run` and avoids shell quoting
   // pitfalls on Windows (npm.cmd, parentheses and project paths with spaces).
   if (!npmCli || !existsSync(npmCli)) throw new Error('Run this through npm run test:latitude:local (npm_execpath is missing).');
   return spawn(process.execPath, [npmCli, 'run', script], {
     cwd: root,
-    env: process.env,
+    env: {...process.env, ...extraEnv},
     stdio: 'inherit',
     detached: process.platform !== 'win32',
     windowsHide: true,
   });
 }
 
-function runScript(script) {
+function runScript(script, extraEnv = {}) {
   return new Promise((resolveRun, rejectRun) => {
-    const child = npmProcess(script);
+    const child = npmProcess(script, extraEnv);
     activeTest = child;
     child.once('error', rejectRun);
     child.once('close', (code, signal) => {
@@ -75,6 +75,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 }
 
 try {
+  const browsers = browserModes(process.argv.slice(2), process.env);
   if (!existsSync(join(root, 'node_modules')))
     throw new Error('Dependencies missing: run npm ci first.');
   for (const port of [4177, 4200]) {
@@ -97,9 +98,13 @@ try {
     child.on('error', error => console.error(`${script} could not start: ${error.message}`));
     await waitForReady(url, child, seconds, expectedMarker);
   }
-  console.log('Local demo and synthetic assets are ready; running the latitude PNG regression...');
-  await runScript('test:latitude-browser');
-  console.log('Latitude browser regression completed successfully.');
+  // Keep both servers alive between browser runs. Fail immediately if either
+  // browser fails; both must pass before this mode can report success.
+  for (const browser of browsers) {
+    console.log(`Running latitude PNG regression in ${browser}...`);
+    await runScript('test:latitude-browser', {CHART_TEST_BROWSER:browser});
+  }
+  console.log(`Latitude PNG regression passed in: ${browsers.join(', ')}.`);
 } catch (error) {
   console.error(`Latitude local validation failed: ${error.message}`);
   if (!interrupted) process.exitCode = 1;

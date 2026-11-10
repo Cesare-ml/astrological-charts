@@ -43,3 +43,20 @@ export function reachable(url, expectedMarker) {
     hardDeadline = setTimeout(() => { req.destroy(); finish(false); }, 3000);
   });
 }
+
+/**
+ * Manual browser choices for the focused latitude probe.
+ * Single-browser mode honours CHART_TEST_BROWSER. --both runs two browser
+ * processes sequentially against the same synthetic demo and asset servers.
+ */
+export function browserModes(args, env = {}) {
+  if (args.length > 1 || (args.length === 1 && args[0] !== '--both')) {
+    throw new Error('Usage: npm run test:latitude:local or npm run test:latitude:both');
+  }
+  if (args.length === 1) return ['chromium', 'firefox'];
+  const browser = env.CHART_TEST_BROWSER || 'chromium';
+  if (!['chromium', 'firefox'].includes(browser)) {
+    throw new Error('CHART_TEST_BROWSER must be chromium or firefox');
+  }
+  return [browser];
+}

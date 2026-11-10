@@ -35,6 +35,7 @@
     "demo:preview": "node scripts/serve-local-assets.mjs --root .local/synthetic-pack/public/assets --manifest .local/synthetic-pack/manifests/approved-assets.json",
     "test:latitude-browser": "node --test tests/latitude-browser.test.mjs",
     "test:latitude:local": "node scripts/run-latitude-browser.mjs",
+    "test:latitude:both": "node scripts/run-latitude-browser.mjs --both",
     "test:latitude-runner": "node --test tests/latitude-runner.test.mjs",
     "check:demo-syntax": "node --check tests/demo-browser.test.mjs && node --check tests/latitude-browser.test.mjs",
     "test:latitude": "node --test tests/latitude-zero.test.mjs",
