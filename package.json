@@ -38,7 +38,8 @@
     "test:node-adapter": "node --test tests/node-adapter.test.mjs",
     "test:local-render-services": "node --test tests/verify-local-render-services.test.mjs",
     "test:node-types": "tsc --noEmit --strict --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck tests/node-types.test.mts",
-    "test:local-process-lifecycle": "node --test tests/local-process-lifecycle.test.mjs"
+    "test:local-process-lifecycle": "node --test tests/local-process-lifecycle.test.mjs",
+    "test:render-bridge": "node --test tests/render-bridge.browser.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
