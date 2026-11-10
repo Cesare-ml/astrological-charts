@@ -21,7 +21,10 @@ cusps to the versioned `schemaVersion: 1` JSON adapter
 `node/index.mjs` directly from a JavaScript program, or
 `examples/python/virgostars_charts.py` from Python, for local PNG/JPEG.
 The Node helper and CLI `scripts/render-chart.mjs` start synthetic local
-servers and renders through the real Angular/Three.js demo. Keep the
+servers and render through the real Angular/Three.js demo. The CLI must
+clean up **only** the local servers it started (including descendants),
+without terminating pre-existing services. Keep the Windows process-tree
+cleanup and POSIX process-group tests in `tests/local-process-lifecycle.test.mjs`. Keep the
 schema validated and versioned, preserve negative/positive zero
 latitude, and NEVER inject illustrative fixture data if a supplied
 transit/synastry chart is missing. Do not invent available
