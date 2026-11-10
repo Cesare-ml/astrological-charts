@@ -22,6 +22,22 @@ from `node/index.mjs` (see [Node integration](NODE_INTEGRATION.md)).
 This requires a real browser and does not establish
 production-artwork visual parity.
 
+## Headless JSON import and PNG/JPEG bridge verification
+
+The status element exposes the most recently **completed** scene's
+render revision, mode and skin. The local headless exporter waits for
+the revision to increase after import, mode changes and skin changes,
+and verifies that the completed scene matches the controls. This
+prevents exporting a previous chart while a new asynchronous draw is
+still running.
+
+To verify actual image output rather than a process exit code, run
+`npm run test:render-bridge` after installing the Node dependencies,
+Chrome/Chromium and working WebGL. It renders invented positions to a
+natal/light PNG and a transit/dark JPEG and checks the image metadata
+and nonblank content. This is a **manual** test, deliberately separate
+from the preflight unit tests.
+
 ## Start with synthetic assets
 
 Requirements: Node 22.18 or another version supported by the package, npm and access to this private repository. From the repository root:
