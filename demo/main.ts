@@ -37,7 +37,10 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <label for="base">Asset base URL</label>
         <input id="base" [value]="assetBase" (change)="changeBase($event)" [disabled]="busy">
         <p class="muted">Manifest: {{manifestLabel}}</p>
-        <p class="status" [class.error]="error" role="status" data-testid="status">{{error || status}}</p>
+        <p class="status" [class.error]="error" role="status" data-testid="status"
+           [attr.data-render-revision]="renderRevision"
+           [attr.data-render-mode]="renderedMode"
+           [attr.data-render-skin]="renderedSkin">{{error || status}}</p>
       </aside>
       <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart"></canvas></section>
     </section>
@@ -57,6 +60,11 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
   sourceLabel = 'Illustrative synthetic fixture';
+  // Completed draw marker for automated consumers: mode changes are async.
+  // A revision advances on both draw completion and invalid JSON import.
+  renderRevision = 0;
+  renderedMode: Mode | '' = '';
+  renderedSkin = '';
   private radix = makeDemoTheme(0);
   private transit: ReturnType<typeof makeDemoTheme> | null = makeDemoTheme(24);
   private synastry: ReturnType<typeof makeDemoTheme> | null = makeDemoTheme(71);
@@ -122,15 +130,19 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     return opts;
   }
   async draw(): Promise<void> {
+    const drawingMode = this.mode;
+    const drawingSkin = this.skin;
     this.busy = true; this.error = ''; this.status = 'Rendering…'; this.changes.markForCheck();
     try {
       if (this.mode === 'transits' && !this.transit) throw new Error('This JSON contains no transits data.');
       if (this.mode === 'synastry' && !this.synastry) throw new Error('This JSON contains no synastry data.');
       await this.renderer.disegnaScena(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
+      this.renderedMode = drawingMode;
+      this.renderedSkin = drawingSkin;
       this.status = 'Rendered with the configured asset server.';
     } catch (error) { this.showError(error); }
-    finally { this.busy = false; this.changes.markForCheck(); }
+    finally { this.busy = false; this.renderRevision++; this.changes.markForCheck(); }
   }
   async exportPng(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
@@ -147,6 +159,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   private showError(error: unknown): void {
     const detail = error instanceof Error ? error.message : typeof error === 'string' ? error : 'A required asset could not be loaded.';
     this.error = `Rendering failed: ${detail} Check the asset server, manifest and requested paths.`;
+    // Import errors do not start draw(), so still signal completion to callers.
+    this.renderRevision++;
     this.changes.markForCheck();
   }
 }
