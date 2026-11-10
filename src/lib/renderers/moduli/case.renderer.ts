@@ -452,11 +452,8 @@ export class CaseRender {
       if(coloreCase == 'elementi') {
           colore = SkinManager.skins[opzioni.settaggi.skin_id].elementi[i%4];
       }
-      var imgColorBase = SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.coloreImgFolder;
-      if(imgColorBase) imgColorBase += '/';
-      else imgColorBase = "";
       var casa = await OggettiSempliciRender.getImg(
-        'simboli/case/'+opzioni.settaggi.skin_id+'/725x460/'+imgColorBase+String(i+1).padStart(2, '0')+'.png',
+        'simboli-bianchi/case/'+String(i+1).padStart(2, '0')+'.png',
         725,460,1/725,australInversion,
         colore
       );

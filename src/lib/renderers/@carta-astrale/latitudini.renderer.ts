@@ -7,6 +7,7 @@ import {SegniRender} from '../moduli/segni.renderer';
 import {TransitiRender} from '../moduli/transiti.renderer';
 import { SkinManager } from '../@skin-manager';
 import { AspettiRender } from '../moduli/aspetti.renderer';
+import { latitudePlanetAsset } from './latitude-asset-paths';
 
 
 export class LatitudiniRender {
@@ -177,10 +178,7 @@ export class LatitudiniRender {
 
     for(let nome in elementiCelesti) {
 
-      if(usaImgAnello)
-        var elRef = 'simboli/elementi-celesti/'+opzioni.temaGrafico+'/cerchio/anello/'+nome+'.png';
-      else
-        var elRef = 'simboli/elementi-celesti/'+opzioni.temaGrafico+'/cerchio/'+nome+'.png';
+      var elRef = latitudePlanetAsset(opzioni.temaGrafico, nome, usaImgAnello);
       var el = await OggettiSempliciRender.getImg(elRef,0.1,0.1,1);
 
       var elLongDiRender = 75-ascendente+15 + elementiCelesti[nome]['longitude'];

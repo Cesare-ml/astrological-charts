@@ -52,3 +52,14 @@ test('passes when asset owner supplies all referenced images', () => {
     assert.equal(files.length, 3);
   });
 });
+test('selects the latitude circle family without unrelated site symbols', () => {
+  fixture(({assets,src}) => {
+    const circle=join(assets,'img','symbols','planets','dark','_circle');
+    mkdirSync(circle,{recursive:true});
+    writeFileSync(join(circle,'Sun.png'),'circle');
+    writeFileSync(join(assets,'img','symbols','planets','dark','Sun.png'),'unrelated');
+    const {files}=deriveSelection(assets,src);
+    assert.ok(files.includes('img/symbols/planets/dark/_circle/Sun.png'));
+    assert.ok(!files.includes('img/symbols/planets/dark/Sun.png'));
+  });
+});

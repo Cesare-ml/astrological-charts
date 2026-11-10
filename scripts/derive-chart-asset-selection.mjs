@@ -11,6 +11,7 @@ const DEFAULT_SOURCE = resolve(HERE, '../src');
 const CHART_DIRS = [
   'img/simboli-bianchi', 'img/simboli/case', 'img/simboli/elementi-celesti',
   'img/simboli/elementi', 'img/simboli/segni', 'img/grafici', 'img/textures',
+  'img/symbols/planets/dark/_circle', 'img/symbols/planets/light/_circle',
 ];
 const FILE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.avif']);
 const sorted = set => [...set].sort((a, b) => a.localeCompare(b, 'en'));

@@ -64,7 +64,7 @@ export class SkinManager {
                 'coloreTexture': "#000",
                 'texture': null,
                 'monocoloreLineeAspetti': '#fff',
-                'imgRisuonatoreSolare': 'risuonatore-solare-bianco.png',
+                'imgRisuonatoreSolare': 'risuonatore-solare-bn.png',
                 'imgRisuonatoreSolareWidth':2222,
                 'imgRisuonatoreSolareHeight':2222,
                 'imgRisuonatoreColore': "#666",
@@ -162,7 +162,7 @@ export class SkinManager {
             'cerchioAspetti': {
                 'coloreTexture': "white",
                 'texture': null,
-                'imgRisuonatoreSolare': 'risuonatore-solare-bianco.png',
+                'imgRisuonatoreSolare': 'risuonatore-solare-bn.png',
                 'imgRisuonatoreSolareWidth':2222,
                 'imgRisuonatoreSolareHeight':2222,
                 'imgRisuonatoreColore': "#ddd",

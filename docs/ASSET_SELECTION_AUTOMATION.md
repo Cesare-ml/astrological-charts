@@ -38,6 +38,7 @@ It also inventories files from these known chart-only directories, preserving ex
 - `img/simboli/case`, `img/simboli/elementi-celesti`, `img/simboli/elementi`, `img/simboli/segni`
 - `img/grafici`
 - `img/textures`
+- `img/symbols/planets/dark/_circle`, `img/symbols/planets/light/_circle`
 
 Therefore the output is intentionally a **conservative chart asset superset**, not an ideal or minimal Astrolabio device package. It does not scan the entire website `img/` directory and does not include unrelated logos, tarocchi or user content.
 
@@ -51,7 +52,7 @@ Therefore the output is intentionally a **conservative chart asset superset**, n
 
 ## Known issue to investigate
 
-The original skin manager references `risuonatore-solare-bianco.png` in at least the `dark-bn` and `light-bn` skins, while the GitHub listing of the existing `public/assets/img` directory shows `risuonatore-solare-bn.png`. The tool should flag this on the real checkout. Do not automatically substitute the file name without comparing the artwork, permissions, expected effects and existing production rendering.
+The original upstream skin manager references `risuonatore-solare-bianco.png` in the `dark-bn` and `light-bn` skins, while the original asset tree contains `risuonatore-solare-bn.png`. The owner authorized the independent renderer to use the existing `bn` file; no production source was changed. Appearance still needs comparison against an approved baseline.
 
 ## Tests
 

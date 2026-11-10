@@ -1,6 +1,6 @@
 # Preview indipendente degli asset astrologici — codice eseguibile senza VirgoStars
 
-**Stato:** la galleria e la demo sono integrate in `main` e sono state provate con asset sintetici; non sono verificate con i file reali né integrate in produzione. Questa pagina descrive la galleria **degli asset**; la distinta [demo Angular](ANGULAR_DEMO.md) usa il renderer completo con fixture sintetiche.
+**Stato:** la galleria e la demo sono integrate in `main`; la demo è stata provata con immagini sintetiche e con il pacchetto privato autorizzato, senza confronto con baseline di produzione. Questa pagina descrive la galleria **degli asset**; la distinta [demo Angular](ANGULAR_DEMO.md) usa il renderer completo con dati sintetici.
 
 Il server rifiuta record con uno `status` esplicito diverso da `approved`. I manifest generati dall'importatore senza campo `status` restano supportati; metadati e checksum non dimostrano da soli l'autorizzazione legale.
 
@@ -41,9 +41,9 @@ Il generatore si rifiuta di sovrascrivere una directory già esistente. Il wrapp
 
 Questo test è utile per verificare struttura dei nomi, disponibilità degli asset, MIME, percorso e autorizzazioni, **ma non** certifica le scene Three.js o l'aspetto originale dei grafici.
 
-## Modalità B — immagini autentiche del repository asset (non ancora disponibili)
+## Modalità B — immagini autentiche del repository asset
 
-Dopo la revisione dei diritti, l'importazione e il merge dei file originali nel repository `astrological-assets`:
+Con accesso al repository privato `astrological-assets` e al relativo pacchetto autorizzato:
 
 ```powershell
 git clone https://github.com/Cesare-ml/astrological-assets.git
@@ -60,7 +60,7 @@ La libreria Angular può configurare il server locale così:
 GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
 ```
 
-Il sito VirgoStars continuerà a usare `/assets/` e una sola copia dei file, mentre la demo utilizza questo server di sviluppo. Nessun accesso a `virgo-stars` è necessario al collaboratore. **Gli asset autentici attualmente non sono stati importati.**
+Il sito VirgoStars continuerà a usare `/assets/` e una sola copia dei file, mentre la demo utilizza questo server di sviluppo. Nessun accesso a `virgo-stars` è necessario al collaboratore. Il pacchetto contiene immagini autorizzate per la condivisione privata, ma non il font originale dalla licenza sconosciuta.
 
 ## Contratto del manifest
 
@@ -106,4 +106,4 @@ Sono stati eseguiti su Windows test con fixture sintetiche per il generatore PNG
 
 ## Successivo gate
 
-Validare la demo separata con immagini originali solo dopo revisione e importazione autorizzata. Non considerare questa galleria o i test sintetici come sostitutivi delle prove con gli asset reali e sull'Astrolabio.
+Confrontare la demo con baseline visive approvate e verificare le opzioni avanzate e l'Astrolabio. Non considerare questa galleria o i test browser come sostitutivi delle prove hardware.

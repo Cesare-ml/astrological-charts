@@ -14,7 +14,7 @@ Source repository: `Cesare-ml/virgo-stars`, subtree `shared/grafici-astrologici/
 
 The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
 
-**Important:** The original renderer relies on symbols, fonts and textures from `virgo-stars/public/assets/`. They are not included in this extraction until their rights and packaging are reviewed. Building the TypeScript does not prove visual rendering works.
+**Important:** The renderer loads images from a host asset root; the library does not bundle them. A private owner-authorized image pack is available separately in `astrological-assets`, without the unknown-license font. Building TypeScript does not by itself prove visual correctness.
 
 ## Start developing
 
