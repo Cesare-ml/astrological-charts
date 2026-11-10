@@ -59,6 +59,11 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
       fixtures in draft PR #19. **Still required:** execute full
       repository tests, browsers and contributor acceptance checks.
 
+- [x] Add explicit owner-local external asset options to the Node,
+      CLI and Python render bridges with paired paths, full SHA-256
+      binary verification and a fail-closed port-4177 policy (draft
+      PR #19); browser-free tests were added. **Not yet verified**
+      end to end with the actual external asset checkout and Chrome.
 - [ ] Verify the Node.js image-export API, Python wrapper and failure handling with actual browser exports.
 - [ ] Document the separation between this developer bridge and the existing offline Astrolabio Firefox integration.
 - [ ] Validate cross-platform paths, concurrent process limitations and clean shutdown.
