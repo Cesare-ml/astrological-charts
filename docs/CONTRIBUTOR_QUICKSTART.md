@@ -1,6 +1,10 @@
-# Windows quickstart for invited collaborators
+# Windows quickstart for contributors
 
-You need Git, Node.js compatible with Angular 20 and repository access via your GitHub account. No AWS/production credentials or VirgoStars database access are required.
+The easiest route for a non-programmer is **[Start here](START_HERE.md)**:
+install Node.js 22 LTS and Chrome, then double-click `START_HERE.cmd`.
+If you prefer Git and command-line verification, continue below.
+This repository currently requires invitation while private; no AWS,
+production credentials or VirgoStars database access is needed.
 
 ```powershell
 git clone https://github.com/Cesare-ml/astrological-charts.git
@@ -14,7 +18,7 @@ If PowerShell restricts script execution, open the script and run the documented
 
 Before submitting changes, read `AGENTS.md` and `CONTRIBUTING.md`. Make a new branch, commit the focused fix and open a PR. Describe actual tests and limitations; do not merge or deploy.
 
-## Optional real asset pack for contributors
+## Optional private real asset pack (not for public redistribution)
 
 The code repository does **not** include the production icons, ring textures or fonts. A successful `npm run build` will not automatically make the graphics demo work.
 
