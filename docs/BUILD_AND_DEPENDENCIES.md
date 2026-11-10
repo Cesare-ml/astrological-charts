@@ -15,11 +15,12 @@ The isolated library builds with the lockfile on Windows and Node 22.18.0. The r
 node --version
 npm --version
 npm ci
-npm run check:extraction
-npm run check:assets
-npm run check:types
-npm run build
+npm run preflight
+npm run build:library
+npm run build:demo
 ```
+
+The Windows `scripts/verify-local.ps1` wrapper runs exactly these quality gates and fails if the tracked lockfile is absent. It does **not** run a WebGL browser; `npm run test:latitude:local` is opt-in after the above commands.
 
 The static checks are **not** substitute for the build or screenshot tests.
 `npm run check:assets` is an inventory, not a proof that each image is present.

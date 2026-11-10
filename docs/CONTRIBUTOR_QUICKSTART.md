@@ -8,7 +8,7 @@ cd astrological-charts
 powershell -NoProfile -File .\scripts\verify-local.ps1
 ```
 
-The local verification script runs a fresh dependency install (`npm ci` if a lockfile exists), static import and asset inventory checks, TypeScript validation and the Angular package build. It does **not** render a natal chart, check GPU memory or run Astrolabio.
+The local verification script **requires the committed `package-lock.json`** and runs `npm ci`, the **complete `npm run preflight`** (including the latitude renderer, harness bundle and HTTP readiness tests), `npm run build:library`, and `npm run build:demo`. It stops at the first failing command and never silently falls back to an unpinned `npm install`. It does **not** render a natal chart, check GPU memory, validate original artwork or run Astrolabio. For the focused seven-PNG Chromium/Firefox regression, separately run `npm run test:latitude:local` after the setup, using an installed browser.
 
 If PowerShell restricts script execution, open the script and run the documented `npm` commands manually rather than globally weakening security settings.
 

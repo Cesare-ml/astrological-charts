@@ -10,18 +10,17 @@ try {
     & node.exe --version
     Write-Host 'npm:' -ForegroundColor Cyan
     & npm.cmd --version
-    $steps = @()
-    if (Test-Path 'package-lock.json') {
-        $steps += ,@('ci')
-    } else {
-        $steps += ,@('install')
-        Write-Warning 'No package-lock.json. This run will generate a local lockfile; commit it only after reviewing the dependency tree.'
+    if (!(Test-Path -LiteralPath 'package-lock.json' -PathType Leaf)) {
+        throw 'Missing package-lock.json: use a clean checkout with the tracked lockfile. Refusing an unpinned npm install.'
     }
-    $steps += ,@('run', 'check:extraction')
-    $steps += ,@('run', 'check:assets')
-    $steps += ,@('run', 'test:assets')
-    $steps += ,@('run', 'check:types')
-    $steps += ,@('run', 'build')
+    # One quality gate is the source of truth: avoid skipping newly added tests.
+    # Browser/WebGL rendering remains an explicit separate step.
+    $steps = @(
+        ,@('ci'),
+        ,@('run', 'preflight'),
+        ,@('run', 'build:library'),
+        ,@('run', 'build:demo')
+    )
     foreach ($stepArgs in $steps) {
         Write-Host ('> npm ' + ($stepArgs -join ' ')) -ForegroundColor Cyan
         & npm.cmd @stepArgs
@@ -29,7 +28,8 @@ try {
             throw ('Verification stopped: npm ' + ($stepArgs -join ' ') + ' exited ' + $LASTEXITCODE)
         }
     }
-    Write-Host 'Local build/preflight completed. Visual output, actual asset loading, browser and Astrolabio compatibility are NOT validated.' -ForegroundColor Green
+    Write-Host 'Local preflight, library and demo builds passed.' -ForegroundColor Green
+    Write-Host 'NOT validated: Chromium/Firefox PNG pixels, real asset fidelity, or Astrolabio hardware. To run the focused WebGL regression separately: npm run test:latitude:local' -ForegroundColor Yellow
 } finally {
     Pop-Location
 }
