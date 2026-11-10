@@ -15,17 +15,28 @@ they understand Angular, Git or Python. Start with
 `docs/START_HERE.md` and `START_HERE.cmd` on Windows. Never promise
 a working browser image without running the real renderer.
 
-A Python user can feed **precomputed** planet positions and house
+A Node.js or Python user can feed **precomputed** planet positions and house
 cusps to the versioned `schemaVersion: 1` JSON adapter
 (`demo/chart-input.ts`) and call
-`examples/python/virgostars_charts.py` for local PNG/JPEG.
-The Node driver `scripts/render-chart.mjs` starts synthetic local
+`node/index.mjs` directly from a JavaScript program, or
+`examples/python/virgostars_charts.py` from Python, for local PNG/JPEG.
+The Node helper and CLI `scripts/render-chart.mjs` start synthetic local
 servers and renders through the real Angular/Three.js demo. Keep the
 schema validated and versioned, preserve negative/positive zero
 latitude, and NEVER inject illustrative fixture data if a supplied
-transit/synastry chart is missing. Do not invent an available
-VirgoStars-Ephemeris Python binding: the Rust/PyO3 binding is
-planned, not released.
+transit/synastry chart is missing. Do not invent available
+VirgoStars-Ephemeris Rust/Python/Node integrations: cross-language
+bindings remain planned, not released.
+
+**Three runtime contexts:** Angular frontend uses the existing Angular
+service; general Node.js programs can use `node/index.mjs` with the
+same versioned JSON format; the real Astrolabio Node backend uses a
+**separate headless Firefox offline adapter** that directly invokes
+the scene renderer and loads `file://` assets. The new Chromium helper
+does not replace Astrolabio. See `docs/NODE_INTEGRATION.md` and
+`docs/INTEGRATION_PLAN.md`. Distinguish a Node.js process orchestrating
+a browser from a native Node rendering engine. Do not claim the same
+adapter works on hardware without the real offline/e-ink tests.
 
 ## Licensing and public-release gate
 
@@ -46,7 +57,7 @@ visibility, `package.json` private status, or publish a package.
 
 ## Rules
 
-1. Read `README.md`, `docs/EXTRACTION_STATUS.md`, `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, and the newcomer/Python guides before editing.
+1. Read `README.md`, `docs/EXTRACTION_STATUS.md`, `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, and the newcomer/Node/Python guides before editing.
 2. Only modify this repository. Do not deploy or write to the original VirgoStars repository, AWS, databases, accounts or live Astrolabio devices.
 3. Work on a feature branch and open a pull request. No self-approval or automatic merge.
 4. Keep Angular integration intact. Preserve public `grafici-astrologici` import compatibility unless the PR explicitly proposes migration.
