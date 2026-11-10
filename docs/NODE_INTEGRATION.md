@@ -226,6 +226,53 @@ The **format is shared**, not Python-specific. A real transit or
 synastry chart requires complete second-chart input. The adapter
 validates the data and does not silently invent missing positions.
 
+## Real-image preview using the separate approved asset pack
+
+A Windows 11 user confirmed a **successful real PNG export** through
+Node.js **22.18.0**, Angular/Three.js and Chrome after resolving local
+server conflicts. The circle/geometry looked correct, but **planet and
+zodiac symbols showed intentional synthetic placeholders**. This is a
+useful *synthetic smoke test*, not proof of real-asset visual fidelity.
+The selected unit tests were reported green by the tester; exact
+terminal logs and the JPEG/transits/synastry/latitude results have not
+been attached to this PR.
+
+The separately authorized `Cesare-ml/astrological-assets` manifest
+currently lists **1,013 approved-for-private-collaboration images**,
+including the planet and zodiac symbol families. These are **not**
+licensed for public redistribution. No fonts are included. Do not
+copy them into `astrological-charts`, commit them or publish them.
+
+For an **interactive local preview only**, with sibling folders
+`astrological-charts` and `astrological-assets`, use two separate
+PowerShell windows (after stopping only your own old local servers
+on 4177 and 4200):
+
+PowerShell A, from `D:\\GitHub\\astrological-charts`:
+
+```powershell
+npm run demo:assets:repo
+```
+
+PowerShell B, from the same chart renderer directory:
+
+```powershell
+npm run demo
+```
+
+Open `http://127.0.0.1:4200/` and verify the planet, sign and house
+symbols on a chart, plus console warnings for unavailable assets.
+The asset server checks the real binary files against the approved
+manifest; merely having a manifest JSON file is not enough. This
+does not require copying any binary into the public renderer.
+
+**Important:** `node examples/node/example.mjs` intentionally
+requires the *synthetic* manifest and refuses to use the real-asset
+server on 4177. Do **not** change that identity check or mix original
+images into the synthetic pack. Automated PNG/JPEG exports with the
+approved external pack need a separate explicit, manifest-verified
+mode and dedicated tests before release.
+
 ## Real-browser verification before integration
 
 After `npm ci`, run this **manually** with Chrome/Chromium and
