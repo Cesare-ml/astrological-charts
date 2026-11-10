@@ -7,7 +7,7 @@
  */
 import { spawn } from 'node:child_process';
 import { startOwnedServer, getServerFailure, stopOwnedServers } from './local-process-lifecycle.mjs';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
@@ -16,6 +16,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 import sharp from 'sharp';
 import { matchesLocalChartDemo, matchesSyntheticAssetServer } from './verify-local-render-services.mjs';
+import { validateChartPayloadV1, MAX_CHART_JSON_BYTES } from './validate-chart-input.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -42,6 +43,15 @@ function args(argv) {
   if (opts.mode && !['natal', 'transits', 'synastry', 'latitude'].includes(opts.mode)) {
     throw new Error('Invalid --mode; choose natal, transits, synastry or latitude.');
   }
+  // Fail fast: no npm dependencies, asset packs or browser processes should
+  // start for malformed/oversized Python or Node.js input files.
+  if (statSync(opts.input).size > MAX_CHART_JSON_BYTES) {
+    throw new Error('Chart JSON exceeds the 1 MB demo limit.');
+  }
+  let chart;
+  try { chart = JSON.parse(readFileSync(opts.input, 'utf8')); }
+  catch (error) { throw new Error('Invalid chart JSON file: ' + error.message); }
+  validateChartPayloadV1(chart, { mode: opts.mode, skin: opts.skin });
   return { ...opts, format };
 }
 
