@@ -273,6 +273,56 @@ images into the synthetic pack. Automated PNG/JPEG exports with the
 approved external pack need a separate explicit, manifest-verified
 mode and dedicated tests before release.
 
+### Opt-in headless export using an approved *external* asset pack
+
+The default `node examples/node/example.mjs` still uses locally
+generated checkerboard placeholders. If you have an **authorized
+separate checkout** of `Cesare-ml/astrological-assets` alongside this
+repository, you can now explicitly opt in to real local artwork:
+
+```powershell
+# From D:\\GitHub\\astrological-charts, with both local ports free:
+node examples/node/example.mjs --approved-assets
+node examples/node/example.mjs --approved-assets --jpg
+```
+
+The output filenames are `.local/node-example-approved.png` and
+`.local/node-example-approved.jpg`, leaving synthetic files intact.
+The example passes its two **explicit** paths to `renderChart()`.
+For a custom JSON file, the equivalent command is:
+
+```powershell
+node scripts/render-chart.mjs --input computed-chart.json --output .local/approved-chart.png `
+  --assets-root ..\\astrological-assets\\public\\assets `
+  --assets-manifest ..\\astrological-assets\\manifests\\approved-assets.json
+```
+
+Node consumers can pass
+`{assetRoot:'../astrological-assets/public/assets',
+assetManifest:'../astrological-assets/manifests/approved-assets.json'}`
+alongside their normal mode/skin options. The pair is mandatory.
+The actual external pack is loaded only if explicitly requested. The
+CLI verifies the **complete local binary collection** against the
+manifest SHA-256 and its approval metadata, starts a temporary
+loopback-only asset server and checks representative HTTP response
+bytes before rendering. Existing services on port 4177 are **rejected**,
+even if they appear to serve the right pack: never trust a foreign
+process from a few sample requests. If you're running
+`npm run demo:assets:repo`, stop **that owner-started process only**
+before the headless export. The CLI cleans up only its own processes.
+
+This is a **local owner-authorized preview**, not public
+redistribution permission or proof that all symbol variants and
+specialized chart modes are visually correct. No artwork is copied to
+`astrological-charts`, embedded into the package, uploaded to a server
+or fetched from VirgoStars production. Asset loading failures must
+fail visibly rather than silently reverting to placeholders.
+
+Run browser-free integrity checks using
+`npm run test:approved-render-assets`; run real visual tests on
+Windows with Chrome and inspect the output manually. The default
+synthetic browser test remains separate.
+
 ## Real-browser verification before integration
 
 After `npm ci`, run this **manually** with Chrome/Chromium and
