@@ -75,6 +75,21 @@ unaltered by prevalidation. Use `npm run test:validate-chart-input` and
 `npm run test:chart-cli-validation`
 for the isolated validation tests.
 
+You can check a chart JSON file without starting Chrome or producing
+an image. Only Node.js is required for this validation command (no
+`npm ci`):
+
+```sh
+node scripts/render-chart.mjs --input computed-chart.json --validate-only
+node scripts/render-chart.mjs --input computed-chart.json --validate-only --mode transits
+```
+
+The second command requires a complete `transits` chart in the file;
+no transits or ephemerides are invented. Both `renderChart()` and
+`renderChartFile()` also reject invalid JSON before starting a render
+subprocess. For real PNG/JPEG output, install the dependencies and
+use the documented export commands.
+
 The renderer **does not compute planetary positions**. Feed it
 precomputed longitude/latitude coordinates, angles and house cusps
 from Python (or another language) and it produces a graphic with the
