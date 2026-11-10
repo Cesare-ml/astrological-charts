@@ -21,3 +21,19 @@ h2 { font-size: 16px; margin: 0; } .muted, footer { color: #a3a8b8; font-size: 1
 canvas { width: min(100%, 800px); aspect-ratio: 1; display: block; }
 footer { margin-top: 20px; }
 @media (max-width: 700px) { main { padding: 20px 14px; } .workspace { grid-template-columns: 1fr; } .stage { grid-row: 1; padding: 10px; } header { align-items: start; } }
+
+/* Interactive focus laboratory: keeps the chart itself large and unchanged. */
+.planet-panel { margin-top: 24px; padding-top: 20px; border-top: 1px solid #3a3e50; }
+.planet-panel h2 { margin-bottom: 8px; }
+.planet-panel .muted { margin: 8px 0; }
+.planet-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.planet-button { padding: 7px 5px; font-size: 13px; text-align: center; }
+.planet-button[aria-pressed="true"] { background: #bfabff; border-color: #e4d9ff; color: #171322; font-weight: 700; }
+.planet-button:focus-visible, .clear-focus:focus-visible { outline: 3px solid #e4d9ff; outline-offset: 2px; }
+.clear-focus { margin-top: 10px; width: 100%; font-size: 13px; }
+.planet-readout { margin-top: 15px; border-top: 1px solid #3a3e50; padding-top: 8px; }
+.planet-readout p { margin: 5px 0; overflow-wrap: anywhere; font-size: 13px; }
+.aspect-readout { margin-top: 16px; }
+.aspect-count { font-variant-numeric: tabular-nums; color: #bfabff; }
+.aspect-list { margin: 10px 0 0; padding-left: 18px; max-height: 230px; overflow: auto; }
+.aspect-list li { margin: 8px 0; font-size: 12px; overflow-wrap: anywhere; }

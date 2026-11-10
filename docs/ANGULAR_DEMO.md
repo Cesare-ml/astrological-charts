@@ -120,3 +120,22 @@ On a fresh local checkout of `a421969`, `npm ci`, preflight, both builds, synthe
 After fast-forwarding that checkout to `3fd073f`, `npm run test:offline` passed with Firefox 142.0.1: four nonblank 400×400 PNGs from verified synthetic local files, browser context offline and no HTTP(S) requests observed. The installed Astrolabio adapter and hardware were not exercised.
 
 After fast-forwarding to `a2e3e98`, preflight, both builds, the four-case browser suite in Chromium and Firefox, and the offline test passed. The new failure-path test covers cleanup of repeating timelines when body, house or nested synastry construction is interrupted. This does not prove disposal of every resource in all failed partial scenes.
+
+## Interactive planet focus (draft PR #22)
+
+The local Angular demo now exposes a keyboard-accessible **Interactive planet focus** panel underneath the existing chart and asset controls. All existing modes, skins and export behavior remain present. On-screen chart symbols emit typed `enter`, `leave` and `click` events through `GraficoRenderService.setPlanetInteractionListener`. The panel shows the most recent chart event, the hovered body, and any pinned selection.
+
+1. Select **Transits** from the chart mode dropdown; choose **Natal chart** or **Transits** in the layer dropdown.
+2. Click **Saturn** in the transit layer to highlight it and the linked natal planets, then select **Uranus** in the natal layer to verify the reverse direction.
+3. Hover an on-screen planet; its transient focus takes precedence over the pinned selection. When the pointer leaves the canvas, the pin is restored.
+4. **Clear selection** clears only the pinned selection. Changing chart mode clears both current pin and the last pointer-event readout. Changing the skin preserves the pin.
+
+The links in `demo/interaction-fixtures.ts` are **hand-authored, synthetic illustrative associations**, consistent with the demo's intentionally invented longitudes; neither the renderer nor the demo calculates aspects or astronomical values. Real frontends must call `setCrossChartAspects` with backend/`astrological-functions` results for the current chart; the demo does not connect to live data.
+
+A standalone opt-in browser check is available after starting the approved/synthetic asset server and Angular demo:
+
+```sh
+npm run test:demo-interactions
+```
+
+It checks frontend selection by layer, matching synthetic relations, mode reset, and a Three.js raycaster probe for a tagged mesh including enter/click/leave and event payloads. Full Chrome/Firefox visual, accessibility, WebGL lifecycle, export parity and production consumer checks remain required before merge.

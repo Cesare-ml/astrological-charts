@@ -12,6 +12,7 @@
     "demo:assets": "node scripts/serve-local-assets.mjs --root .local/demo-pack/public/assets --manifest .local/demo-pack/manifests/approved-assets.json",
     "demo:assets:repo": "node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json",
     "test:demo": "node --test tests/demo-browser.test.mjs",
+    "test:demo-interactions": "node --test tests/demo-interactions.browser.test.mjs",
     "benchmark:demo": "node scripts/benchmark-demo.mjs",
     "audit:demo-asset-coverage": "node scripts/audit-demo-asset-coverage.mjs",
     "test:extraction-browser": "node tests/extraction-browser-smoke.mjs",
