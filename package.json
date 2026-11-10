@@ -9,8 +9,9 @@
     "check:types": "tsc -p tsconfig.lib.json --noEmit",
     "check:extraction": "node scripts/check-extraction.mjs",
     "check:assets": "node scripts/inventory-assets.mjs",
-    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types",
-    "test:extraction": "node --test tests/extraction-imports.test.mjs"
+    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:asset-urls",
+    "test:extraction": "node --test tests/extraction-imports.test.mjs",
+    "test:asset-urls": "node --test tests/chart-asset-urls.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"

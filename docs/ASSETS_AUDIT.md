@@ -1,3 +1,5 @@
+> Decision update: production assets remain owned by `virgo-stars/public/assets/`; the renderer package must not copy them. See [SHARED_ASSET_ARCHITECTURE.md](SHARED_ASSET_ARCHITECTURE.md) for the canonical URL resolver, browser/HTML caching, development demos, and offline Astrolabio strategy.
+
 # Asset audit — private chart renderer
 
 **Status: inventory only.** No third-party art, fonts, symbols, textures or user content were copied into the new repository. All redistribution permissions remain **unverified**.
