@@ -2,7 +2,7 @@
   "name": "grafici-astrologici",
   "version": "0.0.1",
   "private": true,
-  "description": "Private collaborative Angular/Three.js astrological chart renderer extracted from VirgoStars",
+  "description": "CPAL-1.0 Angular/Three.js astrological chart renderer with Node.js and Python PNG/JPEG bridges",
   "scripts": {
     "build": "ng build grafici-astrologici",
     "build:library": "ng build grafici-astrologici",
@@ -19,7 +19,7 @@
     "check:types": "tsc -p tsconfig.lib.json --noEmit",
     "check:extraction": "node scripts/check-extraction.mjs",
     "check:assets": "node scripts/inventory-assets.mjs",
-    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:assets && npm run test:demo-pack && npm run test:demo-asset-coverage && npm run test:latitude-assets",
+    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:assets && npm run test:demo-pack && npm run test:demo-asset-coverage && npm run test:latitude-assets && npm run test:chart-input && npm run test:node-adapter && npm run test:local-render-services && npm run test:node-types && npm run test:local-process-lifecycle && npm run test:node-concurrency && npm run test:validate-chart-input && npm run test:chart-cli-validation",
     "test:extraction": "node --test tests/extraction-imports.test.mjs",
     "test:asset-urls": "node --test tests/chart-asset-urls.test.mjs",
     "test:asset-manifest": "node --test tests/asset-manifest.test.mjs",
@@ -32,7 +32,17 @@
     "test:demo-asset-coverage": "node --test tests/demo-asset-coverage.test.mjs",
     "test:latitude-assets": "node --test tests/latitude-asset-paths.test.mjs",
     "demo:generate-synthetic": "node scripts/generate-synthetic-pack.mjs --out .local/synthetic-pack",
-    "demo:preview": "node scripts/serve-local-assets.mjs --root .local/synthetic-pack/public/assets --manifest .local/synthetic-pack/manifests/approved-assets.json"
+    "demo:preview": "node scripts/serve-local-assets.mjs --root .local/synthetic-pack/public/assets --manifest .local/synthetic-pack/manifests/approved-assets.json",
+    "test:chart-input": "node --test tests/chart-input.test.mjs",
+    "render:chart": "node scripts/render-chart.mjs",
+    "test:node-adapter": "node --test tests/node-adapter.test.mjs",
+    "test:local-render-services": "node --test tests/verify-local-render-services.test.mjs",
+    "test:node-types": "tsc --noEmit --strict --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck tests/node-types.test.mts",
+    "test:local-process-lifecycle": "node --test tests/local-process-lifecycle.test.mjs",
+    "test:render-bridge": "node --test tests/render-bridge.browser.test.mjs",
+    "test:node-concurrency": "node --test tests/node-concurrency.test.mjs",
+    "test:validate-chart-input": "node --test tests/validate-chart-input.test.mjs",
+    "test:chart-cli-validation": "node --test tests/chart-cli-validation.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"

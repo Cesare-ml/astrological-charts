@@ -1,0 +1,41 @@
+Astrological Charts
+===================
+
+Project: Astrological Charts — VirgoStars
+Source: https://github.com/Cesare-ml/astrological-charts
+Website: https://www.virgostars.it/
+
+Original Developer and Initial Developer: Cesare-ml (VirgoStars project)
+Original covered code copyright (c) 2026 Cesare-ml.
+Contributors retain applicable rights in their own contributions.
+
+Original code license: Common Public Attribution License Version 1.0
+(CPAL-1.0), with completed Exhibits A and B: see LICENSE.
+
+Exhibit B Attribution Information:
+Copyright (c) 2026 Cesare-ml (VirgoStars project)
+Powered by VirgoStars
+https://www.virgostars.it/
+Exhibit B requires attribution in Larger Works. Section 14 describes
+prominent GUI display at launch or session start; an About/Credits entry
+alone does not necessarily fulfill it. Section 15 covers network use.
+The unmodified license text controls over any summary here.
+
+SCOPE / THIRD-PARTY MATERIALS
+- This grant applies only to original source code the Initial Developer
+  has the right to license, plus covered contributions.
+- Original chart artwork, fonts, images, textures, logos and packs hosted
+  in the separate astrological-assets repository are not included or
+  licensed by this source-code license.
+- A right to privately share an asset is not automatically a right to
+  redistribute it publicly.
+- External libraries such as Angular, Three.js, GSAP, RxJS and others
+  retain their own licenses, notices and attribution requirements.
+- This renderer is not a NASA/JPL or Swiss Ephemeris implementation.
+  Neither NASA/JPL data nor Swiss Ephemeris source or ephemeris datasets
+  are included or relicensed here.
+- The original VirgoStars application, database, accounts and user
+  datasets are not published or licensed by this repository.
+
+Before a public release, the maintainer must complete the IP and
+dependency review described in docs/PUBLIC_RELEASE_CHECKLIST.md.

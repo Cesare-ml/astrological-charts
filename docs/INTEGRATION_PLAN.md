@@ -18,6 +18,17 @@ Keep dependency version *pinned*, not floating. Decide between a private package
 
 The current `grafici-astrologici` public entry point remains the migration target. Do not remove model exports or change JSON contracts without a coordinated upstream PR and fixtures. Avoid cross-repository writes from untrusted contributor AI agents.
 
+## Three caller environments
+
+The renderer is shared conceptually across (1) VirgoStars Angular
+frontend, (2) general Node.js programs that compute coordinates or
+drive a headless browser, and (3) Astrolabio's **specific Node.js +
+Firefox offline** environment. A Python wrapper is an additional
+external-data client. The source-only `node/index.mjs` helper added
+for local development is intentionally Chromium-backed, not the
+existing Astrolabio Firefox adapter or a stable production Node
+package. Review `docs/NODE_INTEGRATION.md` before integration.
+
 ## Headless and offline checkpoint
 
 The inspected Astrolabio backend currently loads a bundled library into Firefox, uses `file://` asset paths, sets Three.js dimensions directly, and calls `CartaAstraleCreaScena` rather than `GraficoRenderService`. It overrides `GestoreImmagini.getImg` and `loadAsync`; those overrides and the direct scene call bypass the service's operation queue and its scene-texture readiness check. A migration must address those differences explicitly and compare output with the current adapter before replacing anything.

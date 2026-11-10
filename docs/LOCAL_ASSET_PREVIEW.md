@@ -1,49 +1,92 @@
-# Preview indipendente degli asset astrologici — codice eseguibile senza VirgoStars
+# Independent chart asset preview — no VirgoStars production access needed
 
-**Stato:** la galleria e la demo sono integrate in `main`; la demo è stata provata con immagini sintetiche e con il pacchetto privato autorizzato, senza confronto con baseline di produzione. Questa pagina descrive la galleria **degli asset**; la distinta [demo Angular](ANGULAR_DEMO.md) usa il renderer completo con dati sintetici.
+**Status:** The asset gallery and the separate Angular renderer demo are
+integrated on `main`. Both have been exercised with synthetic fixtures
+and privately authorized images, but **not** compared with approved
+production visual baselines. This page explains the **asset gallery**;
+the [Angular demo](ANGULAR_DEMO.md) uses the actual chart renderer
+with illustrative, non-astronomical chart data.
 
-Il server rifiuta record con uno `status` esplicito diverso da `approved`. I manifest generati dall'importatore senza campo `status` restano supportati; metadati e checksum non dimostrano da soli l'autorizzazione legale.
+The local asset server rejects manifest entries whose explicit
+`status` is anything other than `approved`. The older import manifest
+format, which does not have a `status` field, remains supported.
+**Manifest checksums and metadata do not themselves prove legal
+permission to redistribute artwork.**
 
-## Il problema risolto
+## Why the independent asset server exists
 
-Un collaboratore può clonare `astrological-charts` ma non `virgo-stars`. Il renderer ha bisogno di texture e immagini per mostrare fedelmente i grafici, quindi il codice da solo non basta.
+A contributor may have access to `astrological-charts` but not to the
+private VirgoStars application. The chart renderer requires textures
+and symbol images for its actual appearance, so the code alone is
+insufficient to reproduce the production visual design.
 
-La soluzione finale è un secondo repository privato, `Cesare-ml/astrological-assets`, contenente solamente gli asset originali **approvati**, senza accesso a backend, database, account o AWS. Il nuovo server locale accetta l'archivio approvato come input e serve solo i file presenti in un manifest verificato via SHA-256.
+A separate, currently private repository,
+`Cesare-ml/astrological-assets`, stores owner-authorized chart image
+files and a SHA-256 manifest. This does **not** expose the VirgoStars
+backend, databases, user accounts, AWS credentials or source repository.
+The local server accepts an explicit asset folder and manifest and
+serves only files validated against that manifest.
 
-Per sbloccare lo sviluppo **prima** dell'importazione originale, è disponibile un pacchetto **sintetico**, generato in locale, che contiene 78 PNG a scacchiera originali con gli stessi percorsi dei simboli bianchi di preload. Sono solo segnaposto: non rappresentano i simboli né ne attestano la correttezza visiva.
+To start development without restricted artwork, an independent
+**synthetic** pack generates 78 original checkerboard PNGs matching the
+renderer preload paths. They are placeholders, not real zodiac or
+planet symbols, and do not demonstrate visual parity.
 
-## Modalità A — subito disponibile, immagini sintetiche
+## Option A — immediate synthetic gallery (no private assets required)
 
-Dal repository `astrological-charts`, su Windows:
+From the `astrological-charts` folder on Windows:
 
 ```powershell
 powershell -NoProfile -File .\scripts\preview-synthetic.ps1
 ```
 
-Apri nel browser: **http://127.0.0.1:4177/__preview**
+Open **http://127.0.0.1:4177/__preview** in your browser.
 
-Se preferisci Node direttamente (Windows/macOS/Linux):
+Alternatively, use Node.js directly on Windows, macOS or Linux:
 
-```bash
+```sh
 node scripts/generate-synthetic-pack.mjs --out .local/synthetic-pack
 node scripts/serve-local-assets.mjs \
   --root .local/synthetic-pack/public/assets \
   --manifest .local/synthetic-pack/manifests/approved-assets.json
 ```
 
-Il generatore si rifiuta di sovrascrivere una directory già esistente. Il wrapper PowerShell usa i file già generati, oppure interrompe se la directory è incompleta. Cancella manualmente la cartella `.local/synthetic-pack` solo se vuoi rigenerarla.
+The generator refuses to overwrite an existing output folder. The
+PowerShell launcher reuses a complete synthetic pack or stops when
+the local folder is incomplete. Delete `.local/synthetic-pack` manually
+**only if** you deliberately want to regenerate your synthetic files.
 
-- Crea 78 PNG di test 48×48, con nomi e directory esattamente corrispondenti ai 78 percorsi statici di `GestoreImmagini.preloadArraySimboli`.
-- Genera `manifests/approved-assets.json` con SHA-256 e marcatura esplicita **synthetic**; non include nessuna immagine di VirgoStars, nessuna texture stock e nessun dato personale.
-- Il server verifica l'intero manifest **all'avvio**; a ogni richiesta ricontrolla i byte del file richiesto.
-- La galleria locale è `/__preview`; gli URL sono `/assets/img/...`. Il server serve solamente i percorsi contenuti nel manifest, niente directory listing, metodi di scrittura o condivisione pubblica.
-- Bind soltanto su `127.0.0.1:4177`, con CORS limitato a `http://localhost:4200` e `http://127.0.0.1:4200`. Non è un servizio esponibile a Internet.
+This generated pack and server have the following properties:
 
-Questo test è utile per verificare struttura dei nomi, disponibilità degli asset, MIME, percorso e autorizzazioni, **ma non** certifica le scene Three.js o l'aspetto originale dei grafici.
+- Creates **78 original 48×48 test PNGs** with the exact names and
+  directory paths expected by `GestoreImmagini.preloadArraySimboli`.
+- Writes `manifests/approved-assets.json` with SHA-256 checksums and
+  synthetic-fixture provenance; it contains no real VirgoStars images,
+  stock textures or personal data.
+- Verifies the **entire** manifest on server startup and verifies the
+  requested file bytes again on each request.
+- Serves the gallery at `/__preview` and files under
+  `/assets/img/...`. It does not offer directory listing, upload,
+  mutation endpoints or public sharing.
+- Binds only to `127.0.0.1:4177`. Allowed development CORS origins
+  are `http://localhost:4200` and `http://127.0.0.1:4200`.
+  **Never expose this development server to the Internet.**
 
-## Modalità B — immagini autentiche del repository asset
+This gallery helps verify filenames, MIME types, paths, asset
+availability and manifest rules; it **does not** validate Three.js
+scene rendering, astrological accuracy or the final original artwork.
 
-Con accesso al repository privato `astrological-assets` e al relativo pacchetto autorizzato:
+For an actual interactive chart with generated placeholder symbols,
+use [the Angular demo guide](ANGULAR_DEMO.md) or
+[Start here](START_HERE.md).
+
+## Option B — approved private artwork pack
+
+Only collaborators who have been **explicitly authorized** to access
+the private `astrological-assets` repository may use its real images.
+Cloning that repository is not needed for the synthetic demo.
+
+When authorized, keep the repositories as sibling directories:
 
 ```powershell
 git clone https://github.com/Cesare-ml/astrological-assets.git
@@ -54,17 +97,27 @@ node scripts/serve-local-assets.mjs `
   --manifest ../astrological-assets/manifests/approved-assets.json
 ```
 
-La libreria Angular può configurare il server locale così:
+In a local Angular app, configure the renderer's asset root:
 
 ```ts
 GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
 ```
 
-Il sito VirgoStars continuerà a usare `/assets/` e una sola copia dei file, mentre la demo utilizza questo server di sviluppo. Nessun accesso a `virgo-stars` è necessario al collaboratore. Il pacchetto contiene immagini autorizzate per la condivisione privata, ma non il font originale dalla licenza sconosciuta.
+The VirgoStars website continues using its own `/assets/` directory
+and existing host-owned image files; the demo uses the local server.
+A contributor does not need access to the `virgo-stars` application
+repository. The authorized private pack includes images but **not**
+the original font, whose redistribution license remains unresolved.
 
-## Contratto del manifest
+**Warning:** Permission to share artwork with invited collaborators
+does not automatically authorize public redistribution. The
+repository's CPAL-1.0 source-code license does not license the
+separate image files or fonts.
 
-Il server accetta **soltanto** il manifest `schemaVersion: 1` emesso dall'importatore `astrological-assets`, con:
+## Manifest contract
+
+The server accepts a nonempty `schemaVersion: 1` approved asset
+manifest with records like:
 
 ```json
 {
@@ -82,28 +135,57 @@ Il server accetta **soltanto** il manifest `schemaVersion: 1` emesso dall'import
 }
 ```
 
-L'esempio non è un manifest utilizzabile: gli hash e i permessi vanno prodotti/verificati realmente. Per ciascun percorso controlla file effettivo, SHA-256, dimensione, estensione, case-sensitivity e dichiarazione della revisione. Una stringa di autorizzazione nel JSON non è di per sé una verifica legale: il titolare deve effettuare un audit separato.
+**This example is not a usable manifest.** The file sizes, checksums
+and permission details must be generated and independently verified
+for actual content. Checks include the physical file, SHA-256
+checksum, byte size, extension, exact filename casing and approval
+fields. Stating a permission in a JSON string is not a legal audit;
+the owner must separately verify the underlying rights.
 
-Si rifiuta di avviarsi con manifest mancante, vuoto, alterato, con file non approvati o con hash sbagliato. Richieste di file fuori dal manifest restituiscono **404**; un file modificato durante la sessione restituisce **409**.
+The server rejects missing, empty or tampered manifests and missing,
+unapproved or checksum-mismatched files at startup. Requests for
+files outside the approved manifest return **404**. Files that change
+after initial validation return **409** when requested.
 
-## Limiti deliberati
+## Intentional limitations
 
-1. **La galleria non è la demo Angular interattiva**: non esegue `GraficoRenderService`, animazioni o calcoli astrologici. La [demo separata](ANGULAR_DEMO.md) esegue il renderer con dati sintetici, senza calcolare le effemeridi.
-2. I 78 PNG di test non hanno i contenuti visivi reali; nessun confronto affidabile tra skin è possibile prima del pacchetto approvato.
-3. La fonte degli asset di produzione è ancora `virgo-stars/public/assets/`; non modificare le sue regole di copia o i dispositivi fisici.
-4. Permessi collaboratore: i repository privati sotto account GitHub personali possono concedere scrittura; usare un'organizzazione per ruoli di sola lettura quando necessario.
-5. Nessuna GitHub Action, release, npm publish, CDN, deploy AWS o aggiornamento hardware.
+1. **The gallery is not the interactive Angular demo.** It does not
+   execute `GraficoRenderService`, animations or astrology formulas.
+   The [separate Angular demo](ANGULAR_DEMO.md) exercises the real
+   renderer using synthetic positions, without calculating ephemerides.
+2. The 78 placeholders are not visually equivalent to the source
+   artwork; reliable skin comparisons require a reviewed real pack.
+3. The production asset owner remains the VirgoStars host at
+   `virgo-stars/public/assets/`. Do not modify its deployment
+   rules or shipped Astrolabio device assets here.
+4. Contributor permission constraints: private repositories owned by
+   individual GitHub accounts can have restricted collaborator roles.
+   Consider an organization when separate read-only roles are needed.
+5. No GitHub Actions, npm releases, CDN publication, AWS deployments
+   or automatic hardware updates are part of this workflow.
 
-## Test locali
+## Local checks
 
-```bash
+```sh
 npm run test:local-assets
 npm run test:assets
 npm run build
 ```
 
-Sono stati eseguiti su Windows test con fixture sintetiche per il generatore PNG, la verifica di integrità, l'accesso HTTP, la galleria e il rifiuto di file non approvati, traversal, origini esterne, file modificati e symlink. Anche la build e i test browser della demo sono passati; consulta [ANGULAR_DEMO.md](ANGULAR_DEMO.md) per comandi e limiti.
+Earlier Windows runs exercised the synthetic PNG fixture generator,
+manifest integrity, HTTP access, the gallery and rejection of
+unapproved files, path traversal, external origins, modified files
+and symlinks. Build and Angular demo browser tests were also run
+in that earlier work. See [Angular demo](ANGULAR_DEMO.md) for the
+commands and remaining limitations; these historic results are
+**not a claim that this pull request has been built and retested**.
 
-## Successivo gate
+## Next release gate
 
-Confrontare la demo con baseline visive approvate e verificare le opzioni avanzate e l'Astrolabio. Non considerare questa galleria o i test browser come sostitutivi delle prove hardware.
+Compare real chart output against owner-approved visual reference
+images, validate advanced options and test the actual Astrolabio
+offline Firefox/e-ink pipeline. Neither this asset gallery nor
+synthetic browser tests can replace real device validation.
+
+For publishing prerequisites, see
+[the public release checklist](PUBLIC_RELEASE_CHECKLIST.md).
