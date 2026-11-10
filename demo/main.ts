@@ -33,7 +33,7 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <p class="muted">Manifest: {{manifestLabel}}</p>
         <p class="status" [class.error]="error" [attr.role]="error ? 'alert' : 'status'" aria-atomic="true" data-testid="status">{{error || status}}</p>
       </aside>
-      <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart" role="img" [attr.aria-label]="chartDescription">Synthetic chart preview.</canvas></section>
+      <section class="stage" aria-label="Chart canvas" [attr.aria-busy]="busy"><canvas #canvas data-testid="chart" role="img" [attr.aria-label]="chartDescription">Synthetic chart preview.</canvas></section>
     </section>
     <footer>Fixture positions are illustrative; they are not astronomical calculations. Synthetic assets do not establish visual fidelity. Renderer credits: <a href="https://github.com/Cesare-ml/virgo-stars" rel="noopener noreferrer">VirgoStars</a>.</footer>
   </main>`
