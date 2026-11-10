@@ -11,6 +11,7 @@
     "demo:pack": "node scripts/generate-demo-pack.mjs --out .local/demo-pack",
     "demo:assets": "node scripts/serve-local-assets.mjs --root .local/demo-pack/public/assets --manifest .local/demo-pack/manifests/approved-assets.json",
     "test:demo": "node --test tests/demo-browser.test.mjs",
+    "test:latitude-browser": "node --test --test-name-pattern=\"^a planet at latitude zero changes the actual synthetic Three.js latitude PNG$\" tests/demo-browser.test.mjs",
     "check:demo-syntax": "node --check tests/demo-browser.test.mjs",
     "test:latitude": "node --test tests/latitude-zero.test.mjs",
     "test:extraction-browser": "node tests/extraction-browser-smoke.mjs",
