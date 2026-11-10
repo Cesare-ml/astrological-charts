@@ -6,6 +6,7 @@
  * Starts temporary synthetic asset and demo servers when needed.
  */
 import { spawn } from 'node:child_process';
+import { startOwnedServer, getServerFailure, stopOwnedServers } from './local-process-lifecycle.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -45,8 +46,7 @@ function args(argv) {
 }
 
 function launch(command, commandArgs, owned) {
-  const child = spawn(command, commandArgs, { cwd: root, windowsHide: true, stdio: 'ignore' });
-  child.on('error', error => { console.error('Unable to start local renderer server:', error.message); });
+  const child = startOwnedServer(command, commandArgs, { cwd: root });
   owned.push(child);
   return child;
 }
@@ -67,7 +67,8 @@ async function live(url) {
 async function waitFor(url, child) {
   for (let i = 0; i < 240; i++) {
     if (await live(url)) return;
-    if (child && child.exitCode !== null) throw new Error(`Local server exited before becoming ready: ${url}`);
+    const failure = getServerFailure(child);
+    if (failure) throw new Error(`Local server failed before becoming ready: ${url} (${failure})`);
     await delay(250);
   }
   throw new Error(`Local server not ready: ${url}. Check Node dependencies and port conflicts.`);
@@ -182,9 +183,7 @@ async function main() {
   } finally {
     if (browser) await browser.close();
     if (tempDir) await rm(tempDir, { force: true, recursive: true });
-    for (const child of owned.reverse()) {
-      if (child.exitCode === null) child.kill();
-    }
+    await stopOwnedServers(owned);
   }
 }
 
