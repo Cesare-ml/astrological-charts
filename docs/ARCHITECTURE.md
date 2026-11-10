@@ -19,6 +19,8 @@ Astrology calculation result (TemaRender)
   Astrolabio headless adapter (external)
 ```
 
+Python / other languages can pass computed positions and house cusps through JSON v1 (`demo/chart-input.ts`), then use the local Chromium bridge (`scripts/render-chart.mjs`) for the existing Angular renderer's PNG/JPEG output. This is an adapter, not a second graphics or astronomical implementation. It currently requires a browser/WebGL runtime; a true headless native/WASM-only drawing backend is not implemented.
+
 The library does not independently calculate the full astronomical ephemeris or interpretation. It depends on precomputed planetary positions and house inputs. Some aspect selection and derived visual elements are computed during rendering.
 
 ## Components and current coupling
