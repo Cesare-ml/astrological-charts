@@ -82,6 +82,31 @@ natal coordinates. Output filename extension decides PNG/JPEG.
 The same input can be loaded **manually** in the browser demo via
 **Import your computed chart (JSON)**. Export PNG with the button.
 
+## Optional private artwork for local owner previews
+
+If you are authorized to use the **separate**
+`astrological-assets` checkout, you can pass its verified paths
+explicitly to the same Python wrapper:
+
+```python
+render_chart(
+    {"schemaVersion": 1, "natal": natal}, "my-approved-chart.png",
+    mode="natal", skin="light",
+    asset_root="../astrological-assets/public/assets",
+    asset_manifest="../astrological-assets/manifests/approved-assets.json",
+)
+```
+
+Both paths are required together; otherwise the wrapper raises
+`ValueError`. The Node CLI performs full manifest/SHA-256 binary
+verification before opening Chrome. The **default stays synthetic**.
+Close any asset server you started on port 4177 before an external
+headless export; this mode refuses to reuse a foreign server.
+Nothing is copied into the public renderer. Permission for private
+collaboration does **not** authorize publishing those image files.
+Run the browser-free Python option tests with
+`python -m unittest discover -s tests -p 'python_render_options_test.py'`.
+
 ## JSON data contract (schemaVersion 1)
 
 ```json
