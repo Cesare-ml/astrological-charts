@@ -80,6 +80,9 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Zoom in');
     await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Reset zoom',
+      'the zoom reset must be keyboard accessible');
+    await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Export PNG');
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'base');
@@ -129,6 +132,17 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
     await page.getByRole('button', {name:'Zoom in'}).click();
     const afterZoom = await page.locator('canvas').screenshot();
     assert.notDeepEqual(beforeZoom, afterZoom, 'zoom should change the chart');
+    await page.getByRole('button', {name:'Reset zoom'}).click();
+    const restoredZoom = await page.locator('canvas').screenshot();
+    const originalPixels = await sharp(beforeZoom).removeAlpha().raw().toBuffer();
+    const restoredPixels = await sharp(restoredZoom).removeAlpha().raw().toBuffer();
+    assert.equal(restoredPixels.length, originalPixels.length, 'reset zoom changed canvas dimensions');
+    let resetDifferences = 0;
+    for (let i = 0; i < restoredPixels.length; i++) {
+      if (Math.abs(restoredPixels[i] - originalPixels[i]) > 2) resetDifferences++;
+    }
+    assert.ok(resetDifferences <= Math.ceil(originalPixels.length * 0.0001),
+      `reset zoom must recover the original chart view (${resetDifferences} differing channels)`);
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', {name:'Export PNG'}).click()]);
     const png = join(output, 'export.png'); await download.saveAs(png);
     const metadata = await sharp(png).metadata();
