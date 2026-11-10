@@ -1,30 +1,89 @@
 # Contributing to Astrological Charts
 
-This repository is private and shared by invitation. Contributions with Codex, Claude Code, or other AI tools are welcome. The maintainer retains final review and merge control.
+**You may contribute even if you do not know how to code.** The
+repository was designed for people who can describe a visual idea to
+an AI coding assistant, review screenshots and ask for changes.
+Please start with [the beginner guide](docs/START_HERE.md).
 
-## Workflow
+## First-time contributors
 
-1. Create a feature branch from `main`, named `feat/...`, `fix/...` or `docs/...`.
-2. Read `AGENTS.md` and current extraction status before modifying code.
-3. Use synthetic fixture data, never real VirgoStars users' natal charts or credentials.
-4. Make a focused change and add geometric/visual tests where possible.
-5. Attempt `npm install` then `npm run build` from a clean checkout; report actual results and any missing assets. Do not claim passing tests if they were not executed.
-6. Open a PR with scope, screenshots for rendering changes, test results, risks, and effects on website/Astrolabio.
-7. Wait for maintainer approval. Do not merge or deploy without authorization.
+1. Download or clone the repository. Run `START_HERE.cmd` on Windows,
+   or follow the [command-line quickstart](docs/START_HERE.md).
+2. Tell an AI what you would like to change and attach a screenshot.
+   Ask the AI to read `AGENTS.md` and the docs before editing.
+3. Keep changes on a new `feat/...`, `fix/...` or `docs/...`
+   branch. Never edit production VirgoStars or deployed Astrolabio.
+4. Use fake/deterministic input coordinates in tests. Do not commit
+   real users' birth information, secrets or private asset packs.
+5. Have the AI run `npm run preflight`, `npm run build`, and,
+   when needed, `npm run build:demo` and browser visual tests.
+   If a test cannot run, say so in the pull request.
+6. Open a **draft pull request**. Explain the visual change and attach
+   before/after screenshots when appropriate. The maintainer
+   controls review, approval and merge.
 
-## AI-assisted changes
+**Short AI prompt:** “Read AGENTS.md and README.md first. I'm new to
+coding. Implement [my idea] on a new branch, preserving the renderer's
+public API, CPAL-1.0 credits and independent asset architecture.
+Explain each step in plain English, run tests, and open a draft PR.
+Do not deploy, merge or publish.”
 
-AI-assisted contributions are welcome, but their author is responsible for reviewing generated code, licensing, security and correctness. Avoid full-repo rewriting agents that modify unrelated code. Never submit prompts or logs containing private data.
+## Python contributors
 
-## Public release and intellectual property
+You do not need Angular knowledge just to render existing charts:
+[Python integration](docs/PYTHON_INTEGRATION.md) explains the
+`schemaVersion: 1` JSON contract. Your own program may calculate
+coordinates and feed them into the library to generate PNG/JPEG.
 
-The repository is private and has no open-source license at this stage. Do not relicense or publish it. Before accepting external contributions, establish written permission/terms allowing VirgoStars to use, modify, commercially distribute, and potentially open-source accepted contributions in future. Each contributor confirms they have the right to contribute their work and that new assets are properly licensed.
+If you need a **new chart type or visual option**, propose an
+extension to the versioned JSON format and implement the matching
+Angular rendering behavior. Keep astronomy/house algorithms out of
+this repository; they belong in their own libraries.
 
-## Review gates
+## AI-generated work and testing
 
-- correct layers, positions, symbols, house cusps, aspects and rotation;
-- changes documented in public inputs/options;
-- no regressions to natal, transits, synastry or latitude modes;
-- no GPU resource leaks or abandoned animation timelines;
-- no breaking asset paths for headless Astrolabio;
-- no impact on live VirgoStars without separate reviewed integration.
+AI assistance is welcome. Contributors are still responsible for
+reviewing generated source, dependencies, licensing, security,
+correctness and screenshots. Describe precisely which tests were
+actually executed. A PR without a local browser check must not claim
+pixel parity. Do not modify unrelated files, introduce external
+network calls, enable GitHub Actions, or add automatic releases.
+
+## License, artwork and contributor rights
+
+The original covered source code is released under
+[CPAL-1.0](LICENSE), including VirgoStars attribution under Exhibit B.
+Contributions to covered files should be offered under compatible
+CPAL-1.0 terms and preserve source notices. State the origin of any
+borrowed code, verify you can submit it, and record modifications with
+dates as required by the license. **Do not copy private art,
+unknown-license fonts or brand assets into the repo.** Publicly
+visible assets are not automatically licensed for redistribution.
+
+Contributors retain copyright where applicable. Contributions under
+CPAL do **not** automatically grant the owner permission to relicense
+everyone's code later. A separate contributor rights agreement may
+be needed if future relicensing is desired.
+
+The maintainer is still performing a
+[public release audit](docs/PUBLIC_RELEASE_CHECKLIST.md): the
+repository remains private until explicitly approved. No outside
+contributor should change GitHub visibility or publish packages.
+
+## Compatibility and review gates
+
+- Correct zodiac rings, house cusps, planet symbols, rotation,
+  aspect lines and all four chart modes.
+- Stable public Angular imports and `schemaVersion: 1` JSON input.
+- No accidental replacement of missing real coordinates with fake
+  positions or silently accepted malformed JSON.
+- Asset manifest/hash verification, rights clearance and no asset
+  duplication across repositories.
+- No regressions in PNG export, browser UI, mobile layout or
+  resource cleanup after repeated render/export.
+- No change to the live VirgoStars website or Astrolabio hardware
+  without separate explicit integration approval.
+
+Full PR description: goal; changed files; visual before/after;
+test commands and results; remaining risks; rollback; upstream and
+device compatibility; and how AI was used.
