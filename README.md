@@ -7,13 +7,7 @@ VirgoStars attribution (see [LICENSE](LICENSE) and [NOTICE](NOTICE)).
 
 See the [development milestones and roadmap](docs/ROADMAP.md) for prioritized work and contributor acceptance criteria.
 
-**Release status:** this repository is still **private** while source,
-dependency, artwork and contributor permissions are reviewed.
-The license and collaboration guides have been prepared for a future
-public release. This package is not yet a published stable API,
-integrated with VirgoStars production or approved for Astrolabio
-deployment. Follow [the release checklist](docs/PUBLIC_RELEASE_CHECKLIST.md)
-before changing repository visibility.
+**Release status:** GitHub currently reports this repository as **public**, but the source-rights, dependency, artwork and contributor audits are **not cleared** (see [issue #20](https://github.com/Cesare-ml/astrological-charts/issues/20)). The license and collaboration guides are prepared for a future approved release; existing visibility is not approval. This package is not yet a published stable API, integrated with VirgoStars production or approved for Astrolabio deployment. Follow the [release checklist](docs/PUBLIC_RELEASE_CHECKLIST.md) and obtain maintainer sign-off before announcing or publishing a release.
 
 ## You do not need to be a programmer
 
