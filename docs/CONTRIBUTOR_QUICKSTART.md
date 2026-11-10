@@ -5,7 +5,6 @@ You need Git, Node.js compatible with Angular 20 and repository access via your 
 ```powershell
 git clone https://github.com/Cesare-ml/astrological-charts.git
 cd astrological-charts
-git switch feat/verified-asset-preview
 powershell -NoProfile -File .\scripts\verify-local.ps1
 ```
 
@@ -23,6 +22,7 @@ The code repository does **not** include the production icons, ring textures or 
 
 ```powershell
 # Both repos should be sibling directories.
+cd ..
 git clone https://github.com/Cesare-ml/astrological-assets.git
 cd astrological-charts
 node scripts/serve-local-assets.mjs --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json
