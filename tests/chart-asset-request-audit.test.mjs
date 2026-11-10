@@ -15,6 +15,7 @@ test('accepts successful local asset responses and ignores external or nonasset 
   audit.recordFailure('https://example.com/external.png');
   audit.recordResponse('http://127.0.0.1:4177/__preview', 404);
   assert.doesNotThrow(() => audit.assertClean());
+  assert.doesNotThrow(() => audit.assertHasLoadedAssets());
 });
 
 test('blocks incomplete local chart image exports without exposing private input paths', () => {
@@ -48,4 +49,15 @@ test('rejects any nonlocal audit endpoint and ignores irrelevant HTTP 300 status
   audit.recordResponse(img, 399);
   audit.recordResponse(img, 0);
   assert.doesNotThrow(() => audit.assertClean());
+});
+
+test('approved mode rejects a chart that did not load any verified local image', () => {
+  const audit = createChartAssetRequestAudit();
+  audit.recordResponse('http://127.0.0.1:4200/main.js', 200);
+  audit.recordResponse('https://example.com/unrelated.png', 200);
+  assert.doesNotThrow(() => audit.assertClean());
+  assert.throws(() => audit.assertHasLoadedAssets(),
+    /requested no successfully served local assets/);
+  audit.recordResponse(img, 200);
+  assert.doesNotThrow(() => audit.assertHasLoadedAssets());
 });
