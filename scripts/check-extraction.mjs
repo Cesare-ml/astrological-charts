@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { importTargets } from './extraction-imports.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sourceRoot = join(root, 'src');
@@ -28,13 +29,6 @@ function walk(dir) {
     const path = join(dir, entry.name);
     return entry.isDirectory() ? walk(path) : (entry.isFile() ? [path] : []);
   });
-}
-function importTargets(content) {
-  const specifiers = [];
-  // Capture statically declared imports/exports, including multiline 'from' declarations.
-  const re = /\bfrom\s*['"]([^'"]+)['"]|^\s*import\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/gm;
-  for (const m of content.matchAll(re)) specifiers.push(m[1] ?? m[2] ?? m[3]);
-  return specifiers;
 }
 function resolvesLocally(origin, specifier) {
   const target = resolve(dirname(origin), specifier);
