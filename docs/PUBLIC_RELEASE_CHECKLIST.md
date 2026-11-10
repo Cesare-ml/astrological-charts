@@ -23,8 +23,13 @@ release host artwork until each gate below has been reviewed.
 - [ ] Run `npm ci`, `npm run preflight`, `npm run build`,
       `npm run build:demo`, and a local synthetic browser export. Test
       a fresh public-reader checkout with no private dependencies.
-- [ ] Run the Python-to-JSON-to-PNG example using the real demo,
+- [ ] Run `npm run test:node-adapter`, the programmatic
+      Node.js-to-JSON-to-PNG example, and the Python-to-JSON-to-PNG
+      example using the real demo,
       then verify the output dimensions and JPEG conversion.
+- [ ] Test the Astrolabio Node.js + offline Firefox `file://`
+      adapter separately; never confuse the Chromium local demo with
+      offline/e-ink device compatibility.
 - [ ] Ensure README and contributor instructions are understandable
       without coding experience and entirely in English.
 - [ ] Review new public issues/PR templates, attribution display in
