@@ -27,23 +27,27 @@ export async function matchesLocalChartDemo(baseUrl, request = fetch) {
   } catch { return false; }
 }
 
-/** Verify sampled bytes against the exact *generated* development manifest.
- * A running asset service with a different approved pack must not be used
- * by this synthetic-only CLI without explicit user action.
+/** Verify a few actual HTTP bytes against the already approved local manifest.
+ * This is a service identity/transport check, NOT sufficient verification
+ * of all rights or files. The local owner server independently verifies
+ * every manifest asset with verifyApprovedAssetPack() on startup.
  */
-export async function matchesSyntheticAssetServer(baseUrl, manifest, request = fetch) {
+async function matchManifestSamples(baseUrl, manifest, request) {
   const base = loopbackUrl(baseUrl);
   if (manifest?.schemaVersion !== 1 ||
-      manifest?.source?.repository !== 'synthetic-local-fixtures' ||
       !Array.isArray(manifest.assets) || manifest.assets.length === 0) {
-    throw new TypeError('Expected the local generated synthetic asset manifest.');
+    throw new TypeError('Expected a nonempty asset manifest (schemaVersion 1).');
   }
-  const images = manifest.assets.filter(item => item.path?.startsWith('img/') &&
-    Number.isSafeInteger(item.bytes) &&
+  const valid = manifest.assets.every(item =>
+    typeof item.path === 'string' &&
+    (item.path.startsWith('img/') || item.path.startsWith('fonts/')) &&
+    !item.path.split('/').some(part => !part || part === '.' || part === '..' ||
+      part.includes('%') || part.includes('\\')) &&
+    Number.isSafeInteger(item.bytes) && item.bytes >= 0 &&
     /^[0-9a-f]{64}$/.test(item.sha256));
-  if (images.length !== manifest.assets.length) {
-    throw new TypeError('Synthetic manifest has unverified or invalid image entries.');
-  }
+  if (!valid) throw new TypeError('Manifest contains an unverified/invalid asset entry.');
+  const images = manifest.assets.filter(item => item.path.startsWith('img/'));
+  if (!images.length) throw new TypeError('Manifest must include image assets.');
   const sampled = [...new Map([
     images[0], images[Math.floor(images.length / 2)], images[images.length - 1],
   ].map(item => [item.path, item])).values()];
@@ -62,6 +66,29 @@ export async function matchesSyntheticAssetServer(baseUrl, manifest, request = f
     }
     return true;
   } catch { return false; }
+}
+
+/** Only accept the generated checkerboard pack in synthetic mode. */
+export async function matchesSyntheticAssetServer(baseUrl, manifest, request = fetch) {
+  if (manifest?.source?.repository !== 'synthetic-local-fixtures') {
+    throw new TypeError('Expected the local generated synthetic asset manifest.');
+  }
+  if (manifest.assets?.some(item => !item.path?.startsWith('img/'))) {
+    throw new TypeError('Expected image-only synthetic manifest.');
+  }
+  return matchManifestSamples(baseUrl, manifest, request);
+}
+
+/** Sample an explicit, separately authorized external pack.
+ * The caller MUST run full verifyApprovedAssetPack(root, manifest) and
+ * own the asset-server process. Never use this to trust an arbitrary
+ * pre-existing server on port 4177.
+ */
+export async function matchesManifestAssetServer(baseUrl, manifest, request = fetch) {
+  if (manifest?.source?.repository === 'synthetic-local-fixtures') {
+    throw new TypeError('External asset mode requires a separately approved pack.');
+  }
+  return matchManifestSamples(baseUrl, manifest, request);
 }
 
 /** Verify the mounted Angular controls, not merely the HTML shell.
