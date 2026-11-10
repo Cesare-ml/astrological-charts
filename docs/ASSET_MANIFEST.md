@@ -1,80 +1,130 @@
-# Manifest degli asset condivisi — versione e checksum
+# Shared asset manifest — versioning and SHA-256 checksums
 
-Questa funzione completa il sistema di URL condivisi della libreria, **senza aggiungere copie dei file grafici**. Il proprietario dell'archivio rimane `Cesare-ml/virgo-stars/public/assets/`: è già usato dalle pagine Angular e dal renderer.
+This feature complements the renderer's shared asset URL resolver
+**without adding any copies of the original artwork**.
+The currently authoritative production asset folder remains
+`Cesare-ml/virgo-stars/public/assets/`, already used by the
+Angular frontend and the chart renderer.
 
-Il file manifest contiene solo **nomi relativi, dimensione in byte, SHA-256** e un fingerprint deterministico. Non contiene immagini, font né dati dei temi astrologici. Non è una verifica delle licenze.
+The manifest stores only **relative paths, file sizes, SHA-256
+checksums and a deterministic fingerprint**. It contains no images,
+fonts, personal birth records or astrological theme data. The
+manifest does not constitute a legal or copyright review.
 
-## Flusso operativo
+## Architecture
 
 ```text
-virgo-stars/public/assets/    (solo archivio di produzione)
-         |
-         +-- frontend Angular -> /assets/img/... (una sola copia per build)
-         |
-         +-- script asset-manifest.mjs -> manifest JSON (solo metadati)
-                                                  |
-                                                  +-- verifica integrità
-                                                  +-- differenze tra versioni
-                                                  +-- selezione offline Astrolabio (fase successiva)
-astrological-charts/src/ -> URL resolver verso /assets/img/...  (nessun file copiato)
+virgo-stars/public/assets/  (production-owned artwork)
+    |
+    +-- Angular frontend -> /assets/img/... (one copy per build)
+    |
+    +-- asset-manifest.mjs -> metadata-only JSON manifest
+                                    |
+                                    +-- integrity checks
+                                    +-- version-to-version comparison
+                                    +-- future offline Astrolabio asset selection
+
+astrological-charts/src/ -> canonical /assets/img/... URL resolver
+                            (no artwork duplicated)
 ```
 
-## Uso
+## Manual use
 
-Dopo aver clonato VirgoStars e Astrological Charts in cartelle vicine, **solo sul computer locale**:
+If you are an authorized developer with both repositories checked
+out in sibling folders, run these **locally only** from
+`astrological-charts`:
 
-```bash
-# Esempio minimo. La selezione contiene percorsi relativi a public/assets/.
+```sh
+# Minimal example. Selection paths are relative to public/assets/.
 node scripts/asset-manifest.mjs generate \
   --root ../virgo-stars/public/assets \
   --selection examples/chart-assets.selection.example.json \
   --out ./chart-assets-manifest.local.json
 
-# Il controllo fallisce se uno dei file selezionati manca o è cambiato.
+# Fail if any selected file is missing or changed.
 node scripts/asset-manifest.mjs verify \
   --root ../virgo-stars/public/assets \
   --manifest ./chart-assets-manifest.local.json
 
-# Confronta due revisioni e genera una lista di asset aggiunti/modificati/rimossi.
+# Compare two manifest versions: added, modified and removed paths.
 node scripts/asset-manifest.mjs diff \
   --before ./chart-assets-manifest.previous.json \
   --after ./chart-assets-manifest.local.json
 ```
 
-L'esempio `examples/chart-assets.selection.example.json` è **illustrativo e incompleto**: per tutte le skin va generata una lista verificata a partire dai riferimenti nel renderer e dai componenti Angular. Non considerare l'esempio un elenco esaustivo.
+The `examples/chart-assets.selection.example.json` file is
+**illustrative and incomplete**. A reviewed set for every skin must
+be derived from live renderer and Angular component references.
+Never assume that the example covers all real assets.
 
-Il generatore **richiede una selezione esplicita**; per una scansione di tutti gli asset grafici e i font, occorre richiedere esplicitamente `--all yes`. Questo evita di includere per errore migliaia di immagini estranee al renderer. La scansione riguarda esclusivamente `img/` e `fonts/` e tipi consentiti. Symlink, path traversal e nomi collidenti per maiuscole/minuscole producono errori.
+The generator **requires an explicit selection**. Scanning every
+graphics or font file requires an explicit `--all yes` option.
+This prevents accidentally including thousands of unrelated host
+resources. The scanner considers only permitted file types under
+`img/` and `fonts/`. Symbolic links, path traversal and
+case-insensitive naming collisions are rejected.
 
-Il manifest va generato in una directory di lavoro, revisionato e usato per verificare la disponibilità delle risorse prima del rilascio. **Non** è richiesto al browser per mostrare un grafico né va importato come insieme di immagini durante la build.
+Generate the manifest in a development workspace, inspect it and
+use it to check availability before release. The browser does
+**not** need the manifest merely to draw a chart, and the manifest
+must not cause images to be bundled with the npm library.
 
-## Aggiornamenti Astrolabio
+Contributors who cannot access `virgo-stars` should use the
+[generated synthetic demo](LOCAL_ASSET_PREVIEW.md), or an
+approved private [astrological-assets pack](INDEPENDENT_ASSETS_REPOSITORY.md).
+Do not use the production website as a hidden asset dependency.
 
-I dispositivi offline possiedono già i file necessari a funzionare senza rete. In una futura fase di packaging, per ogni build Astrolabio potremo:
+## Future offline Astrolabio updates
 
-1. scegliere un sottoinsieme dal manifest degli asset canonici;
-2. copiare **una sola volta sul dispositivo** ogni file richiesto, non tutto l'archivio del sito;
-3. confrontare il manifest installato con quello della versione successiva;
-4. trasferire soltanto file nuovi o modificati, con verifica SHA-256 prima dell'attivazione.
+Offline devices already hold the resources necessary to operate
+without an Internet connection. A future versioned packaging
+pipeline could, for each hardware build:
 
-**Questo generatore non copia, cancella né aggiorna asset sui dispositivi**. La distribuzione incrementale e i test hardware non sono ancora implementati.
+1. Select only the required subset from the canonical manifest.
+2. Copy **one local copy per device** of each needed file, not the
+   entire website asset directory.
+3. Compare the installed manifest with the next release's manifest.
+4. Transfer only new or changed files and verify SHA-256 before
+   activation.
 
-## Test
+**This manifest generator does not copy, delete or update assets
+on any Astrolabio device.** Incremental distribution and real-device
+tests are not implemented.
 
-```bash
+## Test commands
+
+```sh
 npm run test:asset-manifest
 npm run test:assets
 ```
 
-Casi previsti: ordine deterministico, SHA-256, selezione, modifica file, duplicati, case collision, traversal e symlink. Un test con fixture temporanee non certifica automaticamente che l'intero catalogo reale o le sette skin siano completi.
+Tests cover ordering determinism, SHA-256, explicit selection,
+modified assets, duplicates, case-colliding names, path traversal
+and symbolic links. Temporary synthetic fixtures do **not**
+automatically prove that the whole real catalog or all seven
+skins are complete.
 
-## Limiti e sicurezza
+## Limitations and security
 
-- La libreria non deve dichiarare `assets` dentro `ng-package.json`.
-- Il frontend deve copiare `public/` **una volta soltanto**. Evitare che Angular importi gli stessi PNG dal pacchetto npm.
-- Il manifest non concede licenze: il diritto di distribuire ciascuna immagine, specie texture e Risuonatore Solare, richiede un audit separato.
-- Non pubblicare manifest completi di file estranei al prodotto in una release open source.
-- Restano da realizzare: selezione automatica per skin, validazione degli asset esistenti, test WebGL/network, integrazione sito e Astrolabio.
+- Do not add an `assets` declaration to `ng-package.json`.
+- The Angular frontend must copy its `public/` folder **once**.
+  It must not duplicate the same PNGs through an npm dependency.
+- A manifest is not a content license. Artwork, including stock
+  textures and Solar Resonator imagery, requires a separate
+  rights and redistribution audit.
+- Do not publish large inventories of unrelated private host files
+  in the open-source renderer repository.
+- Remaining work includes comprehensive skin-specific selection,
+  verification against real assets, WebGL/network tests, and
+  separately reviewed site and Astrolabio integrations.
 
-## Automatic chart-only selection (next candidate PR)
+## Automatic chart-only selection
 
-Rather than maintaining `examples/chart-assets.selection.example.json` by hand, the candidate tool `scripts/derive-chart-asset-selection.mjs` derives the list from live `SkinManager`/preload references and known chart-only folders of the host. See [ASSET_SELECTION_AUTOMATION.md](ASSET_SELECTION_AUTOMATION.md). The selection is conservative, not a proven per-device minimum, and unresolved literal references block output.
+Instead of maintaining `examples/chart-assets.selection.example.json`
+by hand, `scripts/derive-chart-asset-selection.mjs` can derive
+conservative candidate paths from active `SkinManager` and preload
+references plus explicitly chart-related host directories. See
+[Automated asset selection](ASSET_SELECTION_AUTOMATION.md).
+
+The result is **not** a proven minimum for any shipped device;
+unresolved literal references must block output and be investigated.
