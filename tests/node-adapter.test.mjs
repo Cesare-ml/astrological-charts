@@ -9,10 +9,14 @@ import { join, resolve } from 'node:path';
 import { renderChart, renderChartFile, buildRenderArgs } from '../node/index.mjs';
 
 const SAMPLE_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLefgAAAABJRU5ErkJggg==';
-const payload = {
-  schemaVersion: 1,
-  natal: { planets: { Sun: { longitude: 42.25, latitude: 0 } } },
+const natal = {
+  datetime: '2000-01-01T12:00:00Z',
+  ascendant: 20,
+  midheaven: 290,
+  houseCusps: Array.from({length: 12}, (_, i) => (20 + i * 30) % 360),
+  planets: {Sun: {longitude: 42.25, latitude: 0}},
 };
+const payload = {schemaVersion: 1, natal};
 
 test('Node argument formatting preserves mode, skin and image path', () => {
   assert.deepEqual(
@@ -25,10 +29,10 @@ test('Node argument formatting preserves mode, skin and image path', () => {
 
 test('Node API rejects unknown schema, nonfinite numbers and unsafe timeouts', async () => {
   await assert.rejects(renderChart({ schemaVersion: 2 }, 'invalid.png'), /schemaVersion: 1/);
-  await assert.rejects(renderChart({ schemaVersion: 1, natal: { ascendant: NaN } },
-    'invalid.png'), /NaN or Infinity/);
-  await assert.rejects(renderChart({ schemaVersion: 1, natal: { ascendant: Infinity } },
-    'invalid.png'), /NaN or Infinity/);
+  await assert.rejects(renderChart({ ...payload, natal: { ...natal, ascendant: NaN } },
+    'invalid.png'), /finite JSON number/);
+  await assert.rejects(renderChart({ ...payload, natal: { ...natal, ascendant: Infinity } },
+    'invalid.png'), /finite JSON number/);
   await assert.rejects(renderChart(payload, 'invalid.png', { timeoutMs: -1 }), /timeoutMs/);
   await assert.rejects(renderChart(payload, 'invalid.png', { timeoutMs: 999999 }), /timeoutMs/);
   await assert.rejects(renderChartFile('chart.png', 'chart.png'),
