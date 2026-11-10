@@ -61,6 +61,9 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 - [ ] Verify the Node.js image-export API, Python wrapper and failure handling with actual browser exports.
 - [ ] Document the separation between this developer bridge and the existing offline Astrolabio Firefox integration.
 - [ ] Validate cross-platform paths, concurrent process limitations and clean shutdown.
+  - A single-process FIFO queue now covers both Node APIs and a mixed
+    object/file order test in draft PR #19. Real multi-process locking,
+    native Windows/macOS shutdown and stress tests remain unverified.
 - [ ] Plan compatibility checks with `astrological-functions` and `VirgoStars-Ephemeris` without embedding astronomy algorithms here.
 
 **Exit criterion:** documented, tested consumer contracts and versioned examples.
