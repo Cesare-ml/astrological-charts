@@ -4,7 +4,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { matchesLocalChartDemo, matchesSyntheticAssetServer, waitForChartControls }
+import { matchesLocalChartDemo, matchesSyntheticAssetServer,
+  matchesManifestAssetServer, waitForChartControls }
   from '../scripts/verify-local-render-services.mjs';
 
 const local = 'http://127.0.0.1:4177/';
@@ -94,4 +95,33 @@ test('DOM readiness probe tolerates failed page inspection without hiding origin
     async evaluate() { throw new Error('page closed'); },
   };
   await assert.rejects(waitForChartControls(fakePage), /"unavailable":true/);
+});
+
+test('external local asset identity is verified by sample SHA-256 without accepting synthetic identity', async () => {
+  const approved = {
+    ...manifest,
+    source: {repository: 'Cesare-ml/virgo-stars'},
+    assets: manifest.assets.map(item => ({
+      ...item, rightsHolder: 'Test fixture owner',
+      permissionBasis: 'Synthetic isolated test fixture; no real artwork',
+      approvalEvidence: 'Local test fixture',
+    })),
+  };
+  assert.equal(await matchesManifestAssetServer(local, approved, fakeAssetRequest), true);
+  assert.equal(await matchesManifestAssetServer(local, approved, async url => {
+    if (new URL(url).pathname.includes('b.png')) {
+      return new Response('different image bytes', {status: 200});
+    }
+    return fakeAssetRequest(url);
+  }), false, 'wrong bytes must fail closed');
+  await assert.rejects(matchesManifestAssetServer(local, manifest, fakeAssetRequest),
+    /separately approved pack/);
+  await assert.rejects(matchesSyntheticAssetServer(local, approved, fakeAssetRequest),
+    /generated synthetic asset manifest/);
+  await assert.rejects(matchesManifestAssetServer(local, {...approved,
+    assets: [{path:'img/../escape.png',bytes:1,sha256:'a'.repeat(64)}],
+  }, fakeAssetRequest), /invalid asset entry/);
+  await assert.rejects(matchesManifestAssetServer(local, {...approved,
+    assets: [{...approved.assets[0],sha256:'broken'}],
+  }, fakeAssetRequest), /invalid asset entry/);
 });
