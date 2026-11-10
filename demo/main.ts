@@ -29,7 +29,7 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
           <button class="primary" (click)="exportPng()" [disabled]="busy">Export PNG</button></div>
         <label for="chart-file">Import your computed chart (JSON)</label>
         <input id="chart-file" type="file" accept=".json,application/json" [disabled]="busy" (change)="importChart($event)">
-        <p class="muted">{{sourceLabel}}. No astrology is calculated here; your JSON supplies the positions.</p>
+        <p class="muted" data-testid="chart-source">{{sourceLabel}}. No astrology is calculated here; your JSON supplies the positions.</p>
         <h2>Asset diagnostics</h2>
         <p class="muted">The included local server validates its manifest before serving assets. Placeholders are not the original artwork.</p>
         <label for="base">Asset base URL</label>
