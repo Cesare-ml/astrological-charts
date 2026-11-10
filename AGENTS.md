@@ -33,6 +33,15 @@ transit/synastry chart is missing. Do not invent available
 VirgoStars-Ephemeris Rust/Python/Node integrations: cross-language
 bindings remain planned, not released.
 
+**Browser-free validation:** `scripts/render-chart.mjs --input
+chart.json --validate-only` must return a validation result without
+Playwright, Sharp or Angular dependencies and must never write an
+output image. In `node/index.mjs`, both object and file inputs must
+be shape/size-checked before staging directories and child-process
+creation. Keep the negative fixtures in
+`tests/node-adapter.test.mjs` and `tests/chart-cli-validation.test.mjs`;
+reject incomplete and duplicate CLI flags.
+
 **CLI dependency boundary:** `scripts/render-chart.mjs` must
 parse/validate JSON *before* importing browser-only `playwright-core`
 and `sharp`. The `--help` option and malformed-data diagnostics
