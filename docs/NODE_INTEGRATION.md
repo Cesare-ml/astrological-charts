@@ -75,7 +75,8 @@ entry point: `ChartPayloadV1`, `ChartCoordinates`,
 `PlanetCoordinates`, `RenderOptions` and the three Node functions.
 A TypeScript backend can import them without reimplementing the
 renderer. Both `.mjs` and `.d.mts` must stay together when vendored;
-no npm package export is declared yet.
+no npm package export is declared yet. Check the declarations locally with
+`npm run test:node-types` (TypeScript compiler, no WebGL required).
 
 ### Export reliability
 
