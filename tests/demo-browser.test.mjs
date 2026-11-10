@@ -62,6 +62,30 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
     assert.equal(await page.getByRole('link', {name: 'VirgoStars'}).getAttribute('href'),
       'https://github.com/Cesare-ml/virgo-stars', 'the renderer must retain visible VirgoStars credits');
     assert.equal(await page.locator('[data-testid=status]').getAttribute('role'), 'status');
+    // Verify actual keyboard navigation and computed focus styling, not only CSS text.
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'mode',
+      'first Tab should focus the chart mode selector');
+    const focusOutline = await page.locator('#mode').evaluate(element => {
+      const style = getComputedStyle(element);
+      return {width: parseFloat(style.outlineWidth), style: style.outlineStyle};
+    });
+    assert.ok(focusOutline.width >= 3 && focusOutline.style !== 'none',
+      `keyboard focus outline must be visible: ${JSON.stringify(focusOutline)}`);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'skin',
+      'second Tab should focus the skin selector');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Zoom out');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Zoom in');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Export PNG');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'base');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'VirgoStars',
+      'the project credit should be reachable by keyboard');
     for (const mode of modes) {
       await page.selectOption('#mode', mode); await ready();
       for (const skin of skins) {
