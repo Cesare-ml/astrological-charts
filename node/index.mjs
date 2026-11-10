@@ -84,20 +84,21 @@ async function verifyImage(path, extension) {
   }
 }
 
-export async function renderChartFile(input, output, options = {}) {
-  buildRenderArgs(input, output, options);
-  if (resolve(input) === resolve(output)) {
-    throw new TypeError('Input JSON and output image must use different file paths.');
-  }
-  const target = resolve(output);
-  const ext = extname(target).toLowerCase();
+function renderTimeout(options) {
   const timeoutMs = options.timeoutMs ?? 180_000;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 600_000) {
     throw new TypeError('timeoutMs must be an integer from 100 to 600000 milliseconds.');
   }
-  // The programmatic file API must fail fast just like renderChart() and
-  // the direct CLI. Do not create output directories or start a child
-  // renderer for a malformed or oversized JSON file.
+  return timeoutMs;
+}
+
+/** Assumes caller already owns the single-process render queue.
+ * Validates input BEFORE creating output folders or starting Chrome.
+ * Keeping this private avoids a self-deadlock in renderChart().
+ */
+async function renderChartFileInQueue(input, output, options, timeoutMs) {
+  const target = resolve(output);
+  const ext = extname(target).toLowerCase();
   const sourceInfo = await stat(input);
   if (!sourceInfo.isFile()) throw new TypeError('Chart JSON input must be a regular file.');
   if (sourceInfo.size > MAX_CHART_JSON_BYTES) {
@@ -111,32 +112,42 @@ export async function renderChartFile(input, output, options = {}) {
   try { payload = JSON.parse(bytes.toString('utf8')); }
   catch (error) { throw new TypeError('Invalid chart JSON file: ' + error.message); }
   validateChartPayloadV1(payload, options);
-  return runSerially(async () => {
-    // Stage next to the final image; a failed process cannot overwrite
-    // the user's existing chart or claim success without creating a file.
-    await mkdir(dirname(target), { recursive: true });
-    const stageDir = await mkdtemp(join(dirname(target), '.virgostars-chart-'));
-    const stageFile = join(stageDir, 'rendered' + ext);
-    const script = options.rendererScript ?? defaultRunner;
-    try {
-      const args = buildRenderArgs(input, stageFile, options);
-      const { stdout, stderr } = await execFileAsync(process.execPath, [script, ...args], {
-        cwd: projectRoot,
-        windowsHide: true,
-        timeout: timeoutMs,
-        maxBuffer: 8 * 1024 * 1024,
-      });
-      if (stdout) process.stdout.write(stdout);
-      if (stderr) process.stderr.write(stderr);
-      // Validate basic file format; the actual Chromium CLI validates image
-      // metadata with sharp before returning.
-      await verifyImage(stageFile, ext);
-      await rename(stageFile, target);
-      return target;
-    } finally {
-      await rm(stageDir, { recursive: true, force: true });
-    }
-  });
+
+  // Stage beside the final image: an invalid input or failed process
+  // cannot overwrite an existing chart or leave a partial output.
+  await mkdir(dirname(target), { recursive: true });
+  const stageDir = await mkdtemp(join(dirname(target), '.virgostars-chart-'));
+  const stageFile = join(stageDir, 'rendered' + ext);
+  const script = options.rendererScript ?? defaultRunner;
+  try {
+    const args = buildRenderArgs(input, stageFile, options);
+    const { stdout, stderr } = await execFileAsync(process.execPath, [script, ...args], {
+      cwd: projectRoot,
+      windowsHide: true,
+      timeout: timeoutMs,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    if (stdout) process.stdout.write(stdout);
+    if (stderr) process.stderr.write(stderr);
+    // Validate basic file format; the actual Chromium CLI also checks
+    // decoded image metadata with sharp before returning.
+    await verifyImage(stageFile, ext);
+    await rename(stageFile, target);
+    return target;
+  } finally {
+    await rm(stageDir, { recursive: true, force: true });
+  }
+}
+
+export async function renderChartFile(input, output, options = {}) {
+  buildRenderArgs(input, output, options);
+  if (resolve(input) === resolve(output)) {
+    throw new TypeError('Input JSON and output image must use different file paths.');
+  }
+  const timeoutMs = renderTimeout(options);
+  // Register in the queue synchronously, before any asynchronous file I/O:
+  // Promise.all([A,B,C]) must not reorder jobs based on stat/read latency.
+  return runSerially(() => renderChartFileInQueue(input, output, options, timeoutMs));
 }
 
 /**
@@ -166,12 +177,17 @@ export async function renderChart(payload, output, options = {}) {
     return value;
   });
   if (Buffer.byteLength(serialised, 'utf8') > MAX_CHART_JSON_BYTES) throw new TypeError('Chart JSON exceeds the 1 MB demo limit.');
-  const dir = await mkdtemp(join(tmpdir(), 'virgostars-node-chart-'));
-  try {
-    const inputFile = join(dir, 'chart.json');
-    await writeFile(inputFile, serialised, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
-    return await renderChartFile(inputFile, output, options);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+  const timeoutMs = renderTimeout(options);
+  // Reserve the queue slot BEFORE writing a temporary JSON file.
+  // Calling the public renderChartFile() here would re-enqueue and deadlock.
+  return runSerially(async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'virgostars-node-chart-'));
+    try {
+      const inputFile = join(dir, 'chart.json');
+      await writeFile(inputFile, serialised, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+      return await renderChartFileInQueue(inputFile, output, options, timeoutMs);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 }
