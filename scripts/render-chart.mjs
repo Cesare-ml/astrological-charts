@@ -13,8 +13,6 @@ import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
-import { chromium } from 'playwright-core';
-import sharp from 'sharp';
 import { matchesLocalChartDemo, matchesSyntheticAssetServer } from './verify-local-render-services.mjs';
 import { validateChartPayloadV1, MAX_CHART_JSON_BYTES } from './validate-chart-input.mjs';
 
@@ -109,7 +107,7 @@ async function waitForCompletedChart(page, previousRevision, expected = {}) {
   return Number(await page.locator('[data-testid="status"]').getAttribute('data-render-revision'));
 }
 
-function chromeExecutable() {
+function chromeExecutable(chromium) {
   const candidates = [
     process.env.CHROME_PATH,
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -128,6 +126,11 @@ async function main() {
   if (!existsSync(join(root, 'node_modules', '@angular', 'cli', 'bin', 'ng.js'))) {
     throw new Error('Dependencies missing. Run "npm ci" in the astrological-charts directory first.');
   }
+  // Load browser/graphics dependencies only AFTER validating the JSON file.
+  // --help and malformed-input feedback must work before npm ci.
+  const [{ chromium }, { default: sharp }] = await Promise.all([
+    import('playwright-core'), import('sharp'),
+  ]);
   const owned = [];
   let browser;
   let tempDir;
@@ -163,7 +166,7 @@ async function main() {
     }
 
     browser = await chromium.launch({
-      executablePath: chromeExecutable(), headless: true,
+      executablePath: chromeExecutable(chromium), headless: true,
       args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
     });
     const page = await browser.newPage({ viewport: { width: 1200, height: 1000 }, acceptDownloads: true });
