@@ -131,7 +131,8 @@ export class LatitudiniRender {
 
       if(
         temaRender.planets[nome]
-        && temaRender.planets[nome].latitude
+        // Zero is a valid ecliptic latitude; exclude only missing/non-finite values.
+        && Number.isFinite(temaRender.planets[nome].latitude)
         && elOpt.att
       ) {
         elementiCelesti[nome]=temaRender.planets[nome];
