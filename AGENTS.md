@@ -6,7 +6,7 @@ Read the [milestone roadmap](docs/ROADMAP.md) and check existing draft PRs befor
 
 Develop only the Angular/Three.js astrological chart rendering library. Preserve its visual geometry, compatibility with VirgoStars and Astrolabio, and contributor freedom to propose improvements. A framework-agnostic rewrite is not requested.
 
-Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/src/`. This extracted repository is PRIVATE and not used by production until specifically integrated.
+Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/src/`. This extracted repository is not used by production until specifically integrated. GitHub visibility is currently reported as public (see issue #20), but public-release rights and validation remain uncleared.
 
 ## AI assistance for non-programmers
 
@@ -104,8 +104,8 @@ a hidden About entry is not automatically sufficient. Section 15
 addresses network source availability. Do not present the external
 `astrological-assets` pack or unknown-license fonts as CPAL assets.
 
-**The repository is still private and has not passed the public
-release audit.** It is not enough to add LICENSE; check source
+**GitHub currently reports this repository as public, but the public
+release audit has not passed (issue #20).** It is not enough to add LICENSE; check source
 provenance, other copyright holders, external dependencies and Git
 history before the owner changes visibility. Do not alter repository
 visibility, `package.json` private status, or publish a package.
