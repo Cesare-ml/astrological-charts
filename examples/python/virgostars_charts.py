@@ -24,6 +24,8 @@ def render_chart(
     *,
     mode: str | None = None,
     skin: str | None = None,
+    asset_root: str | Path | None = None,
+    asset_manifest: str | Path | None = None,
 ) -> Path:
     """Render version-1 chart JSON to a PNG or JPEG using the local Angular renderer.
 
@@ -39,6 +41,12 @@ def render_chart(
         raise ValueError("Output filename must end in .png, .jpg or .jpeg")
     if not isinstance(payload, dict) or payload.get("schemaVersion") != 1:
         raise ValueError("Expected a dict with schemaVersion: 1 (see docs/PYTHON_INTEGRATION.md).")
+    if (asset_root is None) != (asset_manifest is None):
+        raise ValueError("asset_root and asset_manifest must be provided together.")
+    if asset_root is not None and (
+        not str(asset_root).strip() or not str(asset_manifest).strip()
+    ):
+        raise ValueError("External asset paths must not be empty.")
     with tempfile.TemporaryDirectory(prefix="virgostars-input-") as temp:
         json_file = Path(temp) / "chart.json"
         with json_file.open("w", encoding="utf-8") as file:
@@ -48,6 +56,11 @@ def render_chart(
             cmd.extend(["--mode", mode])
         if skin is not None:
             cmd.extend(["--skin", skin])
+        if asset_root is not None:
+            cmd.extend([
+                "--assets-root", str(Path(asset_root).expanduser().resolve()),
+                "--assets-manifest", str(Path(asset_manifest).expanduser().resolve()),
+            ])
         try:
             subprocess.run(cmd, cwd=REPOSITORY, check=True)
         except FileNotFoundError as error:
