@@ -78,6 +78,30 @@ renderer. Both `.mjs` and `.d.mts` must stay together when vendored;
 no npm package export is declared yet. Check the declarations locally with
 `npm run test:node-types` (TypeScript compiler, no WebGL required).
 
+### Fail-fast chart validation
+
+The Node API validates the complete precomputed JSON v1 shape before
+writing its temporary JSON file. The standalone CLI (also used by the
+Python wrapper) checks the input file's byte size, JSON syntax, chart
+positions, angles, all twelve cusps and required second charts **before**
+install checks, synthetic asset generation or Chromium startup.
+
+A caller selecting `{mode:'transits'}` must supply `transits` data
+even if the JSON says `mode:'natal'`. Both the embedded mode and any
+mode override are validated because Angular parses the embedded mode
+before the headless runner changes its controls. Likewise for synastry.
+No missing planetary positions are invented. Invalid JSON and more
+than 1,000,000 input bytes are rejected, rather than being silently
+repaired. `latitude: 0` and `latitude: -0` are accepted unchanged.
+The browser parser still normalizes longitude into 0–360 degrees.
+
+`scripts/validate-chart-input.mjs` is deliberately a **shape validator
+only**, not a second astronomical engine. Keep it aligned with the
+actual Angular parser `demo/chart-input.ts` through
+`npm run test:chart-input` and `npm run test:validate-chart-input`.
+It does not establish a versioned general-purpose schema library
+or replace the browser's own checks.
+
 ### Export reliability
 
 The Node helper stages output in a temporary directory **beside the
