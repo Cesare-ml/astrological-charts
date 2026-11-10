@@ -26,8 +26,8 @@ if not exist ".local\demo-pack\manifests\approved-assets.json" (
   if errorlevel 1 goto fail
 )
 echo Opening two local servers in separate windows...
-start "Astrological Charts - Assets" cmd /k "cd /d ""%~dp0"" && npm run demo:assets"
-start "Astrological Charts - Demo" cmd /k "cd /d ""%~dp0"" && npm run demo"
+start "Astrological Charts - Assets" /D "%~dp0" cmd /k npm run demo:assets
+start "Astrological Charts - Demo" /D "%~dp0" cmd /k npm run demo
 echo If the page is not ready yet, refresh in a moment:
 echo http://127.0.0.1:4200/
 start "" "http://127.0.0.1:4200/"
