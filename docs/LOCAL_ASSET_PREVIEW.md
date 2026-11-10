@@ -1,6 +1,6 @@
 # Preview indipendente degli asset astrologici — codice eseguibile senza VirgoStars
 
-**Stato:** il branch candidato `feat/verified-asset-preview` compila ed è stato provato con asset sintetici; non è integrato né verificato con i file reali. Questa pagina descrive la galleria **degli asset**; la distinta [demo Angular](ANGULAR_DEMO.md) usa il renderer completo con fixture sintetiche.
+**Stato:** la galleria e la demo sono integrate in `main` e sono state provate con asset sintetici; non sono verificate con i file reali né integrate in produzione. Questa pagina descrive la galleria **degli asset**; la distinta [demo Angular](ANGULAR_DEMO.md) usa il renderer completo con fixture sintetiche.
 
 Il server rifiuta record con uno `status` esplicito diverso da `approved`. I manifest generati dall'importatore senza campo `status` restano supportati; metadati e checksum non dimostrano da soli l'autorizzazione legale.
 
@@ -17,7 +17,6 @@ Per sbloccare lo sviluppo **prima** dell'importazione originale, è disponibile 
 Dal repository `astrological-charts`, su Windows:
 
 ```powershell
-git switch feat/verified-asset-preview
 powershell -NoProfile -File .\scripts\preview-synthetic.ps1
 ```
 
@@ -50,13 +49,12 @@ Dopo la revisione dei diritti, l'importazione e il merge dei file originali nel 
 git clone https://github.com/Cesare-ml/astrological-assets.git
 git clone https://github.com/Cesare-ml/astrological-charts.git
 cd astrological-charts
-git switch feat/verified-asset-preview
 node scripts/serve-local-assets.mjs `
   --root ../astrological-assets/public/assets `
   --manifest ../astrological-assets/manifests/approved-assets.json
 ```
 
-La libreria Angular, in una futura applicazione demo, userà:
+La libreria Angular può configurare il server locale così:
 
 ```ts
 GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
@@ -90,7 +88,7 @@ Si rifiuta di avviarsi con manifest mancante, vuoto, alterato, con file non appr
 
 ## Limiti deliberati
 
-1. **Non è ancora una demo Angular interattiva di carta astrale**: non esegue `GraficoRenderService`, animazioni o calcoli astrologici. L'implementazione della demo Angular con dati sintetici rimane il prossimo step.
+1. **La galleria non è la demo Angular interattiva**: non esegue `GraficoRenderService`, animazioni o calcoli astrologici. La [demo separata](ANGULAR_DEMO.md) esegue il renderer con dati sintetici, senza calcolare le effemeridi.
 2. I 78 PNG di test non hanno i contenuti visivi reali; nessun confronto affidabile tra skin è possibile prima del pacchetto approvato.
 3. La fonte degli asset di produzione è ancora `virgo-stars/public/assets/`; non modificare le sue regole di copia o i dispositivi fisici.
 4. Permessi collaboratore: i repository privati sotto account GitHub personali possono concedere scrittura; usare un'organizzazione per ruoli di sola lettura quando necessario.
@@ -104,8 +102,8 @@ npm run test:assets
 npm run build
 ```
 
-Sono stati aggiunti test con fixture sintetiche per il generatore PNG, per la verifica di integrità, l'accesso HTTP, la galleria e il rifiuto di file non approvati, traversal, origini esterne, file modificati e symlink. **La suite completa e la build in un checkout pulito non sono ancora state eseguite in questa sessione.**
+Sono stati eseguiti su Windows test con fixture sintetiche per il generatore PNG, la verifica di integrità, l'accesso HTTP, la galleria e il rifiuto di file non approvati, traversal, origini esterne, file modificati e symlink. Anche la build e i test browser della demo sono passati; consulta [ANGULAR_DEMO.md](ANGULAR_DEMO.md) per comandi e limiti.
 
 ## Successivo gate
 
-Costruire una demo Angular che visualizzi una carta con `GraficoRenderService` e un `TemaRender` sintetico, in modo da confrontare rendering WebGL e export PNG senza backend. Non considerare questa galleria come sostitutiva delle prove E2E e dei test Astrolabio.
+Validare la demo separata con immagini originali solo dopo revisione e importazione autorizzata. Non considerare questa galleria o i test sintetici come sostitutivi delle prove con gli asset reali e sull'Astrolabio.
