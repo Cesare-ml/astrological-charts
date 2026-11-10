@@ -3,6 +3,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, Vie
 import { bootstrapApplication } from '@angular/platform-browser';
 import { defaultOpzioniGrafico, GestoreImmagini, GraficoRenderService, SkinManager } from '../src/public-api';
 import { demoBodies, makeDemoTheme } from './fixtures';
+import { parseChartPayload } from './chart-input';
 
 type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
 
@@ -26,6 +27,9 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <div class="buttons"><button (click)="zoom(-1)" [disabled]="busy" aria-label="Zoom out">−</button>
           <button (click)="zoom(1)" [disabled]="busy" aria-label="Zoom in">+</button>
           <button class="primary" (click)="exportPng()" [disabled]="busy">Export PNG</button></div>
+        <label for="chart-file">Import your computed chart (JSON)</label>
+        <input id="chart-file" type="file" accept=".json,application/json" [disabled]="busy" (change)="importChart($event)">
+        <p class="muted">{{sourceLabel}}. No astrology is calculated here; your JSON supplies the positions.</p>
         <h2>Asset diagnostics</h2>
         <p class="muted">The included local server validates its manifest before serving assets. Placeholders are not the original artwork.</p>
         <label for="base">Asset base URL</label>
@@ -35,7 +39,7 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
       </aside>
       <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart"></canvas></section>
     </section>
-    <footer>Fixture positions are illustrative; they are not astronomical calculations. Synthetic assets do not establish visual fidelity.</footer>
+    <footer>The default fixture is illustrative; imported data is rendered as provided. Synthetic assets do not establish visual fidelity. Powered by VirgoStars · www.virgostars.it</footer>
   </main>`
 })
 class DemoComponent implements AfterViewInit, OnDestroy {
@@ -50,9 +54,10 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   error = '';
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
-  private readonly radix = makeDemoTheme(0);
-  private readonly transit = makeDemoTheme(24);
-  private readonly synastry = makeDemoTheme(71);
+  sourceLabel = 'Illustrative synthetic fixture';
+  private radix = makeDemoTheme(0);
+  private transit = makeDemoTheme(24);
+  private synastry = makeDemoTheme(71);
 
   ngAfterViewInit(): void {
     try {
@@ -63,6 +68,26 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   }
   ngOnDestroy(): void { this.renderer.ngOnDestroy(); }
   changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.draw(); }
+  async importChart(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > 1_000_000) throw new Error('JSON file is too large (maximum 1 MB).');
+      const parsed = parseChartPayload(JSON.parse(await file.text()));
+      if (parsed.skin && !this.skins.includes(parsed.skin)) {
+        throw new Error(`Unknown skin: ${parsed.skin}. Choose one available in the Skin menu.`);
+      }
+      this.radix = parsed.natal;
+      this.transit = parsed.transits;
+      this.synastry = parsed.synastry;
+      this.mode = parsed.mode;
+      if (parsed.skin) this.skin = parsed.skin;
+      this.sourceLabel = `Imported: ${file.name}`;
+      await this.draw();
+    } catch (error) { this.showError(error); }
+    finally { input.value = ''; }
+  }
   changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.draw(); }
   changeBase(event: Event): void {
     try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.draw(); }
@@ -75,12 +100,19 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     opts.temaGrafico = this.skin;
     opts.mostraTransiti = this.mode === 'transits';
     opts.mostraSinastria = this.mode === 'synastry';
-    for (const body of demoBodies) { opts.settaggi.elementi_celesti[body].att = true; opts.settaggi.elementi_celesti[body].aspVerso = true; }
+    for (const body of new Set([...demoBodies, ...Object.keys(this.radix.planets ?? {})])) {
+      if (opts.settaggi.elementi_celesti[body]) {
+        opts.settaggi.elementi_celesti[body].att = true;
+        opts.settaggi.elementi_celesti[body].aspVerso = true;
+      }
+    }
     return opts;
   }
   async draw(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Rendering…'; this.changes.markForCheck();
     try {
+      if (this.mode === 'transits' && !this.transit) throw new Error('This JSON contains no transits data.');
+      if (this.mode === 'synastry' && !this.synastry) throw new Error('This JSON contains no synastry data.');
       await this.renderer.disegnaScena(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
       this.status = 'Rendered with the configured asset server.';
@@ -90,6 +122,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   async exportPng(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
     try {
+      if (this.mode === 'transits' && !this.transit) throw new Error('This JSON contains no transits data.');
+      if (this.mode === 'synastry' && !this.synastry) throw new Error('This JSON contains no synastry data.');
       const png = await this.renderer.generaImmagine(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options(), {x: 800, y: 800}, 2);
       const link = document.createElement('a'); link.href = png; link.download = `chart-${this.mode}-${this.skin}.png`; link.click();
