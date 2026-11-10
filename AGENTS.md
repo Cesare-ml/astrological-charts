@@ -6,9 +6,47 @@ Develop only the Angular/Three.js astrological chart rendering library. Preserve
 
 Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/src/`. This extracted repository is PRIVATE and not used by production until specifically integrated.
 
+## AI assistance for non-programmers
+
+The primary contributors may have **no software engineering experience**.
+Speak plainly, ask for a screenshot and an expected outcome, and tell
+them exactly which button to click or command to paste. Do not assume
+they understand Angular, Git or Python. Start with
+`docs/START_HERE.md` and `START_HERE.cmd` on Windows. Never promise
+a working browser image without running the real renderer.
+
+A Python user can feed **precomputed** planet positions and house
+cusps to the versioned `schemaVersion: 1` JSON adapter
+(`demo/chart-input.ts`) and call
+`examples/python/virgostars_charts.py` for local PNG/JPEG.
+The Node driver `scripts/render-chart.mjs` starts synthetic local
+servers and renders through the real Angular/Three.js demo. Keep the
+schema validated and versioned, preserve negative/positive zero
+latitude, and NEVER inject illustrative fixture data if a supplied
+transit/synastry chart is missing. Do not invent an available
+VirgoStars-Ephemeris Python binding: the Rust/PyO3 binding is
+planned, not released.
+
+## Licensing and public-release gate
+
+The original covered source is CPAL-1.0. Read `LICENSE` Exhibits A/B,
+`NOTICE`, `docs/LICENSING_AND_CREDITS.md` and
+`docs/PUBLIC_RELEASE_CHECKLIST.md`. Preserve the
+`Powered by VirgoStars` attribution and project link. For GUI
+clients CPAL Section 14 has a launch/session prominence requirement;
+a hidden About entry is not automatically sufficient. Section 15
+addresses network source availability. Do not present the external
+`astrological-assets` pack or unknown-license fonts as CPAL assets.
+
+**The repository is still private and has not passed the public
+release audit.** It is not enough to add LICENSE; check source
+provenance, other copyright holders, external dependencies and Git
+history before the owner changes visibility. Do not alter repository
+visibility, `package.json` private status, or publish a package.
+
 ## Rules
 
-1. Read `README.md`, `docs/EXTRACTION_STATUS.md`, `docs/ARCHITECTURE.md` and `CONTRIBUTING.md` before editing.
+1. Read `README.md`, `docs/EXTRACTION_STATUS.md`, `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, and the newcomer/Python guides before editing.
 2. Only modify this repository. Do not deploy or write to the original VirgoStars repository, AWS, databases, accounts or live Astrolabio devices.
 3. Work on a feature branch and open a pull request. No self-approval or automatic merge.
 4. Keep Angular integration intact. Preserve public `grafici-astrologici` import compatibility unless the PR explicitly proposes migration.
