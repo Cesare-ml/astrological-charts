@@ -148,6 +148,36 @@ local development servers it may have started if interrupted during
 initialization. This does **not** constitute a production-ready
 queue or browser pool.
 
+### Windows troubleshooting: input field not found on port 4200
+
+On a Windows 11/Node 22.18.0 manual run, the synthetic pack check on port
+4177 passed, but Chromium reported
+`locator.setInputFiles: Timeout 30000ms exceeded` while waiting for
+`#chart-file`. The export was **not successful**.
+A running local server on port 4200 can return the expected index
+HTML but serve a stale Angular bundle or an incomplete UI. The CLI now
+waits for the *mounted* `#chart-file`, `#mode`, `#skin`, status
+and chart canvas before importing chart JSON. If a control is missing,
+it reports DOM availability and recent page errors instead of
+continuing to a generic Playwright upload timeout.
+
+Open `http://127.0.0.1:4200/` in Chrome. The page should have
+the **Import your computed chart (JSON)** field. If it is absent,
+check which process owns port 4200 in PowerShell:
+
+```powershell
+Get-NetTCPConnection -LocalPort 4200 -State Listen |
+    Select-Object LocalAddress,LocalPort,OwningProcess
+```
+
+Close only a known old Angular process under your control, then retry
+`node examples/node/example.mjs`. Do not kill unrelated services.
+If the page is blank, inspect the Chrome developer console and
+the new error diagnostics for missing JS modules or compile failures.
+Run `npm run test:local-render-services` after updating the branch;
+it now includes isolated DOM-readiness tests. A successful unit test
+does **not** verify Chromium/Three.js on Windows.
+
 The standalone synthetic CLI **rejects port collisions** on 4177 or
 4200 instead of silently rendering with unrelated local services.
 Port 4177 is checked against several hashes in the generated synthetic
