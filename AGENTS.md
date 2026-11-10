@@ -142,8 +142,10 @@ visibility, `package.json` private status, or publish a package.
     Also retain the browser-free local asset-request audit in
     `tests/chart-asset-request-audit.test.mjs` and its CLI hook.
     Never publish a PNG/JPEG when a mode/skin requests a missing
-    local symbol (404/409 or request failure).
-     The demo publishes its
+    local symbol (404/409 or request failure). In an explicitly
+    approved-artwork export, verify at least one actual local asset
+    response was successful; a manifest check alone is insufficient.
+    The demo publishes its
     completed render revision and actual mode/skin on the status element;
     the exporter must await a **new completed revision** after importing
     JSON and selecting mode/skin. Do not replace this with a check of
