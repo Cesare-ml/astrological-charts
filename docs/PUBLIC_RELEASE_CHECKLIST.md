@@ -23,16 +23,18 @@ release host artwork until each gate below has been reviewed.
 - [ ] Run `npm ci`, `npm run preflight`, `npm run build`,
       `npm run build:demo`, and a local synthetic browser export. Test
       a fresh public-reader checkout with no private dependencies.
-- [ ] Run `npm run test:node-adapter` and
-      `npm run test:local-render-services`, then the programmatic
+- [ ] Run `npm run test:node-adapter`,
+      `npm run test:local-render-services`, and `npm run test:node-types`,
+      then the programmatic
       Node.js-to-JSON-to-PNG example, and the Python-to-JSON-to-PNG
       example using the real demo,
       then verify the output dimensions and JPEG conversion.
 - [ ] Test the Astrolabio Node.js + offline Firefox `file://`
       adapter separately; never confuse the Chromium local demo with
       offline/e-ink device compatibility.
-- [ ] Ensure README and contributor instructions are understandable
-      without coding experience and entirely in English.
+- [ ] Ensure README, beginner/contributor instructions and remaining
+      public-facing guides (including older Italian asset/reference docs)
+      are fully reviewed and available in English.
 - [ ] Review new public issues/PR templates, attribution display in
       the demo and any applicable launch/session branding under CPAL.
 - [ ] Review outstanding draft PRs and resolve incompatible changes.
