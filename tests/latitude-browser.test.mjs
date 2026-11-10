@@ -25,9 +25,12 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
   const bundle = await build({entryPoints:['tests/fixtures/latitude-zero-render-harness.ts'],
     bundle:true, write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
   const browser = await launchBrowser();
-  const page = await browser.newPage();
+  // Keep browser.close() in the finally block even if newPage() fails.
+  let page;
   const pageErrors = [], assetErrors = [];
-  page.on('pageerror', error => pageErrors.push(error.message));
+  try {
+    page = await browser.newPage();
+    page.on('pageerror', error => pageErrors.push(error.message));
   // Only track our synthetic pack: unrelated dev-server requests (for example,
   // a browser favicon) are not proof of missing chart artwork.
   const assetBase = 'http://127.0.0.1:4177/assets/';
@@ -39,7 +42,6 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     if (request.url().startsWith(assetBase))
       assetErrors.push(`${request.failure()?.errorText ?? 'request failed'} ${new URL(request.url()).pathname}`);
   });
-  try {
     const navigation = await page.goto('http://127.0.0.1:4200/', {waitUntil:'domcontentloaded'});
     assert.ok(navigation?.ok(), 'Angular demo must respond successfully at http://127.0.0.1:4200/');
     await page.waitForFunction(() =>
@@ -93,7 +95,9 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
   } catch (error) {
     // Include the latest demo status and network failures even when the render
     // throws before the final assertions; PNGs are saved earlier when available.
-    const status = await page.locator('[data-testid=status]').textContent().catch(() => 'unavailable');
+    const status = page
+      ? await page.locator('[data-testid=status]').textContent({timeout: 1000}).catch(() => 'unavailable')
+      : 'page unavailable';
     throw new Error(`latitude WebGL probe failed (demo status: ${status}; page errors: ${pageErrors.join('; ') || 'none'}; asset errors: ${assetErrors.join('; ') || 'none'})`, {cause:error});
   } finally {
     await browser.close();
