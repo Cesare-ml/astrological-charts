@@ -13,6 +13,7 @@ import { mkdtemp, mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { dirname, extname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateChartPayloadV1, MAX_CHART_JSON_BYTES } from '../scripts/validate-chart-input.mjs';
 
 const execFileAsync = promisify(execFile);
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -136,7 +137,8 @@ export async function renderChart(payload, output, options = {}) {
     throw new TypeError('Expected a chart object with schemaVersion: 1.');
   }
   if (typeof output !== 'string' || !output) throw new TypeError('Output filename is required.');
-  // Validate options before creating a temporary file.
+  // Validate all chart inputs before creating an input file or launching Chrome.
+  validateChartPayloadV1(payload, options);
   buildRenderArgs('chart.json', output, options);
   const serialised = JSON.stringify(payload, (_key, value) => {
     if (typeof value === 'number' && !Number.isFinite(value)) {
@@ -147,7 +149,7 @@ export async function renderChart(payload, output, options = {}) {
     }
     return value;
   });
-  if (Buffer.byteLength(serialised, 'utf8') > 1_000_000) throw new TypeError('Chart JSON exceeds the 1 MB demo limit.');
+  if (Buffer.byteLength(serialised, 'utf8') > MAX_CHART_JSON_BYTES) throw new TypeError('Chart JSON exceeds the 1 MB demo limit.');
   const dir = await mkdtemp(join(tmpdir(), 'virgostars-node-chart-'));
   try {
     const inputFile = join(dir, 'chart.json');
