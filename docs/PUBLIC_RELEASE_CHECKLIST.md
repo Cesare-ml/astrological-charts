@@ -30,6 +30,11 @@ release host artwork until each gate below has been reviewed.
       Node.js-to-JSON-to-PNG example, and the Python-to-JSON-to-PNG
       example using the real demo,
       then verify the output dimensions and JPEG conversion.
+- [ ] Run `npm run test:render-bridge` with a real Chrome/Chromium
+      browser and working WebGL; confirm the natal/light PNG and
+      transits/dark JPEG are both 1600×1600 and nonblank. This is
+      manual, not part of preflight. Then separately run the Python
+      wrapper and record the tested OS/browser.
 - [ ] Test the Astrolabio Node.js + offline Firefox `file://`
       adapter separately; never confuse the Chromium local demo with
       offline/e-ink device compatibility.
