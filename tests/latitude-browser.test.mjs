@@ -79,6 +79,12 @@ test('a planet at latitude zero changes the actual synthetic Three.js latitude P
     })) {
       assert.ok(png.length > 24 && png.subarray(0, 8).equals(pngSignature),
         `invalid or truncated PNG export: ${label}`);
+      // The PNG IHDR must be the first chunk, with the standard 13-byte payload.
+      // Catch wrong-size canvas exports before saving or decoding seven images.
+      assert.equal(png.readUInt32BE(8), 13, `invalid PNG IHDR length: ${label}`);
+      assert.equal(png.toString('ascii', 12, 16), 'IHDR', `missing PNG IHDR: ${label}`);
+      assert.equal(png.readUInt32BE(16), 400, `unexpected PNG width: ${label}`);
+      assert.equal(png.readUInt32BE(20), 400, `unexpected PNG height: ${label}`);
     }
     writeFileSync(join(output, 'latitude-zero-sun-enabled.png'), a);
     writeFileSync(join(output, 'latitude-negative-zero-sun-enabled.png'), z);
