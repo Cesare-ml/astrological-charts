@@ -15,12 +15,11 @@ try {
     }
     # One quality gate is the source of truth: avoid skipping newly added tests.
     # Browser/WebGL rendering remains an explicit separate step.
-    $steps = @(
-        ,@('ci'),
-        ,@('run', 'preflight'),
-        ,@('run', 'build:library'),
-        ,@('run', 'build:demo')
-    )
+    $steps = @()
+    $steps += ,@('ci')
+    $steps += ,@('run', 'preflight')
+    $steps += ,@('run', 'build:library')
+    $steps += ,@('run', 'build:demo')
     foreach ($stepArgs in $steps) {
         Write-Host ('> npm ' + ($stepArgs -join ' ')) -ForegroundColor Cyan
         & npm.cmd @stepArgs
