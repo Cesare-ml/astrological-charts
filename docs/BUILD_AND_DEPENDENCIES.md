@@ -1,6 +1,6 @@
 # Build, dependency and baseline policy
 
-The isolated library is still **unverified**. The original `virgo-stars` renderer remains the production implementation.
+The isolated library builds with the lockfile on Windows and Node 22.18.0. The renderer and its consumers still need visual tests; the original `virgo-stars` renderer remains the production implementation.
 
 ## Node and Angular
 
@@ -14,7 +14,7 @@ The isolated library is still **unverified**. The original `virgo-stars` rendere
 ```bash
 node --version
 npm --version
-npm install
+npm ci
 npm run check:extraction
 npm run check:assets
 npm run check:types
