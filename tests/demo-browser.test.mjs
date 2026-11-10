@@ -57,10 +57,18 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
   try {
     await page.goto('http://127.0.0.1:4200/', {waitUntil: 'domcontentloaded'});
     await ready();
+    assert.equal(await page.getByRole('img', {name: /Synthetic natal astrological chart using the light skin/}).count(), 1,
+      'the WebGL canvas should have an accessible synthetic-chart description');
+    assert.equal(await page.getByRole('link', {name: 'VirgoStars'}).getAttribute('href'),
+      'https://github.com/Cesare-ml/virgo-stars', 'the renderer must retain visible VirgoStars credits');
+    assert.equal(await page.locator('[data-testid=status]').getAttribute('role'), 'status');
     for (const mode of modes) {
       await page.selectOption('#mode', mode); await ready();
       for (const skin of skins) {
         await page.selectOption('#skin', skin); await ready();
+        assert.equal(await page.locator('canvas').getAttribute('aria-label'),
+          `Synthetic ${mode} astrological chart using the ${skin} skin. Illustrative positions; not astronomical calculations.`,
+          `${mode}/${skin}: accessible canvas description is stale`);
         const screenshot = await page.locator('canvas').screenshot({path: join(output, `${mode}-${skin}.png`)});
         const pixels = await sharp(screenshot).removeAlpha().raw().toBuffer();
         imageHashes.set(`${mode}/${skin}`, createHash('sha256').update(pixels).digest('hex'));
@@ -121,6 +129,8 @@ test('synthetic Angular demo renders every chart and skin, exports PNG and repor
     await missingPage.goto('http://127.0.0.1:4200/');
     await missingPage.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout: 30000});
     assert.match(await missingPage.locator('[data-testid=status]').textContent(), /simboli-bianchi\/segni\/01\.png/);
+    assert.equal(await missingPage.locator('[data-testid=status]').getAttribute('role'), 'alert',
+      'asset errors should be announced to assistive technology');
     await missingPage.close();
     console.log(`28 chart/skin combinations repeated twice, PNG export and mobile viewport checked in ${Math.round(performance.now()-started)} ms.`);
   } finally { await browser.close(); }
