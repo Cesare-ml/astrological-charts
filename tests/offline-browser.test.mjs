@@ -11,7 +11,7 @@ import { verifyApprovedAssetPack } from '../scripts/verified-asset-pack.mjs';
 test('Firefox renders four synthetic chart modes using verified local files while offline', {timeout:90000}, async () => {
   const executablePath = [process.env.FIREFOX_PATH, firefox.executablePath()].filter(Boolean).find(existsSync);
   assert.ok(executablePath, 'Install Playwright Firefox or set FIREFOX_PATH to its executable');
-  const pack = resolve('.local/demo-pack');
+  const pack = resolve(process.env.CHART_DEMO_PACK || '.local/demo-pack');
   const assetsRoot = join(pack, 'public', 'assets');
   const manifestPath = join(pack, 'manifests', 'approved-assets.json');
   assert.ok(existsSync(manifestPath), 'Generate the synthetic pack first with npm run demo:pack');
