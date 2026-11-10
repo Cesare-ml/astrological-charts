@@ -30,6 +30,12 @@ The library does not independently calculate the full astronomical ephemeris or 
 - Symbols, textures and resonator images currently live outside this package in VirgoStars `public/assets/`.
 - Astrolabio uses a separate headless bundling/resolution path and must be regression-tested before updates.
 
+## Latitude chart selection boundary
+
+`LatitudiniRender.getElementiCelesti` receives **precomputed** ecliptic latitude values in `TemaRender.planets`. A latitude of exactly `0` or `-0` is a valid position on the ecliptic and must remain visible when the body's `elementi_celesti[nome].att` option is enabled. Missing, non-numeric or non-finite latitude values are not chartable and are skipped. This is a rendering filter only; it does not calculate astronomical coordinates.
+
+The lightweight `npm run test:latitude` regression uses the TypeScript compiler to extract and execute the **actual** selection method with purely synthetic inputs. It covers `0`, `-0`, positive/negative values, disabled/missing bodies, `NaN`, infinity, strings, null and undefined. It also runs under `npm run preflight`. This isolated method test needs no images or browser, but it does **not** prove WebGL appearance, mode/skin compatibility or Astrolabio behavior; run the existing browser and offline suites separately before production integration.
+
 ## Source of truth
 
 The new repository is a collaboration workspace only until a versioned integration is approved. The live site and sold Astrolabio devices continue to depend on the original `virgo-stars` code. Never silently switch imports, publish npm releases, or ship hardware updates.
