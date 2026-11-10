@@ -46,6 +46,10 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 ## M3 — Stable integrations
 
 - [ ] Stabilize the versioned precomputed chart-input schema without duplicating astronomical calculations.
+- [x] Add browser-free `--validate-only` to the chart CLI and
+      early JSON-file validation in both Node input APIs; added tests
+      for malformed input, duplicate flags and output preservation.
+      A real clean-checkout Node execution is still required.
 - [x] Keep CLI help and invalid-input diagnostics independent of browser
       dependencies, with opt-in-free tests in
       `tests/chart-cli-validation.test.mjs` (pending clean-checkout run).
