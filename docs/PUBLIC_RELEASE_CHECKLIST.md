@@ -23,7 +23,8 @@ release host artwork until each gate below has been reviewed.
 - [ ] Run `npm ci`, `npm run preflight`, `npm run build`,
       `npm run build:demo`, and a local synthetic browser export. Test
       a fresh public-reader checkout with no private dependencies.
-- [ ] Run `npm run test:node-adapter`, the programmatic
+- [ ] Run `npm run test:node-adapter` and
+      `npm run test:local-render-services`, then the programmatic
       Node.js-to-JSON-to-PNG example, and the Python-to-JSON-to-PNG
       example using the real demo,
       then verify the output dimensions and JPEG conversion.
