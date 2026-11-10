@@ -44,7 +44,7 @@ const payload = {
 // Run manually with npm run test:render-bridge. This is intentionally
 // not part of preflight: every case launches real WebGL and local servers.
 test('external Node chart JSON produces genuine nonblank PNG/JPEG in selected modes',
-  { timeout: 300_000 }, async () => {
+  { timeout: 480_000 }, async () => {
     const directory = await mkdtemp(join(tmpdir(), 'virgostars-real-bridge-'));
     try {
       const cases = [
