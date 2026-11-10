@@ -7,7 +7,9 @@ declare global {
     runPlanetPointerProbe?: () => {
       events: { type: string; key: string; aspects: number }[];
       natalHovered: boolean;
+      transitHovered: boolean;
       clickEmitted: boolean;
+      removedListeners: boolean;
       transitPinRestored: boolean;
       centralOverlay: boolean;
       destroyedRestoredScale: boolean;
@@ -68,6 +70,10 @@ window.runPlanetPointerProbe = () => {
   const centralOverlay = scene.getObjectByName('chart-interaction-aspect') !== undefined;
   send(-0.4, 0, 'click');
   const clickEmitted = events.some(event => event.type === 'click' && event.planet.name === 'Sun');
+  send(0.4, 0, 'pointermove');
+  const transitHovered = events.some(event => event.type === 'enter'
+    && event.planet.layer === 'transit' && event.planet.name === 'Saturn'
+    && event.aspects.length === 1);
   controller.highlight({layer: 'transit', name: 'Saturn'});
   canvas.dispatchEvent(new PointerEvent('pointerleave', {bubbles: true}));
   const transitPinRestored = transit.scale.x > 1 && natal.scale.x === 1;
@@ -75,6 +81,9 @@ window.runPlanetPointerProbe = () => {
     type: e.type, key: e.planet.layer + ':' + e.planet.name, aspects: e.aspects.length
   }));
   controller.destroy();
+  const beforeDestroyedMove = events.length;
+  send(-0.4, 0, 'pointermove');
+  const removedListeners = events.length === beforeDestroyedMove;
   const destroyedRestoredScale = natal.scale.x === 1 && transit.scale.x === 1
     && scene.getObjectByName('chart-interaction-aspect') === undefined;
   root.traverse(object => {
@@ -84,6 +93,6 @@ window.runPlanetPointerProbe = () => {
     }
   });
   canvas.remove();
-  return {events: simplifiedEvents, natalHovered, clickEmitted, transitPinRestored,
-    centralOverlay, destroyedRestoredScale};
+  return {events: simplifiedEvents, natalHovered, transitHovered, clickEmitted,
+    removedListeners, transitPinRestored, centralOverlay, destroyedRestoredScale};
 };
