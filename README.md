@@ -35,6 +35,26 @@ Read **[Start here — a beginner's guide](docs/START_HERE.md)** for
 download instructions, screenshots, troubleshooting and a ready-to-copy
 prompt for AI coding assistants.
 
+## Render from Node.js — PNG or JPEG
+
+Node.js programs can provide precomputed coordinates directly as
+JavaScript objects using the programmatic `node/index.mjs` entry point.
+This includes custom processing in JavaScript/TypeScript without a
+Python dependency.
+
+```sh
+npm ci
+node examples/node/example.mjs
+node examples/node/example.mjs --jpg
+```
+
+Output: `.local/node-example.png` or `.local/node-example.jpg`.
+This developer adapter uses the existing Angular/Three.js renderer
+through a local headless Chrome/Chromium session; **it is not a native
+Node.js WebGL renderer** or an already released npm package. Read
+[Node integration and Astrolabio architecture](docs/NODE_INTEGRATION.md)
+before deploying it as a backend service.
+
 ## Draw from Python — PNG or JPEG
 
 The renderer **does not compute planetary positions**. Feed it
@@ -63,14 +83,25 @@ You can also import a JSON chart manually in the demo and click
 Python/Rust bindings are not yet available; this bridge is ready to
 accept their numeric output when they exist.
 
+## Who uses which runtime?
+
+The source is designed for three consumers: the **Angular frontend**
+of VirgoStars, a **Node.js headless rendering adapter** (used by
+Astrolabio), and **Node.js or Python applications** creating charts
+from their own precomputed data. The Astrolabio backend's existing
+Firefox offline adapter is a *different integration* from the new
+Chromium developer helper and must be validated before migration.
+
 ## What this library contains
 
 - Actual Three.js charts for natal themes, transits, synastry and
   ecliptic latitudes, with multiple skins and browser PNG export.
 - An independent Angular development demo, synthetic fixtures and
   deterministic preview assets.
-- A versioned JSON interoperability contract and Python wrapper,
-  with local PNG/JPEG conversion for non-Angular programs.
+- A **shared, versioned JSON interoperability contract** consumed by
+  JavaScript/Node.js or Python, with PNG/JPEG conversion.
+- A reusable local Node adapter (`node/index.mjs`) and a Python wrapper
+  around the same existing Angular/Three.js rendering path.
 - A manual test/build workflow and contribution rules; no automatic
   production deployments.
 
@@ -111,6 +142,7 @@ After `npm ci`, useful manual checks are:
 
 ```sh
 npm run test:chart-input
+npm run test:node-adapter
 npm run preflight
 npm run build
 npm run build:demo
@@ -124,6 +156,7 @@ as the original production artwork or correct astronomy.
 ## Technical documentation
 
 - [Start here — Windows, AI assistants and Python](docs/START_HERE.md)
+- [Node.js API and Astrolabio headless/offline integration](docs/NODE_INTEGRATION.md)
 - [Python JSON contract and output formats](docs/PYTHON_INTEGRATION.md)
 - [Architecture and renderer boundaries](docs/ARCHITECTURE.md)
 - [Extraction and compatibility status](docs/EXTRACTION_STATUS.md)
