@@ -35,7 +35,7 @@ function runSerially(task) {
   return job;
 }
 
-export function buildRenderArgs(input, output, { mode, skin } = {}) {
+export function buildRenderArgs(input, output, { mode, skin, assetRoot, assetManifest } = {}) {
   if (typeof input !== 'string' || !input) throw new TypeError('A JSON input path is required.');
   if (typeof output !== 'string' || !output) throw new TypeError('A PNG/JPEG output path is required.');
   if (!['.png', '.jpg', '.jpeg'].includes(extname(output).toLowerCase())) {
@@ -47,9 +47,21 @@ export function buildRenderArgs(input, output, { mode, skin } = {}) {
   if (skin !== undefined && (typeof skin !== 'string' || !skin.trim())) {
     throw new TypeError('skin must be a non-empty string.');
   }
+  // Explicit, paired paths for the *external* pack only. No implied fallback
+  // to host artwork, production URLs or an unverified sibling checkout.
+  if ((assetRoot === undefined) !== (assetManifest === undefined)) {
+    throw new TypeError('assetRoot and assetManifest must be provided together.');
+  }
+  if (assetRoot !== undefined &&
+      (![assetRoot, assetManifest].every(x => typeof x === 'string' && x.trim()))) {
+    throw new TypeError('assetRoot and assetManifest must be non-empty paths.');
+  }
   return ['--input', resolve(input), '--output', resolve(output),
     ...(mode === undefined ? [] : ['--mode', mode]),
-    ...(skin === undefined ? [] : ['--skin', skin])];
+    ...(skin === undefined ? [] : ['--skin', skin]),
+    ...(assetRoot === undefined ? [] : [
+      '--assets-root', resolve(assetRoot), '--assets-manifest', resolve(assetManifest),
+    ])];
 }
 
 /**
