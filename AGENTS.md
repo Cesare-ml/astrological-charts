@@ -33,6 +33,17 @@ transit/synastry chart is missing. Do not invent available
 VirgoStars-Ephemeris Rust/Python/Node integrations: cross-language
 bindings remain planned, not released.
 
+**Input interoperability gate:** `scripts/validate-chart-input.mjs`
+performs a fail-fast, pure-Node shape check for JSON v1 before CLI
+browser startup. Match the existing `demo/chart-input.ts` parser:
+datetime, ascendant, MC, 12 houseCusps, at least one computed planet,
+finite coordinates, latitude/declination bounds, optional fields
+and missing transits/synastry. Preserve zero and negative zero; do not
+calculate missing planetary positions. Keep
+`tests/validate-chart-input.test.mjs` and the cross-parser cases in
+`tests/chart-input.test.mjs` passing. This is contract validation,
+**not** a second astronomy or astrology calculation engine.
+
 **Node.js concurrency contract:** `node/index.mjs` keeps a
 single in-process Promise queue for `renderChart()` and
 `renderChartFile()`; both must share it. A rejected render must
