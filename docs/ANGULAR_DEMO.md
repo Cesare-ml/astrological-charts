@@ -65,14 +65,37 @@ The browser test exercises 28 combinations twice, compares raw pixels between th
 
 To smoke-test the earlier extraction independently, keep the two local demo servers running and set `CHART_EXTRACT_DIR` to a separate checkout of the extraction branch, then run `npm run test:extraction-browser`. For example, in PowerShell: `$env:CHART_EXTRACT_DIR = '../charts-pr1-smoke'`. The harness bundles that checkout's source with the current workspace's development dependencies and exercises 28 chart/skin combinations and a 400×400 PNG at scale 1. This is a synthetic rendering smoke test, not a visual baseline, lifecycle audit or a test of scale-2 export. The extraction checkout's own locked build should be checked separately.
 
+## Local performance probe
+
+Start the synthetic pack and both local servers as described above, then run `npm run benchmark:demo` in another terminal. The probe launches a headless browser, renders the natal chart, and alternates the `dark` and `light` skins 30 times by default. It reports navigation-to-ready time, redraw timing percentiles, WebGL texture create/delete calls and context-loss events. It fails on page errors, HTTP errors, render failure, a missing redraw or context loss. It prints the result as JSON; use `npm run --silent benchmark:demo` when redirecting the JSON to a file.
+
+Set `CHART_BENCH_REDRAWS` to an integer from 1 to 200 to choose the number of redraws. The browser selection and executable variables are the same as for `test:demo`: `CHART_TEST_BROWSER`, `CHROME_PATH` and `FIREFOX_PATH`. For example in PowerShell:
+
+```powershell
+$env:CHART_BENCH_REDRAWS = '100'
+$env:CHART_TEST_BROWSER = 'firefox'
+npm run benchmark:demo
+```
+
+The probe measures end-to-end automation time, including UI and scheduling, not just GPU rendering. It uses whatever assets the running server supplies; run the synthetic server to reproduce these figures. Texture create/delete call counts and their checkpoints are **not** a measure of GPU memory, live textures or proof that resources cannot leak. There is no performance threshold or claim of real-artwork, e-ink or device compatibility.
+
+On 2026-11-10, with Node 22.18.0 on Windows x64, a 1200×1000 viewport and generated placeholders, 100 alternating-skin redraws produced the following observations. These single local runs are illustrative, not portable performance guarantees:
+
+| Browser | Navigation to ready | Median redraw | 95th percentile | Texture create/delete calls | Context losses |
+|---|---:|---:|---:|---:|---:|
+| Chrome 157.0.8103.50, SwiftShader | 438.1 ms | 79.1 ms | 89.7 ms | 3,539 / 3,500 | 0 |
+| Firefox 142.0.1, headless | 715.8 ms | 67.4 ms | 83.3 ms | 3,539 / 3,500 | 0 |
+
+The difference between create and delete calls remained 39 at every ten-redraw checkpoint in these runs. The browser context was still open at the final checkpoint, and the counter does not establish which textures remain live. GPU memory, real assets and other hardware were not measured.
+
 ## Known limits
 
-- The seven skins and four modes passed only with the generated placeholder pack. Real artwork, visual fidelity, Firefox, e-ink and deployed Astrolabio remain untested.
+- The seven skins and four modes passed in desktop Chromium and Firefox only with the generated placeholder pack. Real artwork, visual fidelity, e-ink and deployed Astrolabio remain untested.
 - The service queue covers operations issued through `GraficoRenderService` in the same loaded library instance; direct lower-level renderer calls and runtime changes to shared skin/asset configuration remain outside that guarantee. Serialization can increase latency.
 - Disposal covers completed scene geometry, materials, texture properties and registered timelines. Tests also check timeline cleanup when selected image loads fail during body, house and nested synastry construction. Disposal of all other resources in every partially constructed scene, and lifetime tests for every advanced mode, remain open.
 - Repeated synthetic passes are checked in each browser separately; this is not a visual baseline against original artwork or a guarantee across browser/GPU versions.
 - The `file://` offline test exercises this library's service in Firefox using a test bundle. It is not the existing Astrolabio adapter, its packaging/update process, a minimal device asset subset, e-ink conversion, or hardware.
-- Build and test results must be repeated on the actual target environment and separately for earlier PRs in the stack.
+- Build and test results must be repeated on the actual target environment. Earlier PR heads were independently checked before the ordered merges; this does not validate future consumers.
 
 ## Verification record — 2026-11-09
 

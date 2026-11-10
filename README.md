@@ -18,7 +18,7 @@ The imported source includes Three.js rendering of natal charts, transits, synas
 
 ## Start developing
 
-For the full candidate, check out `feat/verified-asset-preview` or, after its integration, `main`. The [PR history](https://github.com/Cesare-ml/astrological-charts/pull/13) records the ordered extraction.
+Clone `main` for the integrated library and synthetic demo. The [PR history](https://github.com/Cesare-ml/astrological-charts/pull/13) records the ordered extraction.
 
 For invited contributors on Windows:
 
@@ -35,7 +35,7 @@ npm run check:types
 npm run build
 ```
 
-These commands and `npm run preflight` passed on Windows with Node 22.18.0 against the candidate including the extraction-check fix and lockfile. The localhost tests require loopback access. This verifies the build and asset tooling, not the graphics output. No CI or GitHub Actions is used.
+These commands and `npm run preflight` passed on Windows with Node 22.18.0. The localhost tests require loopback access. They verify the build and asset tooling; separate synthetic browser tests exercise rendering without validating original artwork. No CI or GitHub Actions is used.
 
 ## Documentation
 
