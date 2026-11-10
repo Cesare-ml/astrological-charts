@@ -3,7 +3,7 @@
 This repository provides the chart **drawing** part of VirgoStars.
 It does **not** calculate planet positions or house cusps. You can
 explore its interactive demo, suggest interface changes to an AI
-assistant, or use your Python programs to make PNG/JPEG images.
+assistant, or use Node.js **or** Python programs to make PNG/JPEG images.
 
 The code is free and carries CPAL-1.0 source/attribution obligations.
 The real VirgoStars artwork and fonts are **not bundled**. The initial
@@ -40,7 +40,24 @@ npm run demo
 Open http://127.0.0.1:4200/. Only the first two setup commands
 need to be repeated when reinstalling dependencies/regenerating assets.
 
-## 2. Generate an image from Python
+## 2. Generate an image from Node.js or Python
+
+If you already work in JavaScript/Node.js, **no Python installation
+is needed**. With Node.js and Chrome installed:
+
+```sh
+npm ci
+node examples/node/example.mjs
+node examples/node/example.mjs --jpg
+```
+
+The generated files are `.local/node-example.png` and
+`.local/node-example.jpg`. These are synthetic charts with invented
+positions. Read the
+[Node.js integration guide](NODE_INTEGRATION.md) to pass the output
+of your own JavaScript calculations into `renderChart()`.
+
+### Alternatively, from Python
 
 Install Python 3.10+ and run once:
 
@@ -55,8 +72,8 @@ Look for `.local/python-example.png`. For JPEG use:
 python examples/python/example.py --jpg
 ```
 
-The code automatically starts its own local demo and asset server if
-not running. The example numbers are **made up**, not an accurate birth
+Both the Node and Python examples automatically start the local
+demo and asset server if not running. The example numbers are **made up**, not an accurate birth
 chart. To use coordinates computed in your own Python script, read
 [Python integration](PYTHON_INTEGRATION.md). The planned Python bindings
 for VirgoStars-Ephemeris do not exist yet.
@@ -85,7 +102,8 @@ change, expected behavior and whether it should work in PNG exports.
 
 - **The renderer:** Angular 20 + TypeScript + Three.js.
 - **The calculation source:** elsewhere, not in this renderer.
-- **Data format:** JSON version 1, documented in
+- **Data format:** shared JSON version 1, documented in
+  [Node integration](NODE_INTEGRATION.md) and
   [Python integration](PYTHON_INTEGRATION.md).
 - **Source code license:** CPAL-1.0 with prominent VirgoStars credits.
 - **Safety:** no production data, no real birth records, no deploys,
