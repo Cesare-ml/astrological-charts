@@ -12,6 +12,12 @@ import { join } from 'node:path';
 import { renderChart, renderChartFile } from '../node/index.mjs';
 
 const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLefgAAAABJRU5ErkJggg==';
+const natal = {
+  datetime: '2000-01-01T12:00:00Z',
+  ascendant: 20, midheaven: 290,
+  houseCusps: Array.from({length:12}, (_,i) => (20+i*30)%360),
+  planets: {Sun: {longitude:42.25, latitude:0}},
+};
 
 test('same-process exports do not overlap and one failure cannot poison the queue',
   { timeout: 15_000 }, async () => {
@@ -37,14 +43,14 @@ test('same-process exports do not overlap and one failure cannot poison the queu
       `);
       const inputs = await Promise.all(['A','B','C'].map(async tag => {
         const path = join(dir, tag + '.json');
-        await writeFile(path, JSON.stringify({ schemaVersion: 1, tag }));
+        await writeFile(path, JSON.stringify({ schemaVersion: 1, natal, tag }));
         return path;
       }));
       const promises = [
         renderChartFile(inputs[0],join(dir,'A.png'),{rendererScript:mock}),
         renderChartFile(inputs[1],join(dir,'B.png'),{rendererScript:mock}),
         // Call a second public API: renderChart must use the SAME queue.
-        renderChart({schemaVersion:1,tag:'C'},join(dir,'C.png'),{rendererScript:mock}),
+        renderChart({schemaVersion:1,natal,tag:'C'},join(dir,'C.png'),{rendererScript:mock}),
       ];
       const results = await Promise.allSettled(promises);
       assert.deepEqual(results.map(result=>result.status),
