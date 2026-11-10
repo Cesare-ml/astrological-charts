@@ -13,7 +13,8 @@ import { tmpdir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
-import { matchesLocalChartDemo, matchesSyntheticAssetServer, waitForChartControls } from './verify-local-render-services.mjs';
+import { matchesLocalChartDemo, matchesSyntheticAssetServer, matchesManifestAssetServer, waitForChartControls } from './verify-local-render-services.mjs';
+import { verifyApprovedAssetPack } from './verified-asset-pack.mjs';
 import { validateChartPayloadV1, MAX_CHART_JSON_BYTES } from './validate-chart-input.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -21,6 +22,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 function usage() {
   console.log('Usage: node scripts/render-chart.mjs --input chart.json --output chart.png [--mode natal|transits|synastry|latitude] [--skin light|dark|...]');
   console.log('       node scripts/render-chart.mjs --input chart.json --validate-only [--mode natal|transits|synastry|latitude]');
+  console.log('       node scripts/render-chart.mjs --input chart.json --output chart.png --assets-root ../astrological-assets/public/assets --assets-manifest ../astrological-assets/manifests/approved-assets.json');
 
   console.log('Requires Node dependencies (npm ci), Chrome/Chromium and local WebGL support.');
 }
@@ -34,7 +36,7 @@ function args(argv) {
       opts.validateOnly = true;
       continue;
     }
-    if (!['--input', '--output', '--skin', '--mode'].includes(argv[i]) ||
+    if (!['--input', '--output', '--skin', '--mode', '--assets-root', '--assets-manifest'].includes(argv[i]) ||
         !argv[i + 1] || argv[i + 1].startsWith('--') ||
         Object.hasOwn(opts, argv[i].slice(2))) {
       throw new Error(`Unknown, duplicate or missing argument: ${argv[i]}. Run with --help.`);
@@ -53,6 +55,13 @@ function args(argv) {
   }
   if (opts.validateOnly && opts.output && !['.png', '.jpg', '.jpeg'].includes(format)) {
     throw new Error('Output extension must be .png, .jpg or .jpeg.');
+  }
+  if (Boolean(opts['assets-root']) !== Boolean(opts['assets-manifest'])) {
+    throw new Error('Provide --assets-root and --assets-manifest together; there is no implicit private asset fallback.');
+  }
+  if (opts['assets-root']) {
+    opts.assetsRoot = resolve(process.cwd(), opts['assets-root']);
+    opts.assetsManifest = resolve(process.cwd(), opts['assets-manifest']);
   }
   if (opts.mode && !['natal', 'transits', 'synastry', 'latitude'].includes(opts.mode)) {
     throw new Error('Invalid --mode; choose natal, transits, synastry or latitude.');
@@ -156,9 +165,13 @@ async function main() {
   let browser;
   let tempDir;
   try {
+    const useExternalAssets = Boolean(opts.assetsRoot);
     const pack = join(root, '.local', 'demo-pack');
-    const manifest = join(pack, 'manifests', 'approved-assets.json');
-    if (!existsSync(manifest)) {
+    const manifestPath = useExternalAssets ? opts.assetsManifest
+      : join(pack, 'manifests', 'approved-assets.json');
+    const assetsRoot = useExternalAssets ? opts.assetsRoot
+      : join(pack, 'public', 'assets');
+    if (!useExternalAssets && !existsSync(manifestPath)) {
       if (existsSync(pack)) throw new Error('Incomplete synthetic pack in .local/demo-pack; inspect it before deleting, then retry.');
       console.log('Generating the synthetic image pack (no private artwork)…');
       await run(process.execPath, [join(root, 'scripts', 'generate-demo-pack.mjs'), '--out', pack]);
@@ -166,15 +179,34 @@ async function main() {
     // Only use loopback; never upload input charts or fetch production assets.
     const assetUrl = 'http://127.0.0.1:4177/';
     const demoUrl = 'http://127.0.0.1:4200/';
-    const syntheticManifest = JSON.parse(readFileSync(manifest, 'utf8'));
-    if (!await live(assetUrl)) {
-      console.log('Starting local verified synthetic image server…');
+    const assetManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    if (useExternalAssets) {
+      if (assetManifest?.source?.repository === 'synthetic-local-fixtures') {
+        throw new Error('The explicit asset mode is for an approved external pack, not the synthetic fixtures.');
+      }
+      const verified = verifyApprovedAssetPack(assetsRoot, assetManifest);
+      console.log(`Verified ${verified.count} external asset files using the local manifest and SHA-256.`);
+      // Never reuse a running service in external mode: sampled requests
+      // alone do not prove ownership of every file served on that port.
+      if (await live(assetUrl)) {
+        throw new Error('Port 4177 is already in use. Stop only your own prior asset preview before exporting with an external approved pack.');
+      }
       const assets = launch(process.execPath, [join(root, 'scripts', 'serve-local-assets.mjs'),
-        '--root', join(pack, 'public', 'assets'), '--manifest', manifest], owned);
+        '--root', assetsRoot, '--manifest', manifestPath], owned);
       await waitFor(assetUrl, assets);
-    }
-    if (!await matchesSyntheticAssetServer(assetUrl, syntheticManifest)) {
-      throw new Error('Port 4177 is serving a different or invalid asset pack. Stop that local server before running the synthetic PNG/JPEG bridge.');
+      if (!await matchesManifestAssetServer(assetUrl, assetManifest)) {
+        throw new Error('Local external asset service did not serve bytes matching the verified manifest.');
+      }
+    } else {
+      if (!await live(assetUrl)) {
+        console.log('Starting local verified synthetic image server…');
+        const assets = launch(process.execPath, [join(root, 'scripts', 'serve-local-assets.mjs'),
+          '--root', assetsRoot, '--manifest', manifestPath], owned);
+        await waitFor(assetUrl, assets);
+      }
+      if (!await matchesSyntheticAssetServer(assetUrl, assetManifest)) {
+        throw new Error('Port 4177 is serving a different or invalid asset pack. Stop that local server before running the synthetic PNG/JPEG bridge.');
+      }
     }
     if (!await live(demoUrl)) {
       console.log('Starting local Angular demo…');
