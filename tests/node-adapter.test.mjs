@@ -119,3 +119,39 @@ test('Node.js caller can bound a nonresponsive render process', async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+
+test('file-based Node API rejects malformed or oversized JSON without launching a renderer', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'virgostars-node-fast-fail-'));
+  try {
+    const script = join(dir, 'should-never-run.mjs');
+    const sentinel = join(dir, 'runner-invoked.txt');
+    await writeFile(script, `
+      import {writeFile} from 'node:fs/promises';
+      await writeFile(${JSON.stringify(sentinel)}, 'RUNNER STARTED');
+    `);
+    const cases = [
+      ['invalid-syntax.json', '{ broken', /Invalid chart JSON file/],
+      ['invalid-schema.json', JSON.stringify({...payload, schemaVersion: 2}), /schemaVersion/],
+      ['invalid-cusps.json', JSON.stringify({...payload, natal: {...natal, houseCusps: [20]}}), /exactly 12/],
+      ['missing-transits.json', JSON.stringify(payload), /transits data is required/, 'transits'],
+      ['oversized.json', ' '.repeat(1_000_001), /exceeds the 1 MB/],
+    ];
+    for (const [filename, data, expected, mode] of cases) {
+      const input = join(dir, filename);
+      const output = join(dir, 'must-not-create', 'chart.png');
+      await writeFile(input, data);
+      await assert.rejects(renderChartFile(input, output, {
+        rendererScript: script, ...(mode ? {mode} : {}),
+      }), expected);
+      await assert.rejects(access(sentinel), /ENOENT/,
+        'invalid input must never launch the mock renderer');
+      await assert.rejects(access(output), /ENOENT/,
+        'invalid input must never produce an image');
+      await assert.rejects(access(join(dir, 'must-not-create')), /ENOENT/,
+        'invalid input must not create output directories');
+    }
+  } finally {
+    await rm(dir, {recursive: true, force: true});
+  }
+});
