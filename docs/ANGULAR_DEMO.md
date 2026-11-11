@@ -182,8 +182,14 @@ Run `npm run test:planet-interactions`, `npm run check:types`,
 `npm run build:demo`, and with the local asset and demo servers
 running, `npm run test:demo-interactions`. The new browser test includes
 a dedicated, purely synthetic Three.js color-and-dash probe plus the
-Sun-default focus switch. Actual Windows Chrome/Firefox results and
-pixel-level parity against the owner's reference are **pending**.
+Sun-default focus switch. It also saves four **ignored local canvas
+screenshots** to `.local/demo-interaction-focus/`: transit Saturn on
+light, natal Uranus with transits on light, natal Sun focus on light,
+and natal Moon selection with the focus switch off (all natal aspects)
+on light. Compare them manually with the owner's behavioral reference.
+These local screenshots must **not** be committed or redistributed.
+Actual Windows Chrome/Firefox results and pixel-level parity against
+the owner's reference are **pending**.
 
 **Remaining refinement before visual sign-off:** exact stroke widths,
 line layering (draw focused natal aspects over rather than merely recolor
