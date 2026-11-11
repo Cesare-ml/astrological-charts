@@ -273,3 +273,28 @@ test('reentrant leave and update callbacks cannot request renders of retired sce
     }
   } finally { await page.close(); await browser.close(); }
 });
+
+test('real WebGL memory stays bounded across 90 aspect updates and 20 scene redraws', {timeout: 90000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundled = await build({
+      entryPoints:['tests/fixtures/planet-gpu-lifecycle-harness.ts'],
+      bundle:true,write:false,platform:'browser',format:'iife',
+      target:'es2022',tsconfig:'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundled.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runPlanetGpuLifecycleProbe());
+    assert.equal(result.refreshCount, 90);
+    assert.equal(result.redrawCount, 20);
+    for (const name of [
+      'activeOverlayRendered','stableGpuGeometries','stableTextures',
+      'stablePrograms','redrawsStable','focusClearReleasesOverlays',
+      'teardownReleasesGpuGeometries'
+    ]) {
+      assert.equal(result[name], true, name + ': ' + JSON.stringify(result));
+    }
+  } finally { await page.close(); await browser.close(); }
+});

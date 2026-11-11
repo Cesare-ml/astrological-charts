@@ -154,7 +154,13 @@ export class GraficoRenderService implements OnDestroy {
       disposeSceneResources(this.scene);
       this.scene.clear();
     }
-    this.renderer?.dispose();
+    // dispose() releases Three.js resources; forceContextLoss() additionally
+    // frees the browser's WebGL context when the canvas is permanently retired.
+    // Never force loss during ordinary scene redraws.
+    if (this.renderer) {
+      this.renderer.dispose();
+      this.renderer.forceContextLoss();
+    }
     this.renderer = null;
     this.scene = null;
     this.camera = null;
@@ -390,6 +396,9 @@ export class GraficoRenderService implements OnDestroy {
       disposeSceneResources(scene);
       scene.clear();
       offRenderer.dispose();
+      // PNG export uses a new temporary canvas/context on every call.
+      // Release it immediately instead of waiting for browser GC/context caps.
+      offRenderer.forceContextLoss();
     }
   }
 

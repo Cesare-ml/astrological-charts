@@ -283,3 +283,26 @@ because source inspection passes.
 ## Rendering requests after synchronous teardown
 
 The controller checks the active scene **and its revision** after invoking frontend `leave` or `update` listeners. If the listener destroys, replaces or re-indexes the chart, the abandoned callback cannot request a render of an invalid canvas. The pointer transition also checks the revision to reject a hit computed before a same-object `setScene` re-index. The synthetic `planet-reentrant-render-harness.ts` tests these cases without real images, a WebGLRenderer or any astronomical calculations. Browser execution and GPU-memory testing are still required before merging.
+
+## Opt-in real WebGL resource regression
+
+`tests/fixtures/planet-gpu-lifecycle-harness.ts` constructs a genuine
+`THREE.WebGLRenderer` in the browser with purely generated mesh geometry and
+no artwork. It records `renderer.info.memory.geometries`, textures and
+program counts, then renders **90 changed aspect relations** and **20 chart
+scene replacements** while keeping a planet pinned. It expects stable GPU
+geometry counts across both workloads, checks active aspect and dashed
+transit spokes, verifies that clearing focus frees overlays, and requires
+zero retained GPU geometries after controller and host-geometry cleanup.
+This is a *browser-side WebGL accounting test*, not a byte-level GPU memory
+profiler, a production screenshot baseline or proof for every driver.
+Run `npm run test:demo-interactions` with the demo and approved/synthetic
+asset server active in Chromium and Firefox. Failures must be investigated,
+not dismissed as merely aesthetic differences.
+
+`GraficoRenderService.ngOnDestroy()` now calls `forceContextLoss()` **after**
+`dispose()` when permanently retiring an interactive canvas. Temporary
+offscreen PNG export renderers do the same in their cleanup; ordinary chart
+redraw and user pointer focus never force a WebGL context loss. This reduces
+the risk of accumulating browser WebGL contexts during repeated component
+mount/unmount and image exports, while keeping production integration gated.
