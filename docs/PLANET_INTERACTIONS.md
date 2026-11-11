@@ -799,3 +799,20 @@ only; no new calculations, images or API changes.
 **Status:** committed in draft PR #22, not yet verified with a real
 Windows Chrome/Firefox test after these commits. A successful
 source-level probe is not a browser result.
+
+## Camera-layer-aware interaction
+
+The Three.js camera may enable or disable render layers independently of
+the default raycaster layer (0). The controller now copies the camera's
+**current** `layers.mask` to its own raycaster immediately before each
+`intersectObjects()` call. This prevents an off-layer foreground glyph
+from capturing a hover/click, and permits a newly camera-visible glyph on
+layer 1 or higher to be selected without rebuilding the chart or its
+cached hit targets.
+
+The existing `planet-picking-harness.ts` exercises a synthetic overlapping
+Neptune on layer 1, Moon on layer 0, toggling the camera between layers,
+and click-through. Camera changes are presentation-only: no planetary
+longitudes, houses, aspect orbs, glyph scales, colors, chart geometry or
+headless PNG code change. Browser interaction and screenshot parity in
+Chromium/Firefox remain required before merging.

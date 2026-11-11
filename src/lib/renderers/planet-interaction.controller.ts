@@ -224,6 +224,10 @@ export class PlanetInteractionController {
     this.scene.updateMatrixWorld(true);
     this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.camera);
+    // Three.js Raycaster defaults to layer 0 even when the camera renders
+    // other layers. Keep picking on the camera's CURRENT mask; hosts can
+    // toggle layer visibility without reindexing or rebuilding the scene.
+    this.raycaster.layers.mask = this.camera.layers.mask;
     // Only tagged planet glyphs: decorative meshes never intercept a hit.
     const hits = this.raycaster.intersectObjects(this.pickTargets, false);
     if (!hits.length) return null;

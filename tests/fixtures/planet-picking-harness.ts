@@ -15,6 +15,11 @@ interface PickingProbe {
   showingAncestorRestoresPick: boolean;
   hiddenMaterialFallsThrough: boolean;
   hiddenMaterialClickFallsThrough: boolean;
+  cameraExcludedLayerIgnored: boolean;
+  cameraEnabledLayerSelected: boolean;
+  cameraLayerSwitchSelected: boolean;
+  cameraLayerSwitchClick: boolean;
+  cameraLayerResetRestoresSelection: boolean;
   pickTargetCacheStable: boolean;
   pickTargetCacheReindexed: boolean;
   pickTargetCacheReleased: boolean;
@@ -146,19 +151,46 @@ window.runPlanetPickingProbe = (): PickingProbe => {
     pointer(0.08, 'click');
     const hiddenMaterialClickFallsThrough = events.at(-1)?.type === 'click'
       && events.at(-1)?.planet.name === 'Moon';
+
+    // Camera layers are independent from Raycaster layers. The pointer
+    // must follow the camera's CURRENT visibility mask after toggling.
+    const outer = glyph('Neptune', 0.08, 0.3);
+    outer.layers.set(1);
+    controller.setScene(scene);
+    pointer(0.08);
+    const cameraExcludedLayerIgnored = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    camera.layers.enable(1);
+    pointer(0.08);
+    const cameraEnabledLayerSelected = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Neptune';
+    camera.layers.disable(0);
+    pointer(-0.09);
+    const cameraLayerSwitchSelected = events.at(-1)?.planet.name === 'Neptune';
+    pointer(0.08, 'click');
+    const cameraLayerSwitchClick = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Neptune';
+    camera.layers.enable(0);
+    camera.layers.disable(1);
+    pointer(0.08);
+    const cameraLayerResetRestoresSelection = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
     controller.destroy();
     const pickTargetCacheReleased =
       (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets.length === 0;
     const resourcesRestored = left.scale.x === 1 && right.scale.x === 1
       && front.scale.x === 1 && offscreen.scale.x === 1
-      && grouped.scale.x === 1;
+      && grouped.scale.x === 1 && outer.scale.x === 1;
     return {
       nearerRightSelected, nearerLeftSelected, zoomedRightSelected,
       outsideCanvasClearsHover, outsideClickIgnored, noStaleUpdateDuringLeave,
       frontLayerWins, hiddenFrontFallsThrough, hiddenAncestorFallsThrough,
       showingAncestorRestoresPick, hiddenMaterialFallsThrough,
-      hiddenMaterialClickFallsThrough, pickTargetCacheStable,
-      pickTargetCacheReindexed, pickTargetCacheReleased, resourcesRestored
+      hiddenMaterialClickFallsThrough, cameraExcludedLayerIgnored,
+      cameraEnabledLayerSelected, cameraLayerSwitchSelected,
+      cameraLayerSwitchClick, cameraLayerResetRestoresSelection,
+      pickTargetCacheStable, pickTargetCacheReindexed,
+      pickTargetCacheReleased, resourcesRestored
     };
   } finally {
     controller.destroy();
