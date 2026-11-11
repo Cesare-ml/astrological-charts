@@ -301,6 +301,12 @@ export class ElementiCelestiRender {
       // glyph center. An aspect focus can then use the inner aspect circle.
       if (parametroDiRender === 'longitude') {
         el.userData['chartAspectAngle'] = THREE.MathUtils.degToRad(elDegDiRender);
+        if (interactionLayer === 'transit') {
+          // Exact original radius of the transit glyph ring, before
+          // collision separation shifts the displayed symbol. This is
+          // rendering metadata only, never a new ephemeris calculation.
+          el.userData['chartTransitRingRadius'] = raggioEclittica;
+        }
       }
       group.add( el );
 
