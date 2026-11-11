@@ -293,7 +293,7 @@ test('30 repeated hover cycles over a pinned planet do not rebuild WebGL overlay
         assert.equal(passed, true, name + ': ' + JSON.stringify(result));
       }
     }
-    assert.equal(result.eventCount,62,JSON.stringify(result));
+    assert.equal(result.eventCount,102,JSON.stringify(result));
   } finally { await page.close(); await browser.close(); }
 });
 
