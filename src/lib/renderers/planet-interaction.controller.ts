@@ -4,7 +4,8 @@ import { chartAspectCirclePoint, chartTransitConnectorRadii } from './planet-int
 import {
   ChartAspectRelation, ChartPlanetRef, ChartPlanetInteractionEvent,
   chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects,
-  sameChartAspects, sameChartAspectVisuals, preferredTransitConnectorAspect
+  sameChartAspects, sameChartAspectVisuals, sameChartAspectStructure,
+  preferredTransitConnectorAspect
 } from './planet-interaction.types';
 
 /** Interactive canvas only. Export canvases remain independent of pointer state. */
@@ -32,6 +33,11 @@ export class PlanetInteractionController {
   private natalAspectTags: { root: THREE.Object3D; from: string; to: string; type: string }[] = [];
   private natalAspectPresentation: 'all' | 'focused' | 'muted' = 'all';
   private lines: THREE.Line[] = [];
+  /** Existing dashed guides by layer-qualified transit body. Cleared with
+   * their scene so an orb-only update can recolor without reallocating GPU
+   * geometry or touching native natal strokes.
+   */
+  private transitGuides = new Map<string,THREE.Line>();
   private aspectRing: { root: THREE.Object3D; radius: number } | null = null;
   private relations: readonly ChartAspectRelation[] = [];
   private hovered: ChartPlanetRef | null = null;
@@ -116,7 +122,14 @@ export class PlanetInteractionController {
     const visualsChanged = !sameChartAspectVisuals(previousVisible, nextVisible);
     this.relations = next;
     if (!visibleChanged) return;
-    if (visualsChanged) this.updateVisuals();
+    if (visualsChanged) {
+      // Geometry/endpoints are unchanged if only orb values moved. The
+      // shared transit spoke may still change its winner *color*; update
+      // its existing LineDashedMaterial in place when safe.
+      const recolored = sameChartAspectStructure(previousVisible,nextVisible)
+        && this.recolorTransitGuides(nextVisible);
+      if (!recolored) this.updateVisuals();
+    }
     const activeScene = this.scene;
     const revision = this.sceneRevision;
     if (activeScene) {
@@ -305,6 +318,7 @@ export class PlanetInteractionController {
       (line.material as THREE.Material).dispose();
     }
     this.lines = [];
+    this.transitGuides.clear();
   }
 
   /** Recolor only the on-screen glyph material, keeping the texture and
@@ -401,12 +415,12 @@ export class PlanetInteractionController {
   /** Dashed radius from the exact central-circle direction to the
    * original outer transit radius, not the collision-shifted glyph X/Y.
    */
-  private addTransitConnector(transit: THREE.Mesh, color: string): void {
-    if (!this.aspectRing) return;
+  private addTransitConnector(transit: THREE.Mesh, color: string): THREE.Line | null {
+    if (!this.aspectRing) return null;
     const angle: unknown = transit.userData['chartAspectAngle'];
-    if (typeof angle !== 'number') return;
+    if (typeof angle !== 'number') return null;
     const projected = chartAspectCirclePoint(angle, this.aspectRing.radius);
-    if (!projected) return;
+    if (!projected) return null;
     const center = this.aspectRing.root.getWorldPosition(new THREE.Vector3());
     const inner = this.aspectRing.root.localToWorld(
       new THREE.Vector3(projected.x, projected.y, 0));
@@ -430,7 +444,7 @@ export class PlanetInteractionController {
       }
     }
     const span = chartTransitConnectorRadii(innerRadius, outerRadius);
-    if (!span) return;
+    if (!span) return null;
     const outer = center.clone().add(radial.normalize().multiplyScalar(span.endRadius));
     const z = Math.max(inner.z, outer.z) + 0.075;
     inner.z = outer.z = z;
@@ -445,6 +459,47 @@ export class PlanetInteractionController {
     line.renderOrder = 1001;
     this.scene?.add(line);
     this.lines.push(line);
+    return line;
+  }
+
+  /**
+   * Update only the existing dashed spoke materials after an orb-only
+   * winner change. Never touch line geometry, glyph transforms, original
+   * natal aspect strokes or their foreground clones. Validate *all*
+   * targets before painting anything; unknown/missing geometry falls back
+   * to the ordinary full-overlay refresh.
+   */
+  private recolorTransitGuides(aspects: readonly ChartAspectRelation[]): boolean {
+    if (!this.scene) return false;
+    const winners = new Map<string,ChartAspectRelation>();
+    const centralIds = new Set<string>();
+    for (const link of aspects) {
+      const id = [chartPlanetKey(link.from), chartPlanetKey(link.to), link.type].join('|');
+      if (centralIds.has(id)) return false;
+      centralIds.add(id);
+      const from = this.glyphs.get(chartPlanetKey(link.from))?.[0];
+      const to = this.glyphs.get(chartPlanetKey(link.to))?.[0];
+      if (!from || !to) return false;
+      for (const ref of [link.from,link.to]) {
+        if (ref.layer !== 'transit') continue;
+        const key = chartPlanetKey(ref);
+        const previous = winners.get(key);
+        winners.set(key, previous ? preferredTransitConnectorAspect(previous,link) : link);
+      }
+    }
+    if (!winners.size || winners.size !== this.transitGuides.size) return false;
+    const changes: Array<{material:THREE.LineDashedMaterial;color:string}> = [];
+    for (const [key,relation] of winners) {
+      const line = this.transitGuides.get(key);
+      if (!line || line.parent !== this.scene ||
+          !(line.material instanceof THREE.LineDashedMaterial)) return false;
+      changes.push({
+        material: line.material,
+        color: (Colori.aspetti as Record<string,string>)[relation.type] ?? '#b08a35'
+      });
+    }
+    for (const {material,color} of changes) material.color.set(color);
+    return true;
   }
 
   /** Prefer unshifted longitude directions at the canonical aspect-circle radius.
@@ -532,9 +587,10 @@ export class PlanetInteractionController {
     }
     // Draw only after every visible link has been considered: a more
     // exact aspect wins the guide color; ties use a stable type/key rule.
-    for (const {mesh, relation} of connectedTransits.values()) {
+    for (const [key,{mesh, relation}] of connectedTransits) {
       const color = (Colori.aspetti as Record<string, string>)[relation.type] ?? '#b08a35';
-      this.addTransitConnector(mesh, color);
+      const guide = this.addTransitConnector(mesh, color);
+      if (guide) this.transitGuides.set(key,guide);
     }
   }
 }

@@ -391,3 +391,22 @@ test('pinned focus emits detail updates without needless orb-only WebGL repaint'
   assert.equal(probe.events.length, countWithoutFocus,
     'no active focus means no fabricated detail event');
 });
+
+
+test('aspect structure equality permits in-place guide tint but not changed links', () => {
+  const a = {from:natalSun,to:transitSaturn,type:'quadrato',orb:0.25};
+  const b = {from:natalMoon,to:transitSaturn,type:'trigono',orb:1.25};
+  assert.equal(api.sameChartAspectStructure([a,b],[
+    {...a,orb:2.5},{...b,orb:0.1}
+  ]),true,'a guide winner can change without moving either line');
+  assert.equal(api.sameChartAspectStructure([a],[
+    {...a,orb:undefined}
+  ]),true,'optional orb presence is display metadata');
+  assert.equal(api.sameChartAspectStructure([a],[{...a,type:'sestile'}]),false);
+  assert.equal(api.sameChartAspectStructure([a],[{...a,from:transitSun}]),false);
+  assert.equal(api.sameChartAspectStructure([a,b],[b,a]),false,'ordered line identity is preserved');
+  assert.equal(api.sameChartAspectStructure([a],[{...a,debugColor:'#fff'}]),false,
+    'custom host data requires a conservative full redraw');
+  assert.equal(api.sameChartAspectStructure([a],[{...a,from:{...natalSun,localX:3}}]),false);
+  assert.equal(api.sameChartAspectStructure([a],[]),false);
+});

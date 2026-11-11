@@ -110,7 +110,13 @@ export function sameChartAspects(
  * Therefore an orb-only update can skip WebGL work only when every transit
  * guide still selects the same aspect type.
  */
-export function sameChartAspectVisuals(
+/**
+ * Compare the ordered endpoints, type, and known host structure of aspect
+ * relations, excluding only the optional orb metadata. A stable structure
+ * allows in-place transit guide recoloring when the tightest-orb winner
+ * changes. Unknown fields and malformed endpoints remain a full repaint.
+ */
+export function sameChartAspectStructure(
   previous: readonly ChartAspectRelation[], next: readonly ChartAspectRelation[]
 ): boolean {
   const withoutOrbs = (links: readonly ChartAspectRelation[]) =>
@@ -119,9 +125,13 @@ export function sameChartAspectVisuals(
       const {orb: _unused, ...rest} = link;
       return rest;
     });
-  // The original equality guard also rejects unknown host fields and bad
-  // endpoints: never skip painting custom visual changes optimistically.
-  if (!sameChartAspects(withoutOrbs(previous), withoutOrbs(next))) return false;
+  return sameChartAspects(withoutOrbs(previous), withoutOrbs(next));
+}
+
+export function sameChartAspectVisuals(
+  previous: readonly ChartAspectRelation[], next: readonly ChartAspectRelation[]
+): boolean {
+  if (!sameChartAspectStructure(previous,next)) return false;
 
   const guideTypes = (links: readonly ChartAspectRelation[]): Map<string,string> | null => {
     const winners = new Map<string,ChartAspectRelation>();

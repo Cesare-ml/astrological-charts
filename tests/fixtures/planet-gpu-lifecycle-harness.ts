@@ -15,6 +15,7 @@ declare global {
       orbOnlyUpdatesAvailableOnClick: boolean;
       orbOnlyUpdatesNotifyFrontend: boolean;
       winnerChangeRepaintsGuide: boolean;
+      winnerRecolorKeepsGeometry: boolean;
       unrelatedUpdatesSkipRender: boolean;
       unrelatedUpdatesAvailableOnSelection: boolean;
       focusClearReleasesOverlays: boolean;
@@ -109,6 +110,7 @@ window.runPlanetGpuLifecycleProbe = () => {
   let orbOnlyUpdatesAvailableOnClick = false;
   let orbOnlyUpdatesNotifyFrontend = false;
   let winnerChangeRepaintsGuide = false;
+  let winnerRecolorKeepsGeometry = false;
   let unrelatedUpdatesSkipRender = false;
   let unrelatedUpdatesAvailableOnSelection = false;
   let focusClearReleasesOverlays = false;
@@ -215,13 +217,22 @@ window.runPlanetGpuLifecycleProbe = () => {
     const trine = {...relation(0)[0],type:'trigono',orb:1.9};
     controller.setRelations([square,trine]);
     const beforeWinner = active.getObjectByName('chart-interaction-transit-connector') as THREE.Line;
-    const firstColor = (beforeWinner?.material as THREE.LineBasicMaterial)?.color?.getHexString();
+    const firstColor = (beforeWinner?.material as THREE.LineDashedMaterial)?.color?.getHexString();
+    const beforeWinnerMaterial = beforeWinner?.material;
+    const beforeWinnerGeometry = beforeWinner?.geometry;
+    const beforeCentral = active.getObjectByName('chart-interaction-aspect');
+    const beforeWinnerGpuCount = renderer.info.memory.geometries;
     const beforeWinnerRender = renderCalls;
     controller.setRelations([{...square,orb:2.5},{...trine,orb:0.2}]);
     const afterWinner = active.getObjectByName('chart-interaction-transit-connector') as THREE.Line;
-    const nextColor = (afterWinner?.material as THREE.LineBasicMaterial)?.color?.getHexString();
+    const nextColor = (afterWinner?.material as THREE.LineDashedMaterial)?.color?.getHexString();
     winnerChangeRepaintsGuide = !!firstColor && !!nextColor && firstColor !== nextColor
-      && afterWinner !== beforeWinner && renderCalls === beforeWinnerRender + 1;
+      && renderCalls === beforeWinnerRender + 1;
+    winnerRecolorKeepsGeometry = afterWinner === beforeWinner
+      && afterWinner?.material === beforeWinnerMaterial
+      && afterWinner?.geometry === beforeWinnerGeometry
+      && active.getObjectByName('chart-interaction-aspect') === beforeCentral
+      && renderer.info.memory.geometries === beforeWinnerGpuCount;
     controller.setRelations(relation(90));
 
     for (let i = 0; i < redrawCount; i++) {
@@ -260,7 +271,8 @@ window.runPlanetGpuLifecycleProbe = () => {
     redrawsStable,duplicateRelationsSkipRender,duplicateFocusSkipRender,
     orbOnlyUpdatesSkipRender,orbOnlyUpdatesAvailableOnClick,
     orbOnlyUpdatesNotifyFrontend,winnerChangeRepaintsGuide,
-    unrelatedUpdatesSkipRender,unrelatedUpdatesAvailableOnSelection,
+    winnerRecolorKeepsGeometry,unrelatedUpdatesSkipRender,
+    unrelatedUpdatesAvailableOnSelection,
     focusClearReleasesOverlays,teardownReleasesGpuGeometries,
     refreshCount,redrawCount,baselineGeometries,peakGeometries,finalGeometries
   };

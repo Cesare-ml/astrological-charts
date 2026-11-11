@@ -661,3 +661,30 @@ emits no events, requests no render and does not tint the new chart. This
 does not replace a real Chromium/Firefox test, GPU-memory measurement or
 offscreen/Astrolabio regression validation. No production code or asset
 bundle is changed.
+
+
+## In-place transit guide recoloring (no geometry reconstruction)
+
+When precomputed aspect orbs change enough to change which aspect type
+wins a shared transit planet's dashed spoke, the controller can now
+**recolor the existing THREE.LineDashedMaterial directly**. It preserves
+both dashed guide and central colored aspect Line/BufferGeometry object
+identity, keeping the exact native chart positions, radial endpoints and
+dash patterns. Angular still receives an immediate `update` event with
+the new orb values, and the presentation scheduler requests a frame
+because the visible color changed.
+
+This optimization is restricted to an unchanged *ordered* relation
+structure (same endpoint layers/names and aspect types), with no unknown
+host fields, duplicated central aspect IDs, missing drawable endpoints,
+or missing stale-scene guide references. Otherwise the existing full
+overlay rebuild is the safe fallback. No planet coordinate/house/natal
+geometry mutation, astronomical calculation or screenshot export
+change is introduced.
+
+`tests/planet-interactions.test.mjs` checks the structure guard.
+`tests/fixtures/planet-gpu-lifecycle-harness.ts` verifies that the
+tightest-orb aspect winner changes the dashed spoke's actual color and
+requests one new WebGL frame **without** changing the spoke geometry,
+material, central line identity or live geometry count. Browser
+execution and owner visual review remain prerequisites to merge.
