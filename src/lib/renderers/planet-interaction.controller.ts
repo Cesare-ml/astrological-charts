@@ -29,6 +29,8 @@ export class PlanetInteractionController {
     this.cursor = canvas.style.cursor;
     canvas.addEventListener('pointermove', this.move);
     canvas.addEventListener('pointerleave', this.leave);
+    canvas.addEventListener('pointerup', this.finishPointer);
+    canvas.addEventListener('pointercancel', this.finishPointer);
     canvas.addEventListener('click', this.click);
   }
 
@@ -81,6 +83,8 @@ export class PlanetInteractionController {
   destroy(): void {
     this.canvas.removeEventListener('pointermove', this.move);
     this.canvas.removeEventListener('pointerleave', this.leave);
+    this.canvas.removeEventListener('pointerup', this.finishPointer);
+    this.canvas.removeEventListener('pointercancel', this.finishPointer);
     this.canvas.removeEventListener('click', this.click);
     this.clearVisuals();
     this.canvas.style.cursor = this.cursor;
@@ -127,6 +131,10 @@ export class PlanetInteractionController {
     this.canvas.style.cursor = this.cursor;
     this.updateVisuals();
     this.requestRender();
+  };
+  /** Touch has no persistent hover; a tap's synthetic click is handled separately. */
+  private finishPointer = (event: PointerEvent): void => {
+    if (event.pointerType === 'touch' || event.type === 'pointercancel') this.leave();
   };
   private click = (event: MouseEvent): void => {
     const planet = this.pick(event);

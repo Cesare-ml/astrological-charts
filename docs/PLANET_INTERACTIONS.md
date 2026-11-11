@@ -48,3 +48,8 @@ The central-ring endpoint regression is also compared against `AspettiRender.ren
 ## Host-callback re-entrancy safety
 
 On scene replacement, the controller now disposes temporary overlays, clears the old raycasting/glyph references and sets its current scene to `null` **before** emitting a synchronous `leave` event to the Angular host. A host may call `highlightPlanet` or `setCrossChartAspects` immediately from that callback without resurrecting an overlay on the discarded scene. Any new pin is applied when the replacement scene is indexed. The two-canvas browser harness includes a regression for this precise callback timing.
+
+
+## Touch and pointer cancellation
+
+Canvas `pointerup` from touch and `pointercancel` end the temporary hovered focus, returning to a pinned selection if one exists. The later synthesized `click` can still notify the Angular host and pin the tapped planet. Normal mouse `pointerup` does not clear its hover. These extra pointer listeners are detached on controller destruction; only the live on-screen canvas receives them. The browser pointer harness now tests touch-release, follow-up click and pen cancellation.

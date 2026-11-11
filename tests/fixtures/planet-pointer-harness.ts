@@ -10,6 +10,9 @@ declare global {
       transitHovered: boolean;
       clickEmitted: boolean;
       removedListeners: boolean;
+      touchHoverCleared: boolean;
+      touchClickEmitted: boolean;
+      cancelClearsHover: boolean;
       transitPinRestored: boolean;
       centralOverlay: boolean;
       centralOverlayGeometry: boolean;
@@ -57,14 +60,16 @@ window.runPlanetPointerProbe = () => {
   }]);
   controller.setScene(scene);
   const rect = canvas.getBoundingClientRect();
-  const send = (x: number, y: number, type: 'pointermove' | 'click') => {
+  const send = (x: number, y: number, type: 'pointermove' | 'click', pointerType = 'mouse') => {
     const world = new THREE.Vector3(x, y, 0).project(camera);
     const options = {
       clientX: rect.left + (world.x + 1) * rect.width / 2,
       clientY: rect.top + (1 - world.y) * rect.height / 2,
       bubbles: true,
     };
-    canvas.dispatchEvent(type === 'pointermove' ? new PointerEvent(type, options) : new MouseEvent(type, options));
+    canvas.dispatchEvent(type === 'pointermove'
+      ? new PointerEvent(type, {...options, pointerType})
+      : new MouseEvent(type, options));
   };
   send(-0.4, 0, 'pointermove');
   const natalHovered = events[0]?.type === 'enter'
@@ -106,6 +111,20 @@ window.runPlanetPointerProbe = () => {
   const simplifiedEvents = events.map(e => ({
     type: e.type, key: e.planet.layer + ':' + e.planet.name, aspects: e.aspects.length
   }));
+  // Touch release must clear a transient hover, without blocking the click
+  // event that a browser synthesizes afterward to select that planet.
+  send(-0.4, 0, 'pointermove', 'touch');
+  const touchStarted = events.at(-1)?.type === 'enter' && natal.scale.x > 1;
+  canvas.dispatchEvent(new PointerEvent('pointerup', {pointerType: 'touch', bubbles: true}));
+  const touchHoverCleared = touchStarted && events.at(-1)?.type === 'leave'
+    && transit.scale.x > 1 && natal.scale.x === 1;
+  send(-0.4, 0, 'click');
+  const touchClickEmitted = events.at(-1)?.type === 'click'
+    && events.at(-1)?.planet.layer === 'natal';
+  send(-0.4, 0, 'pointermove', 'pen');
+  canvas.dispatchEvent(new PointerEvent('pointercancel', {pointerType: 'pen', bubbles: true}));
+  const cancelClearsHover = events.at(-1)?.type === 'leave'
+    && transit.scale.x > 1 && natal.scale.x === 1;
   controller.destroy();
   const beforeDestroyedMove = events.length;
   send(-0.4, 0, 'pointermove');
@@ -120,6 +139,7 @@ window.runPlanetPointerProbe = () => {
   });
   canvas.remove();
   return {events: simplifiedEvents, natalHovered, transitHovered, clickEmitted,
-    removedListeners, transitPinRestored, centralOverlay, centralOverlayGeometry,
+    removedListeners, touchHoverCleared, touchClickEmitted, cancelClearsHover,
+    transitPinRestored, centralOverlay, centralOverlayGeometry,
     refreshedWhileHovered, noRefreshAfterLeave, destroyedRestoredScale};
 };
