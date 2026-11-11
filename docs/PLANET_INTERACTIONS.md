@@ -227,3 +227,13 @@ callback swaps scenes. A subsequent pointer move resolves against the
 replacement scene normally. `tests/fixtures/planet-scene-switch-harness.ts`
 covers the leave-triggered swap, subsequent new-scene hover and detached
 scene teardown without relying on private chart data or image assets.
+
+## Nested scene replacement safety
+
+`setScene()` now uses a monotonic scene revision. A synchronous `leave`
+callback may call `setScene()` a second time or destroy the controller;
+in either case the original in-progress call must not attach an older scene.
+`destroy()` invalidates outstanding revisions too. The synthetic
+`planet-scene-switch-harness` verifies that the replacement requested
+from inside the host callback wins over the earlier outer replacement,
+and that the following pointer event targets only the winning scene.

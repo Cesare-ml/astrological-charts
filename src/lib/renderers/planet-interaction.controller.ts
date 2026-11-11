@@ -11,6 +11,7 @@ export class PlanetInteractionController {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private scene: THREE.Scene | null = null;
+  private sceneRevision = 0;
   private glyphs = new Map<string, THREE.Mesh[]>();
   private scales = new Map<THREE.Mesh, THREE.Vector3>();
   private glyphTints = new Map<THREE.Material, THREE.Color>();
@@ -39,6 +40,7 @@ export class PlanetInteractionController {
   }
 
   setScene(scene: THREE.Scene | null): void {
+    const revision = ++this.sceneRevision;
     this.clearVisuals();
     // Detach old scene and glyph references before notifying the host.
     // The synchronous leave callback may call highlight() / setRelations():
@@ -51,6 +53,9 @@ export class PlanetInteractionController {
     this.natalAspectTags = [];
     this.aspectRing = null;
     if (leaving) this.send('leave', leaving);
+    // The synchronous callback may itself call setScene() or destroy().
+    // Never overwrite a newer scene (or resurrect one after destruction).
+    if (revision !== this.sceneRevision) return;
     this.scene = scene;
     if (!scene) return;
     scene.traverse(obj => {
@@ -100,6 +105,7 @@ export class PlanetInteractionController {
   }
 
   destroy(): void {
+    ++this.sceneRevision;
     this.canvas.removeEventListener('pointermove', this.move);
     this.canvas.removeEventListener('pointerleave', this.leave);
     this.canvas.removeEventListener('pointerup', this.finishPointer);

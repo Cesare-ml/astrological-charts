@@ -7,6 +7,7 @@ declare global {
     runPlanetSceneSwitchProbe?: () => {
       noStaleEnter: boolean;
       newSceneHoverWorks: boolean;
+      nestedSceneWins: boolean;
       noHoverOnDetachedScene: boolean;
       listenersDetached: boolean;
     };
@@ -33,16 +34,18 @@ window.runPlanetSceneSwitchProbe = () => {
   };
   const original = new THREE.Scene();
   const replacement = new THREE.Scene();
+  const obsolete = new THREE.Scene();
   glyph(original,'Sun',-0.4);
   glyph(original,'Moon',0.4);
   glyph(replacement,'Mars',0.4);
+  glyph(obsolete,'Venus',0.4);
   const events: ChartPlanetInteractionEvent[] = [];
   let swapOnLeave = false;
   const controller = new PlanetInteractionController(canvas,camera,event => {
     events.push(event);
     if (swapOnLeave && event.type === 'leave' && event.planet.name === 'Sun') {
-      controller.setScene(replacement);
       swapOnLeave = false;
+      controller.setScene(replacement);
     }
   },()=>{});
   const move = (x: number) => {
@@ -62,6 +65,17 @@ window.runPlanetSceneSwitchProbe = () => {
     move(0.4); // new scene Mars can now be hit
     const newSceneHoverWorks = events.at(-1)?.type === 'enter'
       && events.at(-1)?.planet.name === 'Mars';
+
+    // The callback fired by setScene() itself can request a newer scene.
+    // That nested replacement must win over the obsolete outer request.
+    controller.setScene(original);
+    move(-0.4);
+    swapOnLeave = true;
+    controller.setScene(obsolete);
+    move(0.4);
+    const nestedSceneWins = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Mars';
+
     controller.setScene(null);
     const oldEventCount = events.length;
     move(-0.4);
@@ -71,10 +85,11 @@ window.runPlanetSceneSwitchProbe = () => {
     controller.setScene(null);
     move(0.4);
     const listenersDetached = afterDestroy === events.length;
-    return {noStaleEnter,newSceneHoverWorks,noHoverOnDetachedScene,listenersDetached};
+    return {noStaleEnter,newSceneHoverWorks,nestedSceneWins,
+      noHoverOnDetachedScene,listenersDetached};
   } finally {
     controller.destroy();
-    for (const scene of [original,replacement]) {
+    for (const scene of [original,replacement,obsolete]) {
       scene.traverse(obj=>{
         if (obj instanceof THREE.Mesh) {
           obj.geometry.dispose();
