@@ -604,3 +604,42 @@ This optimizes **aspect presentation metadata only**: chart planet
 coordinates, houses and existing natal aspect geometry still require
 the normal full `disegnaScena()` path when upstream data changes.
 Browser Chromium/Firefox execution remains a release gate.
+
+### Stable shared transit spoke color (2026-11-11)
+
+When a selected natal body or transiting body has several *precomputed*
+cross-chart aspects involving the **same transit planet**, the wheel
+draws **all colored central aspect lines** but just **one dashed radial
+guide for that transit body**. Earlier behavior selected the guide
+color from whichever aspect appeared first in the input array. That
+made a live sorting/filter operation change the spoke's color without
+any astronomical change.
+
+The guide color now uses the **tightest finite absolute orb** from
+the displayed aspects involving that transit; if two orbs tie, or
+both are absent/invalid, a deterministic aspect-type/endpoint-key
+ordering breaks the tie. This is strictly a visual-color rule, **not
+an astrological importance claim or interpretation ranking**.
+The `ChartAspectRelation` data and its original ordering are
+preserved for host events, tooltips and the full central diagram.
+Selecting natal vs transit planets still respects their layer-qualified
+identities, and every unrelated planet remains monochrome.
+
+**Regression coverage:**
+- `tests/planet-interactions.test.mjs` validates nearest orb, negative
+  orbs (absolute value), missing/nonfinite orbs, deterministic ties,
+  and reversed input order.
+- `tests/fixtures/transit-spoke-harness.ts` verifies that one
+  transit Saturn with two aspects retains the same guide color after
+  a reversed input list; both central aspect colors remain visible.
+  It also verifies a selected natal Sun with two different transit
+  partners produces **two independent dashed guides** along their own
+  original longitude directions, without resizing the glyphs.
+  Normal and southern-hemisphere-mirrored charts are both covered.
+- Playwright writes an additional ignored
+  `.local/demo-interaction-focus/natal-uranus-transits-dark.png`
+  screenshot for side-by-side visual comparison with the light skin.
+
+These additions belong only to **draft PR #22**. Full Angular build,
+Chromium/Firefox execution, and manual light/dark screenshot inspection
+remain required. No ephemeris or aspect calculation was added.
