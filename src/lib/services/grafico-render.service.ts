@@ -78,6 +78,7 @@ export class GraficoRenderService implements OnDestroy {
   private planetListener: ((event: ChartPlanetInteractionEvent) => void) | null = null;
   private crossChartAspects: ChartAspectRelation[] = [];
   private pinnedPlanet: ChartPlanetRef | null = null;
+  private natalAspectPresentation: 'all' | 'focused' | 'muted' = 'all';
   
   public scale = 1;
 
@@ -105,6 +106,12 @@ export class GraficoRenderService implements OnDestroy {
   public setCrossChartAspects(aspects: readonly ChartAspectRelation[]): void {
     this.crossChartAspects = aspects.slice();
     this.planetController?.setRelations(this.crossChartAspects);
+  }
+
+  /** On-screen natal aspect palette: all colored, focused colored, or gray. */
+  public setNatalAspectPresentation(presentation: 'all' | 'focused' | 'muted'): void {
+    this.natalAspectPresentation = presentation;
+    this.planetController?.setNatalAspectPresentation(presentation);
   }
 
   /** Programmatic focus for buttons/keyboard controls. null clears it. */
@@ -190,6 +197,7 @@ export class GraficoRenderService implements OnDestroy {
       this.canvas, this.camera, event => this.planetListener?.(event), () => this.render()
     );
     this.planetController.setRelations(this.crossChartAspects);
+    this.planetController.setNatalAspectPresentation(this.natalAspectPresentation);
     this.planetController.highlight(this.pinnedPlanet);
     this.planetController.setScene(this.scene);
 
