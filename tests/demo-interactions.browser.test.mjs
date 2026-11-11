@@ -44,6 +44,11 @@ test('demo frontend focuses natal and transit planets in both directions', {time
     assert.equal(await page.locator('[data-testid=aspect-match]').count(), 2);
     assert.match(await page.locator('.aspect-list').textContent(), /natal Uranus/);
     assert.match(await page.locator('.aspect-list').textContent(), /natal Venus/);
+    await page.selectOption('#aspect-filter', 'hard');
+    assert.equal(await page.locator('[data-testid=aspect-match]').count(), 1);
+    assert.match(await page.locator('.aspect-list').textContent(), /opposizione/);
+    await page.selectOption('#aspect-filter', 'all');
+    assert.equal(await page.locator('[data-testid=aspect-match]').count(), 2);
 
     await page.selectOption('#planet-layer', 'natal');
     await page.getByRole('button', {name: 'Highlight natal Uranus'}).click();
@@ -63,6 +68,7 @@ test('demo frontend focuses natal and transit planets in both directions', {time
     await ready(page);
     assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'None');
     assert.equal(await page.locator('#planet-layer option').count(), 1);
+    assert.equal(await page.locator('#aspect-filter').count(), 0);
     assert.deepEqual(errors, []);
   } finally { await page.close(); await browser.close(); }
 });

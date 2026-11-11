@@ -57,6 +57,11 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
             <p>Last chart event: <span data-testid="planet-event">{{lastPlanetEvent ? lastPlanetEvent.type + ' ' + lastPlanetEvent.planet.layer + ':' + lastPlanetEvent.planet.name : 'None'}}</span></p>
           </div>
           <div class="aspect-readout" *ngIf="mode === 'transits'">
+            <label for="aspect-filter">Example transit aspect filter</label>
+            <select id="aspect-filter" [value]="aspectFilter" [disabled]="busy" (change)="changeAspectFilter($event)">
+              <option value="all">All supplied aspects</option>
+              <option value="hard">Squares and oppositions only</option>
+            </select>
             <h2>Related transit aspects <span class="aspect-count" data-testid="aspect-count">{{focusedAspects.length}}</span></h2>
             <ul *ngIf="focusedAspects.length; else noAspects" class="aspect-list">
               <li *ngFor="let link of focusedAspects" data-testid="aspect-match">
@@ -80,14 +85,21 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   readonly skins = Object.keys(SkinManager.skins);
   readonly bodies = demoBodies;
   planetLayer: ChartPlanetLayer = 'natal';
+  aspectFilter: 'all' | 'hard' = 'all';
   selectedPlanet: ChartPlanetRef | null = null;
   hoveredPlanet: ChartPlanetRef | null = null;
   lastPlanetEvent: ChartPlanetInteractionEvent | null = null;
 
+  private get visibleCrossChartAspects(): readonly ChartAspectRelation[] {
+    return this.aspectFilter === 'hard'
+      ? demoCrossChartAspects.filter(link => link.type === 'quadrato' || link.type === 'opposizione')
+      : demoCrossChartAspects;
+  }
+
   get focusedAspects(): ChartAspectRelation[] {
     const focus = this.hoveredPlanet ?? this.selectedPlanet;
     return focus && this.mode === 'transits'
-      ? relatedChartAspects(focus, demoCrossChartAspects) : [];
+      ? relatedChartAspects(focus, this.visibleCrossChartAspects) : [];
   }
 
   private readonly onPlanetInteraction = (event: ChartPlanetInteractionEvent): void => {
@@ -129,16 +141,26 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   changeMode(event: Event): void {
     this.mode = (event.target as HTMLSelectElement).value as Mode;
     this.planetLayer = 'natal';
+    this.aspectFilter = 'all';
     this.hoveredPlanet = null;
     this.selectedPlanet = null;
     this.lastPlanetEvent = null;
     this.renderer.highlightPlanet(null);
-    this.renderer.setCrossChartAspects(this.mode === 'transits' ? demoCrossChartAspects : []);
+    this.renderer.setCrossChartAspects(this.mode === 'transits' ? this.visibleCrossChartAspects : []);
     void this.draw();
   }
 
   changePlanetLayer(event: Event): void {
     this.planetLayer = (event.target as HTMLSelectElement).value as ChartPlanetLayer;
+    this.changes.markForCheck();
+  }
+
+  changeAspectFilter(event: Event): void {
+    if (this.mode !== 'transits' || this.busy) return;
+    this.aspectFilter = (event.target as HTMLSelectElement).value === 'hard' ? 'hard' : 'all';
+    // Replace only the display links. The renderer never recomputes ephemerides
+    // or aspect orbs; stationary hovers receive an explicit 'update' event.
+    this.renderer.setCrossChartAspects(this.visibleCrossChartAspects);
     this.changes.markForCheck();
   }
 
