@@ -56,7 +56,7 @@ test('release metadata test is wired into the manual preflight and roadmap is di
 test('Angular demo shows a safe clickable VirgoStars credit at launch', async () => {
   const demo = await read('demo/main.ts');
   // Check the actual Angular template, not only documentation or a comment.
-  const template = demo.match(/template:\s*`([\s\S]*?)`\s*\}/)?.[1];
+  const template = demo.match(/template:\s*`([\s\S]*?)`\s*\}\)/)?.[1];
   assert.ok(template, 'standalone Angular demo must retain an inline template');
   assert.match(template, /Powered by\s*<a\s+[^>]*href="https:\/\/www\.virgostars\.it\/"[^>]*>VirgoStars<\/a>/,
     'demo must display a clickable VirgoStars credit in its initial UI');
