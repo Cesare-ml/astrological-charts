@@ -165,6 +165,13 @@ test('all four natal angles show their supplied transit relationships without zo
       assert.match(description, new RegExp('transit '+partner));
       assert.match(description, /semiquadrato/);
     }
+    // Reverse direction: selecting the transit Mercury also exposes
+    // its relationship to the natal IC (along with its Pluto link).
+    await page.selectOption('#planet-layer','transit');
+    await page.getByRole('button',{name:'Highlight transit Mercury'}).click();
+    await selection(page,'transit:Mercury');
+    await aspectCount(page,2);
+    assert.match(await page.locator('.aspect-list').textContent(), /natal IC/);
     const before = await revision(page);
     await page.selectOption('#mode','natal');
     await ready(page,before);
