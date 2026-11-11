@@ -17,6 +17,8 @@ export class PlanetInteractionController {
   private pickTargets: THREE.Mesh[] = [];
   private scene: THREE.Scene | null = null;
   private sceneRevision = 0;
+  /** Tracks painting work performed by synchronous host callbacks. */
+  private visualRevision = 0;
   private glyphs = new Map<string, THREE.Mesh[]>();
   private glyphTints = new Map<THREE.Material, THREE.Color>();
   private natalLineColors = new Map<any, number[]>();
@@ -210,13 +212,16 @@ export class PlanetInteractionController {
     if (previous) this.send('leave', previous);
     if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.hovered = next ? { ...next } : null;
+    const beforeEnterVisuals = this.visualRevision;
     if (this.hovered) this.send('enter', this.hovered);
-    // The enter callback may itself cause a chart replacement. setScene()
-    // has already reset the cursor/hover and installed the new glyph index.
+    // A host may redraw in the enter callback (e.g. pin this planet).
+    // Scene replacement retains its separate stale-pointer guard.
     if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.canvas.style.cursor = this.hovered ? 'pointer' : this.cursor;
-    this.updateVisuals();
-    this.requestRender();
+    if (this.visualRevision === beforeEnterVisuals) {
+      this.updateVisuals();
+      this.requestRender();
+    }
   };
   private leave = (): void => {
     const leaving = this.hovered;
@@ -227,10 +232,14 @@ export class PlanetInteractionController {
     this.canvas.style.cursor = this.cursor;
     const activeScene = this.scene;
     const revision = this.sceneRevision;
+    const beforeLeaveVisuals = this.visualRevision;
     this.send('leave', leaving);
     if (this.scene !== activeScene || this.sceneRevision !== revision) return;
-    this.updateVisuals();
-    if (this.scene) this.requestRender();
+    // A host changing its pinned selection inside leave already repainted.
+    if (this.visualRevision === beforeLeaveVisuals) {
+      this.updateVisuals();
+      if (this.scene) this.requestRender();
+    }
   };
   /** Touch has no persistent hover; a tap's synthetic click is handled separately. */
   private finishPointer = (event: PointerEvent): void => {
@@ -416,6 +425,7 @@ export class PlanetInteractionController {
   }
 
   private updateVisuals(): void {
+    ++this.visualRevision;
     this.clearVisuals();
     if (!this.scene) return;
     const focus = this.hovered ?? this.pinned;

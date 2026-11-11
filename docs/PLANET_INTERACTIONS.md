@@ -465,3 +465,23 @@ synthetic real-WebGL probe checks that repeated off-focus changes preserve
 render counts and overlay object identity, while a later Moon click receives
 the latest stored orbital data. Chrome/Firefox validation remains required
 before merge.
+
+
+## Coalesced synchronous hover repaint
+
+The demo's pointer `enter` callback can latch focus immediately by calling
+`highlightPlanet`; a `leave` callback may similarly select a different
+pinned body. Previously the host callback repainted the overlay and requested
+a frame, then the pointer handler repeated both operations for the same event.
+
+The controller now increments a visual revision when rebuilding its on-screen
+overlays. After a synchronous `enter`/`leave` callback, the pointer handler
+repaints only if the callback did **not** already repaint. Existing scene
+revision checks still stop stale events after scene replacement or destroy.
+A callback that performs no visual update still gets the usual one repaint.
+
+The synthetic re-entrant browser probe tests one render request per enter
+latch and leave selection, alongside existing nested scene replacement and
+teardown checks. No change to astrology, glyph locations, public API,
+headless exports or external assets. Actual Chromium and Firefox runs remain
+required before merging.

@@ -5,6 +5,8 @@ import type { ChartPlanetInteractionEvent } from '../../src/lib/renderers/planet
 declare global {
   interface Window {
     runPlanetReentrantRenderProbe?: () => {
+      enterLatchSingleRender: boolean;
+      leaveSelectSingleRender: boolean;
       leaveSwapSkipsOldRender: boolean;
       replacementStillInteractive: boolean;
       sameSceneReindexSuppressesStaleEnter: boolean;
@@ -41,8 +43,18 @@ window.runPlanetReentrantRenderProbe = () => {
   let renders = 0;
   let leaveAction: 'swap' | 'reindex' | null = null;
   let destroyOnUpdate = false;
+  let latchOnEnter = false;
+  let selectMoonOnLeave = false;
   const controller = new PlanetInteractionController(canvas,camera,event => {
     events.push(event);
+    if (event.type === 'enter' && latchOnEnter) {
+      latchOnEnter = false;
+      controller.highlight(event.planet);
+    }
+    if (event.type === 'leave' && selectMoonOnLeave) {
+      selectMoonOnLeave = false;
+      controller.highlight({layer:'natal',name:'Moon'});
+    }
     if (event.type === 'leave' && leaveAction) {
       const action = leaveAction;
       leaveAction = null;
@@ -62,7 +74,16 @@ window.runPlanetReentrantRenderProbe = () => {
   };
   try {
     controller.setScene(scene);
-    move(-0.4); // Sun hovered
+    latchOnEnter = true;
+    move(-0.4); // Host latches the Sun inside the enter callback.
+    const enterLatchSingleRender = renders === 1 &&
+      events.filter(event => event.type === 'enter').length === 1;
+    const beforeLeaveSelection = renders;
+    selectMoonOnLeave = true;
+    canvas.dispatchEvent(new PointerEvent('pointerleave',{bubbles:true}));
+    const leaveSelectSingleRender = renders === beforeLeaveSelection + 1
+      && events.at(-1)?.type === 'leave';
+    move(-0.4); // Re-enter the Sun for the existing scene-swap probe.
     const beforeSwap = renders;
     leaveAction = 'swap';
     canvas.dispatchEvent(new PointerEvent('pointerleave',{bubbles:true}));
@@ -95,7 +116,8 @@ window.runPlanetReentrantRenderProbe = () => {
     const eventCountAfterDestroy = events.length;
     move(-0.4);
     const destroyedListenersRemoved = events.length === eventCountAfterDestroy;
-    return {leaveSwapSkipsOldRender,replacementStillInteractive,
+    return {enterLatchSingleRender,leaveSelectSingleRender,
+      leaveSwapSkipsOldRender,replacementStillInteractive,
       sameSceneReindexSuppressesStaleEnter,reindexedSceneStillInteractive,
       updateDestroySkipsOldRender,destroyedListenersRemoved};
   } finally {
