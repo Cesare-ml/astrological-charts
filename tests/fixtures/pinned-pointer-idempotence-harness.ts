@@ -73,6 +73,15 @@ window.runPinnedPointerIdempotenceProbe = () => {
   const leave = () => canvas.dispatchEvent(new PointerEvent('pointerleave',{
     pointerType:'mouse',bubbles:true
   }));
+  // Move to an empty point INSIDE the canvas, triggering 'leave' from
+  // move() rather than the browser's pointerleave event.
+  const insideBlank = () => {
+    const rect = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(new PointerEvent('pointermove',{
+      clientX:rect.left+rect.width/2,clientY:rect.top+rect.height*0.88,
+      pointerType:'mouse',bubbles:true
+    }));
+  };
   const color = (mesh:THREE.Mesh) =>
     (mesh.material as THREE.MeshBasicMaterial).color.getHexString();
 
@@ -87,6 +96,17 @@ window.runPinnedPointerIdempotenceProbe = () => {
   const pinnedColorAndSizeUnchanged = color(sun)==='ff0000' &&
     color(saturn)==='9e02ff' &&
     [sun,saturn].every(mesh=>mesh.scale.x===1&&mesh.scale.y===1);
+
+  const beforeBlank = events.length;
+  for(let i=0;i<20;i++){send('Sun');insideBlank();}
+  const insideCanvasBlankAvoidsRepaint =
+    events.length === beforeBlank+40 &&
+    events.slice(beforeBlank).every((event,index) =>
+      event.planet.name==='Sun' &&
+      event.type===(index%2===0?'enter':'leave')) &&
+    renders === baselineRenders && disposedOriginals===0 &&
+    scene.getObjectByName('chart-interaction-aspect') === originalAspect &&
+    scene.getObjectByName('chart-interaction-transit-connector') === originalSpoke;
 
   // A *different* hover must still repaint; its leave must restore the
   // pinned natal Sun and dispose the temporary foreground.
@@ -114,7 +134,8 @@ window.runPinnedPointerIdempotenceProbe = () => {
   canvas.remove();
   return {
     pinnedHoverEventsRetained, pinnedHoverAvoidsRepaint,
-    pinnedColorAndSizeUnchanged, differentHoverRepaints,
+    pinnedColorAndSizeUnchanged, insideCanvasBlankAvoidsRepaint,
+    differentHoverRepaints,
     otherHoverRestoresPin, clearRestoresNeutral,
     eventCount:events.length, baselineRenders, renders, disposedOriginals
   };
