@@ -306,3 +306,25 @@ This regression has not yet been run on the owner's Windows checkout.
 After pulling the latest PR branch, restart the 4200 demo and run
 `npm run test:demo-interactions`; if it reports
 `native Line2 solid/dashed/dotted strokes`, that is the new test.
+
+
+## Safe cleanup of partially constructed natal and latitude charts
+
+`scene-resources.ts` centralizes the existing owner-scoped disposal policy.
+Completed subgroups of a scene that fails **during async construction** now
+release their Three.js geometry, materials, referenced textures and registered
+animations, whether the failure occurs in the circular chart builder or in
+the latitude chart builder. The service and offscreen PNG exporter call the
+same helper when disposing successful/retired scenes. Object identities are
+deduplicated **within a disposal pass**, so multiple child meshes sharing
+a geometry/material/texture are not double-disposed. Disconnected objects
+which never joined the group's tree are outside the helper's scope.
+
+The opt-in browser smoke suite includes a synthetic shared-resource fixture:
+several meshes share one geometry, one material and one texture; a separate
+material and two animation registrations are also present. It checks each
+owned resource is released once and an unrelated, detached mesh is untouched.
+The test uses no chart artwork, user birth data or backend calls. Run
+`npm run check:types`, `npm run build:demo`, and `npm run test:demo`
+with the local manifest-verified asset server in Chromium and Firefox.
+Any actual rendering/visual parity verdict still requires owner review.

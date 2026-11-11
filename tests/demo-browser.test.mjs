@@ -251,3 +251,21 @@ test('superseded texture failure and reentrant canvas destroy do not commit stal
     });
   } finally { await page.close(); await browser.close(); }
 });
+
+test('partially assembled scene cleanup disposes owned resources once', {timeout:60000}, async () => {
+  const bundle = await build({entryPoints:['tests/fixtures/scene-resource-lifecycle-harness.ts'],
+    bundle:true,write:false,platform:'browser',format:'iife',target:'es2022',tsconfig:'tsconfig.json'});
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await page.waitForFunction(() =>
+      (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'),
+      {timeout:30000});
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const result = await page.evaluate(() => globalThis.runSceneResourceLifecycleProbe());
+    for (const [name, ok] of Object.entries(result)) {
+      assert.equal(ok, true, name + ': ' + JSON.stringify(result));
+    }
+  } finally { await page.close(); await browser.close(); }
+});

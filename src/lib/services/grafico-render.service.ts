@@ -6,7 +6,7 @@ import {TemaRender} from '../models/tema-render.model';
 import {CartaAstraleCreaScena} from '../renderers/@carta-astrale/carta-astrale.renderer';
 import { OggettiSempliciRender } from '../renderers/oggetti-semplici.renderer';
 import { GestoreImmagini } from '../renderers/gestore-immagini';
-import { stopSceneAnimations } from '../renderers/scene-animations';
+import { disposeSceneResources } from '../renderers/scene-resources';
 import { PlanetInteractionController } from '../renderers/planet-interaction.controller';
 import type { ChartAspectRelation, ChartPlanetInteractionEvent, ChartPlanetRef } from '../renderers/planet-interaction.types';
 import { snapshotChartAspects } from '../renderers/planet-interaction.types';
@@ -20,27 +20,6 @@ import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer'
 
 import {SkinManager} from '../renderers/@skin-manager';
 import { debounceTime, fromEvent, map, startWith } from 'rxjs';
-
-/** Dispose resources owned by a generated scene, once per object identity. */
-function disposeSceneResources(root: THREE.Object3D): void {
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
-  root.traverse((object: any) => {
-    stopSceneAnimations(object);
-    if (object.geometry) geometries.add(object.geometry);
-    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-      if (!material) continue;
-      materials.add(material);
-      for (const value of Object.values(material)) {
-        if (value instanceof THREE.Texture) textures.add(value);
-      }
-    }
-  });
-  textures.forEach(texture => texture.dispose());
-  materials.forEach(material => material.dispose());
-  geometries.forEach(geometry => geometry.dispose());
-}
 
 async function waitForSceneTextures(root: THREE.Object3D): Promise<void> {
   const textures = new Set<THREE.Texture>();
