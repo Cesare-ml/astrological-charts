@@ -173,8 +173,9 @@ pending full local Angular/Chrome/Firefox execution and visual review:
   `npm run test:demo-interactions`. The browser test also exercises
   the natal focus toggle and the Sun default.
 
-**Not finished / not certified:** true double-layer gray-under-color
-aspect rendering for all natal aspect styles, tuned spoke endpoints
+**Not finished / not certified:** browser-verified pixel fidelity of
+the new double-layer gray-under-color natal focus for all stroke styles,
+tuned spoke endpoints
 and dash lengths in crowded outer transit rings, parity across all
 seven skins and older options, touch/keyboard screen-reader acceptance,
 original artwork screenshot comparison, full repo/build/browser run
@@ -388,3 +389,41 @@ planet to the same scene and checks `setScene` refreshes the array. It
 also verifies the cache is empty after teardown. These are source/runtime
 behavior checks, **not** a measured FPS improvement; profile the original
 renderer and GPU usage on Windows before claiming a speedup.
+
+### Natal aspect two-layer focus — draft implementation checkpoint (2026-11-11)
+
+The owner confirmed that the prior Windows build/test and live
+interactive demo worked with unchanged-size planetary glyphs and
+clickable AS/DS/MC/IC. The next visual refinement is now committed on
+the same **draft PR #22**, but is **not yet owner-tested**:
+
+- In natal-only mode with `Focus aspects` disabled, the existing
+  `AspettiRender` output stays unchanged: all traditionally colored
+  aspects, with original widths, solid/dashed/dotted patterns and
+  angular geometry.
+- When `Focus aspects` is enabled, every native natal aspect retains
+  a **muted gray background stroke**. For native aspects touching the
+  selected natal planet/axis, the controller places an **independent
+  foreground copy of that original colored stroke** above the gray.
+  This follows the original line geometry and patterns, rather than
+  generating another mathematical aspect or inventing relationships.
+- A focus change, drawing rebuild or teardown removes and disposes
+  those copies (their geometries and materials are not shared with the
+  original stroke). Original native vertex colors are restored when
+  focus switches back to `all`; no planet changes its scale or
+  position. The transit view keeps the existing muted natal lines
+  with its separate colored cross-theme focus overlays.
+- The existing browser-host synthetic palette fixture now checks:
+  native stroke remains gray beneath an independent colored copy;
+  copying works for a group with child lines; focused resources emit
+  exactly one dispose event on removal; and **30 focus on/off cycles**
+  restore the original colors and leave no overlay objects in the
+  scene. These checks run through `npm run test:demo-interactions`
+  with Chrome on Windows, not through headless PNG export.
+
+**Validation still required:** owner-run `npm run check:types`,
+`npm run build:demo`, and `npm run test:demo-interactions` after
+updating/restarting the branch. Inspect the natal Sun, AS and MC
+screenshots with focus on and off; compare solid, dashed and dotted
+lines on light/dark skins. Browser success alone does not certify
+faithful original artwork or measure real GPU memory consumption.
