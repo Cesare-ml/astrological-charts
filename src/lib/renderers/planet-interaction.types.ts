@@ -24,6 +24,31 @@ export function isChartPlanetRef(value: unknown): value is ChartPlanetRef {
 export function sameChartPlanet(a: ChartPlanetRef | null, b: ChartPlanetRef | null): boolean {
   return a === b || (!!a && !!b && a.layer === b.layer && a.name === b.name);
 }
+
+/**
+ * A transit planet may participate in multiple displayed relationships, but
+ * it needs only one dashed radial guide. Choose the relationship with the
+ * smallest finite absolute orb; on equal/unknown orbs, break ties by stable
+ * aspect type and layer-qualified endpoint keys, not API input order.
+ *
+ * This selects a VISUAL guide color only. It does not calculate aspects,
+ * alter orb values, filter the central aspect lines or rank interpretations.
+ */
+export function preferredTransitConnectorAspect(
+  current: ChartAspectRelation,
+  candidate: ChartAspectRelation
+): ChartAspectRelation {
+  const orbRank = (link: ChartAspectRelation): number =>
+    typeof link.orb === 'number' && Number.isFinite(link.orb)
+      ? Math.abs(link.orb) : Number.POSITIVE_INFINITY;
+  const a = orbRank(current);
+  const b = orbRank(candidate);
+  if (a !== b) return b < a ? candidate : current;
+  const stableKey = (link: ChartAspectRelation): string =>
+    [link.type, chartPlanetKey(link.from), chartPlanetKey(link.to)].join('\\u0000');
+  return stableKey(candidate) < stableKey(current) ? candidate : current;
+}
+
 export function relatedChartAspects(
   planet: ChartPlanetRef, aspects: readonly ChartAspectRelation[]
 ): ChartAspectRelation[] {
