@@ -17,7 +17,8 @@ declare global {
       centralOverlay: boolean;
       centralOverlayGeometry: boolean;
       refreshedWhileHovered: boolean;
-      noRefreshAfterLeave: boolean;
+      pinnedRefreshAfterLeave: boolean;
+      unchangedPinnedNoRefresh: boolean;
       destroyedRestoredScale: boolean;
     };
   }
@@ -117,9 +118,17 @@ window.runPlanetPointerProbe = () => {
     !!scene.getObjectByName('chart-interaction-aspect');
   const beforeRelationsAfterLeave = events.length;
   controller.setRelations([]);
-  const noRefreshAfterLeave = events.length === beforeRelationsAfterLeave
+  const pinnedUpdate = events.at(-1);
+  const pinnedRefreshAfterLeave = events.length === beforeRelationsAfterLeave + 1
+    && pinnedUpdate?.type === 'update'
+    && pinnedUpdate.planet.layer === 'transit'
+    && pinnedUpdate.planet.name === 'Saturn'
+    && pinnedUpdate.aspects.length === 0
     && scene.getObjectByName('chart-interaction-aspect') === undefined
     && tint(transit) === '9e02ff' && transit.scale.x === 1;
+  const beforeUnchanged = events.length;
+  controller.setRelations([]);
+  const unchangedPinnedNoRefresh = events.length === beforeUnchanged;
   const simplifiedEvents = events.map(e => ({
     type: e.type, key: e.planet.layer + ':' + e.planet.name, aspects: e.aspects.length
   }));
@@ -158,5 +167,5 @@ window.runPlanetPointerProbe = () => {
   return {events: simplifiedEvents, natalHovered, transitHovered, clickEmitted,
     removedListeners, touchHoverCleared, touchClickEmitted, cancelClearsHover,
     transitPinRestored, centralOverlay, centralOverlayGeometry,
-    refreshedWhileHovered, noRefreshAfterLeave, destroyedRestoredScale};
+    refreshedWhileHovered, pinnedRefreshAfterLeave, unchangedPinnedNoRefresh, destroyedRestoredScale};
 };

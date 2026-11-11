@@ -113,8 +113,10 @@ export class PlanetInteractionController {
     const activeScene = this.scene;
     const revision = this.sceneRevision;
     if (activeScene) {
-      // A stationary hover receives new links without a second enter event.
-      if (this.hovered) this.send('update', this.hovered);
+      // Keep the host's visible aspect details current even when the pointer
+      // has left a pinned selection. No focus or unchanged/off-focus links
+      // still produce no update; never synthesize another enter event.
+      if (focus) this.send('update', focus);
       // The host may have destroyed/replaced the canvas during 'update'.
       if (this.scene === activeScene && this.sceneRevision === revision) this.requestRender();
     }
