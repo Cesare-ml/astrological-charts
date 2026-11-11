@@ -11,5 +11,8 @@ export function chartAspectCirclePoint(
   radius: number
 ): ChartPoint2D | null {
   if (!Number.isFinite(angleRadians) || !Number.isFinite(radius) || radius <= 0) return null;
-  return { x: -radius * Math.sin(angleRadians), y: radius * Math.cos(angleRadians) };
+  const x = -radius * Math.sin(angleRadians);
+  // Math.sin(0) === 0, but negating the result produces -0. Keep an
+  // ordinary +0 for stable snapshot/strict-equality geometry tests.
+  return { x: x === 0 ? 0 : x, y: radius * Math.cos(angleRadians) };
 }
