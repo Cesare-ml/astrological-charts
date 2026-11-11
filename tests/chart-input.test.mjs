@@ -326,3 +326,17 @@ test('explicit null vertex is invalid in natal and optional secondary charts', (
   assert.equal(parseChartPayload(omitted).natal.houses.egizia.vertex, 160,
     'omitted vertex still uses the documented ascendant + 140 fallback');
 });
+
+test('null optional numeric planet fields are rejected in all chart layers', () => {
+  for (const layer of ['natal', 'transits', 'synastry']) {
+    for (const field of ['latitude', 'declination', 'longitudeSpeed', 'latitudeSpeed']) {
+      const payload = { schemaVersion: 1, mode: 'natal', natal: chart() };
+      payload[layer] = { ...chart(), planets: { Sun: { longitude: 42, [field]: null } } };
+      const before = structuredClone(payload);
+      const error = new RegExp(`${layer}\\.planets\\.Sun\\.${field} must be a finite JSON number`);
+      assert.throws(() => validateChartPayloadV1(payload), error);
+      assert.throws(() => parseChartPayload(payload), error);
+      assert.deepEqual(payload, before, 'rejected optional numeric field must not mutate input');
+    }
+  }
+});
