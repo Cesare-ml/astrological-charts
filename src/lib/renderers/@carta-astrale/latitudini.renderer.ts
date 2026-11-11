@@ -128,17 +128,18 @@ export class LatitudiniRender {
     var elementiCelesti = {};
 
     for(let nome in opzioni.settaggi.elementi_celesti) {
-      var elOpt = opzioni.settaggi.elementi_celesti[nome];
+      const elOpt = opzioni.settaggi.elementi_celesti[nome];
+      const planet = temaRender?.planets?.[nome];
 
+      // Each rendered symbol needs both coordinates and an enabled option.
+      // An incomplete chart may lack some or all planets; skip them safely.
       if(
-        temaRender.planets[nome]
-        // Both coordinates are used to position the symbol. Zero is valid;
-        // missing/non-finite longitude would produce an invalid Three.js rotation.
-        && Number.isFinite(temaRender.planets[nome].latitude)
-        && Number.isFinite(temaRender.planets[nome].longitude)
-        && elOpt.att
+        planet
+        && Number.isFinite(planet.latitude)
+        && Number.isFinite(planet.longitude)
+        && elOpt?.att
       ) {
-        elementiCelesti[nome]=temaRender.planets[nome];
+        elementiCelesti[nome] = planet;
       }
     }
 

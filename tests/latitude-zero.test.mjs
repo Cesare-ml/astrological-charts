@@ -74,6 +74,23 @@ test('latitude ring excludes bodies with invalid longitude without dropping vali
   assert.ok(Object.is(selected.Moon.longitude, -0), 'negative zero longitude is valid');
 });
 
+test('latitude selector safely ignores incomplete planet collections and null body options', async () => {
+  const selector = new LatitudeSelectionProbe();
+  const options = {settaggi: {elementi_celesti: {
+    Sun: {att:true}, Moon: null, Venus: {att:true},
+  }}};
+  assert.deepEqual(await selector.getElementiCelesti({planets:undefined}, options), {});
+  assert.deepEqual(await selector.getElementiCelesti({planets:null}, options), {});
+  assert.deepEqual(await selector.getElementiCelesti(null, options), {});
+  const venus = {latitude: 0, longitude: -0};
+  const selected = await selector.getElementiCelesti({
+    planets: {Sun:null, Moon:{latitude:0,longitude:15}, Venus:venus},
+  }, options);
+  assert.deepEqual(Object.keys(selected), ['Venus'],
+    'null body entries and missing planets must not suppress valid zero-coordinate planets');
+  assert.equal(selected.Venus, venus);
+});
+
 test('missing planets are ignored while finite latitude zero remains selectable', async () => {
   const planets = { Sun: { latitude: 0, longitude: 1 }, Venus: { latitude: 0, longitude: 0 } };
   const options = { settaggi: { elementi_celesti: {
