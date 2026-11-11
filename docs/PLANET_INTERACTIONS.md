@@ -53,3 +53,89 @@ On scene replacement, the controller now disposes temporary overlays, clears the
 ## Touch and pointer cancellation
 
 Canvas `pointerup` from touch and `pointercancel` end the temporary hovered focus, returning to a pinned selection if one exists. The later synthesized `click` can still notify the Angular host and pin the tapped planet. Normal mouse `pointerup` does not clear its hover. These extra pointer listeners are detached on controller destruction; only the live on-screen canvas receives them. The browser pointer harness now tests touch-release, follow-up click and pen cancellation.
+
+## Target visual behavior — owner reference (2026-11-11)
+
+**Status: implementation specification, not a claim of full visual parity.**
+The owner provided a screenshot in the chat showing a wheel with natal planets
+inside, transiting planets outside, monochrome symbols, highlighted planets and
+colored aspect connections. The reference screenshot is **not** embedded in
+this repository (the original software artwork, branding and layout are not
+to be reproduced verbatim).
+
+### Symbol presentation and selection
+
+- Planet symbols are normally **monochrome**: black/dark on a light
+  chart; white/light on a dark chart. Skin palette determines the neutral
+  tint. Do not permanently pre-color every planet by its identity.
+- **Pointer enter selects and latches** the planet (on-screen only).
+  The focus remains when the mouse leaves; entering another planet
+  switches the selection. Keyboard and touch buttons must select the
+  same way; a click may also pin explicitly. Expose an API to clear or
+  programmatically select a planet. `{layer,name}` distinguishes natal
+  and transit Suns.
+- The selected planet and **only the partners of its currently visible
+  aspects** receive their planet-specific colors; unrelated symbols
+  stay neutral. Focus colors should respect adequate skin contrast and
+  use the established VirgoStars planet palette where possible.
+- The selected planet is indicated by a persistent, accessible selection
+  state; do not rely solely on hover, color or enlargement.
+
+### Transit chart: natal wheel inside, transits outside
+
+- The *complete natal-to-natal* aspect picture stays visible in **soft
+  gray as a background** in the central aspect circle. It must not be
+  destroyed or recalculated when a planet is focused.
+- Selected natal or transit bodies show their **precomputed cross-chart
+  aspects** in their aspect-specific colors, drawn visibly **above**
+  the gray natal lines in the central circle. Selecting an outer
+  transit planet works in the opposite direction as selecting an inner
+  natal planet.
+- For each involved transiting planet, a **dashed radial connector**
+  extends from its point on the central aspect diagram toward the
+  transit periphery, using the original longitude angle (not a
+  collision-shifted text/glyph center). Respect southern hemisphere
+  inversion and per-chart transforms; avoid covering text labels.
+  Dashed connectors inherit the associated aspect color.
+- Keep the native natal aspects in gray even when the selected body is
+  natal; the colored overlay represents the focus relations.
+  No invented relationships: use links supplied by the frontend or
+  `astrological-functions`/backend; preserve aspect types, orbs
+  and filtering.
+
+### Natal chart without transits
+
+- Default presentation: **all natal aspects in their normal colors**.
+- Add a user-accessible **Focus aspects** switch. When switched on,
+  all natal aspects become soft gray except those touching the
+  selected natal body, which retain their own aspect colors.
+  When focus is enabled without an existing natal selection,
+  **Sun is selected by default**, if present.
+- Switching focus off immediately restores the full normal natal
+  aspect palette without forcing a new astronomical calculation.
+  It should also be possible to select another planet while focus is on.
+- The mode and focus state must be explicit frontend/service inputs.
+  Do not make a global skin or static renderer configuration.
+
+### Rendering and test contract
+
+- Keep on-screen interactions separate from headless PNG/JPEG and
+  existing offline Astrolabio rendering unless an export-focus option
+  is deliberately added in a future change.
+- Tag existing natal aspect geometry with its originating planet pair,
+  aspect type and original color so the UI can gray and restore it
+  without computing another aspect graph. Preserve existing
+  line/dash geometry and the original `AspettiRender` renderer.
+- Add tests for light/dark neutral glyph tints, selected and related
+  colors, hover-latched selection, switch defaults (Sun), both
+  directions of transit focus, gray natal background, colored
+  foreground and dashed radial links. Verify re-entrancy, cleanup,
+  camera zoom, independent canvases, repeated redraw, keyboard/touch
+  and unchanged headless output.
+- **Implementation order:** (1) persistent selection and neutral-to-color
+  glyph tint; (2) natal aspect gray/color focus toggle; (3) transit
+  dashed radial connectors and foreground aspect overlays; (4)
+  real input integration and cross-browser/skin screenshot parity.
+  Mark each part complete only after actual tests. No production
+  or original artwork redistribution.
+
