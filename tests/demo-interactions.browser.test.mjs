@@ -209,7 +209,8 @@ test('two canvases retain isolated events and release focused overlays after 50 
     const result = await page.evaluate(() => window.runPlanetLifecycleProbe());
     assert.equal(result.cycles, 50, JSON.stringify(result));
     for (const key of [
-      'isolatedEvents', 'independentAspectTypes', 'isolatedVisuals',
+      'initialEventIsolation', 'continuedEventIsolation', 'isolatedEvents',
+      'independentAspectTypes', 'isolatedVisuals',
       'redrawRestoresScale', 'redrawReleasesOverlays', 'pinSurvivesRedraw',
       'mirrorMatchesCanonicalRing', 'listenersRemovedOnDestroy',
       'reentrantLeaveCleanup'
