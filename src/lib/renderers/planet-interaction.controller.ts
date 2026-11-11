@@ -4,7 +4,7 @@ import { chartAspectCirclePoint, chartTransitConnectorRadii } from './planet-int
 import {
   ChartAspectRelation, ChartPlanetRef, ChartPlanetInteractionEvent,
   chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects,
-  sameChartAspects
+  sameChartAspects, preferredTransitConnectorAspect
 } from './planet-interaction.types';
 
 /** Interactive canvas only. Export canvases remain independent of pointer state. */
@@ -471,7 +471,9 @@ export class PlanetInteractionController {
     }
     this.scene.updateMatrixWorld(true);
     const drawn = new Set<string>();
-    const connectedTransits = new Set<string>();
+    const connectedTransits = new Map<string, {
+      mesh: THREE.Mesh; relation: ChartAspectRelation;
+    }>();
     for (const link of aspects) {
       const id = [chartPlanetKey(link.from), chartPlanetKey(link.to), link.type].join('|');
       if (drawn.has(id)) continue;
@@ -491,17 +493,25 @@ export class PlanetInteractionController {
       line.renderOrder = 1000;
       this.scene.add(line);
       this.lines.push(line);
-      // Link the central aspect to each involved outer transit body.
-      // The original natal aspects remain gray below these overlays.
+      // Retain all colored central aspect lines, but only ONE dashed
+      // spoke per transit planet. When a transit has several aspects,
+      // its spoke color must not depend on upstream relation order.
       for (const [ref, mesh] of [[link.from, from], [link.to, to]] as const) {
         if (ref.layer !== 'transit') continue;
         const key = chartPlanetKey(ref);
-        if (connectedTransits.has(key)) continue;
-        connectedTransits.add(key);
-        // Exactly one spoke per involved outer transit planet; parallel
-        // overlapping dashed lines of different aspect colors are confusing.
-        this.addTransitConnector(mesh, color);
+        const previous = connectedTransits.get(key);
+        connectedTransits.set(key, {
+          mesh,
+          relation: previous
+            ? preferredTransitConnectorAspect(previous.relation, link) : link
+        });
       }
+    }
+    // Draw only after every visible link has been considered: a more
+    // exact aspect wins the guide color; ties use a stable type/key rule.
+    for (const {mesh, relation} of connectedTransits.values()) {
+      const color = (Colori.aspetti as Record<string, string>)[relation.type] ?? '#b08a35';
+      this.addTransitConnector(mesh, color);
     }
   }
 }
