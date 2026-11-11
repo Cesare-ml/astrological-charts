@@ -268,3 +268,25 @@ test('CLI mode override requires actual secondary chart without changing Angular
     assert.equal(parseChartPayload(complete).mode, 'natal', 'CLI override must not rewrite embedded mode');
   }
 });
+
+
+test('each secondary chart independently preserves optional speed and declination boundaries', () => {
+  const transits = chart();
+  transits.planets = { Mars: { longitude: -360, latitude: -0, longitudeSpeed: -0, latitudeSpeed: -2, declination: 90 } };
+  const synastry = chart();
+  synastry.planets = { Venus: { longitude: 720, latitude: 0, longitudeSpeed: 1.5, latitudeSpeed: -0, declination: -90 } };
+  const payload = { schemaVersion: 1, mode: 'natal', natal: chart(), transits, synastry };
+  const before = structuredClone(payload);
+  assert.equal(validateChartPayloadV1(payload), payload);
+  const parsed = parseChartPayload(payload);
+  assert.equal(parsed.transits.planets.Mars.longitude, 0);
+  assert.ok(Object.is(parsed.transits.planets.Mars.latitude, -0));
+  assert.ok(Object.is(parsed.transits.planets.Mars.longitudeSpeed, -0));
+  assert.equal(parsed.transits.planets.Mars.latitudeSpeed, -2);
+  assert.equal(parsed.transits.planets.Mars.equatoriale.declination, 90);
+  assert.equal(parsed.synastry.planets.Venus.longitude, 0);
+  assert.equal(parsed.synastry.planets.Venus.longitudeSpeed, 1.5);
+  assert.ok(Object.is(parsed.synastry.planets.Venus.latitudeSpeed, -0));
+  assert.equal(parsed.synastry.planets.Venus.equatoriale.declination, -90);
+  assert.deepEqual(payload, before, 'adapters must not mutate secondary chart inputs');
+});
