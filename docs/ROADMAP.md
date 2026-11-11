@@ -54,6 +54,8 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 
 **Exit criterion:** repeatable browser-based visual regression evidence and no known critical rendering/lifecycle failures.
 
+The JSON v1 contract regression suite now includes signed-zero latitude/speed preservation, valid ±90° declination boundaries, invalid declination and optional speed rejection, and caller-input immutability. Run `npm run test:chart-input` in a complete checkout before treating this as validated; the GitHub connector cannot execute repository tests.
+
 ## M3 — Stable integrations
 
 - [ ] Stabilize the versioned precomputed chart-input schema without duplicating astronomical calculations.
