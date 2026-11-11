@@ -209,3 +209,22 @@ test('repeated programmatic focus and unchanged natal palette avoid repainting',
     [4,4], [4,4], [5,5], [6,5],
   ], 'identical selections/modes must never schedule duplicate renders');
 });
+
+test('off-focus transit updates do not invalidate the displayed aspects', () => {
+  const sunLink = {from:{...natalSun},to:{...transitSaturn},type:'quadrato',orb:1};
+  const moonLink = {from:{...natalMoon},to:{...transitSun},type:'sestile',orb:1.5};
+  const newerMoonLink = {...moonLink,orb:2.75};
+  const before = api.snapshotChartAspects([sunLink, moonLink]);
+  const after = api.snapshotChartAspects([sunLink, newerMoonLink]);
+  assert.equal(api.sameChartAspects(before,after),false,'store changed host payload');
+  assert.equal(api.sameChartAspects(
+    api.relatedChartAspects(natalSun,before),
+    api.relatedChartAspects(natalSun,after)
+  ),true,'natal Sun visual links are unchanged');
+  assert.equal(api.sameChartAspects(
+    api.relatedChartAspects(natalMoon,before),
+    api.relatedChartAspects(natalMoon,after)
+  ),false,'new Moon selection must see the new orb');
+  assert.deepEqual(api.relatedChartAspects(natalMoon,after),[newerMoonLink]);
+  assert.equal(api.sameChartAspects([],[]),true,'no active focus paints no links');
+});

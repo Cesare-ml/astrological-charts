@@ -98,7 +98,15 @@ export class PlanetInteractionController {
     // Avoid tearing down/reallocating WebGL overlay geometry and rendering when
     // the semantic payload, including orb and optional fields, is unchanged.
     if (sameChartAspects(this.relations, next)) return;
+    // Store every upstream change; repaint only if the active hover/pin
+    // displays a changed relation. Other planets' new data remains available
+    // when the frontend selects them later.
+    const focus = this.hovered ?? this.pinned;
+    const previousVisible = focus ? relatedChartAspects(focus, this.relations) : [];
+    const nextVisible = focus ? relatedChartAspects(focus, next) : [];
+    const visibleChanged = !sameChartAspects(previousVisible, nextVisible);
     this.relations = next;
+    if (!visibleChanged) return;
     this.updateVisuals();
     const activeScene = this.scene;
     const revision = this.sceneRevision;

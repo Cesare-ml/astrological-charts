@@ -447,3 +447,21 @@ methods** with a render-counting probe. The opt-in real-WebGL lifecycle
 regression also repeats 120 identical focus/palette calls and checks that
 render counts, GPU geometry counts and live overlay identities remain unchanged.
 These runtime checks do not replace visual testing in Chromium and Firefox.
+
+
+## Off-focus updates from live transit data
+
+`setRelations` retains all changed precomputed links for future selections,
+but avoids rebuilding the focused overlay and emitting redundant hover
+`update` events when only other planets' or axes' links change.
+The visible subset is determined by the current hovered planet, otherwise
+the pinned planet; its relation order, type, orb, endpoint identity, layer
+and host metadata still determine repainting. Switching focus later uses
+the most recently received links. No astronomical calculation or new
+public setter is introduced.
+
+Node regression checks the focused subset comparison. The opt-in
+synthetic real-WebGL probe checks that repeated off-focus changes preserve
+render counts and overlay object identity, while a later Moon click receives
+the latest stored orbital data. Chrome/Firefox validation remains required
+before merge.
