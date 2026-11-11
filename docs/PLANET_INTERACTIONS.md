@@ -576,3 +576,31 @@ an explicit redraw, and cancellation on destroy. Registered in
 `npm run test:demo-interactions`. The test measures **render calls**, not
 FPS or GPU milliseconds. Run the suite on Chromium and Firefox with the
 local manifest-verified demo servers before treating this as validated.
+
+
+## Orb metadata updates without unnecessary geometry rebuilding
+
+The live aspect controller now separates **link data changes** (including
+`orb` updates for a stationary hovered or pinned planet) from **visible
+geometry/tint changes**. A metadata-only update still reaches the Angular
+frontend via `update`, and subsequent click events return the latest orb,
+but it does not tear down/rebuild Three.js aspect lines or schedule a
+redundant canvas frame when the rendered appearance is identical.
+
+**Important:** a transit body's single dashed radial guide uses the
+tightest finite absolute orb to select its color when several link types
+share that transit planet. The new `sameChartAspectVisuals()` helper
+therefore compares the final winning aspect **type per transit body** in
+addition to the ordered endpoints/types of all links. If a changing orb
+makes another aspect type win, normal WebGL redraw is required and still
+happens. Unknown host fields, duplicates and changed endpoints/types/order
+also conservatively trigger redraws.
+
+Node tests cover stable-orb and winner-switch cases. The real-WebGL GPU
+fixture sends 120 different orb values for a single Sun/Saturn link,
+verifies unchanged line object identity, unchanged geometry counts and no
+extra render calls, then clicks Sun to verify the latest orb is delivered.
+This optimizes **aspect presentation metadata only**: chart planet
+coordinates, houses and existing natal aspect geometry still require
+the normal full `disegnaScena()` path when upstream data changes.
+Browser Chromium/Firefox execution remains a release gate.

@@ -11,6 +11,8 @@ declare global {
       redrawsStable: boolean;
       duplicateRelationsSkipRender: boolean;
       duplicateFocusSkipRender: boolean;
+      orbOnlyUpdatesSkipRender: boolean;
+      orbOnlyUpdatesAvailableOnClick: boolean;
       unrelatedUpdatesSkipRender: boolean;
       unrelatedUpdatesAvailableOnSelection: boolean;
       focusClearReleasesOverlays: boolean;
@@ -94,6 +96,8 @@ window.runPlanetGpuLifecycleProbe = () => {
   let redrawsStable = true;
   let duplicateRelationsSkipRender = false;
   let duplicateFocusSkipRender = false;
+  let orbOnlyUpdatesSkipRender = false;
+  let orbOnlyUpdatesAvailableOnClick = false;
   let unrelatedUpdatesSkipRender = false;
   let unrelatedUpdatesAvailableOnSelection = false;
   let focusClearReleasesOverlays = false;
@@ -137,6 +141,26 @@ window.runPlanetGpuLifecycleProbe = () => {
       && renderer.info.memory.geometries === focusedGeometries
       && active.getObjectByName('chart-interaction-aspect') === initialOverlay
       && active.getObjectByName('chart-interaction-transit-connector') === initialSpoke;
+
+    // Orb-only changes for a sole visible transit relationship must
+    // preserve the live WebGL line and spoke while updating host data.
+    const beforeOrbOnly = renderCalls;
+    for (let i = 1; i <= 120; i++) {
+      controller.setRelations([{...relation(0)[0],orb:i / 10}]);
+    }
+    orbOnlyUpdatesSkipRender = renderCalls === beforeOrbOnly
+      && renderer.info.memory.geometries === focusedGeometries
+      && active.getObjectByName('chart-interaction-aspect') === initialOverlay
+      && active.getObjectByName('chart-interaction-transit-connector') === initialSpoke;
+    const sunPoint = new THREE.Vector3(-0.35,0,0).project(camera);
+    const sunRect = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(new MouseEvent('click', {
+      clientX:sunRect.left+(sunPoint.x+1)*sunRect.width/2,
+      clientY:sunRect.top+(1-sunPoint.y)*sunRect.height/2,bubbles:true
+    }));
+    orbOnlyUpdatesAvailableOnClick = clickedName === 'Sun'
+      && clickedOrbs.length === 1 && clickedOrbs[0] === 12;
+    controller.setRelations(relation(0));
 
     // Off-focus updates must not touch the highlighted Sun/Saturn line.
     const beforeUnrelated = renderCalls;
@@ -206,6 +230,7 @@ window.runPlanetGpuLifecycleProbe = () => {
   return {
     activeOverlayRendered,stableGpuGeometries,stableTextures,stablePrograms,
     redrawsStable,duplicateRelationsSkipRender,duplicateFocusSkipRender,
+    orbOnlyUpdatesSkipRender,orbOnlyUpdatesAvailableOnClick,
     unrelatedUpdatesSkipRender,unrelatedUpdatesAvailableOnSelection,
     focusClearReleasesOverlays,teardownReleasesGpuGeometries,
     refreshCount,redrawCount,baselineGeometries,peakGeometries,finalGeometries

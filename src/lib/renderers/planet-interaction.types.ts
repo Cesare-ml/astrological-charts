@@ -101,3 +101,48 @@ export function sameChartAspects(
   }
   return true;
 }
+
+
+/**
+ * Equality for on-screen geometry and tint, not for emitted aspect metadata.
+ * Orbs normally affect only tooltip details; however the chosen color of a
+ * shared transit radial guide depends on the tightest absolute orb.
+ * Therefore an orb-only update can skip WebGL work only when every transit
+ * guide still selects the same aspect type.
+ */
+export function sameChartAspectVisuals(
+  previous: readonly ChartAspectRelation[], next: readonly ChartAspectRelation[]
+): boolean {
+  const withoutOrbs = (links: readonly ChartAspectRelation[]) =>
+    links.map(link => {
+      if (!link || typeof link !== 'object') return link;
+      const {orb: _unused, ...rest} = link;
+      return rest;
+    });
+  // The original equality guard also rejects unknown host fields and bad
+  // endpoints: never skip painting custom visual changes optimistically.
+  if (!sameChartAspects(withoutOrbs(previous), withoutOrbs(next))) return false;
+
+  const guideTypes = (links: readonly ChartAspectRelation[]): Map<string,string> | null => {
+    const winners = new Map<string,ChartAspectRelation>();
+    const lineIds = new Set<string>();
+    for (const link of links) {
+      // Keep any duplicates on the conservative redraw path: the visual
+      // controller deduplicates central strokes before choosing guide colors.
+      const lineId = [chartPlanetKey(link.from),chartPlanetKey(link.to),link.type].join('|');
+      if (lineIds.has(lineId)) return null;
+      lineIds.add(lineId);
+      for (const ref of [link.from,link.to]) {
+        if (ref.layer !== 'transit') continue;
+        const key = chartPlanetKey(ref);
+        const winner = winners.get(key);
+        winners.set(key,winner ? preferredTransitConnectorAspect(winner,link) : link);
+      }
+    }
+    return new Map([...winners].map(([key,link]) => [key,link.type]));
+  };
+  const before = guideTypes(previous), after = guideTypes(next);
+  if (!before || !after || before.size !== after.size) return false;
+  for (const [key,type] of before) if (after.get(key) !== type) return false;
+  return true;
+}

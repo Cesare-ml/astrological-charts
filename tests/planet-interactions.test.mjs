@@ -274,3 +274,46 @@ test('off-focus transit updates do not invalidate the displayed aspects', () => 
   assert.deepEqual(api.relatedChartAspects(natalMoon,after),[newerMoonLink]);
   assert.equal(api.sameChartAspects([],[]),true,'no active focus paints no links');
 });
+
+
+test('orb-only transit updates repaint only when the selected guide color changes', () => {
+  const square = {from:natalSun,to:transitSaturn,type:'quadrato',orb:0.5};
+  const trine = {from:natalMoon,to:transitSaturn,type:'trigono',orb:1.5};
+  const initial = api.snapshotChartAspects([square]);
+  const newOrb = api.snapshotChartAspects([{...square,orb:2.5}]);
+  assert.equal(api.sameChartAspects(initial,newOrb),false);
+  assert.equal(api.sameChartAspectVisuals(initial,newOrb),true,
+    'one link retains the same geometry and transit guide tint');
+  assert.equal(api.sameChartAspectVisuals(initial,[
+    {...square,orb:undefined}
+  ]),true,'optional orb absence does not affect a sole guide');
+  assert.equal(api.sameChartAspectVisuals(initial,[
+    {...square,type:'trigono'}
+  ]),false,'central line color/guide color changes');
+  assert.equal(api.sameChartAspectVisuals(initial,[
+    {...square,to:transitSun}
+  ]),false,'a changed transit endpoint is a new radial line');
+  assert.equal(api.sameChartAspectVisuals(initial,[
+    {...square,customDisplayFlag:true}
+  ]),false,'unknown host metadata forces conservative visual refresh');
+  const pair = api.snapshotChartAspects([square,trine]);
+  assert.equal(api.sameChartAspectVisuals(pair,[
+    {...square,orb:0.75},{...trine,orb:1.25}
+  ]),true,'tightest orb stays quadrato: the Saturn guide is unchanged');
+  assert.equal(api.sameChartAspectVisuals(pair,[
+    {...square,orb:2},{...trine,orb:0.3}
+  ]),false,'tightest orb switched to trigono: repaint dashed Saturn guide');
+  assert.equal(api.sameChartAspectVisuals(pair,[
+    {...square,orb:2},{...trine,orb:2}
+  ]),false,'orb tie may switch to a stable color and must refresh');
+  assert.equal(api.sameChartAspectVisuals(pair,[
+    {...square,orb:0.5},{...trine,orb:1.5,customMetadata:1}
+  ]),false,'unknown metadata never bypasses visual work');
+  assert.equal(api.sameChartAspectVisuals(initial,[
+    square,{...square,orb:1}
+  ]),false,'a newly duplicated link still uses the safe redraw path');
+  assert.equal(api.sameChartAspectVisuals(
+    [square,{...square,orb:2}],[square,{...square,orb:3}]
+  ),false,'existing duplicated central lines disable the optimization');
+  assert.equal(api.sameChartAspectVisuals([],[]),true);
+});

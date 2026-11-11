@@ -4,7 +4,7 @@ import { chartAspectCirclePoint, chartTransitConnectorRadii } from './planet-int
 import {
   ChartAspectRelation, ChartPlanetRef, ChartPlanetInteractionEvent,
   chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects,
-  sameChartAspects, preferredTransitConnectorAspect
+  sameChartAspects, sameChartAspectVisuals, preferredTransitConnectorAspect
 } from './planet-interaction.types';
 
 /** Interactive canvas only. Export canvases remain independent of pointer state. */
@@ -107,18 +107,21 @@ export class PlanetInteractionController {
     const previousVisible = focus ? relatedChartAspects(focus, this.relations) : [];
     const nextVisible = focus ? relatedChartAspects(focus, next) : [];
     const visibleChanged = !sameChartAspects(previousVisible, nextVisible);
+    // A changing orb updates the host's displayed details, but the actual
+    // strokes change only if the tightest-orb transit guide color changes.
+    const visualsChanged = !sameChartAspectVisuals(previousVisible, nextVisible);
     this.relations = next;
     if (!visibleChanged) return;
-    this.updateVisuals();
+    if (visualsChanged) this.updateVisuals();
     const activeScene = this.scene;
     const revision = this.sceneRevision;
     if (activeScene) {
-      // Keep the host's visible aspect details current even when the pointer
-      // has left a pinned selection. No focus or unchanged/off-focus links
-      // still produce no update; never synthesize another enter event.
+      // Keep visible aspect details current for both hovered and pinned
+      // planets, even when a metadata-only update skips a WebGL repaint.
       if (focus) this.send('update', focus);
-      // The host may have destroyed/replaced the canvas during 'update'.
-      if (this.scene === activeScene && this.sceneRevision === revision) this.requestRender();
+      // Host callbacks may destroy/rebuild the chart synchronously.
+      if (visualsChanged && this.scene === activeScene &&
+          this.sceneRevision === revision) this.requestRender();
     }
   }
 
