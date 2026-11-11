@@ -139,3 +139,25 @@ test('both adapters reject blank planet identifiers without altering valid names
   assert.ok(Object.hasOwn(parseChartPayload(boundaryPayload).natal.planets, boundaryName),
     'an 80-character planet identifier must remain valid');
 });
+
+test('both adapters validate optional secondary charts even in natal mode', () => {
+  for (const key of ['transits', 'synastry']) {
+    const invalid = { ...chart(), houseCusps: [42] };
+    const payload = { schemaVersion: 1, natal: chart(), mode: 'natal', [key]: invalid };
+    assert.throws(() => validateChartPayloadV1(payload), /12 degree values/);
+    assert.throws(() => parseChartPayload(payload), /12 degree values/);
+  }
+});
+
+test('both adapters reject invalid optional vertex and inversion flags', () => {
+  for (const invalid of [
+    { vertex: Infinity },
+    { vertex: '120' },
+    { australInversion: 1 },
+    { australInversion: 'false' },
+  ]) {
+    const payload = { schemaVersion: 1, natal: { ...chart(), ...invalid } };
+    assert.throws(() => validateChartPayloadV1(payload), /finite JSON number|true or false/);
+    assert.throws(() => parseChartPayload(payload), /finite JSON number|true or false/);
+  }
+});
