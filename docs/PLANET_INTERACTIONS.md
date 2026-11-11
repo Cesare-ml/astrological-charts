@@ -216,3 +216,14 @@ extracted helper body in a JS isolate. **The complete local Node test
 has not yet been rerun on this corrected branch.** Next: owner should
 update the PR branch and rerun `npm run test:planet-interactions`,
 then `npm run test:demo-interactions` with asset/demo servers running.
+
+## Replacing a chart during pointer transitions
+
+Pointer hover now remembers the scene used to resolve the current raycast.
+If a synchronous frontend `leave` callback replaces or destroys that
+scene, the old pointer hit is discarded and no `enter` is emitted for an
+obsolete glyph. The same guard prevents redraw work after an `enter`
+callback swaps scenes. A subsequent pointer move resolves against the
+replacement scene normally. `tests/fixtures/planet-scene-switch-harness.ts`
+covers the leave-triggered swap, subsequent new-scene hover and detached
+scene teardown without relying on private chart data or image assets.

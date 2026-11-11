@@ -160,16 +160,20 @@ export class PlanetInteractionController {
   }
 
   private move = (event: PointerEvent): void => {
+    // Pointer hits are computed against one particular scene. A synchronous
+    // leave listener may redraw or destroy that scene before we emit enter.
+    const hitScene = this.scene;
     const next = this.pick(event);
     if (sameChartPlanet(next, this.hovered)) return;
-    // End the old hover before dispatching leave. A synchronous Angular
-    // callback may replace aspects; it must not receive an 'update' for a
-    // planet that is no longer under the pointer.
     const previous = this.hovered;
     this.hovered = null;
     if (previous) this.send('leave', previous);
+    if (this.scene !== hitScene) return;
     this.hovered = next ? { ...next } : null;
     if (this.hovered) this.send('enter', this.hovered);
+    // The enter callback may itself cause a chart replacement. setScene()
+    // has already reset the cursor/hover and installed the new glyph index.
+    if (this.scene !== hitScene) return;
     this.canvas.style.cursor = this.hovered ? 'pointer' : this.cursor;
     this.updateVisuals();
     this.requestRender();
