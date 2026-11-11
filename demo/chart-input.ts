@@ -88,7 +88,7 @@ function parseTheme(raw: unknown, label: string): TemaRender {
   }
   const planets = Object.fromEntries(Object.entries(suppliedPlanets).map(([name, rawPlanet]) => {
     const planet = object(rawPlanet, `${label}.planets.${name}`);
-    if (!name || name.length > 80) throw new Error('Planet names must be 1–80 characters.');
+    if (!name.trim() || name.length > 80) throw new Error('Planet names must be 1–80 characters and not blank.');
     return [name, {
       longitude: degrees(planet.longitude, `${label}.planets.${name}.longitude`),
       latitude: latitude(planet.latitude, `${label}.planets.${name}.latitude`, 0),
