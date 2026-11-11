@@ -196,3 +196,23 @@ clear the previous hover state before invoking a frontend `leave` callback.
 If the Angular host synchronously calls `setCrossChartAspects` in that callback,
 the controller does not emit a stale `update` for a planet already left.
 The overlapping-glyph browser fixture explicitly exercises this re-entrancy.
+
+### Windows 11 local check: signed-zero geometry regression (2026-11-11)
+
+The owner ran `npm run test:planet-interactions` on Windows 11 with
+Node 22.18: natal/transit identity and relation tests **passed (2/3)**;
+the cardinal circle endpoint test failed because an exact 0° angle
+returned `{x:-0,y:1.25}` instead of `{x:0,y:1.25}`. This is a
+JavaScript `-0` equality/snapshot representation issue, not
+displacement of the displayed aspect line. The same owner run showed
+`npm run check:types` and `npm run build:demo` **passed**; Angular
+warned only about the existing CommonJS `moment-timezone` import.
+
+The geometry helper now normalizes a mathematically exact zero
+x-coordinate to positive zero, without altering nonzero angles.
+The existing Node test covers input `0` and now also `-0`.
+Seven focused geometry assertions passed when running the exact
+extracted helper body in a JS isolate. **The complete local Node test
+has not yet been rerun on this corrected branch.** Next: owner should
+update the PR branch and rerun `npm run test:planet-interactions`,
+then `npm run test:demo-interactions` with asset/demo servers running.
