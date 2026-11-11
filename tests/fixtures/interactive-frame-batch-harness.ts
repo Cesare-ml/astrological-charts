@@ -1,3 +1,4 @@
+import '@angular/compiler';
 import * as THREE from 'three';
 import { ElementRef } from '@angular/core';
 import { GraficoRenderService } from '../../src/lib/services/grafico-render.service';
