@@ -10,6 +10,7 @@ declare global {
       nestedSceneWins: boolean;
       noHoverOnDetachedScene: boolean;
       listenersDetached: boolean;
+      disposedControllerInert: boolean;
     };
   }
 }
@@ -40,6 +41,7 @@ window.runPlanetSceneSwitchProbe = () => {
   glyph(replacement,'Mars',0.4);
   glyph(obsolete,'Venus',0.4);
   const events: ChartPlanetInteractionEvent[] = [];
+  let renderRequests = 0;
   let swapOnLeave = false;
   const controller = new PlanetInteractionController(canvas,camera,event => {
     events.push(event);
@@ -47,7 +49,7 @@ window.runPlanetSceneSwitchProbe = () => {
       swapOnLeave = false;
       controller.setScene(replacement);
     }
-  },()=>{});
+  },()=>{renderRequests++;});
   const move = (x: number) => {
     const rect = canvas.getBoundingClientRect();
     const projected = new THREE.Vector3(x,0,0).project(camera);
@@ -85,8 +87,27 @@ window.runPlanetSceneSwitchProbe = () => {
     controller.setScene(null);
     move(0.4);
     const listenersDetached = afterDestroy === events.length;
+    // A stale Angular callback can retain a reference to this destroyed
+    // controller. No public setter may reattach a canvas/scene after teardown.
+    const beforeLateWrites = renderRequests;
+    controller.setScene(replacement);
+    controller.setRelations([{
+      from:{layer:'natal',name:'Mars'},to:{layer:'transit',name:'Saturn'},
+      type:'quadrato',orb:1
+    }]);
+    controller.setNatalAspectPresentation('focused');
+    controller.highlight({layer:'natal',name:'Mars'});
+    move(0.4);
+    controller.destroy(); // second teardown must be safe
+    const marsMeshes = replacement.children.filter(obj => obj instanceof THREE.Mesh) as THREE.Mesh[];
+    const disposedControllerInert = renderRequests === beforeLateWrites
+      && events.length === afterDestroy
+      && replacement.getObjectByName('chart-interaction-aspect') === undefined
+      && marsMeshes.length === 1
+      && (marsMeshes[0].material as THREE.MeshBasicMaterial).color.getHexString() === 'ffffff'
+      && canvas.style.cursor !== 'pointer';
     return {noStaleEnter,newSceneHoverWorks,nestedSceneWins,
-      noHoverOnDetachedScene,listenersDetached};
+      noHoverOnDetachedScene,listenersDetached,disposedControllerInert};
   } finally {
     controller.destroy();
     for (const scene of [original,replacement,obsolete]) {

@@ -643,3 +643,21 @@ identities, and every unrelated planet remains monochrome.
 These additions belong only to **draft PR #22**. Full Angular build,
 Chromium/Firefox execution, and manual light/dark screenshot inspection
 remain required. No ephemeris or aspect calculation was added.
+
+## Terminal disposal of the interactive controller
+
+`PlanetInteractionController.destroy()` is a terminal operation. After it
+removes the canvas pointer handlers and disposes transient overlays, a stale
+Angular callback must not reactivate the retired controller with `setScene`,
+`setRelations`, `highlight` or `setNatalAspectPresentation`. Those methods
+are no-ops on a disposed instance; `destroy()` itself is idempotent. A
+replacement canvas creates a **new controller** through the service's normal
+initialization path. This avoids revived raycast targets, incorrectly tinted
+glyphs or retained GPU resources during rapid component teardown.
+
+The existing synthetic scene-switch Playwright probe now exercises all four
+late setters plus repeated destroy and checks that the retired controller
+emits no events, requests no render and does not tint the new chart. This
+does not replace a real Chromium/Firefox test, GPU-memory measurement or
+offscreen/Astrolabio regression validation. No production code or asset
+bundle is changed.

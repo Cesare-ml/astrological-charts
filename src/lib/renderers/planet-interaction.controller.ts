@@ -17,6 +17,8 @@ export class PlanetInteractionController {
   private pickTargets: THREE.Mesh[] = [];
   private scene: THREE.Scene | null = null;
   private sceneRevision = 0;
+  /** Teardown is terminal; no stale host call may resurrect this canvas. */
+  private disposed = false;
   /** Tracks painting work performed by synchronous host callbacks. */
   private visualRevision = 0;
   private glyphs = new Map<string, THREE.Mesh[]>();
@@ -51,6 +53,7 @@ export class PlanetInteractionController {
   }
 
   setScene(scene: THREE.Scene | null): void {
+    if (this.disposed) return;
     const revision = ++this.sceneRevision;
     this.clearVisuals();
     // Detach old scene and glyph references before notifying the host.
@@ -95,6 +98,7 @@ export class PlanetInteractionController {
   }
 
   setRelations(relations: readonly ChartAspectRelation[]): void {
+    if (this.disposed) return;
     const next = snapshotChartAspects(relations);
     // Real-time hosts may resend identical precomputed links at high frequency.
     // Avoid tearing down/reallocating WebGL overlay geometry and rendering when
@@ -126,6 +130,7 @@ export class PlanetInteractionController {
   }
 
   highlight(planet: ChartPlanetRef | null): void {
+    if (this.disposed) return;
     const next = planet && isChartPlanetRef(planet) ? { ...planet } : null;
     // Repeated frontend focus values must preserve existing overlay geometry.
     // A new scene is always refreshed separately by setScene().
@@ -136,6 +141,7 @@ export class PlanetInteractionController {
   }
 
   setNatalAspectPresentation(presentation: 'all' | 'focused' | 'muted'): void {
+    if (this.disposed) return;
     // Focus-mode buttons may resend the same state during live correction.
     if (this.natalAspectPresentation === presentation) return;
     this.natalAspectPresentation = presentation;
@@ -144,6 +150,8 @@ export class PlanetInteractionController {
   }
 
   destroy(): void {
+    if (this.disposed) return;
+    this.disposed = true;
     ++this.sceneRevision;
     this.canvas.removeEventListener('pointermove', this.move);
     this.canvas.removeEventListener('pointerleave', this.leave);
