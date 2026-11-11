@@ -6,6 +6,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
 import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
+import { layoutChartGlyphLongitudes, relaxChartGlyphCycle } from '../planet-layout';
 
 
 export class ElementiCelestiRender {
@@ -394,92 +395,22 @@ export class ElementiCelestiRender {
     }
   }
 
+  /**
+   * Compatibility wrapper for consumers of the historical render-only
+   * collision pass. This intentionally mutates the supplied working array.
+   */
   public static ciclo(pianeti) {
-    pianeti.sort(function (a, b) {
-      return a.deg - b.deg;
-    });
-    for(var i=1; i<pianeti.length; i++) {
-      var a = pianeti[i-1].deg;
-      var b = pianeti[i].deg;
-
-      if(b-a < ElementiCelestiRender.offsetMinimoPianeti) {
-        b += ElementiCelestiRender.offsetMinimoPianeti - (b-a);
-      }
-      pianeti[i].deg = b;
-    }
-
-    for(var i=0; i<pianeti.length; i++) {
-      pianeti[i].deg = (pianeti[i].deg + 180) %360;
-    }
-
-    return pianeti;
+    return relaxChartGlyphCycle(pianeti, ElementiCelestiRender.offsetMinimoPianeti);
   }
 
+  /**
+   * The old two-pass longitude layout is kept pixel-for-pixel compatible.
+   * Calculation and UI updates can now share the same pure render-layout
+   * primitive without duplicating any astronomical or house algorithms.
+   */
   public static getRenderPosPianeti(elementiCelesti,parametroDiRender) {
-
-    //serve un array, elementiCelesti è un oggetto
-    var pianetiOrdineDiRiferimento = [];
-    for(var nome in elementiCelesti) {
-      var p = {
-        'key': nome,
-        'deg': elementiCelesti[nome][parametroDiRender]%360
-      };
-      pianetiOrdineDiRiferimento.push(p);
-    }
-    var pianeti = JSON.parse(JSON.stringify(pianetiOrdineDiRiferimento));
-
-    pianeti = this.ciclo(pianeti);
-    pianeti = this.ciclo(pianeti);
-/*
-    pianetiOrdineDiRiferimento.forEach(p => p.deg = ((Number(p.deg) % 360) + 360) % 360);
-    pianetiOrdineDiRiferimento.sort(function (a, b) {
-      return Number(a.deg) - Number(b.deg);
-    });
-
-    console.log("inizio",pianeti);
-    pianeti.forEach(p => p.deg = ((Number(p.deg) % 360) + 360) % 360);
-
-    pianeti.sort((a, b) => a.deg - b.deg);
-
-    console.log("ordinati", pianeti.map(p => `${p.key}: ${p.deg.toFixed(2)}`));
-
-    //  pianetiOrdineDiRiferimento e pianeti dovrebbero avere la stessa sequenza di pianeti,
-    
-    var inizioJ=0;
-    while(pianeti[inizioJ].key != pianetiOrdineDiRiferimento[0].key) {
-      inizioJ++;
-    }
-    console.log('inizioJ',inizioJ);
-    for(let i=0; i<pianetiOrdineDiRiferimento.length; i++) {
-      let j = (inizioJ+i)%pianeti.length;
-      let pi = pianetiOrdineDiRiferimento[i];
-      let pj = pianeti[j];
-      //console.log(pianeti,pi,pj);
-      if(pi.key != pj.key){
-        let jk = j;
-        do {
-          jk = (jk+1)%pianeti.length;
-        } while(pianeti[jk].key != pi.key);
-        
-        //console.log('sostituzione', pianeti[jk],pianeti[j]);
-        let tmp = pianeti[jk].key;
-        pianeti[jk].key = pianeti[j].key;
-        pianeti[j].key = tmp;
-
-        tmp = pianeti[jk].deg;
-        pianeti[jk].deg = pianeti[j].deg;
-        pianeti[j].deg = tmp;
-      }
-    }
-    console.log(pianeti,pianetiOrdineDiRiferimento);
-*/
-    var pianetiRet = {};
-    for(var i=0; i<pianeti.length; i++) {
-      pianetiRet[pianeti[i]['key']]={};
-      pianetiRet[pianeti[i]['key']][parametroDiRender] = pianeti[i].deg;
-    }
-
-    return pianetiRet;
+    return layoutChartGlyphLongitudes(elementiCelesti,parametroDiRender,
+      ElementiCelestiRender.offsetMinimoPianeti);
   }
 
   public static initElementoCeleste(nome,parametroDiRender,deg) {

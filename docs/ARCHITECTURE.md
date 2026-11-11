@@ -33,3 +33,22 @@ The library does not independently calculate the full astronomical ephemeris or 
 ## Source of truth
 
 The new repository is a collaboration workspace only until a versioned integration is approved. The live site and sold Astrolabio devices continue to depend on the original `virgo-stars` code. Never silently switch imports, publish npm releases, or ship hardware updates.
+
+
+## Render-only planetary collision layout extraction (draft PR #22)
+
+`src/lib/renderers/planet-layout.ts` now contains the **historical
+two-pass 7-degree glyph collision algorithm**, independent of Angular,
+Three.js and astronomical computations. `ElementiCelestiRender.ciclo`
+and `getRenderPosPianeti` remain available as compatibility methods
+but delegate to the shared primitive. No existing rendered chart
+positions, southern-hemisphere geometry, skin or collision ordering
+should change. The helper takes upstream planetary coordinates and
+returns a fresh layout map, preserving the source object's values.
+Use `npm run test:planet-layout` (also part of `npm run preflight`):
+the regression compares the new helper against a self-contained copy
+of the previous algorithm across edge cases and 200 deterministic
+synthetic charts. This extraction is a **prerequisite only** for future
+incremental coordinate patches; existing `disegnaScena()` still
+regenerates dependent planet labels, tick lines, houses and aspects.
+Moving glyph meshes alone would produce an incorrect chart.

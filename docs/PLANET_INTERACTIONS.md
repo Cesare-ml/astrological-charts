@@ -723,3 +723,18 @@ This applies only to on-screen pointer rendering. The full Angular
 build, Chrome/Firefox browser tests and real performance measurements
 remain **unverified after this change**. No astronomical algorithm,
 original asset or production integration is modified.
+
+
+## Shared anti-collision placement for future coordinate updates
+
+Planetary glyph collision displacement has been extracted into a
+side-effect-free, render-only `layoutChartGlyphLongitudes()` helper.
+The existing wheel and its established two-pass 7-degree separation
+continue to call that algorithm through compatibility wrappers.
+This isolates the placement function that a future live coordinate
+updater must reuse **together with** label ticks, genuine aspect
+geometry, houses and other dependent groups. It does not enable
+partial updates for moving positions yet: `disegnaScena()`
+remains the correct path when positions change. Run
+`npm run test:planet-layout` and the full browser/screenshot parity
+suite before approving a merge.
