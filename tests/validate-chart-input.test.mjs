@@ -78,7 +78,7 @@ test('rejects explicit null vertex in every chart while allowing an omitted vert
 
 test('validates optional secondary planet identifiers even when rendering natal', () => {
   for (const location of ['transits', 'synastry']) {
-    for (const name of [' ', '\\u2003', 'X'.repeat(81)]) {
+    for (const name of [' ', ' ', 'X'.repeat(81)]) {
       const invalid = {...payload(), [location]: {...chart(), planets: {[name]: null}}};
       assert.throws(() => validateChartPayloadV1(invalid), /Planet names must be 1–80 characters/);
       assert.equal(invalid[location].planets[name], null);
