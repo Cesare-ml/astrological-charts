@@ -165,7 +165,8 @@ export class AspettiRender {
       nodi,archi,aspetti,
       opzioni, //'estrapola','visualizza sorti'
       diametroCerchio,monocolore,"longitude",
-      nomeElementoCelesteInEvidenza
+      nomeElementoCelesteInEvidenza,
+      true // Tag natal aspect geometry for optional on-screen palette focus.
     );
     group.add(await this.getBackgroundAspetti(diametroCerchio,opzioni,australInversion));
 
@@ -403,7 +404,7 @@ export class AspettiRender {
   }
 
 
-  public static renderArchi(as,nodi,archi,aspetti,opzioni,diametroCerchio,monocolore,parametroDiRender="longitude",nomeElementoCelesteInEvidenza=false) {
+  public static renderArchi(as,nodi,archi,aspetti,opzioni,diametroCerchio,monocolore,parametroDiRender="longitude",nomeElementoCelesteInEvidenza=false,tagNatalAspects=false) {
     var group = new THREE.Group();
 
     if(Object.keys(archi).length > 0) {
@@ -503,14 +504,25 @@ export class AspettiRender {
               default:
                 linea = OggettiSempliciRender.getLineaGrossa(a,b,colore,spessore);
             }
+            // Tag only single-natal-circle line geometry; multi-theme calls
+            // deliberately remain independent. The UI reads these original
+            // relations and does not calculate another astrological aspect.
+            const natalAspectTag = tagNatalAspects ? {
+              from: nodi[archi[tipoAspetto][i][0]].name,
+              to: nodi[archi[tipoAspetto][i][1]].name,
+              type: aspetti[k]
+            } : null;
+            if (natalAspectTag) linea.userData['chartNatalAspect'] = natalAspectTag;
             group.add(linea);
 
             if(nodi[archi[tipoAspetto][i][0]].y != diametroCerchio/2) {
               var linea2 = OggettiSempliciRender.getLineaGrossaTratteggiata(a,a2,colore,0.15,0.05);
+              if (natalAspectTag) linea2.userData['chartNatalAspect'] = natalAspectTag;
               group.add(linea2);
             }
             if(nodi[archi[tipoAspetto][i][1]].y != diametroCerchio/2) {
               var linea3 = OggettiSempliciRender.getLineaGrossaTratteggiata(b,b2,colore,0.15,0.05);
+              if (natalAspectTag) linea3.userData['chartNatalAspect'] = natalAspectTag;
               group.add(linea3);
             }
           }
