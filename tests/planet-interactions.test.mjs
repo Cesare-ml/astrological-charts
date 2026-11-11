@@ -40,6 +40,11 @@ test('aspect relationships work from either end without mixing layers', () => {
 test('central aspect endpoints use exact longitude angles, not shifted glyph centers', () => {
   const start = geometry.chartAspectCirclePoint(0, 1.25);
   assert.deepEqual(start, { x: 0, y: 1.25 });
+  assert.equal(Object.is(start.x, -0), false,
+    'The top cardinal direction must use +0, not -0 for stable snapshots.');
+  const minusZeroStart = geometry.chartAspectCirclePoint(-0, 1.25);
+  assert.deepEqual(minusZeroStart, { x: 0, y: 1.25 });
+  assert.equal(Object.is(minusZeroStart.x, -0), false);
   const rightAngle = geometry.chartAspectCirclePoint(Math.PI / 2, 2);
   assert.ok(Math.abs(rightAngle.x + 2) < 1e-12);
   assert.ok(Math.abs(rightAngle.y) < 1e-12);
