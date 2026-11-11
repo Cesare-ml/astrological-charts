@@ -311,3 +311,18 @@ test('failed validation does not alter caller-owned natal or secondary chart dat
     assert.ok(Object.is(payload[key].planets.Sun.latitude, -0));
   }
 });
+
+test('explicit null vertex is invalid in natal and optional secondary charts', () => {
+  for (const key of ['natal', 'transits', 'synastry']) {
+    const payload = { schemaVersion: 1, mode: 'natal', natal: chart() };
+    payload[key] = { ...chart(), vertex: null };
+    const before = structuredClone(payload);
+    assert.throws(() => validateChartPayloadV1(payload), new RegExp(`${key}\\.vertex must be a finite JSON number`));
+    assert.throws(() => parseChartPayload(payload), new RegExp(`${key}\\.vertex must be a finite JSON number`));
+    assert.deepEqual(payload, before, 'rejected null vertex must not mutate input');
+  }
+  const omitted = { schemaVersion: 1, natal: chart() };
+  assert.equal(validateChartPayloadV1(omitted), omitted);
+  assert.equal(parseChartPayload(omitted).natal.houses.egizia.vertex, 160,
+    'omitted vertex still uses the documented ascendant + 140 fallback');
+});
