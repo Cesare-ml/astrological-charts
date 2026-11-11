@@ -53,7 +53,7 @@ function chart(value, label) {
     throw new TypeError(`${label}.planets must contain at least one computed celestial body.`);
   }
   for (const [name, value] of Object.entries(planets)) {
-    if (!name || name.length > 80) throw new TypeError('Planet names must be 1–80 characters.');
+    if (!name.trim() || name.length > 80) throw new TypeError('Planet names must be 1–80 characters and not blank.');
     const p = record(value, `${label}.planets.${name}`);
     finite(p.longitude, `${label}.planets.${name}.longitude`);
     lat(p.latitude, `${label}.planets.${name}.latitude`);
