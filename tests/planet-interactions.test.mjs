@@ -256,6 +256,70 @@ test('repeated programmatic focus and unchanged natal palette avoid repainting',
   ], 'identical selections/modes must never schedule duplicate renders');
 });
 
+test('hover-to-pin callback paints once and preserves deferred button focus', () => {
+  const controllerSource = ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
+    ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const cls = controllerSource.statements.find(node =>
+    ts.isClassDeclaration(node) && node.name?.text === 'PlanetInteractionController');
+  assert.ok(cls);
+  const member = name => {
+    const found = cls.members.find(node => node.name?.getText(controllerSource) === name);
+    assert.ok(found, 'controller member missing: ' + name);
+    return found.getText(controllerSource);
+  };
+  const code = ts.transpileModule(`class PointerPinProbe {
+    disposed = false;
+    scene: any = {};
+    sceneRevision = 1;
+    visualRevision = 0;
+    pinned: any = null;
+    hovered: any = null;
+    canvas: any = {style: {cursor:''}};
+    cursor = '';
+    events: string[] = [];
+    redraws = 0;
+    paints = 0;
+    pick(event: any): any { return event.planet; }
+    send(type: string, planet: any): void {
+      this.events.push(type + ':' + planet.layer + ':' + planet.name);
+      if (type === 'enter') this.highlight(planet);
+    }
+    updateVisuals(): void { this.visualRevision++; this.paints++; }
+    requestRender(): void { this.redraws++; }
+    ${member('highlight')}
+    ${member('move')}
+    ${member('leave')}
+  }`, {compilerOptions: {module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe = new Function('sameChartPlanet','isChartPlanetRef',
+    code + '\\nreturn PointerPinProbe;')(api.sameChartPlanet,api.isChartPlanetRef);
+  const probe = new Probe();
+  probe.move({planet:natalSun});
+  assert.deepEqual([probe.paints,probe.redraws], [1,1],
+    'first hover paints even though synchronous enter callback pins the planet');
+  probe.move({planet:natalSun});
+  assert.deepEqual([probe.paints,probe.events.length], [1,1],
+    'duplicate pointermove does not repaint or emit another enter');
+  probe.move({planet:transitSaturn});
+  assert.deepEqual([probe.paints,probe.redraws], [2,2],
+    'new hover repaints exactly once, not twice during the pin callback');
+  assert.deepEqual(probe.events,[
+    'enter:natal:Sun','leave:natal:Sun','enter:transit:Saturn'
+  ]);
+  probe.leave();
+  for(let i=0;i<20;i++) {probe.move({planet:transitSaturn});probe.leave();}
+  assert.deepEqual([probe.paints,probe.redraws,probe.events.length],[2,2,44],
+    'repeating an already pinned hover must not allocate graphics');
+  probe.move({planet:transitSaturn});
+  probe.highlight(natalSun);
+  assert.equal(probe.paints,2,
+    'a button changing the pinned body during hover must defer drawing');
+  probe.leave();
+  assert.deepEqual([probe.paints,probe.redraws],[3,3],
+    'pointer leave restores the pinned button selection exactly once');
+  assert.equal(probe.pinned.name,'Sun');
+});
+
 test('off-focus transit updates do not invalidate the displayed aspects', () => {
   const sunLink = {from:{...natalSun},to:{...transitSaturn},type:'quadrato',orb:1};
   const moonLink = {from:{...natalMoon},to:{...transitSun},type:'sestile',orb:1.5};
