@@ -33,7 +33,8 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <label for="base">Asset base URL</label>
         <input id="base" [value]="assetBase" (change)="changeBase($event)" [disabled]="busy">
         <p class="muted">Manifest: {{manifestLabel}}</p>
-        <p class="status" [class.error]="error" role="status" data-testid="status">{{error || status}}</p>
+        <p class="status" [class.error]="error" role="status" data-testid="status"
+          [attr.data-render-revision]="renderRevision">{{error || status}}</p>
         <section class="planet-panel" aria-labelledby="planet-panel-title">
           <h2 id="planet-panel-title">Interactive planet focus</h2>
           <p class="muted">Point to a planet to select it persistently; selecting another planet changes the focus. Transit links are illustrative fixture data.</p>
@@ -130,6 +131,10 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   skin = 'light';
   busy = false;
   status = 'Preparing renderer…';
+  /** Increments only after successful scene construction; the browser
+   * harness awaits a *new* revision after changing the mode or skin.
+   */
+  renderRevision = 0;
   error = '';
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
@@ -224,6 +229,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
       await this.renderer.disegnaScena(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
       this.status = 'Rendered with the configured asset server.';
+      this.renderRevision++;
     } catch (error) { this.showError(error); }
     finally { this.busy = false; this.changes.markForCheck(); }
   }
