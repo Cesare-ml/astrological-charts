@@ -429,3 +429,20 @@ leave, the button selection must become visible. All original
 planet scales and the neutral palette after clearing focus
 must be preserved. Run `npm run test:demo-interactions` with
 both local servers active; the new test is not yet owner-verified.
+
+## Moving from a pinned glyph to blank canvas space
+
+Pin a natal or transit body, then move the pointer **within the chart**
+from the symbol into a blank part of the aspect circle. Its highlighted
+aspects should remain visible without flicker. The frontend still
+receives the normal `leave` event, but the WebGL geometry is not
+destroyed or reallocated when the underlying pinned focus is the same.
+
+Now press a button to pin a *different* body while the pointer is over
+another glyph, then move into empty space: the new button selection
+must become visible. The `pinned-pointer-idempotence-harness.ts`
+browser fixture simulates 30 genuine canvas-leave cycles **plus 20
+inner-canvas blank-space cycles** and checks that WebGL objects
+retain identity and the scene has not requested redundant frames.
+The Node interaction suite also exercises the blank-space edge
+cases. Visual and browser acceptance of this new change is pending.
