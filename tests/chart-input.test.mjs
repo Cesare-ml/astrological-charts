@@ -242,3 +242,19 @@ test('secondary chart angles normalize independently without mutating source', (
   assert.equal(parsed.natal.as, 20, 'secondary chart normalization must not affect natal');
   assert.deepEqual(payload, before, 'caller-owned secondary charts must remain unchanged');
 });
+
+
+test('CLI mode override requires actual secondary chart without changing Angular natal import', () => {
+  const payload = { schemaVersion: 1, natal: chart(), mode: 'natal' };
+  const before = structuredClone(payload);
+  assert.equal(parseChartPayload(payload).mode, 'natal');
+  for (const mode of ['transits', 'synastry']) {
+    assert.throws(() => validateChartPayloadV1(payload, { mode }), new RegExp(`${mode} data is required`));
+  }
+  assert.deepEqual(payload, before, 'rejected overrides must not modify the source');
+  for (const mode of ['transits', 'synastry']) {
+    const complete = { ...payload, [mode]: chart() };
+    assert.equal(validateChartPayloadV1(complete, { mode }), complete);
+    assert.equal(parseChartPayload(complete).mode, 'natal', 'CLI override must not rewrite embedded mode');
+  }
+});
