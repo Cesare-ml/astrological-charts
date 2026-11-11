@@ -58,7 +58,8 @@ The JSON v1 contract regression suite now includes signed-zero latitude/speed pr
 
 ## M3 — Stable integrations
 
-- [ ] Stabilize the versioned precomputed chart-input schema without duplicating astronomical calculations.\n  - The Angular parser and Node prevalidator now reject whitespace-only celestial body identifiers while preserving legitimate multiword names (e.g. `North Node`). Regression coverage: `tests/chart-input.test.mjs`; execute `npm run test:chart-input` on a full checkout before merge.
+- [ ] Stabilize the versioned precomputed chart-input schema without duplicating astronomical calculations.
+  - The Angular parser and Node prevalidator now reject whitespace-only celestial body identifiers while preserving legitimate multiword names (e.g. `North Node`). Regression coverage: `tests/chart-input.test.mjs`; execute `npm run test:chart-input` on a full checkout before merge.
 - [x] Add browser-free `--validate-only` to the chart CLI and
       early JSON-file validation in both Node input APIs; added tests
       for malformed input, duplicate flags and output preservation.
