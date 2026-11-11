@@ -509,3 +509,43 @@ This is a **new test**, not an already-passed Windows result. It runs
 as part of `npm run test:demo-interactions` with the local demo
 and asset servers active. It is deliberately separate from normal
 PNG/JPEG generation; only live, on-screen interaction is affected.
+
+### Exact transit-ring dashed guides (draft; 2026-11-11)
+
+The owner asked for dashed lines from a highlighted central aspect
+direction toward the outer transit periphery. A glyph can be shifted
+by the collision-avoidance layout, so its displayed center is **not**
+a reliable measure of the transit-ring radius.
+
+The interactive drawing now stores the original
+`chartTransitRingRadius` as **render-only Three.js metadata** on
+transit glyphs. `PlanetInteractionController` reads it from the
+transit's own ring-parent coordinate system, converts it to world
+units, and follows the original `chartAspectAngle` measured from
+the center of the already-rendered natal aspect circle.
+The helper `chartTransitConnectorRadii` subtracts a small,
+bounded clearance at the outer ring (up to 0.11 world units), so the
+dashed line stops **before** the symbol/periphery instead of
+covering its label. Invalid, coincident or nearly coincident rings
+have no guide. Older synthetic hosts that omit the new metadata
+continue using the previous glyph-distance fallback.
+
+The path uses the scene's world matrix, including angular rotation
+and southern-hemisphere mirroring. Aspect calculations, orb values,
+symbol dimensions, angle selection, PNG/JPEG export and original
+artwork remain unchanged. One guide is still drawn per involved
+transiting body; geometry/materials are disposed when focus changes.
+
+**New regression gates:**
+
+- `npm run test:planet-interactions` checks positive, invalid and
+  closely spaced radial spans, plus bounded ring clearance.
+- `npm run test:demo-interactions` loads
+  `tests/fixtures/transit-spoke-harness.ts` and checks the genuine
+  dashed `THREE.Line` coordinates for **normal and mirrored** wheels,
+  intentional collision-shifted glyph centers, the metadata-free
+  fallback and geometry/material disposal.
+- Visual acceptance remains a separate Windows/Chrome review. Check
+  light/dark and dense transit rings; confirm dashes are aligned with
+  original longitudes and end before transit glyphs. This is a
+  **draft implementation**, not a post-change browser pass.
