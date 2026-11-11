@@ -292,7 +292,7 @@ test('hover-to-pin callback paints once and preserves deferred button focus', ()
     ${member('leave')}
   }`, {compilerOptions: {module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
   const Probe = new Function('sameChartPlanet','isChartPlanetRef',
-    code + '\\nreturn PointerPinProbe;')(api.sameChartPlanet,api.isChartPlanetRef);
+    code + '\nreturn PointerPinProbe;')(api.sameChartPlanet,api.isChartPlanetRef);
   const probe = new Probe();
   probe.move({planet:natalSun});
   assert.deepEqual([probe.paints,probe.redraws], [1,1],
