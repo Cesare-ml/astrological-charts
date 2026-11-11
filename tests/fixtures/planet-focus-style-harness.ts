@@ -80,16 +80,30 @@ window.runPlanetFocusStyleProbe = () => {
   controller.setRelations([]);
   controller.setNatalAspectPresentation('focused');
   controller.highlight({layer:'natal',name:'Sun'});
-  const focusedNatalColored = start.getX(0)>0.95 && start.getY(0)>0.12 &&
-    start.getY(0)<0.25; // quadrato #FF7800 in linear-sRGB
+  const focusedNatalBackgroundGray = start.getX(0) < 0.5 &&
+    Math.abs(start.getX(0)-start.getY(0)) < 0.00001;
+  const foreground = scene.getObjectByName('chart-interaction-natal-focus') as THREE.Object3D | undefined;
+  let foregroundLine: THREE.Line | undefined;
+  foreground?.traverse(obj => {
+    if (!foregroundLine && obj instanceof THREE.Line) foregroundLine = obj;
+  });
+  const foregroundColors = foregroundLine?.geometry.getAttribute('instanceColorStart') as THREE.BufferAttribute | undefined;
+  const focusedNatalColored = !!foregroundColors &&
+    foregroundColors.getX(0) > 0.95 && foregroundColors.getY(0) < 1e-6 &&
+    foregroundColors.getZ(0) < 1e-6 &&
+    foregroundColors !== start;
+  const nativeForegroundGeometryIndependent =
+    !!foregroundLine && foregroundLine.geometry !== aspectGeometry;
   const natalAspectPartnerColored = colorOf(sun)==='ff0000' &&
     colorOf(moon)==='c0c0c0' && colorOf(saturn)==='171717';
   controller.highlight({layer:'transit',name:'Saturn'});
   const transitKeepsNatalMuted = start.getX(0) < 0.5 &&
-    Math.abs(start.getX(0)-start.getY(0)) < 0.00001;
+    Math.abs(start.getX(0)-start.getY(0)) < 0.00001 &&
+    !scene.getObjectByName('chart-interaction-natal-focus');
   controller.setNatalAspectPresentation('all');
   const allRestoresOriginal = Math.abs(start.getX(0)-1)<1e-6 &&
-    Math.abs(start.getY(0))<1e-6;
+    Math.abs(start.getY(0))<1e-6 &&
+    !scene.getObjectByName('chart-interaction-natal-focus');
   // An actual pointer-enter followed by pointer-leave must retain the
   // host-selected planet. Coordinates are computed from the fake camera
   // instead of assuming a fixed window layout.
@@ -121,7 +135,8 @@ window.runPlanetFocusStyleProbe = () => {
   canvas.remove();
   return {
     neutralBefore, grayTransitBackground, selectedAndPartnerColored,
-    dashedOuterConnector, focusedNatalColored, natalAspectPartnerColored,
+    dashedOuterConnector, focusedNatalColored, focusedNatalBackgroundGray,
+    nativeForegroundGeometryIndependent, natalAspectPartnerColored,
     transitKeepsNatalMuted,
     allRestoresOriginal, hoverLatchedAfterLeave, neutralRestored, overlaysDisposed
   };
