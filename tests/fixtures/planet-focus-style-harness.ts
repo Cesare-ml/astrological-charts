@@ -70,7 +70,8 @@ window.runPlanetFocusStyleProbe = () => {
     Math.abs(start.getX(0)-start.getY(0)) < 0.00001;
   controller.highlight({layer:'transit',name:'Saturn'});
   const selectedAndPartnerColored = colorOf(saturn)==='9e02ff' &&
-    colorOf(sun)==='ff0000' && colorOf(moon)==='171717';
+    colorOf(sun)==='ff0000' && colorOf(moon)==='171717' &&
+    [sun,moon,saturn].every(mesh=>mesh.scale.x===1 && mesh.scale.y===1);
   const dashed = scene.getObjectByName('chart-interaction-transit-connector') as THREE.Line | undefined;
   const dashedOuterConnector = !!dashed && dashed.material instanceof THREE.LineDashedMaterial &&
     (dashed.geometry as THREE.BufferGeometry).getAttribute('position').count === 2;
