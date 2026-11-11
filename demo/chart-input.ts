@@ -104,7 +104,7 @@ function parseTheme(raw: unknown, label: string): TemaRender {
     dataora: input.datetime, as: ascendant, ds: (ascendant + 180) % 360,
     mc, ic: (mc + 180) % 360, planets,
     houses: { egizia: {
-      ascendant, mc, vertex: degrees(input.vertex ?? ascendant + 140, `${label}.vertex`), house,
+      ascendant, mc, vertex: degrees(input.vertex === undefined ? ascendant + 140 : input.vertex, `${label}.vertex`), house,
     }},
     australInversion: input.australInversion ?? false,
     fasiSinodiche: {}, fasiSinodicheLatitudinali: {}, lunazioniErmetiche: {},
