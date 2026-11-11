@@ -36,7 +36,11 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <p class="status" [class.error]="error" role="status" data-testid="status">{{error || status}}</p>
         <section class="planet-panel" aria-labelledby="planet-panel-title">
           <h2 id="planet-panel-title">Interactive planet focus</h2>
-          <p class="muted">Select a body with a button, or point to a symbol in the chart. Transit links are illustrative fixture data.</p>
+          <p class="muted">Point to a planet to select it persistently; selecting another planet changes the focus. Transit links are illustrative fixture data.</p>
+          <label *ngIf="mode === 'natal'" class="focus-toggle">
+            <input type="checkbox" id="focus-aspects" [checked]="focusNatalAspects" [disabled]="busy" (change)="changeFocusNatalAspects($event)">
+            Focus aspects
+          </label>
           <label for="planet-layer">Chart layer</label>
           <select id="planet-layer" [value]="planetLayer" [disabled]="busy" (change)="changePlanetLayer($event)">
             <option value="natal">Natal chart</option>
@@ -86,6 +90,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   readonly bodies = demoBodies;
   planetLayer: ChartPlanetLayer = 'natal';
   aspectFilter: 'all' | 'hard' = 'all';
+  focusNatalAspects = false;
   selectedPlanet: ChartPlanetRef | null = null;
   hoveredPlanet: ChartPlanetRef | null = null;
   lastPlanetEvent: ChartPlanetInteractionEvent | null = null;
@@ -106,6 +111,13 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     this.lastPlanetEvent = event;
     if (event.type === 'enter' || (event.type === 'update'
       && sameChartPlanet(this.hoveredPlanet, event.planet))) this.hoveredPlanet = event.planet;
+    if (event.type === 'enter') {
+      // Owner-specified latch: hovering a planet chooses it until the
+      // next hover, button selection or an explicit clear/mode switch.
+      this.selectedPlanet = { ...event.planet };
+      this.planetLayer = event.planet.layer;
+      this.renderer.highlightPlanet(this.selectedPlanet);
+    }
     if (event.type === 'leave' && sameChartPlanet(this.hoveredPlanet, event.planet)) this.hoveredPlanet = null;
     if (event.type === 'click') {
       this.selectedPlanet = event.planet;
@@ -147,7 +159,22 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     this.lastPlanetEvent = null;
     this.renderer.highlightPlanet(null);
     this.renderer.setCrossChartAspects(this.mode === 'transits' ? this.visibleCrossChartAspects : []);
+    this.renderer.setNatalAspectPresentation(this.mode === 'transits' ? 'muted'
+      : this.focusNatalAspects && this.mode === 'natal' ? 'focused' : 'all');
+    if (this.mode === 'natal' && this.focusNatalAspects) {
+      this.selectPlanet('Sun');
+    }
     void this.draw();
+  }
+
+  changeFocusNatalAspects(event: Event): void {
+    this.focusNatalAspects = (event.target as HTMLInputElement).checked;
+    this.renderer.setNatalAspectPresentation(this.focusNatalAspects ? 'focused' : 'all');
+    if (this.focusNatalAspects && (!this.selectedPlanet || this.selectedPlanet.layer !== 'natal')) {
+      this.planetLayer = 'natal';
+      this.selectPlanet('Sun');
+    }
+    this.changes.markForCheck();
   }
 
   changePlanetLayer(event: Event): void {
