@@ -87,8 +87,8 @@ function parseTheme(raw: unknown, label: string): TemaRender {
     throw new Error(`${label}.planets must contain at least one computed celestial body.`);
   }
   const planets = Object.fromEntries(Object.entries(suppliedPlanets).map(([name, rawPlanet]) => {
-    const planet = object(rawPlanet, `${label}.planets.${name}`);
     if (!name.trim() || name.length > 80) throw new Error('Planet names must be 1–80 characters and not blank.');
+    const planet = object(rawPlanet, `${label}.planets.${name}`);
     return [name, {
       longitude: degrees(planet.longitude, `${label}.planets.${name}.longitude`),
       latitude: latitude(planet.latitude, `${label}.planets.${name}.latitude`, 0),
