@@ -48,7 +48,14 @@ window.runPlanetFocusStyleProbe = () => {
   natalAspectGroup.add(new THREE.Line(aspectGeometry, new THREE.LineBasicMaterial()));
   root.add(natalAspectGroup);
   scene.updateMatrixWorld(true);
-  const controller = new PlanetInteractionController(canvas,camera,()=>{},()=>{});
+  let latchedFocus: string | null = null;
+  let controller: PlanetInteractionController;
+  controller = new PlanetInteractionController(canvas,camera,event=>{
+    if (event.type === 'enter') {
+      latchedFocus = event.planet.layer + ':' + event.planet.name;
+      controller.highlight(event.planet); // Same host contract used by the demo.
+    }
+  },()=>{});
   controller.setRelations([
     {from:{layer:'natal',name:'Sun'},to:{layer:'transit',name:'Saturn'},
       type:'quadrato',orb:1}
@@ -82,6 +89,21 @@ window.runPlanetFocusStyleProbe = () => {
   controller.setNatalAspectPresentation('all');
   const allRestoresOriginal = Math.abs(start.getX(0)-1)<1e-6 &&
     Math.abs(start.getY(0))<1e-6;
+  // An actual pointer-enter followed by pointer-leave must retain the
+  // host-selected planet. Coordinates are computed from the fake camera
+  // instead of assuming a fixed window layout.
+  const world = sun.getWorldPosition(new THREE.Vector3()).project(camera);
+  const rect = canvas.getBoundingClientRect();
+  canvas.dispatchEvent(new PointerEvent('pointermove', {
+    clientX: rect.left + (world.x + 1) * rect.width/2,
+    clientY: rect.top + (1 - world.y) * rect.height/2,
+    bubbles: true, pointerType:'mouse'
+  }));
+  canvas.dispatchEvent(new PointerEvent('pointerleave', {
+    bubbles: true, pointerType:'mouse'
+  }));
+  const hoverLatchedAfterLeave = latchedFocus === 'natal:Sun' &&
+    sun.scale.x > 1 && colorOf(sun)==='ff0000';
   controller.destroy();
   const neutralRestored = [sun,moon,saturn].every(mesh=>colorOf(mesh)==='171717');
   const overlaysDisposed = scene.getObjectByName('chart-interaction-transit-connector')===undefined;
@@ -98,6 +120,6 @@ window.runPlanetFocusStyleProbe = () => {
     neutralBefore, grayTransitBackground, selectedAndPartnerColored,
     dashedOuterConnector, focusedNatalColored, natalAspectPartnerColored,
     transitKeepsNatalMuted,
-    allRestoresOriginal, neutralRestored, overlaysDisposed
+    allRestoresOriginal, hoverLatchedAfterLeave, neutralRestored, overlaysDisposed
   };
 };
