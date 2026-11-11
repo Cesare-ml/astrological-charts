@@ -232,6 +232,25 @@ test('native Line2 solid/dashed/dotted strokes keep exact colored focus above gr
   } finally { await page.close(); await browser.close(); }
 });
 
+test('transit guides use real outer-ring radius in normal and mirrored charts', {timeout: 60000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundled = await build({
+      entryPoints: ['tests/fixtures/transit-spoke-harness.ts'],
+      bundle: true, write: false, platform: 'browser',
+      format: 'iife', target: 'es2022', tsconfig: 'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundled.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runTransitSpokeGeometryProbe());
+    for (const [name, passed] of Object.entries(result)) {
+      assert.equal(passed, true, name + ': ' + JSON.stringify(result));
+    }
+  } finally { await page.close(); await browser.close(); }
+});
+
 test('Three.js pointer controller emits layer-aware events and restores pinned focus', {timeout: 60000}, async () => {
   const browser = await launch();
   const page = await browser.newPage();
