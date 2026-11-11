@@ -761,3 +761,38 @@ and clicks through hidden layers. The existing outside-canvas, zoom,
 depth and stale-scene checks remain. Run `npm run test:demo-interactions`
 in a real browser before approving; GitHub source inspection alone does
 not constitute a passed WebGL regression.
+
+### Hover-to-pin callback handoff and deferred button focus (2026-11-11)
+
+The Angular demo's `enter` callback immediately calls
+`renderer.highlightPlanet(hovered)` to make the selection persistent.
+The controller used to repaint from `highlight()` inside this
+callback and then potentially repaint again from pointer handling.
+The code now treats the **hovered planet as the visible focus**:
+a programmatic pinned-selection change while the pointer is hovering
+does not repaint immediately, because the visible hovered overlay has
+not changed. The pointer handler performs the one necessary paint
+after the synchronous `enter` callback; when the pointer leaves,
+the pinned selection becomes visible as usual.
+
+**Important first-frame guard:** the pointer handler remembers the
+pinned body *before* emitting `enter`. Otherwise an initially
+unpinned planet would be pinned by the callback and incorrectly
+classified as an already-rendered no-op, dropping the new focus
+overlay altogether. A planet already pinned before the pointer
+entered still avoids reallocation as in the prior fast path.
+
+Added `tests/fixtures/hover-pin-handoff-harness.ts` (via the
+existing Playwright interaction suite). It asserts that the first
+enter-to-pin paints exactly once, switching from Sun to Saturn
+paints exactly once, repeated hovering over the pinned Saturn
+does not reallocate lines, a button selecting Sun *while Saturn
+is hovered* defers repaint, leaving Saturn restores Sun, and
+clearing focus restores neutral original glyph colors. It also
+checks that all objects retain their original sizes, and all
+expected pointer events reach frontend consumers. Synthetic data
+only; no new calculations, images or API changes.
+
+**Status:** committed in draft PR #22, not yet verified with a real
+Windows Chrome/Firefox test after these commits. A successful
+source-level probe is not a browser result.
