@@ -4,6 +4,8 @@ import type { ChartPlanetInteractionEvent } from '../../src/lib/renderers/planet
 
 interface LifecycleProbe {
   isolatedEvents: boolean;
+  initialEventIsolation: boolean;
+  continuedEventIsolation: boolean;
   isolatedVisuals: boolean;
   independentAspectTypes: boolean;
   redrawRestoresScale: boolean;
@@ -186,6 +188,8 @@ window.runPlanetLifecycleProbe = () => {
       && second.natal.scale.x === 1 && second.transit.scale.x === 1;
     return {
       isolatedEvents: isolatedEvents && stillIsolated,
+      initialEventIsolation: isolatedEvents,
+      continuedEventIsolation: stillIsolated,
       independentAspectTypes, isolatedVisuals,
       redrawRestoresScale, redrawReleasesOverlays,
       pinSurvivesRedraw, mirrorMatchesCanonicalRing,
