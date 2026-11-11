@@ -99,3 +99,27 @@ test('Three.js pointer controller emits layer-aware events and restores pinned f
     assert.deepEqual(result.events.map(e => e.type), ['enter', 'update', 'click', 'leave', 'enter', 'leave']);
   } finally { await page.close(); await browser.close(); }
 });
+
+test('two canvases retain isolated events and release focused overlays after 50 redraws', {timeout: 90000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundled = await build({
+      entryPoints: ['tests/fixtures/planet-lifecycle-harness.ts'],
+      bundle: true, write: false, platform: 'browser', format: 'iife',
+      target: 'es2022', tsconfig: 'tsconfig.json'
+    });
+    await page.addScriptTag({content: bundled.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runPlanetLifecycleProbe());
+    assert.equal(result.cycles, 50, JSON.stringify(result));
+    for (const key of [
+      'isolatedEvents', 'independentAspectTypes', 'isolatedVisuals',
+      'redrawRestoresScale', 'redrawReleasesOverlays', 'pinSurvivesRedraw',
+      'mirrorMatchesCanonicalRing', 'listenersRemovedOnDestroy'
+    ]) {
+      assert.equal(result[key], true, key + ': ' + JSON.stringify(result));
+    }
+  } finally { await page.close(); await browser.close(); }
+});
