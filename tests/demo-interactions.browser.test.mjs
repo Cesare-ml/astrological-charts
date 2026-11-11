@@ -145,6 +145,38 @@ test('natal focus switch selects Sun by default and preserves selected planets',
   } finally { await page.close(); await browser.close(); }
 });
 
+test('all four natal angles show their supplied transit relationships without zooming', {timeout: 90000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const lastRevision = await revision(page);
+    await page.selectOption('#mode','transits');
+    await ready(page,lastRevision);
+    for (const [axis,partner] of [
+      ['AS','Neptune'], ['DS','Mars'], ['MC','Neptune'], ['IC','Mercury']
+    ]) {
+      await page.getByRole('button',{name:'Highlight natal '+axis}).click();
+      await selection(page,'natal:'+axis);
+      await aspectCount(page,1);
+      const description = await page.locator('.aspect-list').textContent();
+      assert.match(description, new RegExp('natal '+axis));
+      assert.match(description, new RegExp('transit '+partner));
+      assert.match(description, /semiquadrato/);
+    }
+    const before = await revision(page);
+    await page.selectOption('#mode','natal');
+    await ready(page,before);
+    await page.locator('#focus-aspects').check();
+    await selection(page,'natal:Sun');
+    await page.getByRole('button',{name:'Highlight natal AS'}).click();
+    await selection(page,'natal:AS');
+    // AS/DS/MC/IC come from the actual house axis coordinates;
+    // no fabricated angles/aspects are created by the renderer.
+  } finally { await page.close(); await browser.close(); }
+});
+
 test('Three.js focus palette retains neutral glyphs and colors only selected linked bodies', {timeout: 60000}, async () => {
   const browser = await launch();
   const page = await browser.newPage();
