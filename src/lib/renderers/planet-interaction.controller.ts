@@ -16,6 +16,11 @@ export class PlanetInteractionController {
   private glyphs = new Map<string, THREE.Mesh[]>();
   private glyphTints = new Map<THREE.Material, THREE.Color>();
   private natalLineColors = new Map<any, number[]>();
+  /** Screen-only copies of the native focused natal strokes.
+   * Every copy owns its own geometry/material; original natal lines
+   * remain visible in gray underneath.
+   */
+  private natalFocusOverlays: THREE.Object3D[] = [];
   private natalAspectTags: { root: THREE.Object3D; from: string; to: string; type: string }[] = [];
   private natalAspectPresentation: 'all' | 'focused' | 'muted' = 'all';
   private lines: THREE.Line[] = [];
@@ -230,6 +235,18 @@ export class PlanetInteractionController {
       else attribute.needsUpdate = true;
     }
     this.natalLineColors.clear();
+    // Cloned natal geometry and materials are never shared with the source.
+    // Dispose the foreground on every focus change, redraw and destroy.
+    for (const overlay of this.natalFocusOverlays) {
+      overlay.parent?.remove(overlay);
+      overlay.traverse(object => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose();
+        const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+        for (const material of materials) material.dispose();
+      });
+    }
+    this.natalFocusOverlays = [];
     for (const line of this.lines) {
       line.parent?.remove(line);
       line.geometry.dispose();
@@ -278,15 +295,54 @@ export class PlanetInteractionController {
     });
   }
 
+  /** Duplicate the *existing* native stroke geometry before muting it.
+   * A full Three.js deep clone initially shares BufferGeometry and materials:
+   * clone each renderable's resources so a gray background cannot recolor
+   * the highlighted line. The source's parent/transform retains exact
+   * angular positions, original dash patterns and line widths.
+   */
+  private addNatalFocusOverlay(root: THREE.Object3D): void {
+    if (!root.parent) return;
+    const overlay = root.clone(true);
+    const originals: THREE.Object3D[] = [];
+    const copies: THREE.Object3D[] = [];
+    root.traverse(obj => originals.push(obj));
+    overlay.traverse(obj => copies.push(obj));
+    for (let i = 0; i < originals.length; i++) {
+      const original = originals[i] as THREE.Mesh;
+      const copy = copies[i] as THREE.Mesh;
+      if (original.geometry) copy.geometry = original.geometry.clone();
+      if (original.material) {
+        const sources = Array.isArray(original.material) ? original.material : [original.material];
+        const materials = sources.map(material => {
+          const foreground = material.clone();
+          foreground.depthTest = false;
+          foreground.depthWrite = false;
+          foreground.transparent = true;
+          foreground.opacity = 1;
+          return foreground;
+        });
+        copy.material = Array.isArray(original.material) ? materials : materials[0];
+      }
+      // Overlay is a rendering-only copy, never an interactive planet
+      // or a second natal aspect in the scene's metadata registry.
+      copy.userData = {};
+      copy.renderOrder = 999;
+    }
+    overlay.name = 'chart-interaction-natal-focus';
+    root.parent.add(overlay);
+    this.natalFocusOverlays.push(overlay);
+  }
+
   private paintNatalAspectPalette(focus: ChartPlanetRef | null): void {
     if (this.natalAspectPresentation === 'all') return;
+    const gray = new THREE.Color('#898989');
     for (const aspect of this.natalAspectTags) {
       const connectsFocus = this.natalAspectPresentation === 'focused' &&
         focus?.layer === 'natal' && (aspect.from === focus.name || aspect.to === focus.name);
-      const color = connectsFocus
-        ? ((Colori.aspetti as Record<string, string>)[aspect.type] ?? '#888888')
-        : '#898989';
-      this.tintNatalGeometry(aspect.root, new THREE.Color(color));
+      // Preserve the original colored pattern above the gray original.
+      if (connectsFocus) this.addNatalFocusOverlay(aspect.root);
+      this.tintNatalGeometry(aspect.root, gray);
     }
   }
 
