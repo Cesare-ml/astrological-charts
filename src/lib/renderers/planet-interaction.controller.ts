@@ -231,7 +231,13 @@ export class PlanetInteractionController {
     // Scene replacement retains its separate stale-pointer guard.
     if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.canvas.style.cursor = this.hovered ? 'pointer' : this.cursor;
-    if (this.visualRevision === beforeEnterVisuals) {
+    // Entering the already-pinned body from empty space changes only
+    // pointer/tooltip state. Its focused colors and aspect overlays
+    // are already present: keep WebGL objects (and their GPU buffers).
+    // A transition from a *different* hovered body must still repaint.
+    const stillPinned = !previous &&
+      sameChartPlanet(this.hovered, this.pinned);
+    if (this.visualRevision === beforeEnterVisuals && !stillPinned) {
       this.updateVisuals();
       this.requestRender();
     }
@@ -248,8 +254,12 @@ export class PlanetInteractionController {
     const beforeLeaveVisuals = this.visualRevision;
     this.send('leave', leaving);
     if (this.scene !== activeScene || this.sceneRevision !== revision) return;
-    // A host changing its pinned selection inside leave already repainted.
-    if (this.visualRevision === beforeLeaveVisuals) {
+    // Leaving the same pinned planet restores the *identical* focused
+    // scene, so there is no need to dispose and rebuild aspect lines.
+    // Keep emitting leave to the host; a callback changing selection or
+    // relationships has its own visualRevision and is handled above.
+    if (this.visualRevision === beforeLeaveVisuals &&
+        !sameChartPlanet(leaving, this.pinned)) {
       this.updateVisuals();
       if (this.scene) this.requestRender();
     }
