@@ -392,3 +392,23 @@ alongside its light-skin screenshot. Compare label legibility,
 bright/dark aspect colors, unchanged symbol sizes and one-guide-
 per-transit behavior. No private image files or automatic screenshot
 approval are included.
+
+## Rapid pointer movement over a pinned planet
+
+Select a planet in the natal/transit wheel. Move the pointer away,
+then back onto **the same** planet many times: the selection should
+remain pinned, the aspect strokes should not flicker/reallocate, and
+the planet symbol must not grow. Tooltips may still receive the
+normal enter/leave events. Hover a **different** planet: its lines
+must replace the pinned body's foreground while hovered, and the
+pinned selection must return when the pointer leaves.
+
+The synthetic Playwright test
+`tests/fixtures/pinned-pointer-idempotence-harness.ts`
+sends 30 repeated pointer enter/leave pairs and observes overlay
+object identities, disposal events and render-request counts. It
+also verifies that different-planet hover still triggers a repaint
+and that explicitly clearing focus cleans the scene. Run
+`npm run test:demo-interactions` with the local demo and approved
+asset servers. This new test is draft and still awaits an owner-run
+Windows/Chrome result; it is not a measured FPS benchmark.
