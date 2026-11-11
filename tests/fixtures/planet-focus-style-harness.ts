@@ -112,6 +112,22 @@ window.runPlanetFocusStyleProbe = () => {
   const allRestoresOriginal = Math.abs(start.getX(0)-1)<1e-6 &&
     Math.abs(start.getY(0))<1e-6 &&
     !scene.getObjectByName('chart-interaction-natal-focus');
+  // Exercise many focus transitions without multiplying native lines
+  // or leaking additional overlays into the same chart scene.
+  let repeatedFocusCleanup = true;
+  for (let i = 0; i < 30; i++) {
+    controller.setNatalAspectPresentation('focused');
+    controller.highlight({layer:'natal',name:'Sun'});
+    let overlayCount = 0;
+    scene.traverse(obj => {
+      if (obj.name === 'chart-interaction-natal-focus') overlayCount++;
+    });
+    repeatedFocusCleanup &&= overlayCount === 1 &&
+      Math.abs(start.getX(0) - start.getY(0)) < 1e-6;
+    controller.setNatalAspectPresentation('all');
+    repeatedFocusCleanup &&= !scene.getObjectByName('chart-interaction-natal-focus') &&
+      Math.abs(start.getX(0)-1) < 1e-6 && Math.abs(start.getY(0)) < 1e-6;
+  }
   // An actual pointer-enter followed by pointer-leave must retain the
   // host-selected planet. Coordinates are computed from the fake camera
   // instead of assuming a fixed window layout.
@@ -147,6 +163,7 @@ window.runPlanetFocusStyleProbe = () => {
     nativeForegroundGeometryIndependent, natalOverlayDisposedOnFocusChange,
     natalAspectPartnerColored,
     transitKeepsNatalMuted,
-    allRestoresOriginal, hoverLatchedAfterLeave, neutralRestored, overlaysDisposed
+    allRestoresOriginal, repeatedFocusCleanup, hoverLatchedAfterLeave,
+    neutralRestored, overlaysDisposed
   };
 };
