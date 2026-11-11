@@ -58,3 +58,22 @@ test('central aspect endpoints use exact longitude angles, not shifted glyph cen
   assert.equal(geometry.chartAspectCirclePoint(0, 0), null);
   assert.equal(geometry.chartAspectCirclePoint(0, Infinity), null);
 });
+
+
+test('malformed upstream aspect endpoints never reach interactive glyph lookup', () => {
+  // Simulate untyped API payloads without involving ephemeris calculations.
+  // A valid selected endpoint is not enough: the opposite endpoint must be
+  // well-formed too or updateVisuals would read an invalid planet key.
+  const malformed = [
+    null,
+    {from: natalSun, to: null, type: 'quadrato'},
+    {from: undefined, to: natalSun, type: 'quadrato'},
+    {from: {layer: 'invalid', name: 'Sun'}, to: natalSun, type: 'quadrato'},
+    {from: natalSun, to: {layer:'transit', name:''}, type:'quadrato'},
+    links[0],
+    links[1],
+  ];
+  assert.deepEqual(api.relatedChartAspects(natalSun, malformed), [links[0]]);
+  assert.deepEqual(api.relatedChartAspects(transitSaturn, malformed), [links[0]]);
+  assert.deepEqual(api.relatedChartAspects(transitSun, malformed), [links[1]]);
+});

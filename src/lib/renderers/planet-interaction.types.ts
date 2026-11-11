@@ -27,5 +27,9 @@ export function sameChartPlanet(a: ChartPlanetRef | null, b: ChartPlanetRef | nu
 export function relatedChartAspects(
   planet: ChartPlanetRef, aspects: readonly ChartAspectRelation[]
 ): ChartAspectRelation[] {
-  return aspects.filter(a => sameChartPlanet(planet, a.from) || sameChartPlanet(planet, a.to));
+  // Frontends may provide aspect links from JSON or other untyped sources.
+  // A malformed opposite endpoint must never reach glyph lookup and crash a
+  // hover/update, even when the selected planet's endpoint is valid.
+  return aspects.filter(a => !!a && isChartPlanetRef(a.from) && isChartPlanetRef(a.to)
+    && (sameChartPlanet(planet, a.from) || sameChartPlanet(planet, a.to)));
 }
