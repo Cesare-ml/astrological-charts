@@ -103,9 +103,11 @@ window.runPlanetFocusStyleProbe = () => {
     bubbles: true, pointerType:'mouse'
   }));
   const hoverLatchedAfterLeave = latchedFocus === 'natal:Sun' &&
-    sun.scale.x > 1 && colorOf(sun)==='ff0000';
+    colorOf(sun)==='ff0000' &&
+    [sun,moon,saturn].every(mesh => mesh.scale.x === 1 && mesh.scale.y === 1);
   controller.destroy();
-  const neutralRestored = [sun,moon,saturn].every(mesh=>colorOf(mesh)==='171717');
+  const neutralRestored = [sun,moon,saturn].every(mesh=>
+    colorOf(mesh)==='171717' && mesh.scale.x===1 && mesh.scale.y===1);
   const overlaysDisposed = scene.getObjectByName('chart-interaction-transit-connector')===undefined;
   root.traverse(object=>{
     if(object instanceof THREE.Mesh || object instanceof THREE.Line) {
