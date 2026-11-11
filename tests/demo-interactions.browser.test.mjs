@@ -22,11 +22,32 @@ function launch() {
     : chromium.launch({executablePath, headless: true,
       args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
 }
-async function ready(page) {
-  await page.waitForFunction(() => {
-    const status = document.querySelector('[data-testid=status]')?.textContent || '';
-    return status.includes('Rendered') && !(document.querySelector('#mode')?.disabled);
-  }, {timeout: 30000});
+/** Angular zoneless change detection completes asynchronously after click/select.
+ * The harness must wait for DOM state, not read it in the same microtask.
+ * A changed chart/skin also requires a *new completed render revision*.
+ */
+async function ready(page, previousRevision = -1) {
+  await page.waitForFunction(before => {
+    const status = document.querySelector('[data-testid=status]');
+    const revision = Number(status?.getAttribute('data-render-revision'));
+    return (status?.textContent || '').includes('Rendered')
+      && !document.querySelector('#mode')?.disabled
+      && Number.isSafeInteger(revision) && revision > before;
+  }, previousRevision, {timeout: 30000});
+}
+async function revision(page) {
+  return Number(await page.locator('[data-testid=status]')
+    .getAttribute('data-render-revision'));
+}
+async function selection(page, expected) {
+  await page.waitForFunction(value =>
+    document.querySelector('[data-testid=planet-selection]')?.textContent?.trim() === value,
+    expected, {timeout: 10000});
+}
+async function aspectCount(page, expected) {
+  await page.waitForFunction(value =>
+    document.querySelectorAll('[data-testid=aspect-match]').length === value,
+    expected, {timeout: 10000});
 }
 
 test('demo frontend focuses natal and transit planets in both directions', {timeout: 90000}, async () => {
@@ -37,12 +58,13 @@ test('demo frontend focuses natal and transit planets in both directions', {time
   try {
     await page.goto('http://127.0.0.1:4200/');
     await ready(page);
+    const beforeTransits = await revision(page);
     await page.selectOption('#mode', 'transits');
-    await ready(page);
+    await ready(page, beforeTransits);
     await page.selectOption('#planet-layer', 'transit');
     await page.getByRole('button', {name: 'Highlight transit Saturn'}).click();
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'transit:Saturn');
-    assert.equal(await page.locator('[data-testid=aspect-match]').count(), 2);
+    await selection(page, 'transit:Saturn');
+    await aspectCount(page, 2);
     assert.match(await page.locator('.aspect-list').textContent(), /natal Uranus/);
     assert.match(await page.locator('.aspect-list').textContent(), /natal Venus/);
     const screenshots = '.local/demo-interaction-focus';
@@ -52,15 +74,15 @@ test('demo frontend focuses natal and transit planets in both directions', {time
       path:join(screenshots,'transit-saturn-light.png')
     });
     await page.selectOption('#aspect-filter', 'hard');
-    assert.equal(await page.locator('[data-testid=aspect-match]').count(), 1);
+    await aspectCount(page, 1);
     assert.match(await page.locator('.aspect-list').textContent(), /opposizione/);
     await page.selectOption('#aspect-filter', 'all');
-    assert.equal(await page.locator('[data-testid=aspect-match]').count(), 2);
+    await aspectCount(page, 2);
 
     await page.selectOption('#planet-layer', 'natal');
     await page.getByRole('button', {name: 'Highlight natal Uranus'}).click();
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Uranus');
-    assert.equal(await page.locator('[data-testid=aspect-match]').count(), 2);
+    await selection(page, 'natal:Uranus');
+    await aspectCount(page, 2);
     assert.match(await page.locator('.aspect-list').textContent(), /transit Saturn/);
     assert.match(await page.locator('.aspect-list').textContent(), /transit Sun/);
     await page.waitForTimeout(100);
@@ -68,16 +90,18 @@ test('demo frontend focuses natal and transit planets in both directions', {time
       path:join(screenshots,'natal-uranus-with-transits-light.png')
     });
 
+    const beforeDark = await revision(page);
     await page.selectOption('#skin', 'dark');
-    await ready(page);
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Uranus');
+    await ready(page, beforeDark);
+    await selection(page, 'natal:Uranus');
     await page.locator('#clear-focus').click();
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'None');
-    assert.equal(await page.locator('[data-testid=aspect-match]').count(), 0);
+    await selection(page, 'None');
+    await aspectCount(page, 0);
 
+    const beforeNatal = await revision(page);
     await page.selectOption('#mode', 'natal');
-    await ready(page);
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'None');
+    await ready(page, beforeNatal);
+    await selection(page, 'None');
     assert.equal(await page.locator('#planet-layer option').count(), 1);
     assert.equal(await page.locator('#aspect-filter').count(), 0);
     assert.deepEqual(errors, []);
@@ -93,7 +117,7 @@ test('natal focus switch selects Sun by default and preserves selected planets',
     const toggle = page.locator('#focus-aspects');
     assert.equal(await toggle.isChecked(), false);
     await toggle.check();
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Sun');
+    await selection(page, 'natal:Sun');
     const screenshots = '.local/demo-interaction-focus';
     mkdirSync(screenshots,{recursive:true});
     await page.waitForTimeout(100);
@@ -101,20 +125,23 @@ test('natal focus switch selects Sun by default and preserves selected planets',
       path:join(screenshots,'natal-sun-focus-light.png')
     });
     await page.getByRole('button', {name:'Highlight natal Moon'}).click();
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Moon');
+    await selection(page, 'natal:Moon');
     await toggle.uncheck();
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Moon');
+    await selection(page, 'natal:Moon');
     await page.waitForTimeout(100);
     await page.locator('[data-testid=chart]').screenshot({
       path:join(screenshots,'natal-all-aspects-light.png')
     });
+    const beforeTransits = await revision(page);
     await page.selectOption('#mode', 'transits');
-    await ready(page);
-    assert.equal(await page.locator('#focus-aspects').count(), 0);
+    await ready(page, beforeTransits);
+    await page.waitForFunction(() => !document.querySelector('#focus-aspects'));
+    const beforeNatal = await revision(page);
     await page.selectOption('#mode', 'natal');
-    await ready(page);
+    await ready(page, beforeNatal);
+    await page.waitForFunction(() => document.querySelector('#focus-aspects') !== null);
     assert.equal(await toggle.isChecked(), false);
-    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'None');
+    await selection(page, 'None');
   } finally { await page.close(); await browser.close(); }
 });
 
