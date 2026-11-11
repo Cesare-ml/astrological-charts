@@ -688,3 +688,38 @@ tightest-orb aspect winner changes the dashed spoke's actual color and
 requests one new WebGL frame **without** changing the spoke geometry,
 material, central line identity or live geometry count. Browser
 execution and owner visual review remain prerequisites to merge.
+
+### Pinned-focus pointer fast path (draft; 2026-11-11)
+
+When a planet is already **persistently selected**, pointer re-entry
+from empty canvas and subsequent leave of that exact same planet do
+**not change the visible focus**. Previously every entry/leave
+recreated the overlay geometry, materials and natal aspect foreground
+copies and requested another WebGL render even though the planet,
+colors and related aspects were identical. This could be expensive
+when the pointer passes repeatedly over a dense planet cluster.
+
+`PlanetInteractionController.move` now skips this no-op repaint only
+when there was **no previously hovered planet** and the new hovered
+body is the currently pinned `{layer,name}`. The leave callback
+likewise skips repaint if the departing hover is still the pinned
+body. **Both events are still emitted** to the host so tooltips and
+accessibility readouts can update normally. Existing scene-revision
+and visual-revision guards take priority: a callback that changes the
+selected body or visible relationships still repaints, and switching
+from a *different* hovered planet must restore the correct selection.
+
+Synthetic browser regression
+`tests/fixtures/pinned-pointer-idempotence-harness.ts` cycles the
+pointer over a pinned natal Sun **30 times**, asserting 60 enter/leave
+events but no extra render request, no line disposal, unchanged
+object identity, unchanged colors and no zoom. It then hovers the
+other transit partner to require a *real* repaint and checks that
+leaving restores the original pin; finally it clears selection and
+checks all transient overlays are removed. Registered in
+`npm run test:demo-interactions`.
+
+This applies only to on-screen pointer rendering. The full Angular
+build, Chrome/Firefox browser tests and real performance measurements
+remain **unverified after this change**. No astronomical algorithm,
+original asset or production integration is modified.
