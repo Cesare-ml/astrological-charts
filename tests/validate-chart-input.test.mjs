@@ -85,3 +85,19 @@ test('validates optional secondary planet identifiers even when rendering natal'
     }
   }
 });
+
+test('rejects explicit null optional planet numbers in all chart layers without mutation', () => {
+  for (const location of ['natal', 'transits', 'synastry']) {
+    for (const field of ['latitude', 'declination', 'longitudeSpeed', 'latitudeSpeed']) {
+      const planet = {longitude: 42, [field]: null};
+      const invalid = {...payload(), [location]: {...chart(), planets: {Sun: planet}}};
+      assert.throws(
+        () => validateChartPayloadV1(invalid, {mode: 'natal'}),
+        new RegExp(location + '\\.' + 'planets\\.Sun\\.' + field + '.*finite JSON number'),
+        location + ' / ' + field,
+      );
+      assert.equal(planet[field], null);
+      assert.equal(invalid[location].planets.Sun, planet);
+    }
+  }
+});
