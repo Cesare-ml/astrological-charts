@@ -412,3 +412,20 @@ and that explicitly clearing focus cleans the scene. Run
 `npm run test:demo-interactions` with the local demo and approved
 asset servers. This new test is draft and still awaits an owner-run
 Windows/Chrome result; it is not a measured FPS benchmark.
+
+## Angular enter-to-pin handoff (draft)
+
+The demo automatically pins the planet during `enter`. Hover an
+unselected planet: its focused colors and aspect links must appear
+on that **first** hover, even when the event callback pins it
+immediately. Switching between planets should not create duplicate
+WebGL frames. After leaving a planet, its selection remains active.
+
+The synthetic `hover-pin-handoff-harness.ts` browser test checks
+the first paint, 20 repeated pinned hover cycles, a switch to
+another planet, and deferred selection via a frontend button
+while the pointer is still over a different body. On pointer
+leave, the button selection must become visible. All original
+planet scales and the neutral palette after clearing focus
+must be preserved. Run `npm run test:demo-interactions` with
+both local servers active; the new test is not yet owner-verified.
