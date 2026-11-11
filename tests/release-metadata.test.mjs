@@ -60,9 +60,12 @@ test('Angular demo shows a safe clickable VirgoStars credit at launch', async ()
   assert.ok(template, 'standalone Angular demo must retain an inline template');
   const credit = template.match(/Powered by\s*(<a\b[^>]*>VirgoStars<\/a>)/)?.[1];
   assert.ok(credit, 'initial UI must contain a visible VirgoStars anchor');
-  const attrs = Object.fromEntries(
-    [...credit.matchAll(/([\w-]+)\s*=\s*"([^"]*)"/g)].map((match) => [match[1], match[2]]),
-  );
+  const pairs = [...credit.matchAll(/([\w-]+)\s*=\s*"([^"]*)"/g)]
+    .map((match) => [match[1].toLowerCase(), match[2]]);
+  const names = pairs.map(([name]) => name);
+  assert.equal(new Set(names).size, names.length,
+    'credit anchor must not contain duplicate HTML attributes');
+  const attrs = Object.fromEntries(pairs);
   assert.equal(attrs.href, 'https://www.virgostars.it/', 'credit must link to the official project');
   assert.equal(attrs.target, '_blank', 'credit opens the official project in a new tab');
   const relTokens = new Set((attrs.rel ?? '').split(/\s+/).filter(Boolean));
