@@ -315,6 +315,7 @@ export class PlanetInteractionController {
     }
     this.scene.updateMatrixWorld(true);
     const drawn = new Set<string>();
+    const connectedTransits = new Set<string>();
     for (const link of aspects) {
       const id = [chartPlanetKey(link.from), chartPlanetKey(link.to), link.type].join('|');
       if (drawn.has(id)) continue;
@@ -337,7 +338,13 @@ export class PlanetInteractionController {
       // Link the central aspect to each involved outer transit body.
       // The original natal aspects remain gray below these overlays.
       for (const [ref, mesh] of [[link.from, from], [link.to, to]] as const) {
-        if (ref.layer === 'transit') this.addTransitConnector(mesh, color);
+        if (ref.layer !== 'transit') continue;
+        const key = chartPlanetKey(ref);
+        if (connectedTransits.has(key)) continue;
+        connectedTransits.add(key);
+        // Exactly one spoke per involved outer transit planet; parallel
+        // overlapping dashed lines of different aspect colors are confusing.
+        this.addTransitConnector(mesh, color);
       }
     }
   }
