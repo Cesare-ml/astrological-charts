@@ -177,3 +177,14 @@ original artwork screenshot comparison, full repo/build/browser run
 and host integration with actual precomputed aspects. The older
 `setCrossChartAspects` API is preserved and no underlying calculation
 engine was modified.
+
+## Overlapping glyph hit testing
+
+On-screen pointer hit testing rejects coordinates outside the canvas rectangle,
+even for captured pointers and synthetic clicks. When multiple tagged planet
+glyphs overlap, it chooses the closest **projected glyph center** among hits
+within 0.025 world units of the foremost ray intersection. A genuinely closer
+depth plane still wins; decorative meshes remain excluded. The calculation
+uses current world/camera transforms so zoom, redraw and austral inversion are
+respected. `tests/fixtures/planet-picking-harness.ts` tests overlapping glyphs,
+zoom, outside-canvas clicks and depth precedence using purely synthetic planes.

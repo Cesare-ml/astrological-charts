@@ -122,15 +122,40 @@ export class PlanetInteractionController {
     if (!this.scene) return null;
     const rect = this.canvas.getBoundingClientRect();
     if (!(rect.width > 0 && rect.height > 0)) return null;
-    this.pointer.set(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1
-    );
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
+    // Pointer capture and synthetic clicks can deliver coordinates outside
+    // the canvas. Do not select a partly off-screen planet in that case.
+    if (!Number.isFinite(x) || !Number.isFinite(y) ||
+        x < 0 || x > 1 || y < 0 || y > 1) return null;
+    this.pointer.set(x * 2 - 1, 1 - y * 2);
+    this.scene.updateMatrixWorld(true);
+    this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.camera);
     // Only tagged planet glyphs: decorative meshes never intercept a hit.
     const targets = [...this.glyphs.values()].flat();
-    const hit = this.raycaster.intersectObjects(targets, false)[0];
-    const ref: unknown = hit?.object.userData['chartPlanet'];
+    const hits = this.raycaster.intersectObjects(targets, false);
+    if (!hits.length) return null;
+    // When close glyph rectangles overlap at the same depth, Three.js picks
+    // the earliest traversed mesh. Prefer the symbol whose projected CENTER
+    // is nearest to the pointer, but never select a farther depth layer over
+    // a frontmost one. This works after camera zoom and chart mirroring.
+    const nearestDepth = hits[0].distance;
+    const center = new THREE.Vector3();
+    let best = hits[0];
+    let bestDistanceSquared = Infinity;
+    for (const hit of hits) {
+      if (hit.distance - nearestDepth > 0.025) break;
+      hit.object.getWorldPosition(center).project(this.camera);
+      const dx = center.x - this.pointer.x;
+      const dy = center.y - this.pointer.y;
+      const distanceSquared = dx * dx + dy * dy;
+      if (distanceSquared < bestDistanceSquared) {
+        best = hit;
+        bestDistanceSquared = distanceSquared;
+      }
+    }
+    const ref: unknown = best.object.userData['chartPlanet'];
     return isChartPlanetRef(ref) ? ref : null;
   }
 

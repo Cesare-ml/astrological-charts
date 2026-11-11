@@ -191,3 +191,22 @@ test('two canvases retain isolated events and release focused overlays after 50 
     }
   } finally { await page.close(); await browser.close(); }
 });
+
+test('raycasting chooses the closest overlapping glyph and ignores outside-canvas hits', {timeout: 60000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundled = await build({
+      entryPoints: ['tests/fixtures/planet-picking-harness.ts'],
+      bundle: true, write: false, platform: 'browser', format: 'iife',
+      target: 'es2022', tsconfig: 'tsconfig.json'
+    });
+    await page.addScriptTag({content: bundled.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runPlanetPickingProbe());
+    for (const [check, value] of Object.entries(result)) {
+      assert.equal(value, true, check + ': ' + JSON.stringify(result));
+    }
+  } finally { await page.close(); await browser.close(); }
+});
