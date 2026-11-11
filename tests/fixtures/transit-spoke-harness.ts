@@ -53,6 +53,10 @@ window.runTransitSpokeGeometryProbe = () => {
     transit.position.set(0.83, 0.19, 0);
     transit.userData['chartAspectAngle'] = Math.PI / 2;
     transit.userData['chartTransitRingRadius'] = 1.15;
+    const neptune = body('transit', 'Neptune');
+    neptune.position.set(-0.76, 0.22, 0);
+    neptune.userData['chartAspectAngle'] = Math.PI * 1.5;
+    neptune.userData['chartTransitRingRadius'] = 1.15;
     const controller = new PlanetInteractionController(canvas,camera,()=>{},()=>{});
     controller.setRelations([{
       from:{layer:'natal',name:'Sun'},to:{layer:'transit',name:'Saturn'},
@@ -120,6 +124,28 @@ window.runTransitSpokeGeometryProbe = () => {
     results['multiAspectBodiesNoZoom' + suffix] =
       [sun,moon,transit].every(mesh => mesh.scale.x === 1 && mesh.scale.y === 1);
 
+    // One selected natal body with TWO simultaneously involved outer
+    // transit planets must produce two distinct radial guides, not
+    // accidentally merge them because their orbit radius is shared.
+    controller.highlight({layer:'natal',name:'Sun'});
+    controller.setRelations([
+      {from:{layer:'natal',name:'Sun'},to:{layer:'transit',name:'Saturn'},
+        type:'congiunzione',orb:2},
+      {from:{layer:'natal',name:'Sun'},to:{layer:'transit',name:'Neptune'},
+        type:'quadrato',orb:1}
+    ]);
+    const twoSpokes = spoke();
+    const twoColors = twoSpokes.map(line =>
+      (line.material as THREE.LineDashedMaterial).color.getHexString()).sort();
+    const twoStartXs = twoSpokes.map(line =>
+      (line.geometry.getAttribute('position') as THREE.BufferAttribute).getX(0));
+    results['twoTransitsStayDistinct' + suffix] =
+      twoSpokes.length === 2 && central().length === 2 &&
+      twoColors.join(',') === '33cc66,ff7800' &&
+      Math.abs(twoStartXs[0] - twoStartXs[1]) > 0.5 &&
+      [sun,moon,transit,neptune].every(mesh =>
+        mesh.scale.x === 1 && mesh.scale.y === 1);
+
     // Return to the basic Saturn/Sun relationship for the old-host
     // metadata-free fallback and lifecycle checks below.
     controller.setRelations([{
@@ -155,7 +181,7 @@ window.runTransitSpokeGeometryProbe = () => {
     results['cleanup' + suffix] =
       !scene.getObjectByName('chart-interaction-transit-connector') && disposed === 2;
     controller.destroy();
-    for (const mesh of [sun,moon,transit]) {
+    for (const mesh of [sun,moon,transit,neptune]) {
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
     }
