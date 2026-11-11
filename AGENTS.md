@@ -20,6 +20,30 @@ Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/sr
 10. Do not treat a successful build as proof of visual correctness. Test browser, mobile PNG and headless/e-ink paths when relevant.
 11. Update docs for every meaningful feature or behavioral change. Report test commands executed and distinguish untested work.
 
+## Owner-approved interaction direction (2026-11-11)
+
+Use `docs/PLANET_INTERACTIONS.md#target-visual-behavior--owner-reference-2026-11-11`
+as the interaction and palette design contract. In particular:
+
+- Light/dark planet symbols are neutral/monochrome until selected.
+  Pointer **enter latches selection**; leaving the canvas does not clear
+  the selection. Button and touch selection must remain accessible.
+- Color only the selected planet and partners of the supplied aspects.
+  Keep natal aspects gray behind colored natal-to-transit highlights;
+  use dashed radial links toward involved outer transiting planets.
+- For a natal-only chart, keep all ordinary natal aspects colored.
+  When the **Focus aspects** toggle is enabled, gray unrelated natal
+  aspects and initially select **Sun** when no selection exists.
+- Do not compute new astrology in the renderer. Use original natal
+  aspect geometry/tags from `AspettiRender` and cross-chart
+  relations from the host. Restore colors, line objects and scales on
+  mode switches/redraw/destroy. Keep headless PNG/Firefox untouched.
+- The owner's screenshot is a behavioral reference, **not** a
+  redistributable asset; never commit it or copy the source software UI.
+- The first implementation is in draft PR #22. Full screenshot fidelity
+  and the exact gray-under-color layering remain human-review gates,
+  not assumptions. Do not merge without local Chrome/Firefox checks.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
