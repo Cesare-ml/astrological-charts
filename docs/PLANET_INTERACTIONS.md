@@ -139,3 +139,41 @@ to be reproduced verbatim).
   Mark each part complete only after actual tests. No production
   or original artwork redistribution.
 
+
+### Implementation checkpoint — PR #22 (2026-11-11)
+
+The current **draft code** adds the following; these are source changes
+pending full local Angular/Chrome/Firefox execution and visual review:
+
+- Angular `enter` handling latches selection through the existing
+  `GraficoRenderService.highlightPlanet`; `leave` clears transient
+  hover only, not the selected body.
+- Angular natal-only **Focus aspects** checkbox; when enabled without
+  a natal selection it pins **Sun**. The mode switch resets focus and
+  transit mode requests a gray natal aspect background.
+- `AspettiRender.renderArchi` tags only its native natal aspect lines
+  by existing endpoints/type; the interactive controller tints the
+  existing vertex-color buffers (and restores originals on redraw,
+  mode switch and destroy), rather than recalculating aspects.
+- The controller colors selected and related glyph materials from
+  `Colori.elementiCelesti` while keeping unrelated materials at their
+  skin-defined neutral tint. Natal-only focus can discover related
+  natal planets directly from those existing aspect tags.
+- A transient `THREE.LineDashedMaterial` radial connector runs from
+  the existing central aspect-ring direction toward the outer
+  transit radius; geometry is disposed with other focus overlays.
+- A purely generated Three.js probe
+  (`tests/fixtures/planet-focus-style-harness.ts`) checks the palette,
+  natal muted/focused/all transitions, partner coloring, dashed links
+  and material/geometry cleanup; Playwright wires it into
+  `npm run test:demo-interactions`. The browser test also exercises
+  the natal focus toggle and the Sun default.
+
+**Not finished / not certified:** true double-layer gray-under-color
+aspect rendering for all natal aspect styles, tuned spoke endpoints
+and dash lengths in crowded outer transit rings, parity across all
+seven skins and older options, touch/keyboard screen-reader acceptance,
+original artwork screenshot comparison, full repo/build/browser run
+and host integration with actual precomputed aspects. The older
+`setCrossChartAspects` API is preserved and no underlying calculation
+engine was modified.
