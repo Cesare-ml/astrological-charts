@@ -127,15 +127,22 @@ export class LatitudiniRender {
   public async getElementiCelesti(temaRender, opzioni) {
     var elementiCelesti = {};
 
-    for(let nome in opzioni.settaggi.elementi_celesti) {
-      var elOpt = opzioni.settaggi.elementi_celesti[nome];
+    // Only explicitly configured celestial bodies may be rendered.
+    // Inherited enumerable keys are not selected planets.
+    const planets = temaRender?.planets;
+    for(const nome of Object.keys(opzioni.settaggi.elementi_celesti)) {
+      const elOpt = opzioni.settaggi.elementi_celesti[nome];
+      const planet = planets != null && Object.hasOwn(planets, nome) ? planets[nome] : undefined;
 
+      // Each rendered symbol needs both coordinates and an enabled option.
+      // An incomplete chart may lack some or all planets; skip them safely.
       if(
-        temaRender.planets[nome]
-        && temaRender.planets[nome].latitude
-        && elOpt.att
+        planet
+        && Number.isFinite(planet.latitude)
+        && Number.isFinite(planet.longitude)
+        && elOpt?.att
       ) {
-        elementiCelesti[nome]=temaRender.planets[nome];
+        elementiCelesti[nome] = planet;
       }
     }
 
@@ -207,14 +214,23 @@ export class LatitudiniRender {
       }
       if(nome == 'Mercury' || nome == 'Moon')
         colore = '#555';
-      var speedSign = Math.sign(elementiCelesti[nome].latitudeSpeed);
-      var linea = OggettiSempliciRender.getLineaGrossa(new THREE.Vector2(0,speedSign*0.01),new THREE.Vector2(0,speedSign*0.04),colore,2);
-      linea.rotateZ(THREE.MathUtils.degToRad(elLongDiRender));
-      linea.translateY(yPos);
-      linea.translateZ(0.00001);
-
-      group.add( el );
-      group.add(linea);
+      group.add(el);
+      // A body can have a valid latitude without a known latitude speed.
+      // Avoid NaN vertices in the Three.js fat-line geometry; zero speed
+      // also has no direction to indicate, so it needs no degenerate line.
+      const latitudeSpeed = elementiCelesti[nome].latitudeSpeed;
+      if (Number.isFinite(latitudeSpeed) && latitudeSpeed !== 0) {
+        const speedSign = Math.sign(latitudeSpeed);
+        const linea = OggettiSempliciRender.getLineaGrossa(
+          new THREE.Vector2(0, speedSign * 0.01),
+          new THREE.Vector2(0, speedSign * 0.04),
+          colore, 2
+        );
+        linea.rotateZ(THREE.MathUtils.degToRad(elLongDiRender));
+        linea.translateY(yPos);
+        linea.translateZ(0.00001);
+        group.add(linea);
+      }
     }
 
     //Fasi Sinodiche Latitudinali

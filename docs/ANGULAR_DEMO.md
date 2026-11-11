@@ -50,6 +50,29 @@ With both servers running, install Chrome/Chromium and set `CHROME_PATH` to its 
 npm run test:demo
 ```
 
+### One-command local latitude test
+
+For a **manual** run that starts both servers, generates the synthetic pack if absent, executes the focused Playwright PNG test and shuts down only the processes it started:
+
+```powershell
+npm ci
+npm run test:latitude:local
+# Once Chromium and Firefox are installed, verify both browsers in one run:
+npm run test:latitude:both
+```
+
+The `test:latitude:both` command runs Chromium **then** Firefox against the same locally started demo and asset servers, failing if either browser fails. It preserves separate diagnostic PNG folders (`.local/demo-screenshots` and `.local/demo-screenshots-firefox`). Both executables must be available; set `CHROME_PATH` and `FIREFOX_PATH` where needed. The ordinary `test:latitude:local` continues to test only Chromium by default (or the single `CHART_TEST_BROWSER` override). This manual two-browser command is **not** part of `preflight` and does not substitute for an original-artwork visual review.
+
+This works in PowerShell or a compatible terminal on Windows/macOS/Linux. The runner checks that ports **4177 and 4200** are free and refuses to interfere with other processes using them; stop any manually running demo servers first. It also confirms the HTTP responses identify the **Astrological Charts asset preview** and **Angular demo**, rather than accepting any HTTP 200 response from an unrelated service; the Playwright test still checks Angular's actual rendered status and PNG pixels. If `.local/demo-pack` exists but its manifest is missing, it fails instead of deleting or overwriting local data. It requires an installed browser (set `CHROME_PATH`, or use `CHART_TEST_BROWSER=firefox` and `FIREFOX_PATH` if appropriate). It preserves the Playwright test's exit failure status and cleans up child servers on success or failure. A dedicated browser-free regression is available as `npm run test:latitude-runner` and runs automatically in `npm run preflight`; it checks the localhost port and HTTP identity behavior using temporary Node.js servers, without downloading assets or starting Angular. It also rejects prematurely truncated HTTP replies and enforces a **3-second total request deadline** on readiness probes, preventing a server that continuously trickles bytes from blocking the local test indefinitely (the 1.5-second socket inactivity timeout remains in place). It does **not** run `npm run preflight`, `npm run build`, production data, or device tests; run those quality gates separately before any merge.
+
+For a faster **focused check of the latitude-0° Three.js PNG regression only**, run:
+
+```sh
+npm run test:latitude-browser
+```
+
+This executes the standalone `tests/latitude-browser.test.mjs` file directly, **without name-pattern filtering**, so renaming the test cannot silently result in zero selected tests. The full `npm run test:demo` command runs the main demo/browser file **and** this standalone latitude file sequentially (`--test-concurrency=1`) to avoid competing GPU contexts. `npm run check:demo-syntax` checks both JavaScript test files independently. `npm run test:latitude-bundle` uses esbuild to bundle the actual TypeScript latitude harness and checks that its Angular/Three.js renderer and synthetic fixture imports resolve; both checks run automatically as part of the manual `npm run preflight`, without starting an HTTP server or browser. Passing these compilation/syntax checks **does not** validate WebGL pixels. The focused command checks both natal and transit latitude-zero Sun visibility and movement with a fixed natal chart; the transit control keeps the same transit ring/grid and filters only the Sun via a non-finite latitude, avoiding false positives from removing the whole transit theme; it does **not** run the 28 chart/skin combinations or other browser tests. The local asset and Angular demo servers (`npm run demo:assets` and `npm run demo`), npm dependencies and a supported Chrome/Chromium executable are required. Use `CHART_TEST_BROWSER=firefox` (or `$env:CHART_TEST_BROWSER = 'firefox'` in PowerShell) for Firefox. It writes seven diagnostic PNGs (four natal and three transit) in the ignored local browser-screenshot folder; neither screenshots nor synthetic assets are committed. Before writing the files, the regression validates each decoded PNG signature, IHDR chunk and declared 400×400 dimensions, rejecting empty, truncated or wrong-size exports across all seven captures; it then uses Sharp to decode images, validate dimensions and compare pixels. These header checks are structural guards, not full PNG integrity or pixel-rendering validation. This check detects malformed exports but is not a substitute for visual inspection. The focused regression also rejects uncaught browser JavaScript errors, failed requests and HTTP 4xx/5xx responses **from the local synthetic asset origin**; unrelated dev-server requests are intentionally not considered missing chart assets. When a test fails, its error includes the latest demo status and collected browser/asset errors, while any previously produced PNGs remain on disk for inspection. The focused test also closes its browser if creating a page fails, and limits the diagnostic status lookup to one second so an early failure is not obscured by an extra long wait. It recognizes both `Rendered` and `Rendering failed` as terminal startup states: a failed demo render is reported immediately with the status and underlying error rather than waiting for the 30-second readiness timeout. This browser regression is separate from `npm run test:latitude`, which needs no server.
+
 To run the same suite with the Playwright-managed Firefox (Playwright Core is pinned to 1.56.1, matching the inspected Astrolabio environment), install its browser with `npx playwright-core install firefox`, then select it. In PowerShell:
 
 ```powershell

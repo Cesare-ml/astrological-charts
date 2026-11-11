@@ -8,7 +8,7 @@ cd astrological-charts
 powershell -NoProfile -File .\scripts\verify-local.ps1
 ```
 
-The local verification script runs a fresh dependency install (`npm ci` if a lockfile exists), static import and asset inventory checks, TypeScript validation and the Angular package build. It does **not** render a natal chart, check GPU memory or run Astrolabio.
+The local verification script **requires the committed `package-lock.json`** and runs `npm ci`, the **complete `npm run preflight`** (including the latitude renderer, harness bundle and HTTP readiness tests), `npm run build:library`, and `npm run build:demo`. It stops at the first failing command and never silently falls back to an unpinned `npm install`. It does **not** render a natal chart, check GPU memory, validate original artwork or run Astrolabio. For the focused seven-PNG Chromium/Firefox regression, separately run `npm run test:latitude:local` after the setup, using an installed browser.
 
 If PowerShell restricts script execution, open the script and run the documented `npm` commands manually rather than globally weakening security settings.
 
@@ -43,5 +43,7 @@ powershell -NoProfile -File .\scripts\preview-synthetic.ps1
 ```
 
 Open `http://127.0.0.1:4177/__preview`. This generates 78 **original checkerboard PNG placeholders** with the exact preload filenames and a local verification manifest. The preview is an asset gallery only; it does not render a natal chart. When the private asset repo contains approved images, point the dev server at its `public/assets` **and** its `manifests/approved-assets.json`. Read [LOCAL_ASSET_PREVIEW.md](LOCAL_ASSET_PREVIEW.md).
+
+For a focused **one-command PNG regression** (including the real Angular/Three.js latitude renderer), run `npm ci` and then `npm run test:latitude:local`. The runner creates the generated synthetic pack when absent, starts both localhost servers, runs Playwright and stops the child processes it owns. Ports 4177/4200 must be free and a compatible Chrome/Chromium or Firefox must be installed. This is not a substitute for `npm run preflight`, both builds or a visual review; see [Angular demo test instructions](ANGULAR_DEMO.md).
 
 For an interactive chart instead of the gallery, use `npm run demo:pack`, `npm run demo:assets` and `npm run demo` as described in [ANGULAR_DEMO.md](ANGULAR_DEMO.md).
