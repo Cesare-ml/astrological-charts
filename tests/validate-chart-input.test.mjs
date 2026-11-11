@@ -65,3 +65,23 @@ test('unknown JSON structures are rejected and no data are mutated',()=>{
     assert.throws(()=>validateChartPayloadV1(bad),/JSON object|schemaVersion/);
   }
 });
+
+test('rejects explicit null vertex in every chart while allowing an omitted vertex', () => {
+  const original = payload();
+  assert.equal(validateChartPayloadV1(original), original);
+  for (const location of ['natal', 'transits', 'synastry']) {
+    const invalid = {...payload(), [location]: {...chart(), vertex: null}};
+    assert.throws(() => validateChartPayloadV1(invalid), new RegExp(location + '\\.vertex.*finite JSON number'));
+    assert.equal(invalid[location].vertex, null);
+  }
+});
+
+test('validates optional secondary planet identifiers even when rendering natal', () => {
+  for (const location of ['transits', 'synastry']) {
+    for (const name of [' ', '\\u2003', 'X'.repeat(81)]) {
+      const invalid = {...payload(), [location]: {...chart(), planets: {[name]: null}}};
+      assert.throws(() => validateChartPayloadV1(invalid), /Planet names must be 1–80 characters/);
+      assert.equal(invalid[location].planets[name], null);
+    }
+  }
+});
