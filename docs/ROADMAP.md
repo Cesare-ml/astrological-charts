@@ -123,3 +123,5 @@ Milestones may overlap during development, but **M0 must be cleared before publi
 - [ ] Execute the secondary-chart angular-normalization regression (`tests/chart-input.test.mjs`): transits and synastry must normalize independently, preserve signed zero and caller inputs, and leave natal positions unchanged. Added in commit `15a2477`; execution in a full Node/TypeScript checkout remains pending.
 
 - [ ] Execute the optional-secondary-chart planet-name regression in `tests/chart-input.test.mjs`: both Angular and Node must reject Unicode whitespace-only identifiers in supplied transits/synastry even when the selected mode is natal. Added on PR #19; Node execution pending.
+
+- JSON v1 regression (draft PR #19): failed natal/transits/synastry house-cusp validation must leave caller-owned payloads unchanged, including signed zero; source test added, execution on a full checkout still pending (`npm run test:chart-input`).
