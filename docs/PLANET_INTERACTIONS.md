@@ -485,3 +485,27 @@ latch and leave selection, alongside existing nested scene replacement and
 teardown checks. No change to astrology, glyph locations, public API,
 headless exports or external assets. Actual Chromium and Firefox runs remain
 required before merging.
+
+### Native Line2 solid/dashed/dotted regression gate (2026-11-11)
+
+Beyond the basic synthetic geometry probe, `tests/fixtures/native-natal-line-harness.ts`
+now builds actual `Line2`, `LineGeometry` and `LineMaterial` instances
+using invented positions and colors. One native aspect has a solid
+stroke, one groups three dash segments, and one groups four dot-like
+segments. This mirrors the kinds of grouped, fat-line primitives
+produced by `OggettiSempliciRender` without importing or redistributing
+private graphics.
+
+The browser suite loads this fixture in a genuine Chrome/Firefox
+page and checks: two focused native aspects (four segments total)
+produce independent copies; all original strokes, including unrelated
+ones, are gray; all foreground copies retain their original colors,
+stroke widths and transformations; copied objects have no natal
+metadata or interactive hit targets; changing focus removes and
+disposes the previous copies while the originals remain alive;
+turning focus off restores their colors and leaves no orphan overlays.
+
+This is a **new test**, not an already-passed Windows result. It runs
+as part of `npm run test:demo-interactions` with the local demo
+and asset servers active. It is deliberately separate from normal
+PNG/JPEG generation; only live, on-screen interaction is affected.
