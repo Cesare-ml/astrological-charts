@@ -73,6 +73,49 @@ test('demo frontend focuses natal and transit planets in both directions', {time
   } finally { await page.close(); await browser.close(); }
 });
 
+test('natal focus switch selects Sun by default and preserves selected planets', {timeout: 90000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const toggle = page.locator('#focus-aspects');
+    assert.equal(await toggle.isChecked(), false);
+    await toggle.check();
+    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Sun');
+    await page.getByRole('button', {name:'Highlight natal Moon'}).click();
+    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Moon');
+    await toggle.uncheck();
+    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Moon');
+    await page.selectOption('#mode', 'transits');
+    await ready(page);
+    assert.equal(await page.locator('#focus-aspects').count(), 0);
+    await page.selectOption('#mode', 'natal');
+    await ready(page);
+    assert.equal(await toggle.isChecked(), false);
+    assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'None');
+  } finally { await page.close(); await browser.close(); }
+});
+
+test('Three.js focus palette retains neutral glyphs and colors only selected linked bodies', {timeout: 60000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundled = await build({
+      entryPoints: ['tests/fixtures/planet-focus-style-harness.ts'],
+      bundle:true, write:false, platform:'browser',format:'iife',
+      target:'es2022',tsconfig:'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundled.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runPlanetFocusStyleProbe());
+    for (const [name, pass] of Object.entries(result)) {
+      assert.equal(pass, true, name + ': ' + JSON.stringify(result));
+    }
+  } finally { await page.close(); await browser.close(); }
+});
+
 test('Three.js pointer controller emits layer-aware events and restores pinned focus', {timeout: 60000}, async () => {
   const browser = await launch();
   const page = await browser.newPage();
