@@ -37,6 +37,8 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 
 - JSON v1 regression coverage now includes independent optional speed, signed-zero, and ±90° declination boundaries in secondary transit/synastry charts while natal mode is selected. Execute `npm run test:chart-input` before considering this verified; source readback is not test execution.
 
+- [ ] Execute the explicit-null `vertex` parity regression in `tests/chart-input.test.mjs`: Angular now rejects `vertex: null` (natal/transits/synastry), matching Node validation, while an omitted vertex still falls back to ascendant + 140°. Run `npm run test:chart-input` on a full checkout; GitHub source readback alone is not an executed test. (2026-11-11)
+
 ## M1 — Reproducible standalone development
 
 - [ ] Confirm `npm ci`, type checks, preflight, library build and Angular demo build on a fresh checkout.
