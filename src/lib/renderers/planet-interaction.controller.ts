@@ -13,7 +13,6 @@ export class PlanetInteractionController {
   private scene: THREE.Scene | null = null;
   private sceneRevision = 0;
   private glyphs = new Map<string, THREE.Mesh[]>();
-  private scales = new Map<THREE.Mesh, THREE.Vector3>();
   private glyphTints = new Map<THREE.Material, THREE.Color>();
   private natalLineColors = new Map<any, number[]>();
   private natalAspectTags: { root: THREE.Object3D; from: string; to: string; type: string }[] = [];
@@ -211,8 +210,6 @@ export class PlanetInteractionController {
   };
 
   private clearVisuals(): void {
-    for (const [mesh, scale] of this.scales) mesh.scale.copy(scale);
-    this.scales.clear();
     for (const [material, previous] of this.glyphTints) {
       const paint = material as THREE.MeshBasicMaterial;
       paint.color?.copy(previous);
@@ -340,7 +337,7 @@ export class PlanetInteractionController {
     if (!this.scene) return;
     const focus = this.hovered ?? this.pinned;
     this.paintNatalAspectPalette(focus);
-    if (!focus || !this.glyphs.has(chartPlanetKey(focus))) return;
+    if (!focus) return;
     const aspects = relatedChartAspects(focus, this.relations);
     const related = new Set([chartPlanetKey(focus)]);
     for (const link of aspects) {
@@ -356,8 +353,8 @@ export class PlanetInteractionController {
       }
     }
     for (const key of related) for (const mesh of this.glyphs.get(key) ?? []) {
-      this.scales.set(mesh, mesh.scale.clone());
-      mesh.scale.multiplyScalar(key === chartPlanetKey(focus) ? 1.35 : 1.18);
+      // Focus is visual tint + aspect highlighting only. Never change the
+      // glyph scale: hit targets and planet positions remain stable.
       const ref = mesh.userData['chartPlanet'] as ChartPlanetRef;
       const tint = (Colori.elementiCelesti as Record<string, string>)[ref.name];
       if (tint) this.tintGlyph(mesh, tint);
