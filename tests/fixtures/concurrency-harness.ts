@@ -111,3 +111,93 @@ import gsap from 'gsap';
     .filter(timeline => !before.has(timeline) && timeline.repeat() === -1);
   return {message, leaked:leaked.length};
 };
+
+
+/** A stale texture failure must never reject the superseded draw request. */
+(globalThis as any).runSupersededTextureFailureProbe = async () => {
+  GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
+  const opts = structuredClone(defaultOpzioniGrafico) as any;
+  opts.settaggi.skin_id = 'light'; opts.temaGrafico = 'light';
+  for (const body of demoBodies) opts.settaggi.elementi_celesti[body].att = true;
+  const theme = makeDemoTheme(0);
+  const service = new GraficoRenderService();
+  const canvas = document.createElement('canvas');
+  Object.assign(canvas.style, {width:'360px',height:'360px'});
+  document.body.appendChild(canvas);
+  service.inizializzaGraficoRender(new ElementRef(canvas), {x:360,y:360});
+  const original = GestoreImmagini.waitForTexture;
+  let releaseFailure!: () => void;
+  let sawWait!: () => void;
+  const waiting = new Promise<void>(resolve => { sawWait = resolve; });
+  let gateUsed = false;
+  let oldOutcome: PromiseSettledResult<void> | null = null;
+  let newOutcome: PromiseSettledResult<void> | null = null;
+  try {
+    GestoreImmagini.waitForTexture = (texture) => {
+      if (!gateUsed) {
+        gateUsed = true;
+        sawWait();
+        return new Promise<void>((_,reject) => {
+          releaseFailure = () => reject(new Error('Injected obsolete texture failure'));
+        });
+      }
+      return original.call(GestoreImmagini,texture);
+    };
+    const oldDraw = service.disegnaScena(theme,null,null,'carta-astrale',opts);
+    await waiting; // first draw is suspended inside waitForSceneTextures
+    const newDraw = service.disegnaScena(theme,null,null,'carta-astrale',opts);
+    releaseFailure();
+    [oldOutcome,newOutcome] = await Promise.allSettled([oldDraw,newDraw]) as [
+      PromiseSettledResult<void>,PromiseSettledResult<void>
+    ];
+    return {
+      oldRequestIgnored: oldOutcome.status === 'fulfilled',
+      newestRequestRendered: newOutcome.status === 'fulfilled'
+        && !!(service as any).scene?.children?.length && service.isInizializzato,
+      queueStillUsable: (service as any).renderer !== null
+    };
+  } finally {
+    if (releaseFailure) releaseFailure();
+    GestoreImmagini.waitForTexture = original;
+    service.ngOnDestroy();
+    canvas.remove();
+  }
+};
+
+/** A re-entrant host listener may retire the canvas while a redraw commits. */
+(globalThis as any).runDestroyDuringSceneLeaveProbe = async () => {
+  GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
+  const opts = structuredClone(defaultOpzioniGrafico) as any;
+  opts.settaggi.skin_id = 'light'; opts.temaGrafico = 'light';
+  for (const body of demoBodies) opts.settaggi.elementi_celesti[body].att = true;
+  const service = new GraficoRenderService();
+  const canvas = document.createElement('canvas');
+  Object.assign(canvas.style, {width:'360px',height:'360px'});
+  document.body.appendChild(canvas);
+  let receivedLeave = false;
+  try {
+    service.inizializzaGraficoRender(new ElementRef(canvas),{x:360,y:360});
+    const theme = makeDemoTheme(0);
+    await service.disegnaScena(theme,null,null,'carta-astrale',opts);
+    // Synthesize the already-hovered state. setScene(null) emits leave before
+    // disposing old scene; the callback destroys the service synchronously.
+    (service as any).planetController.hovered = {layer:'natal',name:'Sun'};
+    service.setPlanetInteractionListener(event => {
+      if (event.type === 'leave') {
+        receivedLeave = true;
+        service.ngOnDestroy();
+      }
+    });
+    await service.disegnaScena(theme,null,null,'carta-astrale',opts);
+    service.render();
+    return {
+      leaveDelivered: receivedLeave,
+      destroyedSceneNotResurrected: !(service as any).scene &&
+        !(service as any).renderer && !service.isInizializzato,
+      obsoleteFrameNotQueued: !(service as any).renderRequestedBeforeInit,
+    };
+  } finally {
+    service.ngOnDestroy();
+    canvas.remove();
+  }
+};

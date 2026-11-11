@@ -144,6 +144,8 @@ export class GraficoRenderService implements OnDestroy {
 
   public ngOnDestroy(): void {
     ++this.drawGeneration;
+    // Pending frames from an old canvas must never replay after teardown.
+    this.renderRequestedBeforeInit = false;
     this.planetController?.destroy();
     this.planetController = null;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
@@ -310,14 +312,26 @@ export class GraficoRenderService implements OnDestroy {
         if (disegno) await waitForSceneTextures(disegno);
       } catch (error) {
         if (disegno) disposeSceneResources(disegno);
+        // A superseded redraw may fail while its textures are still loading.
+        // Never report that obsolete failure over the newer chart's result.
+        if (generation !== this.drawGeneration) return;
         throw error;
       }
       if (generation !== this.drawGeneration) {
         if (disegno) disposeSceneResources(disegno);
         return;
       }
-      if (!this.scene) this.scene = new THREE.Scene();
+      if (!this.scene || !this.renderer || !this.camera) {
+        if (disegno) disposeSceneResources(disegno);
+        return;
+      }
       this.planetController?.setScene(null);
+      // A synchronous leave listener may destroy the renderer or request
+      // a newer date/skin before we commit this asynchronously built scene.
+      if (generation !== this.drawGeneration || !this.scene || !this.renderer || !this.camera) {
+        if (disegno) disposeSceneResources(disegno);
+        return;
+      }
       disposeSceneResources(this.scene);
       this.scene.clear();
       const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
@@ -331,10 +345,12 @@ export class GraficoRenderService implements OnDestroy {
 
   public render(): void {
     if (!this.isInizializzato) {
-      this.renderRequestedBeforeInit = true;
+      // Initialization can request one deferred frame. A fully destroyed
+      // service has no renderer and must not queue a frame for a later mount.
+      if (this.renderer) this.renderRequestedBeforeInit = true;
       return;
     }
-    
+    if (!this.renderer || !this.scene || !this.camera) return;
     this.renderer.render(this.scene, this.camera);
   }
 

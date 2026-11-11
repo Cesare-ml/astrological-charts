@@ -262,3 +262,31 @@ Run `npm run test:demo-interactions` with both local servers on
 4177/4200, then manually examine the visual results. The change
 is **unverified by the owner** until those checks are rerun.
 
+
+
+## Superseded redraws during texture loading and synchronous teardown
+
+Fast date/time or skin changes can enqueue an updated chart while an earlier
+scene is still waiting for textures. The service retains latest-generation-wins
+behavior, and now **disposes and silently discards an obsolete scene even if
+its texture wait rejects**. Genuine texture failures in the currently active
+request still propagate normally to the host. It also checks generation,
+renderer and camera availability **after** notifying an Angular `leave`
+listener via `planetController.setScene(null)`, before disposing/replacing
+the visible scene. If the listener destroyed the service or triggered a
+newer request, the abandoned generated scene is released rather than
+committed. A destroyed canvas cannot queue a stale deferred render frame.
+
+`tests/fixtures/concurrency-harness.ts` provides two browser regressions:
+an injected failure held inside the obsolete texture wait with a successful
+newer queued redraw, and synchronous host destruction during a scene-swap
+`leave` callback. The browser smoke suite asserts both outcomes. These
+are lifecycle protections, **not** an incremental planetary-position update
+API: the existing renderer still rebuilds full scenes when input positions
+change. No ephemerides/aspect algorithms, approved artwork, current
+production code or headless exports have been changed.
+
+Run `npm run check:types`, `npm run build:demo`, then `npm run test:demo`
+with the local manifest-validated asset server and Angular demo running
+on Windows, Chromium and Firefox before merge. Local browser runtime
+verification is still pending.
