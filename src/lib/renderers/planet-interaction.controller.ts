@@ -298,6 +298,14 @@ export class PlanetInteractionController {
       related.add(chartPlanetKey(link.from));
       related.add(chartPlanetKey(link.to));
     }
+    // Natal-only aspect focus uses the already drawn native aspect tags:
+    // partners do not require a duplicated upstream aspect calculation.
+    if (this.natalAspectPresentation === 'focused' && focus.layer === 'natal') {
+      for (const tag of this.natalAspectTags) {
+        if (tag.from === focus.name) related.add(chartPlanetKey({layer:'natal',name:tag.to}));
+        if (tag.to === focus.name) related.add(chartPlanetKey({layer:'natal',name:tag.from}));
+      }
+    }
     for (const key of related) for (const mesh of this.glyphs.get(key) ?? []) {
       this.scales.set(mesh, mesh.scale.clone());
       mesh.scale.multiplyScalar(key === chartPlanetKey(focus) ? 1.35 : 1.18);
