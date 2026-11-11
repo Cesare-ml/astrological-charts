@@ -187,14 +187,32 @@ test('latitude symbols remain visible without a finite nonzero speed indicator',
     getCerchio: () => ({kind: 'grid'}),
     getImg: async () => {
       symbolCount++;
-      return {rotation: {z: 0}, rotateZ() {}, translateY() {}};
+      return {
+        rotation: {z: 0},
+        rotateZ(angle) {
+          assert.ok(Number.isFinite(angle), 'latitude symbol rotation must be finite');
+        },
+        translateY(distance) {
+          assert.ok(Number.isFinite(distance), 'latitude symbol position must be finite');
+        },
+      };
     },
     getLineaGrossa: (start, end) => {
       for (const coordinate of [start.x, start.y, end.x, end.y]) {
         assert.ok(Number.isFinite(coordinate), 'speed indicator must not contain NaN or infinity');
       }
       directions.push([start.y, end.y]);
-      return {rotateZ() {}, translateY() {}, translateZ() {}};
+      return {
+        rotateZ(angle) {
+          assert.ok(Number.isFinite(angle), 'speed indicator rotation must be finite');
+        },
+        translateY(distance) {
+          assert.ok(Number.isFinite(distance), 'speed indicator position must be finite');
+        },
+        translateZ(offset) {
+          assert.ok(Number.isFinite(offset), 'speed indicator depth must be finite');
+        },
+      };
     },
   };
   const skins = {skins: {light: {latitudini: {elementiCelesti: {
@@ -205,12 +223,18 @@ test('latitude symbols remain visible without a finite nonzero speed indicator',
     fakeThree, primitive, skins, () => 'synthetic-asset-path');
   Class.lr = new Class();
   const planets = {
-    Sun: {longitude: 15, latitude: 0},
-    Moon: {longitude: 30, latitude: -0, latitudeSpeed: 0},
+    Sun: {longitude: 0, latitude: 0},
+    Moon: {longitude: -0, latitude: -0, latitudeSpeed: 0},
     Mercury: {longitude: 45, latitude: 0, latitudeSpeed: 0.04},
     Venus: {longitude: 60, latitude: 0, latitudeSpeed: -0.02},
     Mars: {longitude: 75, latitude: 0, latitudeSpeed: Number.NaN},
     Jupiter: {longitude: 90, latitude: 0, latitudeSpeed: Number.POSITIVE_INFINITY},
+    Uranus: {longitude: Number.NaN, latitude: 0},
+    Neptune: {longitude: Number.POSITIVE_INFINITY, latitude: 0},
+    Pluto: {longitude: undefined, latitude: 0},
+    Ceres: {longitude: null, latitude: 0},
+    Eris: {longitude: '0', latitude: 0},
+    Chiron: {longitude: 15, latitude: Number.NaN},
   };
   const opzioni = {temaGrafico:'light', settaggi:{
     skin_id:'light',
@@ -218,7 +242,8 @@ test('latitude symbols remain visible without a finite nonzero speed indicator',
   }};
   const ring = await Class.lr.getAnelloElementiCelesti(
     {planets}, 0, opzioni, 0.5, 3, 1, false);
-  assert.equal(symbolCount, 6, 'every body with valid latitude must keep its symbol');
+  assert.equal(symbolCount, 6,
+    'only bodies with finite latitude and longitude may create Three.js symbols');
   assert.deepEqual(directions, [[0.01, 0.04], [-0.01, -0.04]],
     'only finite nonzero latitude speeds should create directional markers');
   assert.equal(ring.children.length, 18 + 6 + 2,
