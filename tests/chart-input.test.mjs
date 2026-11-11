@@ -149,6 +149,16 @@ test('both adapters validate optional secondary charts even in natal mode', () =
   }
 });
 
+
+test('optional secondary charts reject invalid planet identifiers in natal mode', () => {
+  for (const key of ['transits', 'synastry']) {
+    const secondary = { ...chart(), planets: { ['\\u2003']: { longitude: 42 } } };
+    const payload = { schemaVersion: 1, mode: 'natal', natal: chart(), [key]: secondary };
+    assert.throws(() => validateChartPayloadV1(payload), /Planet names/);
+    assert.throws(() => parseChartPayload(payload), /Planet names/);
+  }
+});
+
 test('both adapters reject invalid optional vertex and inversion flags', () => {
   for (const invalid of [
     { vertex: Infinity },
