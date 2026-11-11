@@ -67,6 +67,9 @@ window.runPlanetFocusStyleProbe = () => {
   const dashed = scene.getObjectByName('chart-interaction-transit-connector') as THREE.Line | undefined;
   const dashedOuterConnector = !!dashed && dashed.material instanceof THREE.LineDashedMaterial &&
     (dashed.geometry as THREE.BufferGeometry).getAttribute('position').count === 2;
+  // Natal-only mode has no cross-theme relations; native tagged
+  // natal aspects are enough to color Sun and Moon.
+  controller.setRelations([]);
   controller.setNatalAspectPresentation('focused');
   controller.highlight({layer:'natal',name:'Sun'});
   const focusedNatalColored = start.getX(0)>0.95 && start.getY(0)>0.12 &&
