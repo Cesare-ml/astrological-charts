@@ -365,3 +365,30 @@ uniform. It verifies disposal counts without loading external artwork.
 Only use this helper for a scene whose assets are no longer referenced
 by a live renderer. This is a new regression fixture; actual
 Chromium/Firefox/Angular execution and GPU memory review remain merge gates.
+
+## Multiple simultaneous transits and stable guide colors
+
+In the **Transits** view, one natal planet may have links to several
+outer transiting planets, while one transiting planet may also be
+involved in several colored central aspect lines. The demo keeps
+one dashed spoke **per outer transit planet** to avoid overlapping
+dashes at identical longitudes. The guide inherits the color of its
+closest-orb visible relationship (deterministic ties), independently
+of input array order; the center retains **all original aspect colors**.
+This is solely a presentation rule, never a calculated astrological
+priority.
+
+For manual review, choose the synthetic natal Uranus: its linked
+transit Saturn and Sun must keep distinct guides. Choose transit
+Saturn: both of its different natal aspects remain visible in the
+center, but there is only one radial guide. The synthetic test
+`transit-spoke-harness.ts` reverses multi-aspect input order and also
+focuses a natal Sun linked to both Saturn and Neptune, in normal
+and mirrored wheel coordinates.
+
+The opt-in browser suite now saves
+`.local/demo-interaction-focus/natal-uranus-transits-dark.png`
+alongside its light-skin screenshot. Compare label legibility,
+bright/dark aspect colors, unchanged symbol sizes and one-guide-
+per-transit behavior. No private image files or automatic screenshot
+approval are included.
