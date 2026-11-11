@@ -52,3 +52,20 @@ synthetic charts. This extraction is a **prerequisite only** for future
 incremental coordinate patches; existing `disegnaScena()` still
 regenerates dependent planet labels, tick lines, houses and aspects.
 Moving glyph meshes alone would produce an incorrect chart.
+
+
+### Shared true longitude and collision-adjusted glyph angle
+
+`chartBodyRenderAngles()` is a pure rendering helper shared with
+`layoutChartGlyphLongitudes()`. The live wheel renderer uses its
+`tickDegrees` for original planet tick/leader lines and native
+true-angle metadata used by focused aspect guides. Its
+`glyphDisplacementDegrees` is used only to separate symbols to
+prevent visual overlap; `glyphDegrees` records the combined
+rendered direction for a future coordinated atomic update.
+Historical floating-point expression order is retained.
+
+The helper does not calculate ephemerides/aspects, change the
+source longitude, alter scene hierarchy or glyph sizing, or enable
+a partial coordinate patch yet. Run `npm run test:planet-layout`
+and visual parity in Chromium/Firefox before approval.

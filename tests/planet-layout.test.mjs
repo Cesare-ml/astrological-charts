@@ -88,3 +88,35 @@ test('one legacy cycle mutates its own working array and does not duplicate glyp
   assert.deepEqual(result,reference);
   assert.equal(new Set(result.map(x=>x.key)).size,3);
 });
+
+test('tick longitude and collision-adjusted glyph angle remain separate',()=>{
+  const cases=[
+    {original:13,shifted:20,asc:35,offset:0},
+    {original:359.9,shifted:366.9,asc:180,offset:90},
+    {original:-12,shifted:-5,asc:0,offset:-20},
+    {original:125.12345,shifted:125.12345,asc:200.456,offset:15.75},
+    {original:0,shifted:7,asc:359.9,offset:0}
+  ];
+  for(const {original,shifted,asc,offset} of cases){
+    const angles=layout.chartBodyRenderAngles(original,shifted,asc,offset);
+    const legacyTick=75-asc+15+original+offset;
+    const legacyOffset=shifted-original;
+    assert.equal(angles.tickDegrees,legacyTick,'tick/guide follows upstream longitude');
+    assert.equal(angles.glyphDisplacementDegrees,legacyOffset);
+    assert.equal(angles.glyphDegrees,legacyTick+legacyOffset);
+  }
+});
+
+test('collision cluster offsets symbols, never the true radial leaders',()=>{
+  const bodies={Sun:{longitude:4},Moon:{longitude:4},Mercury:{longitude:4.5},Venus:{longitude:9}};
+  const positions=layout.layoutChartGlyphLongitudes(bodies,'longitude');
+  const original=structuredClone(bodies);
+  let moved=0;
+  for(const [name,{longitude}] of Object.entries(bodies)){
+    const angles=layout.chartBodyRenderAngles(longitude,positions[name].longitude,71,0);
+    assert.equal(angles.tickDegrees,75-71+15+longitude);
+    if(angles.glyphDisplacementDegrees!==0)moved++;
+  }
+  assert.ok(moved>=1);
+  assert.deepEqual(bodies,original);
+});

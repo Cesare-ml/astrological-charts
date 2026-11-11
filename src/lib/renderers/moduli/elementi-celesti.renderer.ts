@@ -6,7 +6,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
 import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
-import { layoutChartGlyphLongitudes, relaxChartGlyphCycle } from '../planet-layout';
+import { chartBodyRenderAngles, layoutChartGlyphLongitudes, relaxChartGlyphCycle } from '../planet-layout';
 
 
 export class ElementiCelestiRender {
@@ -168,11 +168,14 @@ export class ElementiCelestiRender {
       } else {
         elRef = 'simboli-bianchi/elementi-celesti/'+nome+'.png';
       }
+      const bodyAngles = chartBodyRenderAngles(
+        elementiCelesti[nome][parametroDiRender],
+        elementiCelestiRenderPos[nome][parametroDiRender],
+        ascendente,degOffs
+      );
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
       el.scale.set(0.22*simboliScale,0.22*simboliScale,1);
-      el.rotateZ(THREE.MathUtils.degToRad(
-        elementiCelestiRenderPos[nome][parametroDiRender] - elementiCelesti[nome][parametroDiRender]
-      ));
+      el.rotateZ(THREE.MathUtils.degToRad(bodyAngles.glyphDisplacementDegrees));
       el.translateY(raggioEclittica);
 
       if(opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') {
@@ -202,18 +205,14 @@ export class ElementiCelestiRender {
         var raggioCerchietto = (raggioConfineAnelloPianeti - diametroCerchioInterno/2)/2;
         var cerchietto = OggettiSempliciRender.getCerchio(raggioCerchietto,coloreCerchio);
         cerchietto.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
+          bodyAngles.tickDegrees
         ));
         cerchietto.translateX(el.position.x);
         cerchietto.translateY(el.position.y);
         //cerchietto.translateY(el.position.y);
         var lineaCerchietto = OggettiSempliciRender.getLinea({x:0,y:0},el.position,"#888");
         lineaCerchietto.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
+          bodyAngles.tickDegrees
         ));
         group.add(cerchietto);
         group.add(lineaCerchietto);
@@ -274,9 +273,7 @@ export class ElementiCelestiRender {
 
         var lineaB = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
         lineaB.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
+          bodyAngles.tickDegrees
         ));
         group.add(lineaB);
       }
@@ -286,14 +283,12 @@ export class ElementiCelestiRender {
 
       var lineaA = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
       lineaA.rotateZ(THREE.MathUtils.degToRad(
-        75-ascendente+15
-        + elementiCelesti[nome][parametroDiRender]
-        + degOffs
+        bodyAngles.tickDegrees
       ));
       group.add(lineaA);
 
       el.translateY(-raggioEclittica);
-      var elDegDiRender = 75-ascendente+15 + elementiCelesti[nome][parametroDiRender] + degOffs;
+      var elDegDiRender = bodyAngles.tickDegrees;
       el.rotateZ(THREE.MathUtils.degToRad(elDegDiRender));
       el.translateY(raggioEclittica);
       el.rotation.z = 0;

@@ -816,3 +816,15 @@ and click-through. Camera changes are presentation-only: no planetary
 longitudes, houses, aspect orbs, glyph scales, colors, chart geometry or
 headless PNG code change. Browser interaction and screenshot parity in
 Chromium/Firefox remain required before merging.
+
+
+### Planet true-angle vs displaced symbol direction
+
+Every body has an original longitude for its leader tick and aspect
+radials, and a separate visual position for the overlapping glyph.
+`chartBodyRenderAngles()` now supplies both from one pure function
+to the existing wheel renderer, keeping the original two-pass
+7-degree separation logic unchanged. Future time-slider updates
+must update linked glyph/tick/overlay data atomically rather than
+moving meshes alone; `disegnaScena()` remains the safe full-refresh
+path when upstream positions change.

@@ -51,3 +51,26 @@ export function layoutChartGlyphLongitudes(
   for (const body of working) result[body.key] = {[coordinate]:body.deg};
   return result;
 }
+
+/**
+ * True zodiac angle and collision-shifted GLYPH angle are separate.
+ * Tick lines, central aspect endpoints and transit guides must always
+ * follow the original longitude, not the adjusted symbol position.
+ * Retain legacy expression order for exact floating-point compatibility.
+ */
+export interface ChartBodyRenderAngles {
+  readonly tickDegrees: number;
+  readonly glyphDisplacementDegrees: number;
+  readonly glyphDegrees: number;
+}
+export function chartBodyRenderAngles(
+  originalCoordinate: number,
+  collisionAdjustedCoordinate: number,
+  ascendant: number,
+  degreesOffset: number
+): ChartBodyRenderAngles {
+  const tickDegrees = 75 - ascendant + 15 + originalCoordinate + degreesOffset;
+  const glyphDisplacementDegrees = collisionAdjustedCoordinate - originalCoordinate;
+  return {tickDegrees,glyphDisplacementDegrees,
+    glyphDegrees:tickDegrees+glyphDisplacementDegrees};
+}
