@@ -3,7 +3,7 @@ import { Colori } from './_colori.config';
 import { chartAspectCirclePoint } from './planet-interaction.geometry';
 import {
   ChartAspectRelation, ChartPlanetRef, ChartPlanetInteractionEvent,
-  chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet
+  chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects
 } from './planet-interaction.types';
 
 /** Interactive canvas only. Export canvases remain independent of pointer state. */
@@ -81,7 +81,7 @@ export class PlanetInteractionController {
   }
 
   setRelations(relations: readonly ChartAspectRelation[]): void {
-    this.relations = relations.slice();
+    this.relations = snapshotChartAspects(relations);
     this.updateVisuals();
     const activeScene = this.scene;
     const revision = this.sceneRevision;
@@ -122,7 +122,8 @@ export class PlanetInteractionController {
   }
 
   private send(type: ChartPlanetInteractionEvent['type'], planet: ChartPlanetRef): void {
-    this.emit({ type, planet: { ...planet }, aspects: relatedChartAspects(planet, this.relations) });
+    // A mutable tooltip handler must not alter the controller's active links.
+    this.emit({ type, planet: { ...planet }, aspects: snapshotChartAspects(relatedChartAspects(planet, this.relations)) });
   }
 
   private pick(event: MouseEvent): ChartPlanetRef | null {

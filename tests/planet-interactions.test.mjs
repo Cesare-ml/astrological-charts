@@ -94,3 +94,31 @@ test('malformed upstream aspect endpoints never reach interactive glyph lookup',
   assert.deepEqual(api.relatedChartAspects(transitSaturn, malformed), [links[0]]);
   assert.deepEqual(api.relatedChartAspects(transitSun, malformed), [links[1]]);
 });
+
+
+test('aspect snapshots isolate mutating live hosts, callbacks and malformed rows', () => {
+  const mutable = {
+    from: {...natalSun}, to: {...transitSaturn}, type: 'quadrato', orb: 1.2,
+  };
+  const input = [mutable, null, {from: natalSun, to:null, type:'quadrato'},
+    {from:natalSun, to:transitSaturn, type:''}];
+  const stored = api.snapshotChartAspects(input);
+  assert.equal(stored.length, 1, 'only valid precomputed aspects are retained');
+  assert.notEqual(stored[0], mutable);
+  assert.notEqual(stored[0].from, mutable.from);
+  assert.notEqual(stored[0].to, mutable.to);
+  mutable.from.name = 'Moon';
+  mutable.to.name = 'Sun';
+  mutable.type = 'opposizione';
+  mutable.orb = 8;
+  input.push(links[1]);
+  assert.deepEqual(api.relatedChartAspects(natalSun, stored), [{
+    from: natalSun, to: transitSaturn, type: 'quadrato', orb: 1.2,
+  }], 'external mutations must not silently change the active aspect');
+  const outbound = api.snapshotChartAspects(api.relatedChartAspects(natalSun, stored));
+  outbound[0].from.name = 'Mercury';
+  outbound[0].type = 'trigono';
+  assert.equal(stored[0].from.name, 'Sun', 'event payload must not corrupt internal state');
+  assert.equal(stored[0].type, 'quadrato');
+  assert.deepEqual(api.snapshotChartAspects(null), [], 'untyped null API responses are ignored');
+});

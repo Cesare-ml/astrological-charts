@@ -9,6 +9,7 @@ import { GestoreImmagini } from '../renderers/gestore-immagini';
 import { stopSceneAnimations } from '../renderers/scene-animations';
 import { PlanetInteractionController } from '../renderers/planet-interaction.controller';
 import type { ChartAspectRelation, ChartPlanetInteractionEvent, ChartPlanetRef } from '../renderers/planet-interaction.types';
+import { snapshotChartAspects } from '../renderers/planet-interaction.types';
 //import {ElementiRender} from '../renderers/elementi.renderer';
 import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer';
 //import {OrePlanetarieRender} from '../renderers/ore-planetarie.renderer';
@@ -104,7 +105,7 @@ export class GraficoRenderService implements OnDestroy {
 
   /** Use aspect results calculated upstream; this renderer never computes transit orbs. */
   public setCrossChartAspects(aspects: readonly ChartAspectRelation[]): void {
-    this.crossChartAspects = aspects.slice();
+    this.crossChartAspects = snapshotChartAspects(aspects);
     this.planetController?.setRelations(this.crossChartAspects);
   }
 

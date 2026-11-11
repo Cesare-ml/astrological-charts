@@ -33,3 +33,16 @@ export function relatedChartAspects(
   return aspects.filter(a => !!a && isChartPlanetRef(a.from) && isChartPlanetRef(a.to)
     && (sameChartPlanet(planet, a.from) || sameChartPlanet(planet, a.to)));
 }
+
+/** Take a value snapshot at the host/controller boundary.
+ * Live transit state stores often reuse and mutate aspect objects in place;
+ * keeping their references would silently change active hover overlays.
+ * Drop malformed API records rather than allowing them into renderer state.
+ */
+export function snapshotChartAspects(aspects: readonly ChartAspectRelation[]): ChartAspectRelation[] {
+  if (!Array.isArray(aspects)) return [];
+  return aspects.filter(a => !!a && isChartPlanetRef(a.from) && isChartPlanetRef(a.to)
+    && typeof a.type === 'string' && a.type.length > 0).map(a => ({
+    ...a, from: { ...a.from }, to: { ...a.to }
+  }));
+}
