@@ -3,7 +3,8 @@ import { Colori } from './_colori.config';
 import { chartAspectCirclePoint } from './planet-interaction.geometry';
 import {
   ChartAspectRelation, ChartPlanetRef, ChartPlanetInteractionEvent,
-  chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects
+  chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects,
+  sameChartAspects
 } from './planet-interaction.types';
 
 /** Interactive canvas only. Export canvases remain independent of pointer state. */
@@ -81,7 +82,12 @@ export class PlanetInteractionController {
   }
 
   setRelations(relations: readonly ChartAspectRelation[]): void {
-    this.relations = snapshotChartAspects(relations);
+    const next = snapshotChartAspects(relations);
+    // Real-time hosts may resend identical precomputed links at high frequency.
+    // Avoid tearing down/reallocating WebGL overlay geometry and rendering when
+    // the semantic payload, including orb and optional fields, is unchanged.
+    if (sameChartAspects(this.relations, next)) return;
+    this.relations = next;
     this.updateVisuals();
     const activeScene = this.scene;
     const revision = this.sceneRevision;

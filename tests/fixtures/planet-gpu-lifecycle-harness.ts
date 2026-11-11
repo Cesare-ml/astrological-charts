@@ -9,6 +9,7 @@ declare global {
       stableTextures: boolean;
       stablePrograms: boolean;
       redrawsStable: boolean;
+      duplicateRelationsSkipRender: boolean;
       focusClearReleasesOverlays: boolean;
       teardownReleasesGpuGeometries: boolean;
       refreshCount: number;
@@ -60,7 +61,11 @@ window.runPlanetGpuLifecycleProbe = () => {
     }
   });
   let active = createScene();
-  const render = () => renderer.render(active,camera);
+  let renderCalls = 0;
+  const render = () => {
+    renderCalls++;
+    renderer.render(active,camera);
+  };
   const controller = new PlanetInteractionController(canvas,camera,()=>{},render);
   const focus = {layer:'natal' as const,name:'Sun'};
   const relation = (n: number) => [{
@@ -75,6 +80,7 @@ window.runPlanetGpuLifecycleProbe = () => {
   let stableTextures = true;
   let stablePrograms = true;
   let redrawsStable = true;
+  let duplicateRelationsSkipRender = false;
   let focusClearReleasesOverlays = false;
   let teardownReleasesGpuGeometries = false;
   const refreshCount = 90;
@@ -93,6 +99,17 @@ window.runPlanetGpuLifecycleProbe = () => {
       && !!active.getObjectByName('chart-interaction-aspect')
       && !!active.getObjectByName('chart-interaction-transit-connector');
     peakGeometries = focusedGeometries;
+
+    const initialOverlay = active.getObjectByName('chart-interaction-aspect');
+    const initialSpoke = active.getObjectByName('chart-interaction-transit-connector');
+    const beforeDuplicates = renderCalls;
+    for (let i = 0; i < 120; i++) {
+      controller.setRelations(relation(0));
+    }
+    duplicateRelationsSkipRender = renderCalls === beforeDuplicates
+      && renderer.info.memory.geometries === focusedGeometries
+      && active.getObjectByName('chart-interaction-aspect') === initialOverlay
+      && active.getObjectByName('chart-interaction-transit-connector') === initialSpoke;
 
     for (let i = 1; i <= refreshCount; i++) {
       controller.setRelations(relation(i)); // requestRender() hits real WebGL
@@ -136,7 +153,7 @@ window.runPlanetGpuLifecycleProbe = () => {
   }
   return {
     activeOverlayRendered,stableGpuGeometries,stableTextures,stablePrograms,
-    redrawsStable,focusClearReleasesOverlays,teardownReleasesGpuGeometries,
+    redrawsStable,duplicateRelationsSkipRender,focusClearReleasesOverlays,teardownReleasesGpuGeometries,
     refreshCount,redrawCount,baselineGeometries,peakGeometries,finalGeometries
   };
 };

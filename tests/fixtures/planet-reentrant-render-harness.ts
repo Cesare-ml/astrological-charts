@@ -86,7 +86,10 @@ window.runPlanetReentrantRenderProbe = () => {
 
     const beforeDestroy = renders;
     destroyOnUpdate = true;
-    controller.setRelations([]); // emits 'update' for hovered Moon
+    controller.setRelations([{ // A changed payload emits 'update' for hovered Moon.
+      from:{layer:'natal',name:'Moon'},to:{layer:'transit',name:'Sun'},
+      type:'quadrato',orb:1.2
+    }]);
     const updateDestroySkipsOldRender = events.at(-1)?.type === 'update'
       && renders === beforeDestroy;
     const eventCountAfterDestroy = events.length;

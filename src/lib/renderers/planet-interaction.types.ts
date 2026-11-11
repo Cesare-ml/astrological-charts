@@ -46,3 +46,33 @@ export function snapshotChartAspects(aspects: readonly ChartAspectRelation[]): C
     ...a, from: { ...a.from }, to: { ...a.to }
   }));
 }
+
+
+/**
+ * Cheap equality for consecutive, validated aspect snapshots.
+ * Compare only the known public DTO fields. When an untyped host supplies
+ * extra metadata, conservatively force a refresh rather than hiding changes
+ * to a tooltip or custom event consumer.
+ */
+export function sameChartAspects(
+  previous: readonly ChartAspectRelation[], next: readonly ChartAspectRelation[]
+): boolean {
+  if (previous.length !== next.length) return false;
+  const knownRelationKeys = ['from', 'to', 'type', 'orb'];
+  const knownEndpointKeys = ['layer', 'name'];
+  for (let i = 0; i < previous.length; i++) {
+    const a = previous[i], b = next[i];
+    if (!a || !b || !isChartPlanetRef(a.from) || !isChartPlanetRef(a.to) ||
+        !isChartPlanetRef(b.from) || !isChartPlanetRef(b.to)) return false;
+    const knownFieldsOnly = (value: object, keys: readonly string[]) =>
+      Object.keys(value).every(key => keys.includes(key));
+    if (![a, b].every(relation => knownFieldsOnly(relation, knownRelationKeys)) ||
+        ![a.from, a.to, b.from, b.to].every(ref => knownFieldsOnly(ref, knownEndpointKeys))) {
+      return false;
+    }
+    if (!sameChartPlanet(a.from, b.from) || !sameChartPlanet(a.to, b.to) ||
+        a.type !== b.type || !Object.is(a.orb, b.orb) ||
+        Object.hasOwn(a, 'orb') !== Object.hasOwn(b, 'orb')) return false;
+  }
+  return true;
+}

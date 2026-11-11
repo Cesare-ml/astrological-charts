@@ -348,3 +348,23 @@ four-axis selection test, plus no-enlargement checks in the pointer,
 50-redraw, and focus palette harnesses. Visual comparison and
 the new full test run on the owner's Windows installation are pending.
 
+
+
+## Idempotent live aspect updates
+
+High-frequency frontend stores may deliver the same relation list repeatedly.
+`PlanetInteractionController.setRelations()` now compares a validated,
+defensively copied incoming snapshot with the current snapshot before
+repainting. **Identical links preserve the existing overlay objects and GPU
+buffers and emit no redundant hover `update` or render request.** Differences
+in ordered endpoints/layers, aspect type, orb (including optional-property
+presence), or list order still update. If a host adds unrecognized metadata
+to a relation or endpoint, equality is conservatively disabled so event
+consumers are not left with stale custom data. Astronomy, orb calculations,
+chart geometry and the public setter signature are unchanged.
+
+`tests/planet-interactions.test.mjs` covers semantic equality and changed
+payload cases. The real WebGL probe additionally sends 120 repeated identical
+relations and asserts unchanged active line identity, geometric resource
+counts and render-request counts before resuming its changed-aspect stress
+sequence. Browser validation remains a merge gate.

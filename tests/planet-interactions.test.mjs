@@ -122,3 +122,43 @@ test('aspect snapshots isolate mutating live hosts, callbacks and malformed rows
   assert.equal(stored[0].type, 'quadrato');
   assert.deepEqual(api.snapshotChartAspects(null), [], 'untyped null API responses are ignored');
 });
+
+test('identical aspect snapshots do not require a redraw, but genuine changes do', () => {
+  const current = api.snapshotChartAspects([
+    {from: natalSun, to: transitSaturn, type:'quadrato', orb:1.25},
+    {from: transitSun, to: natalMoon, type:'trigono'}
+  ]);
+  const copy = api.snapshotChartAspects(current);
+  assert.equal(api.sameChartAspects(current, copy), true);
+  assert.equal(api.sameChartAspects([], []), true);
+  assert.equal(api.sameChartAspects(current, [...copy].reverse()), false);
+  assert.equal(api.sameChartAspects(current, copy.slice(0, 1)), false);
+  assert.equal(api.sameChartAspects(current, [
+    {...copy[0], orb:1.2}, copy[1]
+  ]), false, 'orb changes must update the live frontend');
+  assert.equal(api.sameChartAspects(current, [
+    {...copy[0], type:'opposizione'}, copy[1]
+  ]), false, 'aspect type changes must update colored overlays');
+  assert.equal(api.sameChartAspects(current, [
+    {...copy[0], from:transitSun}, copy[1]
+  ]), false, 'layer-aware identity changes must not be ignored');
+  assert.equal(api.sameChartAspects(current, [
+    {...copy[0], from:copy[0].to, to:copy[0].from}, copy[1]
+  ]), false, 'endpoint order changes also update host event payloads');
+  assert.equal(api.sameChartAspects(current, [
+    {...copy[0], orb: undefined}, copy[1]
+  ]), false, 'present-but-undefined orb differs from an actual value');
+  assert.equal(api.sameChartAspects(
+    [{from:natalSun,to:transitSaturn,type:'quadrato'}],
+    [{from:natalSun,to:transitSaturn,type:'quadrato',orb:undefined}]
+  ), false, 'preserve optional property shape for typed event consumers');
+  assert.equal(api.sameChartAspects(current, [
+    {...copy[0], debugNote:'changed-by-host'},copy[1]
+  ]), false, 'unknown host metadata disables the optimization');
+  assert.equal(api.sameChartAspects(current, [
+    {...copy[0],from:{...natalSun,source:'custom'}},copy[1]
+  ]), false, 'unknown endpoint metadata must also force an update');
+  assert.equal(api.sameChartAspects(current, [
+    {...copy[0],to:null},copy[1]
+  ]), false, 'malformed endpoints never match a valid snapshot');
+});
