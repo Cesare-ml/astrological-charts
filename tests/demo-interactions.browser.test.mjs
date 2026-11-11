@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { chromium, firefox } from 'playwright-core';
 import { build } from 'esbuild';
 
@@ -44,6 +45,12 @@ test('demo frontend focuses natal and transit planets in both directions', {time
     assert.equal(await page.locator('[data-testid=aspect-match]').count(), 2);
     assert.match(await page.locator('.aspect-list').textContent(), /natal Uranus/);
     assert.match(await page.locator('.aspect-list').textContent(), /natal Venus/);
+    const screenshots = '.local/demo-interaction-focus';
+    mkdirSync(screenshots,{recursive:true});
+    await page.waitForTimeout(100);
+    await page.locator('[data-testid=chart]').screenshot({
+      path:join(screenshots,'transit-saturn-light.png')
+    });
     await page.selectOption('#aspect-filter', 'hard');
     assert.equal(await page.locator('[data-testid=aspect-match]').count(), 1);
     assert.match(await page.locator('.aspect-list').textContent(), /opposizione/);
@@ -56,6 +63,10 @@ test('demo frontend focuses natal and transit planets in both directions', {time
     assert.equal(await page.locator('[data-testid=aspect-match]').count(), 2);
     assert.match(await page.locator('.aspect-list').textContent(), /transit Saturn/);
     assert.match(await page.locator('.aspect-list').textContent(), /transit Sun/);
+    await page.waitForTimeout(100);
+    await page.locator('[data-testid=chart]').screenshot({
+      path:join(screenshots,'natal-uranus-with-transits-light.png')
+    });
 
     await page.selectOption('#skin', 'dark');
     await ready(page);
@@ -83,10 +94,20 @@ test('natal focus switch selects Sun by default and preserves selected planets',
     assert.equal(await toggle.isChecked(), false);
     await toggle.check();
     assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Sun');
+    const screenshots = '.local/demo-interaction-focus';
+    mkdirSync(screenshots,{recursive:true});
+    await page.waitForTimeout(100);
+    await page.locator('[data-testid=chart]').screenshot({
+      path:join(screenshots,'natal-sun-focus-light.png')
+    });
     await page.getByRole('button', {name:'Highlight natal Moon'}).click();
     assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Moon');
     await toggle.uncheck();
     assert.equal(await page.locator('[data-testid=planet-selection]').textContent(), 'natal:Moon');
+    await page.waitForTimeout(100);
+    await page.locator('[data-testid=chart]').screenshot({
+      path:join(screenshots,'natal-all-aspects-light.png')
+    });
     await page.selectOption('#mode', 'transits');
     await ready(page);
     assert.equal(await page.locator('#focus-aspects').count(), 0);
