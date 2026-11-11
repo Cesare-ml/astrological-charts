@@ -102,7 +102,10 @@ window.runPlanetPointerProbe = () => {
     && event.aspects.length === 1);
   controller.highlight({layer: 'transit', name: 'Saturn'});
   canvas.dispatchEvent(new PointerEvent('pointerleave', {bubbles: true}));
-  const transitPinRestored = transit.scale.x > 1 && natal.scale.x === 1;
+  // The pinned transit remains the primary focus; its natal partner is
+  // correctly highlighted at the smaller related-body scale (1.18).
+  const transitPinRestored = transit.scale.x > natal.scale.x
+    && transit.scale.x > 1 && natal.scale.x > 1;
   const beforeRelationsAfterLeave = events.length;
   controller.setRelations([]);
   const noRefreshAfterLeave = events.length === beforeRelationsAfterLeave
