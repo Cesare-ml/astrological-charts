@@ -37,6 +37,23 @@ test('aspect relationships work from either end without mixing layers', () => {
   assert.deepEqual(api.relatedChartAspects({ layer: 'synastry', name: 'Sun' }, links), []);
 });
 
+test('AS, DS, MC and IC are layer-aware aspect endpoints, not planets with invented longitudes', () => {
+  const angleNames = ['AS', 'DS', 'MC', 'IC'];
+  for (const angle of angleNames) {
+    const natalAngle = {layer:'natal', name:angle};
+    const transitAngle = {layer:'transit', name:angle};
+    const relation = {
+      from: {layer:'transit', name:'Mercury'},
+      to: natalAngle, type:'semiquadrato', orb:1
+    };
+    assert.equal(api.isChartPlanetRef(natalAngle), true);
+    assert.notEqual(api.chartPlanetKey(natalAngle), api.chartPlanetKey(transitAngle));
+    assert.deepEqual(api.relatedChartAspects(natalAngle, [relation]), [relation]);
+    assert.deepEqual(api.relatedChartAspects(transitAngle, [relation]), []);
+    assert.deepEqual(api.relatedChartAspects(relation.from, [relation]), [relation]);
+  }
+});
+
 test('central aspect endpoints use exact longitude angles, not shifted glyph centers', () => {
   const start = geometry.chartAspectCirclePoint(0, 1.25);
   assert.deepEqual(start, { x: 0, y: 1.25 });
