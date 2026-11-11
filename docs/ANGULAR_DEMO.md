@@ -239,3 +239,26 @@ Run `npm run test:planet-interactions` and the Playwright
 manually. The prior Windows 6-test suite passed; the new changes
 require a separate run before claiming completion.
 
+
+## Inspect double-layer natal focus rendering (draft PR #22)
+
+In the **Natal chart** mode, with `Focus aspects` initially off,
+all natal aspect lines should retain their original VirgoStars colors
+and styles. Enable **Focus aspects**: the full natal aspect picture
+stays softly gray, with **colored copies of only the selected Sun's
+actual native aspect strokes above it**. Click another planet or one
+of the four angles (AS/DS/MC/IC): the colored overlay changes, but
+the underlying natal aspects remain gray. Turning the switch off
+restores all original native stroke colors with no duplicate lines.
+The glyphs must never enlarge.
+
+The controller duplicates only already-rendered native lines (with
+their current solid, dashed or dotted geometry). Its copies have
+independent disposable geometry/material; no calculation, texture
+or approved private asset is copied into the repository. The
+`planet-focus-style-harness.ts` browser probe now checks this
+foreground-versus-background arrangement and 30 repeat focus cycles.
+Run `npm run test:demo-interactions` with both local servers on
+4177/4200, then manually examine the visual results. The change
+is **unverified by the owner** until those checks are rerun.
+
