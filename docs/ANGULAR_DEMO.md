@@ -143,3 +143,52 @@ It checks frontend selection by layer, matching synthetic relations, mode reset,
 The browser interaction harness also exercises live updates of the upstream aspect array while a natal glyph stays hovered, checks the event carries the new orb/type, asserts exact central-circle overlay endpoints, and verifies that only a pinned planet stays highlighted after the pointer leaves and the host replaces its links.
 
 In **Transits** mode, the interaction panel has a synthetic **Example transit aspect filter** with **All supplied aspects** and **Squares and oppositions only**. This filters the precomputed fixture links supplied to `setCrossChartAspects`, *not* the planetary positions or orb computation. The inspector and the canvas overlay update without rebuilding the scene; pinned selection is kept. It is a small reproducible example of how a real Angular frontend can replace aspect results from `astrological-functions` or its backend.
+
+## Owner-requested color focus and persistent hover — implementation in progress
+
+The 2026-11-11 reference requested a monochrome-by-skin planet wheel
+until a planet is focused, persistent mouse-hover selection, colored
+selected planets and aspect partners, gray natal aspects under highlighted
+transit aspects, and dashed extensions toward involved outer transit
+planets. The supplied screenshot is a **behavioral reference** and is
+not bundled or licensed as a renderer asset.
+
+The current draft includes these steps:
+
+1. Choose **Transits**. Existing natal aspect lines should appear
+   in neutral gray. Point at **transit Saturn** directly on the wheel:
+   it becomes selected without clicking and remains selected when the
+   cursor leaves. Saturn and its linked natal planets become colored;
+   unrelated planet glyphs retain their original monochrome skin color.
+   The focused cross-theme aspect lines appear in color, with dashed
+   guides toward the outer transit ring.
+2. Change the selection to a **natal** planet by hovering or pressing its
+   keyboard-accessible planet button. Verify the colored links work in
+   both directions and keep `natal:Sun` distinct from `transit:Sun`.
+3. Choose **Natal chart** (no outer transits). The natal aspect lines
+   normally retain their traditional colors. Enable **Focus aspects**:
+   if nothing else was selected, **Sun** is selected automatically;
+   other natal aspect lines become gray, the Sun's own natal aspects
+   keep their colored type. Select another natal planet to transfer
+   the highlight. Turn the switch off to restore the normal palette.
+4. Change between **light** and **dark**. Confirm nonfocused planet
+   symbols remain black/dark or white/light as appropriate and that
+   the selected body and partners restore their colors correctly.
+   Zoom, redraw and switch modes; no tint/dash should leak into a
+   different chart or into PNG/JPEG exported without an explicit focus
+   option.
+
+Run `npm run test:planet-interactions`, `npm run check:types`,
+`npm run build:demo`, and with the local asset and demo servers
+running, `npm run test:demo-interactions`. The new browser test includes
+a dedicated, purely synthetic Three.js color-and-dash probe plus the
+Sun-default focus switch. Actual Windows Chrome/Firefox results and
+pixel-level parity against the owner's reference are **pending**.
+
+**Remaining refinement before visual sign-off:** exact stroke widths,
+line layering (draw focused natal aspects over rather than merely recolor
+the existing gray geometry), dashed line endpoints relative to
+collision-shifted labels, color contrast in all seven skins, tooltip
+and touch workflows, and real upstream transit aspect inputs. No new
+astronomical/orb computations are performed in this renderer.
+
