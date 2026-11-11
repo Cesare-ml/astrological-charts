@@ -54,6 +54,33 @@ test('AS, DS, MC and IC are layer-aware aspect endpoints, not planets with inven
   }
 });
 
+test('shared transit spoke chooses closest orb independent of link order', () => {
+  const loose = {from:natalSun, to:transitSaturn, type:'opposizione', orb:4};
+  const tight = {from:natalMoon, to:transitSaturn, type:'trigono', orb:0.5};
+  const pick = api.preferredTransitConnectorAspect;
+  assert.equal(pick(loose,tight), tight);
+  assert.equal(pick(tight,loose), tight, 'reordering relations cannot change the spoke');
+  assert.equal(pick({...loose,orb:undefined},tight),tight);
+  assert.equal(pick({...loose,orb:NaN},tight),tight);
+  assert.equal(pick({...loose,orb:Infinity},tight),tight);
+  assert.equal(pick({...loose,orb:-0.25},tight).type, 'opposizione',
+    'negative/signed orbs should be ranked by absolute angular distance');
+
+  const square = {from:natalMoon,to:transitSaturn,type:'quadrato',orb:2};
+  const trine = {from:natalSun,to:transitSaturn,type:'trigono',orb:2};
+  assert.equal(pick(square,trine).type, 'quadrato');
+  assert.equal(pick(trine,square).type, 'quadrato',
+    'ties choose deterministic type, not source list order');
+  const unknownA = {...square,orb:undefined};
+  const unknownB = {...trine,orb:undefined};
+  assert.equal(pick(unknownA,unknownB).type,'quadrato');
+  assert.equal(pick(unknownB,unknownA).type,'quadrato');
+  const namedA = {from:natalSun,to:transitSaturn,type:'trigono'};
+  const namedB = {from:natalMoon,to:transitSaturn,type:'trigono'};
+  assert.equal(pick(namedA,namedB),namedB);
+  assert.equal(pick(namedB,namedA),namedB);
+});
+
 test('central aspect endpoints use exact longitude angles, not shifted glyph centers', () => {
   const start = geometry.chartAspectCirclePoint(0, 1.25);
   assert.deepEqual(start, { x: 0, y: 1.25 });
