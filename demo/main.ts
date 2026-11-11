@@ -92,7 +92,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
 
   private readonly onPlanetInteraction = (event: ChartPlanetInteractionEvent): void => {
     this.lastPlanetEvent = event;
-    if (event.type === 'enter') this.hoveredPlanet = event.planet;
+    if (event.type === 'enter' || (event.type === 'update'
+      && sameChartPlanet(this.hoveredPlanet, event.planet))) this.hoveredPlanet = event.planet;
     if (event.type === 'leave' && sameChartPlanet(this.hoveredPlanet, event.planet)) this.hoveredPlanet = null;
     if (event.type === 'click') {
       this.selectedPlanet = event.planet;

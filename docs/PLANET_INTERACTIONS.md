@@ -14,10 +14,12 @@ const links: ChartAspectRelation[] = [{
 
 renderer.setCrossChartAspects(links);
 renderer.setPlanetInteractionListener(event => {
-  // event.type: enter / leave / click
+  // event.type: enter / leave / click / update
   // event.planet: { layer, name }
   // event.aspects: links involving that exact planet and layer
-  if (event.type === 'enter') showTooltip(event.planet, event.aspects);
+  if (event.type === 'enter' || event.type === 'update') {
+    showTooltip(event.planet, event.aspects);
+  }
   if (event.type === 'leave') hideTooltip();
   if (event.type === 'click') renderer.highlightPlanet(event.planet);
 });
@@ -25,6 +27,8 @@ renderer.highlightPlanet({ layer: 'natal', name: 'Sun' }); // frontend button
 renderer.highlightPlanet(null); // remove pinned selection
 // On host component teardown: renderer.setPlanetInteractionListener(null);
 ```
+
+**Live aspect refresh:** if the host calls `setCrossChartAspects` while the pointer still hovers a planet, the renderer updates its lines and emits `{ type: 'update', planet, aspects }` with the new relationships. This is **not** another `enter`, and it is not sent for a pinned-only selection after the pointer leaves. Hosts should update their tooltip on both `enter` and `update`. A programmatic pin remains in force until cleared with `highlightPlanet(null)`.
 
 **Behavior:** hover natal Sun shows only its supplied transit partners and temporary connector lines; hover a transit planet does the reverse. An explicit selection is retained after mouse leave. The receiver decides whether a click should pin a selection or open a detail pane. Missing links means just the selected planet is enlarged. Planet symbols are tagged by layer when built (including synastry); raycasting checks only those meshes and never decorative rings. Hit testing follows camera zoom/resize. Scene replacement removes overlays and restores original scaling before disposal. No extra pointer listeners in offscreen PNG/Node/Python exports.
 

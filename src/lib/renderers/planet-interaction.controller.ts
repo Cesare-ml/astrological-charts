@@ -59,7 +59,12 @@ export class PlanetInteractionController {
   setRelations(relations: readonly ChartAspectRelation[]): void {
     this.relations = relations.slice();
     this.updateVisuals();
-    if (this.scene) this.requestRender();
+    if (this.scene) {
+      // The cursor may remain motionless while the host receives new aspect data.
+      // Notify listeners without fabricating a second pointer-enter transition.
+      if (this.hovered) this.send('update', this.hovered);
+      this.requestRender();
+    }
   }
 
   highlight(planet: ChartPlanetRef | null): void {

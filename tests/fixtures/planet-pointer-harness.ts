@@ -12,6 +12,9 @@ declare global {
       removedListeners: boolean;
       transitPinRestored: boolean;
       centralOverlay: boolean;
+      centralOverlayGeometry: boolean;
+      refreshedWhileHovered: boolean;
+      noRefreshAfterLeave: boolean;
       destroyedRestoredScale: boolean;
     };
   }
@@ -67,7 +70,24 @@ window.runPlanetPointerProbe = () => {
   const natalHovered = events[0]?.type === 'enter'
     && events[0].planet.layer === 'natal' && events[0].planet.name === 'Sun'
     && events[0].aspects.length === 1;
-  const centralOverlay = scene.getObjectByName('chart-interaction-aspect') !== undefined;
+  const overlay = scene.getObjectByName('chart-interaction-aspect') as THREE.Line | undefined;
+  const centralOverlay = overlay !== undefined;
+  const coordinates = (overlay?.geometry as THREE.BufferGeometry | undefined)?.getAttribute('position') as THREE.BufferAttribute | undefined;
+  // 0° natal endpoint (r,0), 90° transit endpoint (0,r); glyphs sit at x=±0.4.
+  const centralOverlayGeometry = !!coordinates && coordinates.count === 2
+    && Math.abs(coordinates.getX(0) - 0.6) < 1e-5
+    && Math.abs(coordinates.getY(0)) < 1e-5
+    && Math.abs(coordinates.getX(1)) < 1e-5
+    && Math.abs(coordinates.getY(1) - 0.6) < 1e-5;
+  controller.setRelations([{
+    from: {layer: 'natal', name: 'Sun'},
+    to: {layer: 'transit', name: 'Saturn'},
+    type: 'trigono', orb: 0.5
+  }]);
+  const updated = events.at(-1);
+  const refreshedWhileHovered = updated?.type === 'update'
+    && updated.planet.layer === 'natal' && updated.aspects.length === 1
+    && updated.aspects[0].type === 'trigono' && updated.aspects[0].orb === 0.5;
   send(-0.4, 0, 'click');
   const clickEmitted = events.some(event => event.type === 'click' && event.planet.name === 'Sun');
   send(0.4, 0, 'pointermove');
@@ -77,6 +97,11 @@ window.runPlanetPointerProbe = () => {
   controller.highlight({layer: 'transit', name: 'Saturn'});
   canvas.dispatchEvent(new PointerEvent('pointerleave', {bubbles: true}));
   const transitPinRestored = transit.scale.x > 1 && natal.scale.x === 1;
+  const beforeRelationsAfterLeave = events.length;
+  controller.setRelations([]);
+  const noRefreshAfterLeave = events.length === beforeRelationsAfterLeave
+    && scene.getObjectByName('chart-interaction-aspect') === undefined
+    && transit.scale.x > 1;
   const simplifiedEvents = events.map(e => ({
     type: e.type, key: e.planet.layer + ':' + e.planet.name, aspects: e.aspects.length
   }));
@@ -94,5 +119,6 @@ window.runPlanetPointerProbe = () => {
   });
   canvas.remove();
   return {events: simplifiedEvents, natalHovered, transitHovered, clickEmitted,
-    removedListeners, transitPinRestored, centralOverlay, destroyedRestoredScale};
+    removedListeners, transitPinRestored, centralOverlay, centralOverlayGeometry,
+    refreshedWhileHovered, noRefreshAfterLeave, destroyedRestoredScale};
 };

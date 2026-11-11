@@ -8,7 +8,7 @@ export interface ChartAspectRelation {
   orb?: number;
 }
 export interface ChartPlanetInteractionEvent {
-  type: 'enter' | 'leave' | 'click';
+  type: 'enter' | 'leave' | 'click' | 'update';
   planet: ChartPlanetRef;
   aspects: readonly ChartAspectRelation[];
 }

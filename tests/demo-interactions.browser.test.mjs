@@ -84,9 +84,12 @@ test('Three.js pointer controller emits layer-aware events and restores pinned f
     assert.equal(result.transitHovered, true, JSON.stringify(result));
     assert.equal(result.clickEmitted, true, JSON.stringify(result));
     assert.equal(result.centralOverlay, true, JSON.stringify(result));
+    assert.equal(result.centralOverlayGeometry, true, JSON.stringify(result));
+    assert.equal(result.refreshedWhileHovered, true, JSON.stringify(result));
+    assert.equal(result.noRefreshAfterLeave, true, JSON.stringify(result));
     assert.equal(result.transitPinRestored, true, JSON.stringify(result));
     assert.equal(result.destroyedRestoredScale, true, JSON.stringify(result));
     assert.equal(result.removedListeners, true, JSON.stringify(result));
-    assert.deepEqual(result.events.map(e => e.type), ['enter', 'click', 'leave', 'enter', 'leave']);
+    assert.deepEqual(result.events.map(e => e.type), ['enter', 'update', 'click', 'leave', 'enter', 'leave']);
   } finally { await page.close(); await browser.close(); }
 });

@@ -139,3 +139,5 @@ npm run test:demo-interactions
 ```
 
 It checks frontend selection by layer, matching synthetic relations, mode reset, and a Three.js raycaster probe for a tagged mesh including enter/click/leave and event payloads. Full Chrome/Firefox visual, accessibility, WebGL lifecycle, export parity and production consumer checks remain required before merge.
+
+The browser interaction harness also exercises live updates of the upstream aspect array while a natal glyph stays hovered, checks the event carries the new orb/type, asserts exact central-circle overlay endpoints, and verifies that only a pinned planet stays highlighted after the pointer leaves and the host replaces its links.
