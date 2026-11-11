@@ -186,3 +186,27 @@ test('invalid planet identifiers take precedence over malformed planet values in
     assert.throws(() => parseChartPayload(payload), /Planet names/);
   }
 });
+
+
+test('angular normalizes signed angular inputs while CLI preserves source values', () => {
+  const natal = chart();
+  natal.ascendant = -30;
+  natal.midheaven = 725;
+  natal.vertex = -450;
+  natal.houseCusps = Array.from({ length: 12 }, (_, i) => -360 + i * 30);
+  natal.planets = { Sun: { longitude: -725, latitude: -0 } };
+  const payload = { schemaVersion: 1, natal, mode: 'natal' };
+  const before = structuredClone(payload);
+  assert.equal(validateChartPayloadV1(payload), payload);
+  const parsed = parseChartPayload(payload);
+  assert.equal(parsed.natal.as, 330);
+  assert.equal(parsed.natal.ds, 150);
+  assert.equal(parsed.natal.mc, 5);
+  assert.equal(parsed.natal.ic, 185);
+  assert.equal(parsed.natal.houses.egizia.vertex, 270);
+  assert.deepEqual(parsed.natal.houses.egizia.house,
+    Array.from({ length: 12 }, (_, i) => i * 30));
+  assert.equal(parsed.natal.planets.Sun.longitude, 355);
+  assert.ok(Object.is(parsed.natal.planets.Sun.latitude, -0));
+  assert.deepEqual(payload, before, 'neither adapter may mutate caller coordinates');
+});
