@@ -11,6 +11,10 @@ import {
 export class PlanetInteractionController {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
+  private readonly projectedGlyphCenter = new THREE.Vector3();
+  // Rebuild hit-test targets only when setScene reindexes a chart, never on
+  // every pointermove (which may arrive hundreds of times per second).
+  private pickTargets: THREE.Mesh[] = [];
   private scene: THREE.Scene | null = null;
   private sceneRevision = 0;
   private glyphs = new Map<string, THREE.Mesh[]>();
@@ -55,6 +59,7 @@ export class PlanetInteractionController {
     this.canvas.style.cursor = this.cursor;
     this.scene = null;
     this.glyphs.clear();
+    this.pickTargets = [];
     this.natalAspectTags = [];
     this.aspectRing = null;
     if (leaving) this.send('leave', leaving);
@@ -82,6 +87,7 @@ export class PlanetInteractionController {
       const list = this.glyphs.get(key) ?? [];
       list.push(obj);
       this.glyphs.set(key, list);
+      this.pickTargets.push(obj);
     });
     this.updateVisuals();
   }
@@ -128,6 +134,7 @@ export class PlanetInteractionController {
     this.scene = null;
     this.hovered = null;
     this.glyphs.clear();
+    this.pickTargets = [];
     this.natalAspectTags = [];
     this.aspectRing = null;
   }
@@ -152,15 +159,14 @@ export class PlanetInteractionController {
     this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(this.pointer, this.camera);
     // Only tagged planet glyphs: decorative meshes never intercept a hit.
-    const targets = [...this.glyphs.values()].flat();
-    const hits = this.raycaster.intersectObjects(targets, false);
+    const hits = this.raycaster.intersectObjects(this.pickTargets, false);
     if (!hits.length) return null;
     // When close glyph rectangles overlap at the same depth, Three.js picks
     // the earliest traversed mesh. Prefer the symbol whose projected CENTER
     // is nearest to the pointer, but never select a farther depth layer over
     // a frontmost one. This works after camera zoom and chart mirroring.
     const nearestDepth = hits[0].distance;
-    const center = new THREE.Vector3();
+    const center = this.projectedGlyphCenter;
     let best = hits[0];
     let bestDistanceSquared = Infinity;
     for (const hit of hits) {

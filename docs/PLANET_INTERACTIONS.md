@@ -368,3 +368,23 @@ payload cases. The real WebGL probe additionally sends 120 repeated identical
 relations and asserts unchanged active line identity, geometric resource
 counts and render-request counts before resuming its changed-aspect stress
 sequence. Browser validation remains a merge gate.
+
+
+## Cached per-scene hit targets for frequent pointer moves
+
+The interactive controller now indexes a flat `pickTargets` array together
+with its existing layer-qualified planet lookup map during `setScene()`.
+`Raycaster.intersectObjects` reuses this array without re-flattening the
+planet map on every mouse movement. Projected-center comparison also reuses
+a private `THREE.Vector3` scratch buffer. On scene re-index, null scene,
+or destroy, the old hit-target array is released so obsolete meshes cannot
+be picked or retained accidentally. Camera/world matrices are still updated
+before each raycast, preserving zoom, transforms and southern-hemisphere
+geometry; overlap/depth priority and the no-enlargement rule are unchanged.
+
+The synthetic browser picking harness sends 250 alternating pointer moves
+and checks that the cached array identity stays stable, then adds a new
+planet to the same scene and checks `setScene` refreshes the array. It
+also verifies the cache is empty after teardown. These are source/runtime
+behavior checks, **not** a measured FPS improvement; profile the original
+renderer and GPU usage on Windows before claiming a speedup.

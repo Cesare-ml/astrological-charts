@@ -10,6 +10,9 @@ interface PickingProbe {
   outsideClickIgnored: boolean;
   noStaleUpdateDuringLeave: boolean;
   frontLayerWins: boolean;
+  pickTargetCacheStable: boolean;
+  pickTargetCacheReindexed: boolean;
+  pickTargetCacheReleased: boolean;
   resourcesRestored: boolean;
 }
 
@@ -64,12 +67,21 @@ window.runPlanetPickingProbe = (): PickingProbe => {
   };
   try {
     controller.setScene(scene);
+    // Private performance invariant: the same indexed mesh array is reused
+    // across mouse moves; no flatten/allocation on the hot path.
+    const initialTargets = (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets;
     pointer(0.09);
     const nearerRightSelected = events.at(-1)?.type === 'enter'
       && events.at(-1)?.planet.name === 'Moon';
     pointer(-0.09);
     const nearerLeftSelected = events.at(-1)?.type === 'enter'
       && events.at(-1)?.planet.name === 'Sun';
+    for (let i = 0; i < 250; i++) {
+      pointer(i % 2 === 0 ? 0.09 : -0.09);
+    }
+    const pickTargetCacheStable = initialTargets ===
+      (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets
+      && initialTargets.length === 3;
     camera.zoom = 1.5;
     camera.updateProjectionMatrix();
     pointer(0.09);
@@ -94,16 +106,23 @@ window.runPlanetPickingProbe = (): PickingProbe => {
     const front = glyph('Venus', -0.10, 0.12);
     // Index the new glyph. A fresh pointer ray should prioritize its depth.
     controller.setScene(scene);
+    const updatedTargets = (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets;
+    const pickTargetCacheReindexed = updatedTargets !== initialTargets
+      && updatedTargets.length === 4 && updatedTargets.includes(front)
+      && !initialTargets.includes(front);
     pointer(0.08);
     const frontLayerWins = events.at(-1)?.type === 'enter'
       && events.at(-1)?.planet.name === 'Venus';
     controller.destroy();
+    const pickTargetCacheReleased =
+      (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets.length === 0;
     const resourcesRestored = left.scale.x === 1 && right.scale.x === 1
       && front.scale.x === 1 && offscreen.scale.x === 1;
     return {
       nearerRightSelected, nearerLeftSelected, zoomedRightSelected,
       outsideCanvasClearsHover, outsideClickIgnored, noStaleUpdateDuringLeave,
-      frontLayerWins, resourcesRestored
+      frontLayerWins, pickTargetCacheStable, pickTargetCacheReindexed,
+      pickTargetCacheReleased, resourcesRestored
     };
   } finally {
     controller.destroy();
