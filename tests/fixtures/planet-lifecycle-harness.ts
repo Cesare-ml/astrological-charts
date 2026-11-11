@@ -74,6 +74,8 @@ window.runPlanetLifecycleProbe = () => {
       clientY: rect.top + (1 - projected.y) * rect.height / 2
     }));
   };
+  const tint = (mesh: THREE.Mesh) =>
+    (mesh.material as THREE.MeshBasicMaterial).color.getHexString();
   const link = (type: string) => [{
     from: {layer: 'natal' as const, name: 'Sun'},
     to: {layer: 'transit' as const, name: 'Saturn'},
@@ -118,9 +120,13 @@ window.runPlanetLifecycleProbe = () => {
     const independentAspectTypes = eventsA[0]?.aspects[0]?.type === 'quadrato'
       && eventsB[0]?.aspects[0]?.type === 'trigono';
     const initialBLine = second.scene.getObjectByName('chart-interaction-aspect');
-    const isolatedVisuals = first.natal.scale.x > 1 && first.transit.scale.x > 1
-      && second.natal.scale.x > 1 && second.transit.scale.x > 1
-      && !!initialBLine && !!first.scene.getObjectByName('chart-interaction-aspect');
+    const isolatedVisuals = tint(first.natal) === 'ff0000' &&
+      tint(first.transit) === '9e02ff' &&
+      tint(second.natal) === 'ff0000' &&
+      tint(second.transit) === '9e02ff' &&
+      [first.natal, first.transit, second.natal, second.transit]
+        .every(mesh => mesh.scale.x === 1 && mesh.scale.y === 1) &&
+      !!initialBLine && !!first.scene.getObjectByName('chart-interaction-aspect');
 
     controllerA.highlight({layer: 'natal', name: 'Sun'});
     controllerB.highlight({layer: 'transit', name: 'Saturn'});
@@ -143,8 +149,9 @@ window.runPlanetLifecycleProbe = () => {
       redrawRestoresScale &&= old.natal.scale.x === 1 && old.transit.scale.x === 1;
       redrawReleasesOverlays &&= oldOverlay.released()
         && !old.scene.getObjectByName('chart-interaction-aspect');
-      pinSurvivesRedraw &&= state.natal.scale.x > 1
-        && !!state.scene.getObjectByName('chart-interaction-aspect');
+      pinSurvivesRedraw &&= tint(state.natal) === 'ff0000'
+        && state.natal.scale.x === 1 &&
+        !!state.scene.getObjectByName('chart-interaction-aspect');
     }
     const mirroredLine = state.scene.getObjectByName('chart-interaction-aspect') as THREE.Line | undefined;
     const points = (mirroredLine?.geometry as THREE.BufferGeometry | undefined)
@@ -159,7 +166,8 @@ window.runPlanetLifecycleProbe = () => {
     const stillIsolated = bLineReplacedByOwnFocus
       && eventsB.length === bEventsBeforeRedraws
       && second.scene.getObjectByName('chart-interaction-aspect') === bLine
-      && second.transit.scale.x > 1;
+      && tint(second.transit) === '9e02ff' &&
+      second.transit.scale.x === 1;
     // The last scene is horizontally mirrored, so natal Sun is at +0.4.
     move(canvasA, 0.4);
     const oldScene = state;
@@ -170,8 +178,9 @@ window.runPlanetLifecycleProbe = () => {
     const reentrantLeaveCleanup = oldOverlay.released()
       && oldScene.scene.getObjectByName('chart-interaction-aspect') === undefined
       && oldScene.natal.scale.x === 1 && oldScene.transit.scale.x === 1
-      && state.transit.scale.x > state.natal.scale.x
-      && !!state.scene.getObjectByName('chart-interaction-aspect');
+      && tint(state.transit) === '9e02ff' &&
+      state.transit.scale.x === 1 && state.natal.scale.x === 1 &&
+      !!state.scene.getObjectByName('chart-interaction-aspect');
     selectTransitOnLeave = false;
 
     const lastA = observeDisposal(state.scene);
