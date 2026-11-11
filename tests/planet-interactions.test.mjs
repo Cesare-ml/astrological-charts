@@ -305,7 +305,12 @@ test('orb-only transit updates repaint only when the selected guide color change
   ]),false,'tightest orb switched to trigono: repaint dashed Saturn guide');
   assert.equal(api.sameChartAspectVisuals(pair,[
     {...square,orb:2},{...trine,orb:2}
-  ]),false,'orb tie may switch to a stable color and must refresh');
+  ]),true,'equal orbs preserve the quadrato winner by the stable type-key tie-break');
+  assert.equal(api.sameChartAspectVisuals([
+    {...square,orb:2},{...trine,orb:0.1}
+  ],[
+    {...square,orb:2},{...trine,orb:2}
+  ]),false,'a tie can change the winner from trigono to quadrato');
   assert.equal(api.sameChartAspectVisuals(pair,[
     {...square,orb:0.5},{...trine,orb:1.5,customMetadata:1}
   ]),false,'unknown metadata never bypasses visual work');
