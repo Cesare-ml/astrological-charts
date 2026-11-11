@@ -137,6 +137,22 @@ disposal/render requests, different-planet transitions and clearing
 selection. These tests require real Chrome/Firefox browser execution
 before merge; static inspection is not a performance benchmark.
 
+## Hover-to-pin handoff invariant
+
+The Angular demo pins each planet inside the synchronous
+`enter` event callback. `PlanetInteractionController.highlight()`
+must not paint redundantly when a hover is active, since the
+hovered body still controls visible focus. `move()` must capture
+the pinned body **before** `send('enter')`: newly pinned
+bodies still require their first visual paint, whereas a body
+already pinned before the event can reuse existing overlays.
+Changing the pin by button under a different active hover
+becomes visible on pointer leave. Preserve callback delivery,
+reentrant scene guards, and no-symbol-scaling behavior.
+Keep `tests/fixtures/hover-pin-handoff-harness.ts` in the
+Playwright suite along with the pinned hover-idempotence test;
+do not infer real FPS improvements from source-level checks.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
