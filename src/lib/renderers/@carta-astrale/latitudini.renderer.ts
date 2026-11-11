@@ -127,9 +127,12 @@ export class LatitudiniRender {
   public async getElementiCelesti(temaRender, opzioni) {
     var elementiCelesti = {};
 
-    for(let nome in opzioni.settaggi.elementi_celesti) {
+    // Only explicitly configured celestial bodies may be rendered.
+    // Inherited enumerable keys are not selected planets.
+    const planets = temaRender?.planets;
+    for(const nome of Object.keys(opzioni.settaggi.elementi_celesti)) {
       const elOpt = opzioni.settaggi.elementi_celesti[nome];
-      const planet = temaRender?.planets?.[nome];
+      const planet = planets != null && Object.hasOwn(planets, nome) ? planets[nome] : undefined;
 
       // Each rendered symbol needs both coordinates and an enabled option.
       // An incomplete chart may lack some or all planets; skip them safely.

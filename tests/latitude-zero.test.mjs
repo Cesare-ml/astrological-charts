@@ -91,6 +91,27 @@ test('latitude selector safely ignores incomplete planet collections and null bo
   assert.equal(selected.Venus, venus);
 });
 
+test('latitude selection ignores inherited options and inherited planet entries', async () => {
+  // Prototype entries can come from class instances or accidental object
+  // inheritance. They must not introduce unselected celestial symbols.
+  const sun = {latitude:0, longitude:0};
+  const moon = {latitude:0, longitude:90};
+  const inheritedOptions = Object.create({Moon:{att:true}});
+  inheritedOptions.Sun = {att:true};
+  const selectedOptions = await new LatitudeSelectionProbe().getElementiCelesti(
+    {planets:{Sun:sun, Moon:moon}}, {settaggi:{elementi_celesti:inheritedOptions}});
+  assert.deepEqual(Object.keys(selectedOptions), ['Sun'],
+    'inherited enablement must not create a ghost Moon');
+
+  const inheritedPlanets = Object.create({Moon:moon});
+  inheritedPlanets.Sun = sun;
+  const selectedPlanets = await new LatitudeSelectionProbe().getElementiCelesti(
+    {planets:inheritedPlanets}, {settaggi:{elementi_celesti:{Sun:{att:true},Moon:{att:true}}}});
+  assert.deepEqual(Object.keys(selectedPlanets), ['Sun'],
+    'inherited planet data must not create a ghost Moon');
+  assert.equal(selectedPlanets.Sun, sun, 'own valid 0° body remains selectable');
+});
+
 test('missing planets are ignored while finite latitude zero remains selectable', async () => {
   const planets = { Sun: { latitude: 0, longitude: 1 }, Venus: { latitude: 0, longitude: 0 } };
   const options = { settaggi: { elementi_celesti: {
