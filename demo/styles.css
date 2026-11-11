@@ -37,3 +37,24 @@ footer { margin-top: 20px; }
 .aspect-count { font-variant-numeric: tabular-nums; color: #bfabff; }
 .aspect-list { margin: 10px 0 0; padding-left: 18px; max-height: 230px; overflow: auto; }
 .aspect-list li { margin: 8px 0; font-size: 12px; overflow-wrap: anywhere; }
+
+/* Natal focus switch: never inherit the generic full-width input style. */
+.planet-panel .focus-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 13px 0 10px;
+  cursor: pointer;
+}
+.planet-panel .focus-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: #bfabff;
+}
+.planet-panel .focus-toggle input:focus-visible {
+  outline: 3px solid #e4d9ff;
+  outline-offset: 3px;
+}
