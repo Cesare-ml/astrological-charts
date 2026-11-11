@@ -254,6 +254,27 @@ test('transit guides use real outer-ring radius in normal and mirrored charts', 
   } finally { await page.close(); await browser.close(); }
 });
 
+test('Angular enter-to-pin handoff renders once and restores deferred button focus', {timeout:60000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundle = await build({
+      entryPoints:['tests/fixtures/hover-pin-handoff-harness.ts'],
+      bundle:true, write:false, platform:'browser',
+      format:'iife',target:'es2022',tsconfig:'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runHoverPinHandoffProbe());
+    for (const [name, passed] of Object.entries(result)) {
+      if (typeof passed === 'boolean') {
+        assert.equal(passed,true,name+': '+JSON.stringify(result));
+      }
+    }
+  } finally { await page.close(); await browser.close(); }
+});
+
 test('30 repeated hover cycles over a pinned planet do not rebuild WebGL overlays', {timeout: 60000}, async () => {
   const browser = await launch();
   const page = await browser.newPage();
