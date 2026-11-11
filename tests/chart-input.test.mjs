@@ -175,3 +175,14 @@ test('valid secondary charts remain available when natal mode is selected', () =
   assert.equal(parsed.synastry.planets.Venus.latitude, 4);
   assert.equal(payload.transits.planets.Mars.longitude, 123, 'input must not be mutated');
 });
+
+
+test('invalid planet identifiers take precedence over malformed planet values in both adapters', () => {
+  for (const name of [' ', '\u2003', 'x'.repeat(81)]) {
+    const payload = { schemaVersion: 1, natal: {
+      ...chart(), planets: { [name]: null },
+    } };
+    assert.throws(() => validateChartPayloadV1(payload), /Planet names/);
+    assert.throws(() => parseChartPayload(payload), /Planet names/);
+  }
+});
