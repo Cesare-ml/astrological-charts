@@ -226,6 +226,14 @@ unchanged. In **Natal chart**, turn on `Focus aspects` and select
 For real topics with no matching orb/type, no relation is drawn.
 The original axis-to-axis suppression remains untouched.
 
+The expanded browser suite also checks the **reverse direction**:
+selecting **transit Mercury** must show both its existing natal
+Pluto link and the synthetic natal **IC** semisquare. It writes two
+additional ignored local screenshots to
+`.local/demo-interaction-focus/natal-mc-transit-aspects-light.png`
+and `natal-as-focused-light.png` for a human comparison of actual
+angles and unchanged symbol size.
+
 Run `npm run test:planet-interactions` and the Playwright
 `npm run test:demo-interactions` suite, then inspect the chart
 manually. The prior Windows 6-test suite passed; the new changes
