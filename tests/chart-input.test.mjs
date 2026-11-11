@@ -119,7 +119,7 @@ test('both adapters reject out-of-range declinations and invalid optional speeds
 });
 
 test('both adapters reject blank planet identifiers without altering valid names', () => {
-  for (const invalidName of ['', ' ', '\t\n']) {
+  for (const invalidName of ['', ' ', '\t\n', '\u00a0', '\u2003', 'x'.repeat(81)]) {
     const payload = { schemaVersion: 1, natal: {
       ...chart(), planets: { [invalidName]: { longitude: 42 } },
     } };
