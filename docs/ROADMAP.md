@@ -63,7 +63,7 @@ The JSON v1 contract regression suite now includes signed-zero latitude/speed pr
 - [ ] Run the valid-secondary-chart preservation regression in `tests/chart-input.test.mjs`: natal mode must retain supplied transits and synastry (including signed-zero latitude) without mutating caller input. Added in commit `4cb1297`; Node execution remains pending.
 - [ ] Execute the JSON v1 optional-chart validation regressions in `tests/chart-input.test.mjs`: both adapters must reject malformed optional transits/synastry even in natal mode, plus invalid vertex and austral inversion values. Tests added in commit `21564c7`; full Node test execution remains pending.
 
-## M3 — Stable integrations
+- [ ] Execute the Angular/Node error-precedence regression for malformed planet objects combined with invalid `vertex` or `australInversion`. Node prevalidation now checks planet objects before those optional chart fields, matching Angular; the test is added but full `npm run test:chart-input` execution remains pending.\n\n## M3 — Stable integrations
 
 - [ ] Stabilize the versioned precomputed chart-input schema without duplicating astronomical calculations.
   - The Angular parser and Node prevalidator now reject whitespace-only celestial body identifiers while preserving legitimate multiword names (e.g. `North Node`). Regression coverage: `tests/chart-input.test.mjs`; execute `npm run test:chart-input` on a full checkout before merge.
