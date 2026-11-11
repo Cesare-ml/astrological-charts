@@ -86,3 +86,34 @@ test('CLI prevalidation and Angular parser agree on shared JSON v1 fixtures',()=
     assert.equal(serverValid,clientValid,'Node prevalidation and Angular parser diverged');
   }
 });
+
+test('zero latitude, signed speeds and boundary declinations survive both adapters', () => {
+  const natal = chart();
+  natal.planets.Sun.latitude = -0;
+  natal.planets.Sun.latitudeSpeed = -0;
+  natal.planets.Sun.longitudeSpeed = -1.25;
+  natal.planets.Sun.declination = -90;
+  natal.planets.Moon.declination = 90;
+  const payload = { schemaVersion: 1, natal, mode: 'latitude' };
+  assert.equal(validateChartPayloadV1(payload), payload, 'prevalidation must not mutate the supplied chart');
+  const parsed = parseChartPayload(payload);
+  assert.ok(Object.is(parsed.natal.planets.Sun.latitude, -0), 'negative zero latitude is a valid input');
+  assert.ok(Object.is(parsed.natal.planets.Sun.latitudeSpeed, -0), 'negative zero speed must be preserved');
+  assert.equal(parsed.natal.planets.Sun.longitudeSpeed, -1.25);
+  assert.equal(parsed.natal.planets.Sun.equatoriale.declination, -90);
+  assert.equal(parsed.natal.planets.Moon.equatoriale.declination, 90);
+  assert.ok(Object.is(natal.planets.Sun.latitude, -0), 'parsing must not mutate caller data');
+});
+
+test('both adapters reject out-of-range declinations and invalid optional speeds', () => {
+  for (const invalidPlanet of [
+    { longitude: 12, declination: -90.01 },
+    { longitude: 12, declination: 90.01 },
+    { longitude: 12, longitudeSpeed: 'retrograde' },
+    { longitude: 12, latitudeSpeed: Infinity },
+  ]) {
+    const payload = { schemaVersion: 1, natal: { ...chart(), planets: { Sun: invalidPlanet } } };
+    assert.throws(() => validateChartPayloadV1(payload), /finite JSON number|between -90 and 90/);
+    assert.throws(() => parseChartPayload(payload), /finite JSON number|between -90 and 90/);
+  }
+});
