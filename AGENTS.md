@@ -106,6 +106,21 @@ the metadata-free fallback for older chart fixtures/hosts. Update
 calculate new astronomical positions or aspect orbs. Browser tests
 need a real local demo server; source checks alone do not suffice.
 
+## Shared-transit guide color determinism
+
+When multiple active precomputed cross-theme aspects involve the
+same transiting planet, draw every central aspect in its own original
+color but only one dashed transit spoke. The spoke selects the
+**smallest finite absolute orb**; use a stable aspect-type/endpoints
+tie-breaker, never API relation order. This is a screen-only
+representation rule, not an astrological interpretation or new
+orb/aspect calculation. Preserve the original arrays passed to
+host callbacks and never enlarge symbols. Keep the pure regression
+test in `tests/planet-interactions.test.mjs` and real Three.js tests
+in `tests/fixtures/transit-spoke-harness.ts` for reversed inputs,
+two simultaneous transit planets and southern-hemisphere mirroring.
+The light/dark visuals need manual approval before merge.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
