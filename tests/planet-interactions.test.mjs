@@ -77,6 +77,25 @@ test('central aspect endpoints use exact longitude angles, not shifted glyph cen
 });
 
 
+test('transit spokes stop before the true outer ring and reject degenerate spans', () => {
+  const regular = geometry.chartTransitConnectorRadii(0.5, 1.1);
+  assert.ok(regular);
+  assert.equal(regular.startRadius, 0.5);
+  assert.ok(regular.endRadius > 0.5);
+  assert.ok(regular.endRadius < 1.1);
+  assert.ok(Math.abs(regular.endRadius - (1.1 - 0.072)) < 1e-12);
+  const wide = geometry.chartTransitConnectorRadii(0.5, 3);
+  assert.ok(wide);
+  assert.ok(Math.abs(wide.endRadius - 2.89) < 1e-12,
+    'clearance must be bounded for widely separated rings');
+  assert.equal(geometry.chartTransitConnectorRadii(0.5, 0.5), null);
+  assert.equal(geometry.chartTransitConnectorRadii(0.5, 0.54), null);
+  for (const invalid of [NaN, Infinity, -1, 0]) {
+    assert.equal(geometry.chartTransitConnectorRadii(invalid, 2), null);
+    assert.equal(geometry.chartTransitConnectorRadii(0.5, invalid), null);
+  }
+});
+
 test('malformed upstream aspect endpoints never reach interactive glyph lookup', () => {
   // Simulate untyped API payloads without involving ephemeris calculations.
   // A valid selected endpoint is not enough: the opposite endpoint must be
