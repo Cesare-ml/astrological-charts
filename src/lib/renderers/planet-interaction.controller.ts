@@ -264,26 +264,28 @@ export class PlanetInteractionController {
     const next = this.pick(event);
     if (sameChartPlanet(next, this.hovered)) return;
     const previous = this.hovered;
+    // Pointer movement within the canvas can leave a glyph without
+    // firing pointerleave. Compare visible focus, not just hover state:
+    // pinned A -> hover A -> empty canvas still displays A throughout.
+    const visibleBeforeMove = previous ?? this.pinned;
     this.hovered = null;
     if (previous) this.send('leave', previous);
     if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.hovered = next ? { ...next } : null;
     const beforeEnterVisuals = this.visualRevision;
-    // Capture BEFORE the host's enter callback: Angular may pin this
-    // planet synchronously, but it still needs its first visual paint.
-    const pinnedBeforeEnter = this.pinned;
     if (this.hovered) this.send('enter', this.hovered);
     // A host may redraw in the enter callback (e.g. pin this planet).
     // Scene replacement retains its separate stale-pointer guard.
     if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.canvas.style.cursor = this.hovered ? 'pointer' : this.cursor;
-    // Entering the already-pinned body from empty space changes only
-    // pointer/tooltip state. Its focused colors and aspect overlays
-    // are already present: keep WebGL objects (and their GPU buffers).
-    // A transition from a *different* hovered body must still repaint.
-    const stillPinned = !previous &&
-      sameChartPlanet(this.hovered, pinnedBeforeEnter);
-    if (this.visualRevision === beforeEnterVisuals && !stillPinned) {
+    // Preserve the existing geometry whenever the *visible* focus is
+    // unchanged. Covers entering an already-pinned body AND moving
+    // from that body to empty canvas space (no pointerleave event).
+    // The first enter, changed hover and different pinned focus still
+    // repaint. Callback-triggered changes retain the revision guard.
+    const visibleAfterMove = this.hovered ?? this.pinned;
+    if (this.visualRevision === beforeEnterVisuals &&
+        !sameChartPlanet(visibleBeforeMove, visibleAfterMove)) {
       this.updateVisuals();
       this.requestRender();
     }
