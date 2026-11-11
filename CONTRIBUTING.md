@@ -75,8 +75,10 @@ be needed if future relicensing is desired.
 
 The maintainer is still performing a
 [public release audit](docs/PUBLIC_RELEASE_CHECKLIST.md): the
-repository remains private until explicitly approved. No outside
-contributor should change GitHub visibility or publish packages.
+repository is already publicly visible on GitHub, but public visibility does not
+clear source provenance, third-party rights or the release checklist. No
+contributor should change GitHub visibility or publish packages without
+explicit maintainer approval (see [issue #20](https://github.com/Cesare-ml/astrological-charts/issues/20)).
 
 ## Compatibility and review gates
 
