@@ -318,6 +318,26 @@ test('hover-to-pin callback paints once and preserves deferred button focus', ()
   assert.deepEqual([probe.paints,probe.redraws],[3,3],
     'pointer leave restores the pinned button selection exactly once');
   assert.equal(probe.pinned.name,'Sun');
+
+  // A pointermove from the selected Saturn glyph into empty space *within*
+  // the canvas emits leave, not pointerleave. It must preserve the existing
+  // focus overlay just like leaving the entire canvas.
+  probe.move({planet:transitSaturn});
+  const beforeBlank = [probe.paints,probe.redraws,probe.events.length];
+  probe.move({planet:null});
+  assert.deepEqual([probe.paints,probe.redraws,probe.events.length],
+    [beforeBlank[0],beforeBlank[1],beforeBlank[2]+1],
+    'in-canvas empty space must emit leave without redrawing unchanged pin');
+
+  // When a button selected a DIFFERENT planet while Saturn was hovered,
+  // entering blank space must restore that pin exactly once.
+  probe.move({planet:transitSaturn});
+  probe.highlight(natalSun);
+  const beforeDifferentPin = probe.paints;
+  probe.move({planet:null});
+  assert.deepEqual([probe.paints,probe.redraws],
+    [beforeDifferentPin+1,beforeDifferentPin+1],
+    'in-canvas empty space restores a different pinned selection');
 });
 
 test('off-focus transit updates do not invalidate the displayed aspects', () => {
