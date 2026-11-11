@@ -71,6 +71,8 @@ window.runPlanetFocusStyleProbe = () => {
   controller.highlight({layer:'natal',name:'Sun'});
   const focusedNatalColored = start.getX(0)>0.95 && start.getY(0)>0.12 &&
     start.getY(0)<0.25; // quadrato #FF7800 in linear-sRGB
+  const natalAspectPartnerColored = colorOf(sun)==='ff0000' &&
+    colorOf(moon)==='c0c0c0' && colorOf(saturn)==='171717';
   controller.highlight({layer:'transit',name:'Saturn'});
   const transitKeepsNatalMuted = start.getX(0) < 0.5 &&
     Math.abs(start.getX(0)-start.getY(0)) < 0.00001;
@@ -91,7 +93,8 @@ window.runPlanetFocusStyleProbe = () => {
   canvas.remove();
   return {
     neutralBefore, grayTransitBackground, selectedAndPartnerColored,
-    dashedOuterConnector, focusedNatalColored, transitKeepsNatalMuted,
+    dashedOuterConnector, focusedNatalColored, natalAspectPartnerColored,
+    transitKeepsNatalMuted,
     allRestoresOriginal, neutralRestored, overlaysDisposed
   };
 };
