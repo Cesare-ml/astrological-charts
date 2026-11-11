@@ -117,7 +117,8 @@ test('two canvases retain isolated events and release focused overlays after 50 
     for (const key of [
       'isolatedEvents', 'independentAspectTypes', 'isolatedVisuals',
       'redrawRestoresScale', 'redrawReleasesOverlays', 'pinSurvivesRedraw',
-      'mirrorMatchesCanonicalRing', 'listenersRemovedOnDestroy'
+      'mirrorMatchesCanonicalRing', 'listenersRemovedOnDestroy',
+      'reentrantLeaveCleanup'
     ]) {
       assert.equal(result[key], true, key + ': ' + JSON.stringify(result));
     }

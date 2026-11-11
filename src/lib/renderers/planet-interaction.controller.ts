@@ -34,12 +34,17 @@ export class PlanetInteractionController {
 
   setScene(scene: THREE.Scene | null): void {
     this.clearVisuals();
-    if (this.hovered) this.send('leave', this.hovered);
+    // Detach old scene and glyph references before notifying the host.
+    // The synchronous leave callback may call highlight() / setRelations():
+    // those must not re-create visuals on a scene that is being disposed.
+    const leaving = this.hovered;
     this.hovered = null;
     this.canvas.style.cursor = this.cursor;
-    this.scene = scene;
+    this.scene = null;
     this.glyphs.clear();
     this.aspectRing = null;
+    if (leaving) this.send('leave', leaving);
+    this.scene = scene;
     if (!scene) return;
     scene.traverse(obj => {
       const radius: unknown = obj.userData['chartAspectRadius'];

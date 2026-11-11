@@ -11,6 +11,7 @@ interface LifecycleProbe {
   pinSurvivesRedraw: boolean;
   mirrorMatchesCanonicalRing: boolean;
   listenersRemovedOnDestroy: boolean;
+  reentrantLeaveCleanup: boolean;
   cycles: number;
 }
 
@@ -90,7 +91,15 @@ window.runPlanetLifecycleProbe = () => {
   const canvasB = makeCanvas(264);
   const eventsA: ChartPlanetInteractionEvent[] = [];
   const eventsB: ChartPlanetInteractionEvent[] = [];
-  const controllerA = new PlanetInteractionController(canvasA, camera, event => eventsA.push(event), () => {});
+  let selectTransitOnLeave = false;
+  const controllerA = new PlanetInteractionController(canvasA, camera, event => {
+    eventsA.push(event);
+    if (selectTransitOnLeave && event.type === 'leave') {
+      // Simulate an Angular host that synchronously reacts to the old scene's
+      // last pointer event by selecting a different planet.
+      controllerA.highlight({layer: 'transit', name: 'Saturn'});
+    }
+  }, () => {});
   const controllerB = new PlanetInteractionController(canvasB, camera, event => eventsB.push(event), () => {});
   try {
     controllerA.setRelations(link('quadrato'));
@@ -143,6 +152,20 @@ window.runPlanetLifecycleProbe = () => {
     const stillIsolated = eventsB.length === bEventsBeforeRedraws
       && second.scene.getObjectByName('chart-interaction-aspect') === bLine
       && second.transit.scale.x > 1;
+    // The last scene is horizontally mirrored, so natal Sun is at +0.4.
+    move(canvasA, 0.4);
+    const oldScene = state;
+    const oldOverlay = observeDisposal(oldScene.scene);
+    selectTransitOnLeave = true;
+    state = makeScene(false);
+    controllerA.setScene(state.scene);
+    const reentrantLeaveCleanup = oldOverlay.released()
+      && oldScene.scene.getObjectByName('chart-interaction-aspect') === undefined
+      && oldScene.natal.scale.x === 1 && oldScene.transit.scale.x === 1
+      && state.transit.scale.x > state.natal.scale.x
+      && !!state.scene.getObjectByName('chart-interaction-aspect');
+    selectTransitOnLeave = false;
+
     const lastA = observeDisposal(state.scene);
     const lastB = observeDisposal(second.scene);
     controllerA.destroy();
@@ -160,7 +183,7 @@ window.runPlanetLifecycleProbe = () => {
       independentAspectTypes, isolatedVisuals,
       redrawRestoresScale, redrawReleasesOverlays,
       pinSurvivesRedraw, mirrorMatchesCanonicalRing,
-      listenersRemovedOnDestroy, cycles
+      listenersRemovedOnDestroy, reentrantLeaveCleanup, cycles
     };
   } finally {
     controllerA.destroy();
