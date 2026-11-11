@@ -188,3 +188,11 @@ depth plane still wins; decorative meshes remain excluded. The calculation
 uses current world/camera transforms so zoom, redraw and austral inversion are
 respected. `tests/fixtures/planet-picking-harness.ts` tests overlapping glyphs,
 zoom, outside-canvas clicks and depth precedence using purely synthetic planes.
+
+## Synchronous leave handlers
+
+Both canvas `pointerleave` and switching hover between adjacent planets now
+clear the previous hover state before invoking a frontend `leave` callback.
+If the Angular host synchronously calls `setCrossChartAspects` in that callback,
+the controller does not emit a stale `update` for a planet already left.
+The overlapping-glyph browser fixture explicitly exercises this re-entrancy.

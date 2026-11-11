@@ -162,7 +162,12 @@ export class PlanetInteractionController {
   private move = (event: PointerEvent): void => {
     const next = this.pick(event);
     if (sameChartPlanet(next, this.hovered)) return;
-    if (this.hovered) this.send('leave', this.hovered);
+    // End the old hover before dispatching leave. A synchronous Angular
+    // callback may replace aspects; it must not receive an 'update' for a
+    // planet that is no longer under the pointer.
+    const previous = this.hovered;
+    this.hovered = null;
+    if (previous) this.send('leave', previous);
     this.hovered = next ? { ...next } : null;
     if (this.hovered) this.send('enter', this.hovered);
     this.canvas.style.cursor = this.hovered ? 'pointer' : this.cursor;
@@ -170,10 +175,13 @@ export class PlanetInteractionController {
     this.requestRender();
   };
   private leave = (): void => {
-    if (!this.hovered) return;
-    this.send('leave', this.hovered);
+    const leaving = this.hovered;
+    if (!leaving) return;
+    // Clear before the callback so synchronous setRelations() cannot emit
+    // a stale hover-update after leave has already been delivered.
     this.hovered = null;
     this.canvas.style.cursor = this.cursor;
+    this.send('leave', leaving);
     this.updateVisuals();
     this.requestRender();
   };

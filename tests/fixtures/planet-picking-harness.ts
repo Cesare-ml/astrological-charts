@@ -8,6 +8,7 @@ interface PickingProbe {
   zoomedRightSelected: boolean;
   outsideCanvasClearsHover: boolean;
   outsideClickIgnored: boolean;
+  noStaleUpdateDuringLeave: boolean;
   frontLayerWins: boolean;
   resourcesRestored: boolean;
 }
@@ -45,7 +46,11 @@ window.runPlanetPickingProbe = (): PickingProbe => {
   const right = glyph('Moon', 0.08);
   const offscreen = glyph('Mars', 1.05);
   const events: ChartPlanetInteractionEvent[] = [];
-  const controller = new PlanetInteractionController(canvas, camera, event => events.push(event), () => {});
+  let replaceAspectsOnLeave = false;
+  const controller = new PlanetInteractionController(canvas, camera, event => {
+    events.push(event);
+    if (replaceAspectsOnLeave && event.type === 'leave') controller.setRelations([]);
+  }, () => {});
   const pointer = (worldX: number, type: 'pointermove' | 'click' = 'pointermove') => {
     camera.updateMatrixWorld(true);
     const projected = new THREE.Vector3(worldX, 0, 0).project(camera);
@@ -70,9 +75,15 @@ window.runPlanetPickingProbe = (): PickingProbe => {
     pointer(0.09);
     const zoomedRightSelected = events.at(-1)?.type === 'enter'
       && events.at(-1)?.planet.name === 'Moon';
+    const beforeLeave = events.length;
+    replaceAspectsOnLeave = true;
     pointer(1.05);
-    const outsideCanvasClearsHover = events.at(-1)?.type === 'leave'
-      && events.at(-1)?.planet.name === 'Moon';
+    replaceAspectsOnLeave = false;
+    const leavingEvents = events.slice(beforeLeave);
+    const outsideCanvasClearsHover = leavingEvents.length === 1
+      && leavingEvents[0].type === 'leave'
+      && leavingEvents[0].planet.name === 'Moon';
+    const noStaleUpdateDuringLeave = leavingEvents.every(event => event.type !== 'update');
     const beforeClick = events.length;
     pointer(1.05, 'click');
     const outsideClickIgnored = events.length === beforeClick;
@@ -91,7 +102,7 @@ window.runPlanetPickingProbe = (): PickingProbe => {
       && front.scale.x === 1 && offscreen.scale.x === 1;
     return {
       nearerRightSelected, nearerLeftSelected, zoomedRightSelected,
-      outsideCanvasClearsHover, outsideClickIgnored,
+      outsideCanvasClearsHover, outsideClickIgnored, noStaleUpdateDuringLeave,
       frontLayerWins, resourcesRestored
     };
   } finally {
