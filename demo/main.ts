@@ -88,7 +88,9 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   private readonly renderer = new GraficoRenderService();
   private readonly changes = inject(ChangeDetectorRef);
   readonly skins = Object.keys(SkinManager.skins);
-  readonly bodies = demoBodies;
+  // Angles are genuine house-derived points in each illustrative chart,
+  // not synthetic planetary longitudes. Make them keyboard-selectable too.
+  readonly bodies = [...demoBodies, 'AS', 'DS', 'MC', 'IC'];
   planetLayer: ChartPlanetLayer = 'natal';
   aspectFilter: 'all' | 'hard' = 'all';
   focusNatalAspects = false;
@@ -223,7 +225,13 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     opts.temaGrafico = this.skin;
     opts.mostraTransiti = this.mode === 'transits';
     opts.mostraSinastria = this.mode === 'synastry';
-    for (const body of demoBodies) { opts.settaggi.elementi_celesti[body].att = true; opts.settaggi.elementi_celesti[body].aspVerso = true; }
+    for (const body of this.bodies) {
+      // Native AspettiRender only draws an axis relationship when it
+      // is explicitly included among the allowed aspect endpoints.
+      // .att also exposes its existing house-derived glyph for hover.
+      opts.settaggi.elementi_celesti[body].att = true;
+      opts.settaggi.elementi_celesti[body].aspVerso = true;
+    }
     return opts;
   }
   async draw(): Promise<void> {
