@@ -94,6 +94,9 @@ test('demo frontend focuses natal and transit planets in both directions', {time
     await page.selectOption('#skin', 'dark');
     await ready(page, beforeDark);
     await selection(page, 'natal:Uranus');
+    await page.locator('[data-testid=chart]').screenshot({
+      path:join(screenshots,'natal-uranus-transits-dark.png')
+    });
     await page.locator('#clear-focus').click();
     await selection(page, 'None');
     await aspectCount(page, 0);
