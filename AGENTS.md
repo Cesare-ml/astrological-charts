@@ -89,6 +89,23 @@ temporary copies, never the native chart's resources. No new
 astronomical calculations, image assets or production changes.
 An unexecuted browser fixture is not proof of visual correctness.
 
+## Exact transit radial-guide invariant
+
+The original radius of the outer transiting planet ring is stored
+as `chartTransitRingRadius` on transit glyph meshes by
+`ElementiCelestiRender`. Preserve this **render-only** metadata,
+which is distinct from collision-shifted glyph center positions.
+The focused dashed aspect guide must follow `chartAspectAngle`
+and the actual world-space chart transforms (rotation and
+southern-hemisphere mirroring), terminate with bounded clearance
+before the transit periphery, and not cover glyph text. Use
+`chartTransitConnectorRadii` to guard narrow/invalid spans. Keep
+the metadata-free fallback for older chart fixtures/hosts. Update
+`tests/planet-interactions.test.mjs` and
+`tests/fixtures/transit-spoke-harness.ts` when changing it; do not
+calculate new astronomical positions or aspect orbs. Browser tests
+need a real local demo server; source checks alone do not suffice.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
