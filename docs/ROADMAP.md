@@ -59,6 +59,8 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 
 The JSON v1 contract regression suite now includes signed-zero latitude/speed preservation, valid ±90° declination boundaries, invalid declination and optional speed rejection, and caller-input immutability. Run `npm run test:chart-input` in a complete checkout before treating this as validated; the GitHub connector cannot execute repository tests.
 
+- [ ] Execute the JSON v1 optional-chart validation regressions in `tests/chart-input.test.mjs`: both adapters must reject malformed optional transits/synastry even in natal mode, plus invalid vertex and austral inversion values. Tests added in commit `21564c7`; full Node test execution remains pending.
+
 ## M3 — Stable integrations
 
 - [ ] Stabilize the versioned precomputed chart-input schema without duplicating astronomical calculations.
