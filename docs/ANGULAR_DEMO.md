@@ -328,3 +328,23 @@ The test uses no chart artwork, user birth data or backend calls. Run
 `npm run check:types`, `npm run build:demo`, and `npm run test:demo`
 with the local manifest-verified asset server in Chromium and Firefox.
 Any actual rendering/visual parity verdict still requires owner review.
+
+## Transit guide positioning on the real ring
+
+In **Transits**, highlight an outer transiting planet or a natal
+planet with connected transits. Colored dashed guides should follow
+the **true transit longitude** out from the central aspect circle,
+not bend toward glyphs that were shifted for collision avoidance.
+They should finish a small distance *before* the outer ring, keeping
+transit labels legible. The guide follows the displayed hemisphere
+rotation/mirroring, and the original planet symbol must not grow.
+
+The renderer now annotates transit symbol meshes with an original
+ring radius (rendering metadata only). It retains a distance-based
+fallback for old hosts without this metadata. The browser test
+`tests/fixtures/transit-spoke-harness.ts` checks both paths with
+invented chart positions, a rotated wheel and a mirrored wheel.
+Run `npm run test:planet-interactions` and
+`npm run test:demo-interactions` after updating the branch and
+restarting both localhost servers. These new tests have not yet
+been run on the owner's Windows installation.
