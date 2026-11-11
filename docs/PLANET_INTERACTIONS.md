@@ -276,3 +276,8 @@ checkout and restart `npm run demo` on port 4200 to ensure the
 new `data-render-revision` attribute is served before rerunning
 `npm run test:demo-interactions`. Do not merge the draft solely
 because source inspection passes.
+
+
+## Rendering requests after synchronous teardown
+
+The controller checks the active scene **and its revision** after invoking frontend `leave` or `update` listeners. If the listener destroys, replaces or re-indexes the chart, the abandoned callback cannot request a render of an invalid canvas. The pointer transition also checks the revision to reject a hit computed before a same-object `setScene` re-index. The synthetic `planet-reentrant-render-harness.ts` tests these cases without real images, a WebGLRenderer or any astronomical calculations. Browser execution and GPU-memory testing are still required before merging.

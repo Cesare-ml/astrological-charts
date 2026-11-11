@@ -84,11 +84,13 @@ export class PlanetInteractionController {
   setRelations(relations: readonly ChartAspectRelation[]): void {
     this.relations = relations.slice();
     this.updateVisuals();
-    if (this.scene) {
-      // The cursor may remain motionless while the host receives new aspect data.
-      // Notify listeners without fabricating a second pointer-enter transition.
+    const activeScene = this.scene;
+    const revision = this.sceneRevision;
+    if (activeScene) {
+      // A stationary hover receives new links without a second enter event.
       if (this.hovered) this.send('update', this.hovered);
-      this.requestRender();
+      // The host may have destroyed/replaced the canvas during 'update'.
+      if (this.scene === activeScene && this.sceneRevision === revision) this.requestRender();
     }
   }
 
@@ -169,17 +171,18 @@ export class PlanetInteractionController {
     // Pointer hits are computed against one particular scene. A synchronous
     // leave listener may redraw or destroy that scene before we emit enter.
     const hitScene = this.scene;
+    const hitRevision = this.sceneRevision;
     const next = this.pick(event);
     if (sameChartPlanet(next, this.hovered)) return;
     const previous = this.hovered;
     this.hovered = null;
     if (previous) this.send('leave', previous);
-    if (this.scene !== hitScene) return;
+    if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.hovered = next ? { ...next } : null;
     if (this.hovered) this.send('enter', this.hovered);
     // The enter callback may itself cause a chart replacement. setScene()
     // has already reset the cursor/hover and installed the new glyph index.
-    if (this.scene !== hitScene) return;
+    if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.canvas.style.cursor = this.hovered ? 'pointer' : this.cursor;
     this.updateVisuals();
     this.requestRender();
@@ -191,9 +194,12 @@ export class PlanetInteractionController {
     // a stale hover-update after leave has already been delivered.
     this.hovered = null;
     this.canvas.style.cursor = this.cursor;
+    const activeScene = this.scene;
+    const revision = this.sceneRevision;
     this.send('leave', leaving);
+    if (this.scene !== activeScene || this.sceneRevision !== revision) return;
     this.updateVisuals();
-    this.requestRender();
+    if (this.scene) this.requestRender();
   };
   /** Touch has no persistent hover; a tap's synthetic click is handled separately. */
   private finishPointer = (event: PointerEvent): void => {
