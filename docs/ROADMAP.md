@@ -131,3 +131,5 @@ Milestones may overlap during development, but **M0 must be cleared before publi
 - [ ] Run `npm run test:validate-chart-input` for browser-free explicit-null `vertex` parity and invalid optional transits/synastry planet identifiers (including Unicode whitespace and overlength names). Added in commit `d760dcf`; GitHub source readback is not an executed Node test. (2026-11-11)
 
 - [ ] Execute `npm run test:chart-input` for explicit `null` optional planet numeric fields (`latitude`, `declination`, `longitudeSpeed`, `latitudeSpeed`) in natal, transit and synastry layers. Both adapters must reject these instead of treating them as omitted; regression added in commit `1750c61`, but full Node execution is pending. (2026-11-11)
+
+- [ ] Execute Node-only JSON v1 regression for explicit `null` optional planet numbers across natal/transits/synastry (`tests/validate-chart-input.test.mjs`, 12 field/layer combinations). It verifies rejection and caller-input identity without requiring Angular/Chromium. Run `npm run test:validate-chart-input` on a full checkout; GitHub readback alone does not establish test success. (2026-11-12)
