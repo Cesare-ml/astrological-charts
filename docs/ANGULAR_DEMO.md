@@ -290,3 +290,19 @@ Run `npm run check:types`, `npm run build:demo`, then `npm run test:demo`
 with the local manifest-validated asset server and Angular demo running
 on Windows, Chromium and Firefox before merge. Local browser runtime
 verification is still pending.
+
+## Native aspect stroke regression test
+
+The browser suite `npm run test:demo-interactions` now also bundles
+`tests/fixtures/native-natal-line-harness.ts` with the real Three.js
+fat-line classes. It asserts that a focused solid stroke and a
+multi-segment dashed stroke preserve their exact colors/widths
+above gray native lines, while a nonfocused dotted stroke stays gray.
+It validates resource independence, cleanup when a new body is
+selected and restoration after disabling focus. Test input is synthetic
+and original VirgoStars images are never bundled.
+
+This regression has not yet been run on the owner's Windows checkout.
+After pulling the latest PR branch, restart the 4200 demo and run
+`npm run test:demo-interactions`; if it reports
+`native Line2 solid/dashed/dotted strokes`, that is the new test.
