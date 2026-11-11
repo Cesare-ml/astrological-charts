@@ -58,8 +58,14 @@ test('Angular demo shows a safe clickable VirgoStars credit at launch', async ()
   // Check the actual Angular template, not only documentation or a comment.
   const template = demo.match(/template:\s*`([\s\S]*?)`\s*\}\)/)?.[1];
   assert.ok(template, 'standalone Angular demo must retain an inline template');
-  assert.match(template, /Powered by\s*<a\s+[^>]*href="https:\/\/www\.virgostars\.it\/"[^>]*>VirgoStars<\/a>/,
-    'demo must display a clickable VirgoStars credit in its initial UI');
-  assert.match(template, /<a\s+[^>]*href="https:\/\/www\.virgostars\.it\/"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/,
-    'external credit link must use safe new-tab attributes');
+  const credit = template.match(/Powered by\\s*(<a\\b[^>]*>VirgoStars<\\/a>)/)?.[1];
+  assert.ok(credit, 'initial UI must contain a visible VirgoStars anchor');
+  const attrs = Object.fromEntries(
+    [...credit.matchAll(/([\\w-]+)\\s*=\\s*"([^"]*)"/g)].map((match) => [match[1], match[2]]),
+  );
+  assert.equal(attrs.href, 'https://www.virgostars.it/', 'credit must link to the official project');
+  assert.equal(attrs.target, '_blank', 'credit opens the official project in a new tab');
+  const relTokens = new Set((attrs.rel ?? '').split(/\\s+/).filter(Boolean));
+  assert.ok(relTokens.has('noopener') && relTokens.has('noreferrer'),
+    'new-tab credit must include both noopener and noreferrer, in any order');
 });
