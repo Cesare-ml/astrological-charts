@@ -221,3 +221,24 @@ test('both adapters prioritize malformed planet values over optional chart flags
     assert.throws(() => parseChartPayload(payload), /natal\.planets\.Sun must be a JSON object/);
   }
 });
+
+
+test('secondary chart angles normalize independently without mutating source', () => {
+  const transits = chart();
+  transits.ascendant = -10;
+  transits.planets = { Mars: { longitude: 721, latitude: -0 } };
+  const synastry = chart();
+  synastry.midheaven = -721;
+  synastry.planets = { Venus: { longitude: -1, latitude: 2 } };
+  const payload = { schemaVersion: 1, natal: chart(), transits, synastry, mode: 'natal' };
+  const before = structuredClone(payload);
+  assert.equal(validateChartPayloadV1(payload), payload);
+  const parsed = parseChartPayload(payload);
+  assert.equal(parsed.transits.as, 350);
+  assert.equal(parsed.transits.planets.Mars.longitude, 1);
+  assert.ok(Object.is(parsed.transits.planets.Mars.latitude, -0));
+  assert.equal(parsed.synastry.mc, 359);
+  assert.equal(parsed.synastry.planets.Venus.longitude, 359);
+  assert.equal(parsed.natal.as, 20, 'secondary chart normalization must not affect natal');
+  assert.deepEqual(payload, before, 'caller-owned secondary charts must remain unchanged');
+});
