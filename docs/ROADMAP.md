@@ -129,3 +129,5 @@ Milestones may overlap during development, but **M0 must be cleared before publi
 - JSON v1 regression (draft PR #19): failed natal/transits/synastry house-cusp validation must leave caller-owned payloads unchanged, including signed zero; source test added, execution on a full checkout still pending (`npm run test:chart-input`).
 
 - [ ] Run `npm run test:validate-chart-input` for browser-free explicit-null `vertex` parity and invalid optional transits/synastry planet identifiers (including Unicode whitespace and overlength names). Added in commit `d760dcf`; GitHub source readback is not an executed Node test. (2026-11-11)
+
+- [ ] Execute `npm run test:chart-input` for explicit `null` optional planet numeric fields (`latitude`, `declination`, `longitudeSpeed`, `latitudeSpeed`) in natal, transit and synastry layers. Both adapters must reject these instead of treating them as omitted; regression added in commit `1750c61`, but full Node execution is pending. (2026-11-11)
