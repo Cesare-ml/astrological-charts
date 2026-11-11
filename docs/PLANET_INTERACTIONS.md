@@ -306,3 +306,43 @@ offscreen PNG export renderers do the same in their cleanup; ordinary chart
 redraw and user pointer focus never force a WebGL context loss. This reduces
 the risk of accumulating browser WebGL contexts during repeated component
 mount/unmount and image exports, while keeping production integration gated.
+
+### Windows visual feedback — axis aspects and scale-invariant focus (2026-11-11)
+
+The owner confirmed the complete interactive browser suite **passed** on
+Windows and that the canvas focus appears functional, but reported
+two visible defects: selecting a planet enlarged it, and the four
+angles AS (Ascendant), DS (Descendant), MC and IC never appeared to
+contribute aspects in the demo.
+
+**Draft corrections:**
+- The on-screen controller no longer multiplies the scale of either
+  selected or related glyph meshes. It changes only the glyph tint and
+  focused aspect lines; the original hit geometry/positions stay fixed.
+  Touch, hover and programmatic focus share the same behavior.
+- The demo adds **AS, DS, MC and IC** to the accessible selection buttons.
+  The four `settaggi.elementi_celesti[axis].att` and `.aspVerso`
+  flags are now enabled in the demo options so the existing
+  `ElementiCelestiRender.getElementiCelesti` / `AspettiRender`
+  can include their **house-derived ecliptic angles** in natal
+  aspect geometry and draw their established symbols as hit targets.
+  No astronomical or aspect calculation is duplicated.
+- Four hand-authored, clearly labeled **illustrative** cross-chart
+  semisquare relationships make the demo exercise all four natal
+  angles while transits are visible (AS–Neptune, DS–Mars,
+  MC–Neptune, IC–Mercury). They use synthetic longitudes only,
+  not a production calculation. Real hosts remain responsible for
+  passing their own precomputed cross-chart relations; if no aspect
+  falls within the actual configured orb, no aspect should be shown.
+- The native natal aspect renderer still excludes *axis-to-axis*
+  pairs under its existing rules. This change enables **planet-to-axis**
+  aspects, not automatic AS–DS/MC–IC geometry.
+
+**Regression gates:** `npm run test:planet-interactions`,
+`npm run check:types`, `npm run build:demo`, and with locally
+verified asset/Angular servers running,
+`npm run test:demo-interactions`. The latter includes a
+four-axis selection test, plus no-enlargement checks in the pointer,
+50-redraw, and focus palette harnesses. Visual comparison and
+the new full test run on the owner's Windows installation are pending.
+
