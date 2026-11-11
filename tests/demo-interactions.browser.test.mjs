@@ -387,7 +387,8 @@ test('real WebGL memory stays bounded across 90 aspect updates and 20 scene redr
       'activeOverlayRendered','stableGpuGeometries','stableTextures',
       'stablePrograms','redrawsStable','duplicateRelationsSkipRender',
       'duplicateFocusSkipRender','orbOnlyUpdatesSkipRender',
-      'orbOnlyUpdatesAvailableOnClick','unrelatedUpdatesSkipRender',
+      'orbOnlyUpdatesAvailableOnClick','orbOnlyUpdatesNotifyFrontend',
+      'winnerChangeRepaintsGuide','unrelatedUpdatesSkipRender',
       'unrelatedUpdatesAvailableOnSelection','focusClearReleasesOverlays',
       'teardownReleasesGpuGeometries'
     ]) {

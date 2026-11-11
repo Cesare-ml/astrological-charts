@@ -13,6 +13,8 @@ declare global {
       duplicateFocusSkipRender: boolean;
       orbOnlyUpdatesSkipRender: boolean;
       orbOnlyUpdatesAvailableOnClick: boolean;
+      orbOnlyUpdatesNotifyFrontend: boolean;
+      winnerChangeRepaintsGuide: boolean;
       unrelatedUpdatesSkipRender: boolean;
       unrelatedUpdatesAvailableOnSelection: boolean;
       focusClearReleasesOverlays: boolean;
@@ -75,10 +77,17 @@ window.runPlanetGpuLifecycleProbe = () => {
   };
   let clickedName = '';
   let clickedOrbs: readonly (number | undefined)[] = [];
+  let updateCount = 0;
+  let updateOrbs: readonly (number | undefined)[] = [];
   const controller = new PlanetInteractionController(canvas,camera,event=>{
     if (event.type === 'click') {
       clickedName = event.planet.name;
       clickedOrbs = event.aspects.map(aspect => aspect.orb);
+    }
+    if (event.type === 'update' && event.planet.layer === 'natal'
+        && event.planet.name === 'Sun') {
+      updateCount++;
+      updateOrbs = event.aspects.map(aspect => aspect.orb);
     }
   },render);
   const focus = {layer:'natal' as const,name:'Sun'};
@@ -98,6 +107,8 @@ window.runPlanetGpuLifecycleProbe = () => {
   let duplicateFocusSkipRender = false;
   let orbOnlyUpdatesSkipRender = false;
   let orbOnlyUpdatesAvailableOnClick = false;
+  let orbOnlyUpdatesNotifyFrontend = false;
+  let winnerChangeRepaintsGuide = false;
   let unrelatedUpdatesSkipRender = false;
   let unrelatedUpdatesAvailableOnSelection = false;
   let focusClearReleasesOverlays = false;
@@ -152,6 +163,8 @@ window.runPlanetGpuLifecycleProbe = () => {
       && renderer.info.memory.geometries === focusedGeometries
       && active.getObjectByName('chart-interaction-aspect') === initialOverlay
       && active.getObjectByName('chart-interaction-transit-connector') === initialSpoke;
+    orbOnlyUpdatesNotifyFrontend = updateCount >= 120
+      && updateOrbs.length === 1 && updateOrbs[0] === 12;
     const sunPoint = new THREE.Vector3(-0.35,0,0).project(camera);
     const sunRect = canvas.getBoundingClientRect();
     canvas.dispatchEvent(new MouseEvent('click', {
@@ -196,6 +209,21 @@ window.runPlanetGpuLifecycleProbe = () => {
       stablePrograms &&= (renderer.info.programs?.length ?? 0) <= focusedPrograms;
     }
 
+    // A shared transit spoke chooses its color from the tightest orb.
+    // Changing that winner must repaint, even though all endpoints match.
+    const square = {...relation(0)[0],type:'quadrato',orb:0.1};
+    const trine = {...relation(0)[0],type:'trigono',orb:1.9};
+    controller.setRelations([square,trine]);
+    const beforeWinner = active.getObjectByName('chart-interaction-transit-connector') as THREE.Line;
+    const firstColor = (beforeWinner?.material as THREE.LineBasicMaterial)?.color?.getHexString();
+    const beforeWinnerRender = renderCalls;
+    controller.setRelations([{...square,orb:2.5},{...trine,orb:0.2}]);
+    const afterWinner = active.getObjectByName('chart-interaction-transit-connector') as THREE.Line;
+    const nextColor = (afterWinner?.material as THREE.LineBasicMaterial)?.color?.getHexString();
+    winnerChangeRepaintsGuide = !!firstColor && !!nextColor && firstColor !== nextColor
+      && afterWinner !== beforeWinner && renderCalls === beforeWinnerRender + 1;
+    controller.setRelations(relation(90));
+
     for (let i = 0; i < redrawCount; i++) {
       const old = active;
       active = createScene();
@@ -231,6 +259,7 @@ window.runPlanetGpuLifecycleProbe = () => {
     activeOverlayRendered,stableGpuGeometries,stableTextures,stablePrograms,
     redrawsStable,duplicateRelationsSkipRender,duplicateFocusSkipRender,
     orbOnlyUpdatesSkipRender,orbOnlyUpdatesAvailableOnClick,
+    orbOnlyUpdatesNotifyFrontend,winnerChangeRepaintsGuide,
     unrelatedUpdatesSkipRender,unrelatedUpdatesAvailableOnSelection,
     focusClearReleasesOverlays,teardownReleasesGpuGeometries,
     refreshCount,redrawCount,baselineGeometries,peakGeometries,finalGeometries
