@@ -73,12 +73,13 @@ window.runPlanetPointerProbe = () => {
   const overlay = scene.getObjectByName('chart-interaction-aspect') as THREE.Line | undefined;
   const centralOverlay = overlay !== undefined;
   const coordinates = (overlay?.geometry as THREE.BufferGeometry | undefined)?.getAttribute('position') as THREE.BufferAttribute | undefined;
-  // 0° natal endpoint (r,0), 90° transit endpoint (0,r); glyphs sit at x=±0.4.
+  // Match the established AspettiRender coordinates: rotate from (0,r).
+  // 0° natal endpoint (0,r), 90° transit endpoint (-r,0).
   const centralOverlayGeometry = !!coordinates && coordinates.count === 2
-    && Math.abs(coordinates.getX(0) - 0.6) < 1e-5
-    && Math.abs(coordinates.getY(0)) < 1e-5
-    && Math.abs(coordinates.getX(1)) < 1e-5
-    && Math.abs(coordinates.getY(1) - 0.6) < 1e-5;
+    && Math.abs(coordinates.getX(0)) < 1e-5
+    && Math.abs(coordinates.getY(0) - 0.6) < 1e-5
+    && Math.abs(coordinates.getX(1) + 0.6) < 1e-5
+    && Math.abs(coordinates.getY(1)) < 1e-5;
   controller.setRelations([{
     from: {layer: 'natal', name: 'Sun'},
     to: {layer: 'transit', name: 'Saturn'},
