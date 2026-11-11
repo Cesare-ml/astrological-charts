@@ -19,6 +19,16 @@ export function disposeSceneResources(root: THREE.Object3D): void {
       for (const value of Object.values(material)) {
         if (value instanceof THREE.Texture) textures.add(value);
       }
+      // A ShaderMaterial's texture uniforms are held in uniform.value, not
+      // as direct material properties. Arrays may share texture instances.
+      const uniforms = (material as THREE.ShaderMaterial).uniforms;
+      if (uniforms) for (const uniform of Object.values(uniforms)) {
+        const value = uniform?.value;
+        if (value instanceof THREE.Texture) textures.add(value);
+        else if (Array.isArray(value)) for (const item of value) {
+          if (item instanceof THREE.Texture) textures.add(item);
+        }
+      }
     }
   });
   textures.forEach(texture => texture.dispose());

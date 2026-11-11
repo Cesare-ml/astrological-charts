@@ -348,3 +348,20 @@ Run `npm run test:planet-interactions` and
 `npm run test:demo-interactions` after updating the branch and
 restarting both localhost servers. These new tests have not yet
 been run on the owner's Windows installation.
+
+
+## Shader uniform texture cleanup in retired scenes
+
+The owner-scoped `disposeSceneResources` helper now also releases textures
+referenced by `ShaderMaterial.uniforms[name].value`. Both individual
+textures and arrays of textures are supported. The existing identity
+`Set` ensures the same texture referenced by multiple uniforms and a
+regular material is disposed **once per cleanup pass**.
+
+The synthetic `scene-resource-lifecycle-harness.ts` adds a real
+`THREE.ShaderMaterial`, a texture referenced twice in uniforms, a
+shared texture also held by a regular material and a non-texture scalar
+uniform. It verifies disposal counts without loading external artwork.
+Only use this helper for a scene whose assets are no longer referenced
+by a live renderer. This is a new regression fixture; actual
+Chromium/Firefox/Angular execution and GPU memory review remain merge gates.
