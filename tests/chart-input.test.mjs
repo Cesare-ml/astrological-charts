@@ -161,3 +161,17 @@ test('both adapters reject invalid optional vertex and inversion flags', () => {
     assert.throws(() => parseChartPayload(payload), /finite JSON number|true or false/);
   }
 });
+
+test('valid secondary charts remain available when natal mode is selected', () => {
+  const transits = { ...chart(), planets: { Mars: { longitude: 123, latitude: -0 } } };
+  const synastry = { ...chart(), planets: { Venus: { longitude: 222, latitude: 4 } } };
+  const payload = { schemaVersion: 1, natal: chart(), transits, synastry, mode: 'natal' };
+  assert.equal(validateChartPayloadV1(payload), payload, 'prevalidation preserves the original object');
+  const parsed = parseChartPayload(payload);
+  assert.equal(parsed.mode, 'natal');
+  assert.equal(parsed.transits.planets.Mars.longitude, 123);
+  assert.ok(Object.is(parsed.transits.planets.Mars.latitude, -0));
+  assert.equal(parsed.synastry.planets.Venus.longitude, 222);
+  assert.equal(parsed.synastry.planets.Venus.latitude, 4);
+  assert.equal(payload.transits.planets.Mars.longitude, 123, 'input must not be mutated');
+});
