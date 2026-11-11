@@ -10,6 +10,7 @@ declare global {
       stablePrograms: boolean;
       redrawsStable: boolean;
       duplicateRelationsSkipRender: boolean;
+      duplicateFocusSkipRender: boolean;
       focusClearReleasesOverlays: boolean;
       teardownReleasesGpuGeometries: boolean;
       refreshCount: number;
@@ -81,6 +82,7 @@ window.runPlanetGpuLifecycleProbe = () => {
   let stablePrograms = true;
   let redrawsStable = true;
   let duplicateRelationsSkipRender = false;
+  let duplicateFocusSkipRender = false;
   let focusClearReleasesOverlays = false;
   let teardownReleasesGpuGeometries = false;
   const refreshCount = 90;
@@ -107,6 +109,18 @@ window.runPlanetGpuLifecycleProbe = () => {
       controller.setRelations(relation(0));
     }
     duplicateRelationsSkipRender = renderCalls === beforeDuplicates
+      && renderer.info.memory.geometries === focusedGeometries
+      && active.getObjectByName('chart-interaction-aspect') === initialOverlay
+      && active.getObjectByName('chart-interaction-transit-connector') === initialSpoke;
+
+    // Repeating the same button selection/focus mode must not dispose or
+    // recreate foreground line geometry (or schedule GPU render requests).
+    const beforeRepeatedFocus = renderCalls;
+    for (let i = 0; i < 120; i++) {
+      controller.highlight({layer:'natal',name:'Sun'});
+      controller.setNatalAspectPresentation('all');
+    }
+    duplicateFocusSkipRender = renderCalls === beforeRepeatedFocus
       && renderer.info.memory.geometries === focusedGeometries
       && active.getObjectByName('chart-interaction-aspect') === initialOverlay
       && active.getObjectByName('chart-interaction-transit-connector') === initialSpoke;
@@ -153,7 +167,8 @@ window.runPlanetGpuLifecycleProbe = () => {
   }
   return {
     activeOverlayRendered,stableGpuGeometries,stableTextures,stablePrograms,
-    redrawsStable,duplicateRelationsSkipRender,focusClearReleasesOverlays,teardownReleasesGpuGeometries,
+    redrawsStable,duplicateRelationsSkipRender,duplicateFocusSkipRender,
+    focusClearReleasesOverlays,teardownReleasesGpuGeometries,
     refreshCount,redrawCount,baselineGeometries,peakGeometries,finalGeometries
   };
 };

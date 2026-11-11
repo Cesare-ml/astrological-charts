@@ -162,3 +162,50 @@ test('identical aspect snapshots do not require a redraw, but genuine changes do
     {...copy[0],to:null},copy[1]
   ]), false, 'malformed endpoints never match a valid snapshot');
 });
+
+
+test('repeated programmatic focus and unchanged natal palette avoid repainting', () => {
+  // Extract the actual controller methods without requiring a browser/WebGL
+  // constructor. The only dependencies are the real public identity helpers.
+  const controllerSource = ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
+    ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const declaration = controllerSource.statements.find(node =>
+    ts.isClassDeclaration(node) && node.name?.text === 'PlanetInteractionController');
+  assert.ok(declaration, 'interactive controller class is present');
+  const methods = ['highlight', 'setNatalAspectPresentation'].map(name => {
+    const method = declaration.members.find(node =>
+      ts.isMethodDeclaration(node) && node.name.getText(controllerSource) === name);
+    assert.ok(method?.body, name + ' method is present');
+    return method.getText(controllerSource);
+  });
+  const code = ts.transpileModule(`class FocusProbe {
+    pinned: any = null;
+    scene: any = {};
+    natalAspectPresentation = 'all';
+    visualUpdates = 0;
+    renderRequests = 0;
+    updateVisuals(): void { this.visualUpdates++; }
+    requestRender(): void { this.renderRequests++; }
+    ${methods.join('\n')}
+  }`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe = new Function('sameChartPlanet', 'isChartPlanetRef',
+    code + '\nreturn FocusProbe;')(api.sameChartPlanet, api.isChartPlanetRef);
+  const probe = new Probe();
+  const checks = [];
+  const record = () => checks.push([probe.visualUpdates, probe.renderRequests]);
+  probe.highlight(natalSun); record();
+  probe.highlight({...natalSun}); record();
+  probe.highlight(transitSun); record();
+  probe.highlight({layer:'invalid',name:'Sun'}); record();
+  probe.highlight(null); record();
+  probe.setNatalAspectPresentation('focused'); record();
+  probe.setNatalAspectPresentation('focused'); record();
+  probe.setNatalAspectPresentation('muted'); record();
+  probe.scene = null;
+  probe.highlight(natalMoon); record();
+  assert.deepEqual(checks, [
+    [1,1], [1,1], [2,2], [3,3], [3,3],
+    [4,4], [4,4], [5,5], [6,5],
+  ], 'identical selections/modes must never schedule duplicate renders');
+});

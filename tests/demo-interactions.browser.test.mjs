@@ -340,7 +340,8 @@ test('real WebGL memory stays bounded across 90 aspect updates and 20 scene redr
     assert.equal(result.redrawCount, 20);
     for (const name of [
       'activeOverlayRendered','stableGpuGeometries','stableTextures',
-      'stablePrograms','redrawsStable','focusClearReleasesOverlays',
+      'stablePrograms','redrawsStable','duplicateRelationsSkipRender',
+      'duplicateFocusSkipRender','focusClearReleasesOverlays',
       'teardownReleasesGpuGeometries'
     ]) {
       assert.equal(result[name], true, name + ': ' + JSON.stringify(result));

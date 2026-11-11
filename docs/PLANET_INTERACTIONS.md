@@ -427,3 +427,23 @@ updating/restarting the branch. Inspect the natal Sun, AS and MC
 screenshots with focus on and off; compare solid, dashed and dotted
 lines on light/dark skins. Browser success alone does not certify
 faithful original artwork or measure real GPU memory consumption.
+
+
+## Idempotent focus selection and natal aspect presentation
+
+Live frontend state may repeatedly send the **same** planet focus or identical
+`'all' | 'focused' | 'muted'` natal-aspect presentation. The on-screen
+`PlanetInteractionController` now compares the layer-qualified pinned planet
+and current presentation before touching the Three.js overlays or requesting
+another canvas render. Different layers or planets still update immediately;
+`highlightPlanet(null)` clears a previously selected body but repeated clears
+are harmless. Changing scenes or precomputed relationships follows its own
+existing refresh path, so identical focus values never suppress a new chart
+draw. This does not change mouse picking, planet geometry, the exported PNG
+path or the public service API.
+
+The browser-free unit suite executes the controller's **actual TypeScript
+methods** with a render-counting probe. The opt-in real-WebGL lifecycle
+regression also repeats 120 identical focus/palette calls and checks that
+render counts, GPU geometry counts and live overlay identities remain unchanged.
+These runtime checks do not replace visual testing in Chromium and Firefox.

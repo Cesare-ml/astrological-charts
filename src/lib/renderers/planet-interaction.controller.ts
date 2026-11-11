@@ -111,12 +111,18 @@ export class PlanetInteractionController {
   }
 
   highlight(planet: ChartPlanetRef | null): void {
-    this.pinned = planet && isChartPlanetRef(planet) ? { ...planet } : null;
+    const next = planet && isChartPlanetRef(planet) ? { ...planet } : null;
+    // Repeated frontend focus values must preserve existing overlay geometry.
+    // A new scene is always refreshed separately by setScene().
+    if (sameChartPlanet(this.pinned, next)) return;
+    this.pinned = next;
     this.updateVisuals();
     if (this.scene) this.requestRender();
   }
 
   setNatalAspectPresentation(presentation: 'all' | 'focused' | 'muted'): void {
+    // Focus-mode buttons may resend the same state during live correction.
+    if (this.natalAspectPresentation === presentation) return;
     this.natalAspectPresentation = presentation;
     this.updateVisuals();
     if (this.scene) this.requestRender();
