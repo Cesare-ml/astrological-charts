@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Colori } from './_colori.config';
-import { chartAspectCirclePoint } from './planet-interaction.geometry';
+import { chartAspectCirclePoint, chartTransitConnectorRadii } from './planet-interaction.geometry';
 import {
   ChartAspectRelation, ChartPlanetRef, ChartPlanetInteractionEvent,
   chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects,
@@ -387,11 +387,28 @@ export class PlanetInteractionController {
     const center = this.aspectRing.root.getWorldPosition(new THREE.Vector3());
     const inner = this.aspectRing.root.localToWorld(
       new THREE.Vector3(projected.x, projected.y, 0));
-    const actual = transit.getWorldPosition(new THREE.Vector3());
     const radial = inner.clone().sub(center);
-    const outerRadius = actual.distanceTo(center);
-    if (!(outerRadius > radial.length() + 0.02)) return;
-    const outer = center.clone().add(radial.normalize().multiplyScalar(outerRadius));
+    const innerRadius = radial.length();
+    // Collision avoidance shifts the texture's CENTER. Prefer the
+    // real ring radius stored on the transit glyph before that shift.
+    // Both the ring and aspect-circle can be mirrored/rotated; measure
+    // the original ring in world space, then project on the actual
+    // longitude vector rather than toward the displaced texture.
+    let outerRadius = transit.getWorldPosition(new THREE.Vector3()).distanceTo(center);
+    const ringRadius: unknown = transit.userData['chartTransitRingRadius'];
+    if (transit.parent && typeof ringRadius === 'number' &&
+        Number.isFinite(ringRadius) && ringRadius > 0) {
+      const origin = transit.parent.getWorldPosition(new THREE.Vector3());
+      if (origin.distanceTo(center) < 0.02) {
+        const ringPoint = transit.parent.localToWorld(
+          new THREE.Vector3(0, ringRadius, 0)
+        );
+        outerRadius = ringPoint.distanceTo(origin);
+      }
+    }
+    const span = chartTransitConnectorRadii(innerRadius, outerRadius);
+    if (!span) return;
+    const outer = center.clone().add(radial.normalize().multiplyScalar(span.endRadius));
     const z = Math.max(inner.z, outer.z) + 0.075;
     inner.z = outer.z = z;
     const geometry = new THREE.BufferGeometry().setFromPoints([inner, outer]);
