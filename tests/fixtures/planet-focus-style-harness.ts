@@ -94,12 +94,20 @@ window.runPlanetFocusStyleProbe = () => {
     foregroundColors !== start;
   const nativeForegroundGeometryIndependent =
     !!foregroundLine && foregroundLine.geometry !== aspectGeometry;
+  let foregroundGeometryDisposals = 0;
+  let foregroundMaterialDisposals = 0;
+  foregroundLine?.geometry.addEventListener('dispose', () => foregroundGeometryDisposals++);
+  (foregroundLine?.material as THREE.Material | undefined)?.addEventListener(
+    'dispose', () => foregroundMaterialDisposals++
+  );
   const natalAspectPartnerColored = colorOf(sun)==='ff0000' &&
     colorOf(moon)==='c0c0c0' && colorOf(saturn)==='171717';
   controller.highlight({layer:'transit',name:'Saturn'});
   const transitKeepsNatalMuted = start.getX(0) < 0.5 &&
     Math.abs(start.getX(0)-start.getY(0)) < 0.00001 &&
     !scene.getObjectByName('chart-interaction-natal-focus');
+  const natalOverlayDisposedOnFocusChange =
+    foregroundGeometryDisposals === 1 && foregroundMaterialDisposals === 1;
   controller.setNatalAspectPresentation('all');
   const allRestoresOriginal = Math.abs(start.getX(0)-1)<1e-6 &&
     Math.abs(start.getY(0))<1e-6 &&
@@ -136,7 +144,8 @@ window.runPlanetFocusStyleProbe = () => {
   return {
     neutralBefore, grayTransitBackground, selectedAndPartnerColored,
     dashedOuterConnector, focusedNatalColored, focusedNatalBackgroundGray,
-    nativeForegroundGeometryIndependent, natalAspectPartnerColored,
+    nativeForegroundGeometryIndependent, natalOverlayDisposedOnFocusChange,
+    natalAspectPartnerColored,
     transitKeepsNatalMuted,
     allRestoresOriginal, hoverLatchedAfterLeave, neutralRestored, overlaysDisposed
   };
