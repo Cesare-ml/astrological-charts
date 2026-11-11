@@ -117,3 +117,18 @@ test('both adapters reject out-of-range declinations and invalid optional speeds
     assert.throws(() => parseChartPayload(payload), /finite JSON number|between -90 and 90/);
   }
 });
+
+test('both adapters reject blank planet identifiers without altering valid names', () => {
+  for (const invalidName of ['', ' ', '\t\n']) {
+    const payload = { schemaVersion: 1, natal: {
+      ...chart(), planets: { [invalidName]: { longitude: 42 } },
+    } };
+    assert.throws(() => validateChartPayloadV1(payload), /Planet names/);
+    assert.throws(() => parseChartPayload(payload), /Planet names/);
+  }
+  const payload = { schemaVersion: 1, natal: {
+    ...chart(), planets: { 'North Node': { longitude: 42 } },
+  } };
+  assert.equal(validateChartPayloadV1(payload), payload);
+  assert.ok(Object.hasOwn(parseChartPayload(payload).natal.planets, 'North Node'));
+});
