@@ -198,3 +198,36 @@ collision-shifted labels, color contrast in all seven skins, tooltip
 and touch workflows, and real upstream transit aspect inputs. No new
 astronomical/orb computations are performed in this renderer.
 
+
+## No-zoom focus and AS/DS/MC/IC acceptance
+
+Based on the owner's manual Windows browser review, selecting or
+hovering **must never enlarge** an astronomical symbol. The glyph
+remains in its original location and size; tint plus highlighted
+aspects communicate focus.
+
+The demo exposes `AS`, `DS`, `MC` and `IC` alongside the
+planet buttons. Their angular positions come from the chosen
+`TemaRender.houses[domification]` data; they are not computed
+from fixture planet longitudes. The buttons/hit glyphs can be used
+to focus an angle. The demo explicitly enables native axis
+aspect flags and provides one illustrative transiting link per
+natal angle so the behavior can be tested even without a real
+astrological backend. These are **synthetic associations**, not a
+claim of astronomical accuracy.
+
+With the demo on **Transits**, switch the layer to **Natal chart**.
+Click each of `AS`, `DS`, `MC` and `IC`: the inspector should
+show one synthetic semisquare aspect for each, to respectively
+Neptune, Mars, Neptune and Mercury. The selected angle and related
+transiting planet should change color, while the symbol size stays
+unchanged. In **Natal chart**, turn on `Focus aspects` and select
+`AS` to inspect its native natal planet-to-axis relations.
+For real topics with no matching orb/type, no relation is drawn.
+The original axis-to-axis suppression remains untouched.
+
+Run `npm run test:planet-interactions` and the Playwright
+`npm run test:demo-interactions` suite, then inspect the chart
+manually. The prior Windows 6-test suite passed; the new changes
+require a separate run before claiming completion.
+
