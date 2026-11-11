@@ -131,4 +131,11 @@ test('both adapters reject blank planet identifiers without altering valid names
   } };
   assert.equal(validateChartPayloadV1(payload), payload);
   assert.ok(Object.hasOwn(parseChartPayload(payload).natal.planets, 'North Node'));
+  const boundaryName = 'x'.repeat(80);
+  const boundaryPayload = { schemaVersion: 1, natal: {
+    ...chart(), planets: { [boundaryName]: { longitude: 42 } },
+  } };
+  assert.equal(validateChartPayloadV1(boundaryPayload), boundaryPayload);
+  assert.ok(Object.hasOwn(parseChartPayload(boundaryPayload).natal.planets, boundaryName),
+    'an 80-character planet identifier must remain valid');
 });
