@@ -210,3 +210,14 @@ test('angular normalizes signed angular inputs while CLI preserves source values
   assert.ok(Object.is(parsed.natal.planets.Sun.latitude, -0));
   assert.deepEqual(payload, before, 'neither adapter may mutate caller coordinates');
 });
+
+
+test('both adapters prioritize malformed planet values over optional chart flags', () => {
+  for (const invalid of [{ vertex: 'invalid' }, { australInversion: 'invalid' }]) {
+    const payload = { schemaVersion: 1, natal: {
+      ...chart(), ...invalid, planets: { Sun: null },
+    } };
+    assert.throws(() => validateChartPayloadV1(payload), /natal\.planets\.Sun must be a JSON object/);
+    assert.throws(() => parseChartPayload(payload), /natal\.planets\.Sun must be a JSON object/);
+  }
+});
