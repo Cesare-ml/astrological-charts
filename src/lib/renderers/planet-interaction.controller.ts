@@ -149,6 +149,11 @@ export class PlanetInteractionController {
     // A new scene is always refreshed separately by setScene().
     if (sameChartPlanet(this.pinned, next)) return;
     this.pinned = next;
+    // The hovered planet has visual priority. If the host pins a planet
+    // while a pointer is active, the displayed focus has NOT changed.
+    // Defer painting until the pointer moves/leaves: move() repaints
+    // after its enter callback; leave() restores the newly pinned body.
+    if (this.hovered) return;
     this.updateVisuals();
     if (this.scene) this.requestRender();
   }
@@ -239,6 +244,9 @@ export class PlanetInteractionController {
     if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.hovered = next ? { ...next } : null;
     const beforeEnterVisuals = this.visualRevision;
+    // Capture BEFORE the host's enter callback: Angular may pin this
+    // planet synchronously, but it still needs its first visual paint.
+    const pinnedBeforeEnter = this.pinned;
     if (this.hovered) this.send('enter', this.hovered);
     // A host may redraw in the enter callback (e.g. pin this planet).
     // Scene replacement retains its separate stale-pointer guard.
@@ -249,7 +257,7 @@ export class PlanetInteractionController {
     // are already present: keep WebGL objects (and their GPU buffers).
     // A transition from a *different* hovered body must still repaint.
     const stillPinned = !previous &&
-      sameChartPlanet(this.hovered, this.pinned);
+      sameChartPlanet(this.hovered, pinnedBeforeEnter);
     if (this.visualRevision === beforeEnterVisuals && !stillPinned) {
       this.updateVisuals();
       this.requestRender();
