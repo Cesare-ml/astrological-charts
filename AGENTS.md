@@ -44,6 +44,23 @@ as the interaction and palette design contract. In particular:
   and the exact gray-under-color layering remain human-review gates,
   not assumptions. Do not merge without local Chrome/Firefox checks.
 
+## No-enlargement and four-axis interactive acceptance
+
+The owner explicitly requested **no planet scaling on hover or
+selection**. Do not reintroduce `mesh.scale.multiplyScalar` into
+`PlanetInteractionController.updateVisuals`; focus uses tint,
+aspect-line colors and accessible button state. Test that all
+canvas symbols retain their original size through hover, click,
+touch, scene refresh and teardown.
+
+AS/DS/MC/IC are house-derived astronomical angles, **not
+additional planets**. The demo must offer all four as accessible
+selection targets, set `.aspVerso` in its options so the existing
+aspect engine includes planet–axis relationships, and never invent
+real orbs. Cross-theme illustrative links remain explicitly labeled
+synthetic. Preserve the existing no-axis-to-axis logic.
+Maintain the matching browser and Node regression tests.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
