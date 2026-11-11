@@ -828,3 +828,38 @@ to the existing wheel renderer, keeping the original two-pass
 must update linked glyph/tick/overlay data atomically rather than
 moving meshes alone; `disegnaScena()` remains the safe full-refresh
 path when upstream positions change.
+
+### In-canvas empty-space pointer focus reuse (2026-11-12)
+
+The previous pinned-hover fast path handled `pointerleave` at the
+canvas boundary, but not `pointermove` from a selected glyph into
+an empty area **inside the same canvas**. This is common when the user
+moves across the natal aspect circle: the `move` handler sends
+`leave` for the old glyph without receiving a canvas-wide
+`pointerleave` event. It used to dispose/recreate the same pinned
+aspect overlays and submit another WebGL frame.
+
+`PlanetInteractionController.move` now captures the **visible focus**
+(`hovered ?? pinned`) before its synchronous `leave` and `enter`
+callbacks and compares it with the visible focus after callbacks.
+It skips the visual rebuild only when these layer-qualified selections
+are equivalent and no callback has already changed the visual revision.
+Events are still emitted normally, so tooltip/UI consumers keep their
+`leave` notifications. A change to a different hovered planet, or a
+button-selected pin that becomes visible when the mouse reaches empty
+space, still repaints.
+
+**New regression gates:** the headless Node controller-method test
+covers both unchanged and changed-pin in-canvas transitions. The
+`pinned-pointer-idempotence-harness.ts` Playwright probe now checks
+**20 additional in-canvas enter/empty-space pairs** in addition to its
+existing 30 canvas-leave cycles, asserting original overlay identity,
+zero extra render requests, no disposal and 100 delivered enter/leave
+events across those 50 pairs. The registered browser test expects
+102 total events including the later unrelated transit hover.
+
+**Source-level validation:** actual committed controller methods were
+executed in a JavaScript isolate with synthetic callbacks (10/10
+behavior cases passed). Full Node/TypeScript/Angular/Chrome tests are
+still needed on the owner's Windows installation. No astronomical
+calculation, public API, private imagery or production code changed.
