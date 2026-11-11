@@ -61,6 +61,21 @@ real orbs. Cross-theme illustrative links remain explicitly labeled
 synthetic. Preserve the existing no-axis-to-axis logic.
 Maintain the matching browser and Node regression tests.
 
+## Native natal aspect focus foreground ownership
+
+The current draft interaction controller implements the owner's
+gray-under-colored natal focus using **screen-only clones of the
+existing tagged native aspect strokes**. Preserve the exact original
+line geometry, angle directions, widths and solid/dashed/dotted
+patterns. Copies must clone both BufferGeometry and Material instead
+of sharing mutable Three.js resources with the gray background,
+and must be disposed on focus change/redraw/destroy. Do not duplicate
+aspect calculations, alter native export PNG/JPEG visuals or commit
+original assets. Keep `tests/fixtures/planet-focus-style-harness.ts`
+covering independent foreground colors, disposal events and repeated
+focus cycles. The 2026-11-11 owner confirmed the prior nonzoom/axis
+version, **not yet** this double-layer revision.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
