@@ -110,3 +110,5 @@ The JSON v1 contract regression suite now includes signed-zero latitude/speed pr
 - Keep the software free and retain the VirgoStars project name and link in the required credits/about surfaces.
 
 Milestones may overlap during development, but **M0 must be cleared before public release**. Update this file and related issues whenever acceptance criteria change.
+
+- [ ] Verify the JSON v1 invalid-planet-name error precedence regression: Angular now checks the identifier before parsing the planet object, matching Node validation even when the planet value is malformed. Added a focused test in `tests/chart-input.test.mjs`; run `npm run test:chart-input` in a complete checkout before considering it verified.
