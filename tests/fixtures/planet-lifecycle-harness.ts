@@ -115,13 +115,18 @@ window.runPlanetLifecycleProbe = () => {
       && eventsA[0].planet.layer === 'natal' && eventsB[0].planet.layer === 'transit';
     const independentAspectTypes = eventsA[0]?.aspects[0]?.type === 'quadrato'
       && eventsB[0]?.aspects[0]?.type === 'trigono';
-    const bLine = second.scene.getObjectByName('chart-interaction-aspect');
+    const initialBLine = second.scene.getObjectByName('chart-interaction-aspect');
     const isolatedVisuals = first.natal.scale.x > 1 && first.transit.scale.x > 1
       && second.natal.scale.x > 1 && second.transit.scale.x > 1
-      && !!bLine && !!first.scene.getObjectByName('chart-interaction-aspect');
+      && !!initialBLine && !!first.scene.getObjectByName('chart-interaction-aspect');
 
     controllerA.highlight({layer: 'natal', name: 'Sun'});
     controllerB.highlight({layer: 'transit', name: 'Saturn'});
+    // highlight() intentionally replaces B's focus overlay. The baseline
+    // for subsequent isolation checks must be taken AFTER that explicit
+    // change, not before it (otherwise a legitimate replacement fails).
+    const bLine = second.scene.getObjectByName('chart-interaction-aspect');
+    const bLineReplacedByOwnFocus = !!bLine && bLine !== initialBLine;
     let state = first;
     let redrawRestoresScale = true;
     let redrawReleasesOverlays = true;
@@ -149,7 +154,8 @@ window.runPlanetLifecycleProbe = () => {
       && Math.abs(points.getX(1) - 0.6) < 1e-5
       && Math.abs(points.getY(1)) < 1e-5;
 
-    const stillIsolated = eventsB.length === bEventsBeforeRedraws
+    const stillIsolated = bLineReplacedByOwnFocus
+      && eventsB.length === bEventsBeforeRedraws
       && second.scene.getObjectByName('chart-interaction-aspect') === bLine
       && second.transit.scale.x > 1;
     // The last scene is horizontally mirrored, so natal Sun is at +0.4.
