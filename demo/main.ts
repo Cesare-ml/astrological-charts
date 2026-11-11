@@ -157,6 +157,9 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   }
   changeMode(event: Event): void {
     this.mode = (event.target as HTMLSelectElement).value as Mode;
+    // Natal focus is a mode-scoped view preference. Leaving the natal
+    // chart turns it off; returning starts with the normal full palette.
+    if (this.mode !== 'natal') this.focusNatalAspects = false;
     this.planetLayer = 'natal';
     this.aspectFilter = 'all';
     this.hoveredPlanet = null;
