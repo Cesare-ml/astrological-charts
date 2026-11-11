@@ -237,3 +237,42 @@ in either case the original in-progress call must not attach an older scene.
 `planet-scene-switch-harness` verifies that the replacement requested
 from inside the host callback wins over the earlier outer replacement,
 and that the following pointer event targets only the winning scene.
+
+### Windows 11 manual Playwright regression and diagnostics fix (2026-11-11)
+
+The owner ran `npm run test:demo-interactions` on Windows with the
+Angular demo and local approved-asset server active: **3 of 6 passed**.
+The passed tests covered palette restoration/colored connected glyphs,
+natal/transit pointer raycasting/overlay events, and overlapping glyph
+hit testing. The failed tests were:
+
+1. Frontend button selection read `None` immediately after clicking
+   transit Saturn rather than awaiting the asynchronous Angular
+   **zoneless** change detection cycle (`transit:Saturn`).
+2. The natal `Focus aspects` switch likewise read `None` immediately
+   after checking it instead of waiting for the DOM to display the
+   default `natal:Sun` selection.
+3. The two-canvas 50-redraw harness compared a second canvas overlay
+   object captured **before** explicitly calling `highlight()` on
+   that canvas. That legitimate focus call replaces the old line;
+   the stale identity comparison produced `isolatedEvents:false`.
+
+The draft now exports a completed-scene `data-render-revision` from
+the demo status. The browser test waits for a *new* revision after
+mode/skin changes and waits for the expected rendered selection and
+aspect counts after button/toggle/filter clicks. A remaining 10-second
+timeout signals a real UI regression rather than silently passing.
+The lifecycle fixture now captures canvas B's overlay *after* its
+intentional focus change and reports initial/continued isolation
+separately. Exiting natal mode resets its natal-only `Focus aspects`
+switch, matching the return-to-natal test and preserving the default
+all-colored natal chart.
+
+These are targeted changes to the demo and test timing/expectations;
+the passing Three.js color, pointer and picking tests were left intact.
+**The full suite has not yet been rerun by the owner after this fix**.
+Use an up-to-date `feat/planet-interactions-transit-aspects-20261110`
+checkout and restart `npm run demo` on port 4200 to ensure the
+new `data-render-revision` attribute is served before rerunning
+`npm run test:demo-interactions`. Do not merge the draft solely
+because source inspection passes.
