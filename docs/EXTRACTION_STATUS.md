@@ -1,6 +1,6 @@
 # Extraction status and release gates
 
-**Phase:** PRIVATE, CPAL-1.0 LICENSE PREPARED, NOT RELEASED. The Angular build and browser tests passed locally on Windows using synthetic and owner-authorized original images. Visual parity and production consumers remain unverified.
+**Phase:** PUBLICLY VISIBLE SOURCE, CPAL-1.0 LICENSE PREPARED IN DRAFT PR, RELEASE NOT APPROVED. GitHub visibility is not evidence that source, dependencies or artwork are cleared for redistribution (see [issue #20](https://github.com/Cesare-ml/astrological-charts/issues/20) and [public release checklist](PUBLIC_RELEASE_CHECKLIST.md)). Earlier Windows Angular/browser checks are reported for historical development snapshots; they do not validate the current draft PR head. Visual parity and production consumers remain unverified.
 
 ## Extraction and current implementation
 
@@ -31,7 +31,7 @@
 - No backend, account database, user data, `.env` or deployment infrastructure imported.
 - No historical Git repository clone or legacy renderer copies.
 - No production skin assets or fonts copied; instead, `resolveChartAssetUrl` and `GestoreImmagini.configurePublicAssetsBase` provide a host-owned URL contract. Synthetic WebGL tests do not validate site or hardware integration.
-- CPAL-1.0 prepared for the source code; repository not made public.
+- CPAL-1.0 prepared for source code in the draft branch; repository is already publicly visible, but no release or redistribution-rights approval has been granted.
   No GitHub Actions, auto-deploy or npm publishing.
 - Local browser and offline smoke results do not establish production-consumer, visual-baseline or device compatibility.
 
