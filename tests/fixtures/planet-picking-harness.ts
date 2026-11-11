@@ -10,6 +10,11 @@ interface PickingProbe {
   outsideClickIgnored: boolean;
   noStaleUpdateDuringLeave: boolean;
   frontLayerWins: boolean;
+  hiddenFrontFallsThrough: boolean;
+  hiddenAncestorFallsThrough: boolean;
+  showingAncestorRestoresPick: boolean;
+  hiddenMaterialFallsThrough: boolean;
+  hiddenMaterialClickFallsThrough: boolean;
   pickTargetCacheStable: boolean;
   pickTargetCacheReindexed: boolean;
   pickTargetCacheReleased: boolean;
@@ -113,16 +118,47 @@ window.runPlanetPickingProbe = (): PickingProbe => {
     pointer(0.08);
     const frontLayerWins = events.at(-1)?.type === 'enter'
       && events.at(-1)?.planet.name === 'Venus';
+
+    // Three.js can raycast hidden glyph meshes. A retired/filtered layer
+    // must never steal mouse focus from the underlying visible Moon.
+    front.visible = false;
+    pointer(0.08);
+    const hiddenFrontFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    // A parent wheel/group may be hidden without modifying child meshes.
+    const group = new THREE.Group();
+    scene.add(group);
+    const grouped = glyph('Jupiter', 0.08, 0.25);
+    group.add(grouped);
+    group.visible = false;
+    controller.setScene(scene);
+    pointer(0.08);
+    const hiddenAncestorFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    group.visible = true;
+    pointer(0.08);
+    const showingAncestorRestoresPick = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Jupiter';
+    (grouped.material as THREE.Material).visible = false;
+    pointer(0.08);
+    const hiddenMaterialFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    pointer(0.08, 'click');
+    const hiddenMaterialClickFallsThrough = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Moon';
     controller.destroy();
     const pickTargetCacheReleased =
       (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets.length === 0;
     const resourcesRestored = left.scale.x === 1 && right.scale.x === 1
-      && front.scale.x === 1 && offscreen.scale.x === 1;
+      && front.scale.x === 1 && offscreen.scale.x === 1
+      && grouped.scale.x === 1;
     return {
       nearerRightSelected, nearerLeftSelected, zoomedRightSelected,
       outsideCanvasClearsHover, outsideClickIgnored, noStaleUpdateDuringLeave,
-      frontLayerWins, pickTargetCacheStable, pickTargetCacheReindexed,
-      pickTargetCacheReleased, resourcesRestored
+      frontLayerWins, hiddenFrontFallsThrough, hiddenAncestorFallsThrough,
+      showingAncestorRestoresPick, hiddenMaterialFallsThrough,
+      hiddenMaterialClickFallsThrough, pickTargetCacheStable,
+      pickTargetCacheReindexed, pickTargetCacheReleased, resourcesRestored
     };
   } finally {
     controller.destroy();

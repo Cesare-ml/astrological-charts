@@ -738,3 +738,26 @@ partial updates for moving positions yet: `disegnaScena()`
 remains the correct path when positions change. Run
 `npm run test:planet-layout` and the full browser/screenshot parity
 suite before approving a merge.
+
+## Visibility-aware pointer picking
+
+The on-screen raycaster must not select a glyph hidden by a host filter,
+a hidden ancestor/group, or an invisible Three.js material. Mesh ray
+intersections may include such hidden objects, so the interactive picker
+filters hits using **current** scene hierarchy and material visibility;
+it does not remove them permanently from the scene's cached pick-target
+array. A symbol that becomes visible again can immediately be selected
+without reconstructing the natal/transit chart.
+
+Visible overlapping symbols retain the existing projected-center tie
+break within a 0.025 world-unit depth tolerance. The tolerance is
+measured from the **first visible** intersection, not a closer but hidden
+mesh. This rule also applies to clicks. No planet scaling, ephemeris,
+aspect calculations, canvas export, asset resolver or visual skin changes.
+
+The synthetic `planet-picking-harness.ts` checks hidden front meshes,
+hidden ancestors, toggling the ancestor back on, invisible materials,
+and clicks through hidden layers. The existing outside-canvas, zoom,
+depth and stale-scene checks remain. Run `npm run test:demo-interactions`
+in a real browser before approving; GitHub source inspection alone does
+not constitute a passed WebGL regression.

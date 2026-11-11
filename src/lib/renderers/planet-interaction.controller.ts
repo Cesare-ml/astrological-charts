@@ -191,6 +191,25 @@ export class PlanetInteractionController {
     this.emit({ type, planet: { ...planet }, aspects: snapshotChartAspects(relatedChartAspects(planet, this.relations)) });
   }
 
+  /** Raycaster intersections include non-rendered meshes in some Three.js
+   * paths. Respect current scene/group/mesh and material visibility without
+   * rebuilding the cached pickTargets array whenever the host hides a layer.
+   */
+  private visiblePlanetHit(hit: THREE.Intersection<THREE.Object3D>): boolean {
+    for (let node: THREE.Object3D | null = hit.object; node; node = node.parent) {
+      if (!node.visible) return false;
+    }
+    const material = (hit.object as THREE.Mesh).material;
+    if (Array.isArray(material)) {
+      // Multi-material meshes can hide just one group of triangles.
+      const index = hit.face?.materialIndex;
+      return typeof index === 'number' && index >= 0 && index < material.length
+        ? material[index].visible
+        : material.some(candidate => candidate.visible);
+    }
+    return !!material && material.visible;
+  }
+
   private pick(event: MouseEvent): ChartPlanetRef | null {
     if (!this.scene) return null;
     const rect = this.canvas.getBoundingClientRect();
@@ -208,16 +227,17 @@ export class PlanetInteractionController {
     // Only tagged planet glyphs: decorative meshes never intercept a hit.
     const hits = this.raycaster.intersectObjects(this.pickTargets, false);
     if (!hits.length) return null;
-    // When close glyph rectangles overlap at the same depth, Three.js picks
-    // the earliest traversed mesh. Prefer the symbol whose projected CENTER
-    // is nearest to the pointer, but never select a farther depth layer over
-    // a frontmost one. This works after camera zoom and chart mirroring.
-    const nearestDepth = hits[0].distance;
+    // Hidden foreground glyphs must not block an actually visible planet.
+    // Find the first *visible* hit to establish the nearest depth, then
+    // favor the projected glyph center inside the original 0.025 tolerance.
     const center = this.projectedGlyphCenter;
-    let best = hits[0];
+    let nearestDepth: number | null = null;
+    let best: THREE.Intersection<THREE.Object3D> | null = null;
     let bestDistanceSquared = Infinity;
     for (const hit of hits) {
-      if (hit.distance - nearestDepth > 0.025) break;
+      if (nearestDepth !== null && hit.distance - nearestDepth > 0.025) break;
+      if (!this.visiblePlanetHit(hit)) continue;
+      if (nearestDepth === null) nearestDepth = hit.distance;
       hit.object.getWorldPosition(center).project(this.camera);
       const dx = center.x - this.pointer.x;
       const dy = center.y - this.pointer.y;
@@ -227,6 +247,7 @@ export class PlanetInteractionController {
         bestDistanceSquared = distanceSquared;
       }
     }
+    if (!best) return null;
     const ref: unknown = best.object.userData['chartPlanet'];
     return isChartPlanetRef(ref) ? ref : null;
   }
