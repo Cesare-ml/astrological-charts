@@ -121,6 +121,22 @@ in `tests/fixtures/transit-spoke-harness.ts` for reversed inputs,
 two simultaneous transit planets and southern-hemisphere mirroring.
 The light/dark visuals need manual approval before merge.
 
+## Pinned pointer no-op repaint guard
+
+The on-screen controller must avoid unnecessary overlay
+reallocation when a pointer enters/leaves the **same pinned planet**
+without a visual focus change. Still send enter/leave events to
+frontend consumers, respect layer-qualified identity, and preserve
+scene/visual revision guards for reentrant callbacks. Do not skip
+repainting on transitions from a *different* hovered planet, or
+when a callback changes selection or displayed aspects. The
+Playwright synthetic fixture
+`tests/fixtures/pinned-pointer-idempotence-harness.ts` tests
+30 enter/leave cycles, unchanged overlay identities, no material
+disposal/render requests, different-planet transitions and clearing
+selection. These tests require real Chrome/Firefox browser execution
+before merge; static inspection is not a performance benchmark.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
