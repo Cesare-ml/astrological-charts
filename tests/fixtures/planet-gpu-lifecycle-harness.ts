@@ -11,6 +11,8 @@ declare global {
       redrawsStable: boolean;
       duplicateRelationsSkipRender: boolean;
       duplicateFocusSkipRender: boolean;
+      unrelatedUpdatesSkipRender: boolean;
+      unrelatedUpdatesAvailableOnSelection: boolean;
       focusClearReleasesOverlays: boolean;
       teardownReleasesGpuGeometries: boolean;
       refreshCount: number;
@@ -52,6 +54,8 @@ window.runPlanetGpuLifecycleProbe = () => {
     };
     mesh('natal','Sun',-0.35,0);
     mesh('transit','Saturn',0.75,Math.PI/2);
+    mesh('natal','Moon',-0.65,Math.PI);
+    mesh('transit','Venus',0.5,Math.PI*1.5);
     return scene;
   };
   const disposeGlyphs = (scene: THREE.Scene) => scene.traverse(object => {
@@ -67,7 +71,14 @@ window.runPlanetGpuLifecycleProbe = () => {
     renderCalls++;
     renderer.render(active,camera);
   };
-  const controller = new PlanetInteractionController(canvas,camera,()=>{},render);
+  let clickedName = '';
+  let clickedOrbs: readonly (number | undefined)[] = [];
+  const controller = new PlanetInteractionController(canvas,camera,event=>{
+    if (event.type === 'click') {
+      clickedName = event.planet.name;
+      clickedOrbs = event.aspects.map(aspect => aspect.orb);
+    }
+  },render);
   const focus = {layer:'natal' as const,name:'Sun'};
   const relation = (n: number) => [{
     from:focus, to:{layer:'transit' as const,name:'Saturn'},
@@ -83,6 +94,8 @@ window.runPlanetGpuLifecycleProbe = () => {
   let redrawsStable = true;
   let duplicateRelationsSkipRender = false;
   let duplicateFocusSkipRender = false;
+  let unrelatedUpdatesSkipRender = false;
+  let unrelatedUpdatesAvailableOnSelection = false;
   let focusClearReleasesOverlays = false;
   let teardownReleasesGpuGeometries = false;
   const refreshCount = 90;
@@ -124,6 +137,31 @@ window.runPlanetGpuLifecycleProbe = () => {
       && renderer.info.memory.geometries === focusedGeometries
       && active.getObjectByName('chart-interaction-aspect') === initialOverlay
       && active.getObjectByName('chart-interaction-transit-connector') === initialSpoke;
+
+    // Off-focus updates must not touch the highlighted Sun/Saturn line.
+    const beforeUnrelated = renderCalls;
+    for (let i = 0; i < 120; i++) {
+      controller.setRelations([...relation(0), {
+        from:{layer:'natal' as const,name:'Moon'},
+        to:{layer:'transit' as const,name:'Venus'},
+        type:'sestile',orb:i / 10
+      }]);
+    }
+    unrelatedUpdatesSkipRender = renderCalls === beforeUnrelated
+      && renderer.info.memory.geometries === focusedGeometries
+      && active.getObjectByName('chart-interaction-aspect') === initialOverlay
+      && active.getObjectByName('chart-interaction-transit-connector') === initialSpoke;
+
+    // Later clicks still receive the freshest off-focus data from the host.
+    camera.updateMatrixWorld(true);
+    const moonPoint = new THREE.Vector3(-0.65,0,0).project(camera);
+    const rect = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(new MouseEvent('click', {
+      clientX:rect.left + (moonPoint.x+1)*rect.width/2,
+      clientY:rect.top + (1-moonPoint.y)*rect.height/2,bubbles:true
+    }));
+    unrelatedUpdatesAvailableOnSelection = clickedName === 'Moon'
+      && clickedOrbs.length === 1 && clickedOrbs[0] === 11.9;
 
     for (let i = 1; i <= refreshCount; i++) {
       controller.setRelations(relation(i)); // requestRender() hits real WebGL
@@ -168,6 +206,7 @@ window.runPlanetGpuLifecycleProbe = () => {
   return {
     activeOverlayRendered,stableGpuGeometries,stableTextures,stablePrograms,
     redrawsStable,duplicateRelationsSkipRender,duplicateFocusSkipRender,
+    unrelatedUpdatesSkipRender,unrelatedUpdatesAvailableOnSelection,
     focusClearReleasesOverlays,teardownReleasesGpuGeometries,
     refreshCount,redrawCount,baselineGeometries,peakGeometries,finalGeometries
   };
