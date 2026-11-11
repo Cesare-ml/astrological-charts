@@ -29,6 +29,9 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 
 **Exit criterion:** maintainer explicitly clears provenance, security, license and functional checks and resolves the currently public GitHub visibility discrepancy (issue #20). Repository visibility alone is not a release.
 
+
+- JSON v1 planet-identifier regression coverage now includes ASCII and Unicode-only whitespace and names exceeding 80 characters in `tests/chart-input.test.mjs`. This checks rejection contracts for both Angular and CLI adapters; execute `npm run test:chart-input` in a complete checkout before relying on the tests.
+
 ## M1 — Reproducible standalone development
 
 - [ ] Confirm `npm ci`, type checks, preflight, library build and Angular demo build on a fresh checkout.
