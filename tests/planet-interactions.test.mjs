@@ -317,3 +317,72 @@ test('orb-only transit updates repaint only when the selected guide color change
   ),false,'existing duplicated central lines disable the optimization');
   assert.equal(api.sameChartAspectVisuals([],[]),true);
 });
+
+
+test('pinned focus emits detail updates without needless orb-only WebGL repaint', () => {
+  // Execute the exact setRelations TypeScript method with lightweight host stubs.
+  const ast = ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
+    ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const cls = ast.statements.find(node =>
+    ts.isClassDeclaration(node) && node.name?.text === 'PlanetInteractionController');
+  const method = cls?.members.find(node =>
+    ts.isMethodDeclaration(node) && node.name.getText(ast) === 'setRelations');
+  assert.ok(method?.body, 'setRelations is present on the actual controller');
+  const code = ts.transpileModule(`class RelationProbe {
+    relations: any[] = [];
+    hovered: any = null;
+    pinned: any = null;
+    scene: any = {};
+    sceneRevision = 1;
+    events: any[] = [];
+    visuals = 0;
+    renders = 0;
+    updateVisuals(): void { this.visuals++; }
+    requestRender(): void { this.renders++; }
+    send(type: string, planet: any): void {
+      this.events.push({type, planet, aspects: relatedChartAspects(planet, this.relations)});
+    }
+    ${method.getText(ast)}
+  }`, {compilerOptions: {module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022}}).outputText;
+  const Probe = new Function('snapshotChartAspects', 'sameChartAspects',
+    'sameChartAspectVisuals', 'relatedChartAspects', code + '\nreturn RelationProbe;')(
+      api.snapshotChartAspects, api.sameChartAspects,
+      api.sameChartAspectVisuals, api.relatedChartAspects);
+  const probe = new Probe();
+  probe.pinned = {...transitSaturn};
+  const selected = {from: {...natalSun}, to: {...transitSaturn}, type: 'quadrato', orb: 1};
+  const unrelated = {from: {...transitSun}, to: {...natalMoon}, type: 'trigono', orb: 1};
+  probe.setRelations([selected, unrelated]);
+  assert.equal(probe.events.length, 1);
+  assert.equal(probe.events[0].type, 'update');
+  assert.equal(probe.events[0].planet.layer, 'transit');
+  assert.equal(probe.events[0].aspects.length, 1);
+  const baseline = [probe.events.length, probe.visuals, probe.renders];
+  probe.setRelations([{...selected, from: {...natalSun}, to: {...transitSaturn}}, {...unrelated}]);
+  assert.deepEqual([probe.events.length, probe.visuals, probe.renders], baseline,
+    'identical links must not generate a redundant update');
+  probe.setRelations([selected, {...unrelated, orb: 2}]);
+  assert.deepEqual([probe.events.length, probe.visuals, probe.renders], baseline,
+    'off-focus link changes must not update the pinned transit');
+  probe.setRelations([{...selected, orb: 2}, {...unrelated, orb: 2}]);
+  assert.equal(probe.events.at(-1)?.type, 'update');
+  assert.equal(probe.events.at(-1)?.aspects[0].orb, 2);
+  assert.equal(probe.events.length, 2);
+  assert.equal(probe.visuals, baseline[1],
+    'orb-only change with same guide color should not allocate new overlays');
+  assert.equal(probe.renders, baseline[2],
+    'orb-only detail change should not request an extra frame');
+  probe.setRelations([{...unrelated, orb: 2}]);
+  assert.equal(probe.events.at(-1)?.type, 'update');
+  assert.deepEqual(probe.events.at(-1)?.aspects, [],
+    'a pinned selection must learn when its last relation disappears');
+  assert.equal(probe.events.length, 3);
+  assert.equal(probe.visuals, baseline[1] + 1);
+  assert.equal(probe.renders, baseline[2] + 1);
+  probe.pinned = null;
+  const countWithoutFocus = probe.events.length;
+  probe.setRelations([selected, unrelated]);
+  assert.equal(probe.events.length, countWithoutFocus,
+    'no active focus means no fabricated detail event');
+});
