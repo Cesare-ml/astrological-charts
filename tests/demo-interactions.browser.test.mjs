@@ -151,6 +151,8 @@ test('all four natal angles show their supplied transit relationships without zo
   try {
     await page.goto('http://127.0.0.1:4200/');
     await ready(page);
+    const screenshots = '.local/demo-interaction-focus';
+    mkdirSync(screenshots,{recursive:true});
     const lastRevision = await revision(page);
     await page.selectOption('#mode','transits');
     await ready(page,lastRevision);
@@ -164,6 +166,11 @@ test('all four natal angles show their supplied transit relationships without zo
       assert.match(description, new RegExp('natal '+axis));
       assert.match(description, new RegExp('transit '+partner));
       assert.match(description, /semiquadrato/);
+      if (axis === 'MC') {
+        await page.locator('[data-testid=chart]').screenshot({
+          path:join(screenshots,'natal-mc-transit-aspects-light.png')
+        });
+      }
     }
     // Reverse direction: selecting the transit Mercury also exposes
     // its relationship to the natal IC (along with its Pluto link).
@@ -179,6 +186,9 @@ test('all four natal angles show their supplied transit relationships without zo
     await selection(page,'natal:Sun');
     await page.getByRole('button',{name:'Highlight natal AS'}).click();
     await selection(page,'natal:AS');
+    await page.locator('[data-testid=chart]').screenshot({
+      path:join(screenshots,'natal-as-focused-light.png')
+    });
     // AS/DS/MC/IC come from the actual house axis coordinates;
     // no fabricated angles/aspects are created by the renderer.
   } finally { await page.close(); await browser.close(); }
