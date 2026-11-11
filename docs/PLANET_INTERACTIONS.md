@@ -783,7 +783,10 @@ overlay altogether. A planet already pinned before the pointer
 entered still avoids reallocation as in the prior fast path.
 
 Added `tests/fixtures/hover-pin-handoff-harness.ts` (via the
-existing Playwright interaction suite). It asserts that the first
+existing Playwright interaction suite) **and** a Node regression in
+`tests/planet-interactions.test.mjs` that extracts the real controller
+`highlight`, `move` and `leave` TypeScript members for headless
+enter-to-pin callback verification. It asserts that the first
 enter-to-pin paints exactly once, switching from Sun to Saturn
 paints exactly once, repeated hovering over the pinned Saturn
 does not reallocate lines, a button selecting Sun *while Saturn
