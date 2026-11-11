@@ -387,3 +387,26 @@ test('real WebGL memory stays bounded across 90 aspect updates and 20 scene redr
     }
   } finally { await page.close(); await browser.close(); }
 });
+
+test('Angular service batches bursty planet/zoom state into one WebGL frame', {timeout:60000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundle = await build({
+      entryPoints:['tests/fixtures/interactive-frame-batch-harness.ts'],
+      bundle:true,write:false,platform:'browser',format:'iife',
+      target:'es2022',tsconfig:'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runInteractiveFrameBatchProbe());
+    for (const name of [
+      'coalescesFocusAspectsZoom','explicitDrawCancelsQueuedFrame',
+      'destroyCancelsQueuedFrame','noDeferredFrameAfterDestroy'
+    ]) assert.equal(result[name],true,name+': '+JSON.stringify(result));
+    assert.equal(result.countAfterBatch,1);
+    assert.equal(result.countAfterExplicit,2);
+    assert.equal(result.countAfterDestroy,2);
+  } finally { await page.close(); await browser.close(); }
+});

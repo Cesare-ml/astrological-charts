@@ -106,7 +106,7 @@ export class GraficoRenderService implements OnDestroy {
     if (this.camera) {
       this.camera.zoom = this.zoomValue;
       this.camera.updateProjectionMatrix();
-      this.render();
+      this.requestInteractiveFrame();
     }
   }
 
@@ -128,6 +128,7 @@ export class GraficoRenderService implements OnDestroy {
     this.planetController?.destroy();
     this.planetController = null;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
+    this.frameId = null;
     
     if(this.resizeSub) {
       this.resizeSub.unsubscribe();
@@ -182,7 +183,7 @@ export class GraficoRenderService implements OnDestroy {
     this.camera.updateProjectionMatrix();
     this.scene.add(this.camera);
     this.planetController = new PlanetInteractionController(
-      this.canvas, this.camera, event => this.planetListener?.(event), () => this.render()
+      this.canvas, this.camera, event => this.planetListener?.(event), () => this.requestInteractiveFrame()
     );
     this.planetController.setRelations(this.crossChartAspects);
     this.planetController.setNatalAspectPresentation(this.natalAspectPresentation);
@@ -322,7 +323,33 @@ export class GraficoRenderService implements OnDestroy {
     });
   }
 
+  /**
+   * Fold consecutive hover/focus/aspect/zoom updates into one WebGL frame.
+   * A full scene commit still calls render() immediately and cancels any
+   * pending presentation frame, so an obsolete scene is never drawn twice.
+   */
+  private requestInteractiveFrame(): void {
+    if (!this.renderer) return;
+    if (!this.isInizializzato) {
+      this.renderRequestedBeforeInit = true;
+      return;
+    }
+    if (this.frameId != null) return;
+    const expectedRenderer = this.renderer;
+    const generation = this.drawGeneration;
+    this.frameId = requestAnimationFrame(() => {
+      this.frameId = null;
+      if (this.renderer !== expectedRenderer || generation !== this.drawGeneration) return;
+      this.render();
+    });
+  }
+
   public render(): void {
+    // Explicit redraw/scene commit supersedes an already queued focus frame.
+    if (this.frameId != null) {
+      cancelAnimationFrame(this.frameId);
+      this.frameId = null;
+    }
     if (!this.isInizializzato) {
       // Initialization can request one deferred frame. A fully destroyed
       // service has no renderer and must not queue a frame for a later mount.

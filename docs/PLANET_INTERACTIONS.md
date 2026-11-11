@@ -549,3 +549,30 @@ transiting body; geometry/materials are disposed when focus changes.
   light/dark and dense transit rings; confirm dashes are aligned with
   original longitudes and end before transit glyphs. This is a
   **draft implementation**, not a post-change browser pass.
+
+
+## Batch interactive redraws into one animation frame
+
+`GraficoRenderService` now schedules on-screen hover, selection, natal
+focus palette, cross-chart aspect and zoom repaints through a single pending
+`requestAnimationFrame`. A burst of frontend calls during the same browser
+turn therefore schedules **one WebGL render**, rather than one render per
+setter. Individual controller methods still update their synchronous
+Three.js state and emit their existing frontend events immediately; only
+the canvas paint is deferred until the next frame.
+
+Full scene builds (`disegnaScena`) and explicit `render()` calls still
+render immediately, canceling any obsolete queued presentation frame.
+`ngOnDestroy` cancels pending frames; callbacks check the expected renderer
+and draw generation before painting, protecting canvas replacement and
+reentrant teardown. Pre-initialization render requests still use the
+existing deferred-initial-frame flag. Offscreen PNG/export continues to
+render synchronously and is unaffected.
+
+`tests/fixtures/interactive-frame-batch-harness.ts` uses the actual
+Angular service and a browser WebGL renderer (no private images or natal
+data) and asserts coalescing of zoom/focus/aspect updates, cancellation by
+an explicit redraw, and cancellation on destroy. Registered in
+`npm run test:demo-interactions`. The test measures **render calls**, not
+FPS or GPU milliseconds. Run the suite on Chromium and Firefox with the
+local manifest-verified demo servers before treating this as validated.
