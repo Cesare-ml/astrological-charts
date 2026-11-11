@@ -290,3 +290,24 @@ test('each secondary chart independently preserves optional speed and declinatio
   assert.equal(parsed.synastry.planets.Venus.equatoriale.declination, -90);
   assert.deepEqual(payload, before, 'adapters must not mutate secondary chart inputs');
 });
+
+test('failed validation does not alter caller-owned natal or secondary chart data', () => {
+  for (const key of ['natal', 'transits', 'synastry']) {
+    const payload = {
+      schemaVersion: 1,
+      mode: 'natal',
+      natal: chart(),
+      transits: chart(),
+      synastry: chart(),
+    };
+    payload[key].planets.Sun.longitude = -725;
+    payload[key].planets.Sun.latitude = -0;
+    payload[key].houseCusps = [1]; // Fail after providing otherwise valid planet coordinates.
+    const before = structuredClone(payload);
+    assert.throws(() => validateChartPayloadV1(payload), /12 degree values/);
+    assert.deepEqual(payload, before, 'Node validation mutated ' + key);
+    assert.throws(() => parseChartPayload(payload), /12 degree values/);
+    assert.deepEqual(payload, before, 'Angular parsing mutated ' + key);
+    assert.ok(Object.is(payload[key].planets.Sun.latitude, -0));
+  }
+});
