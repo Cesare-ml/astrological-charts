@@ -50,6 +50,13 @@ window.runPlanetPointerProbe = () => {
   };
   const natal = glyph('natal', 'Sun', -0.4, 0);
   const transit = glyph('transit', 'Saturn', 0.4, Math.PI/2);
+  const tint = (mesh: THREE.Mesh) =>
+    (mesh.material as THREE.MeshBasicMaterial).color.getHexString();
+  let focusNeverZooms = true;
+  const checkSize = () => {
+    focusNeverZooms &&= natal.scale.x === 1 && natal.scale.y === 1 &&
+      transit.scale.x === 1 && transit.scale.y === 1;
+  };
   scene.updateMatrixWorld(true);
   const events: ChartPlanetInteractionEvent[] = [];
   const controller = new PlanetInteractionController(canvas, camera, event => events.push(event), () => {});
@@ -75,6 +82,7 @@ window.runPlanetPointerProbe = () => {
   const natalHovered = events[0]?.type === 'enter'
     && events[0].planet.layer === 'natal' && events[0].planet.name === 'Sun'
     && events[0].aspects.length === 1;
+  checkSize();
   const overlay = scene.getObjectByName('chart-interaction-aspect') as THREE.Line | undefined;
   const centralOverlay = overlay !== undefined;
   const coordinates = (overlay?.geometry as THREE.BufferGeometry | undefined)?.getAttribute('position') as THREE.BufferAttribute | undefined;
@@ -102,38 +110,44 @@ window.runPlanetPointerProbe = () => {
     && event.aspects.length === 1);
   controller.highlight({layer: 'transit', name: 'Saturn'});
   canvas.dispatchEvent(new PointerEvent('pointerleave', {bubbles: true}));
-  // The pinned transit remains the primary focus; its natal partner is
-  // correctly highlighted at the smaller related-body scale (1.18).
-  const transitPinRestored = transit.scale.x > natal.scale.x
-    && transit.scale.x > 1 && natal.scale.x > 1;
+  // Focus is color-only; pinned transit keeps its aspect overlay.
+  checkSize();
+  const transitPinRestored = tint(transit) === '9e02ff' &&
+    tint(natal) === 'ff0000' &&
+    !!scene.getObjectByName('chart-interaction-aspect');
   const beforeRelationsAfterLeave = events.length;
   controller.setRelations([]);
   const noRefreshAfterLeave = events.length === beforeRelationsAfterLeave
     && scene.getObjectByName('chart-interaction-aspect') === undefined
-    && transit.scale.x > 1;
+    && tint(transit) === '9e02ff' && transit.scale.x === 1;
   const simplifiedEvents = events.map(e => ({
     type: e.type, key: e.planet.layer + ':' + e.planet.name, aspects: e.aspects.length
   }));
   // Touch release must clear a transient hover, without blocking the click
   // event that a browser synthesizes afterward to select that planet.
   send(-0.4, 0, 'pointermove', 'touch');
-  const touchStarted = events.at(-1)?.type === 'enter' && natal.scale.x > 1;
+  checkSize();
+  const touchStarted = events.at(-1)?.type === 'enter' &&
+    tint(natal) === 'ff0000';
   canvas.dispatchEvent(new PointerEvent('pointerup', {pointerType: 'touch', bubbles: true}));
   const touchHoverCleared = touchStarted && events.at(-1)?.type === 'leave'
-    && transit.scale.x > 1 && natal.scale.x === 1;
+    && tint(transit) === '9e02ff' && natal.scale.x === 1;
   send(-0.4, 0, 'click');
   const touchClickEmitted = events.at(-1)?.type === 'click'
     && events.at(-1)?.planet.layer === 'natal';
   send(-0.4, 0, 'pointermove', 'pen');
   canvas.dispatchEvent(new PointerEvent('pointercancel', {pointerType: 'pen', bubbles: true}));
   const cancelClearsHover = events.at(-1)?.type === 'leave'
-    && transit.scale.x > 1 && natal.scale.x === 1;
+    && tint(transit) === '9e02ff' && natal.scale.x === 1;
+  checkSize();
   controller.destroy();
   const beforeDestroyedMove = events.length;
   send(-0.4, 0, 'pointermove');
   const removedListeners = events.length === beforeDestroyedMove;
-  const destroyedRestoredScale = natal.scale.x === 1 && transit.scale.x === 1
-    && scene.getObjectByName('chart-interaction-aspect') === undefined;
+  const destroyedRestoredScale = focusNeverZooms &&
+    natal.scale.x === 1 && transit.scale.x === 1 &&
+    tint(natal) === 'ffffff' && tint(transit) === 'ffffff' &&
+    scene.getObjectByName('chart-interaction-aspect') === undefined;
   root.traverse(object => {
     if (object instanceof THREE.Mesh) {
       object.geometry.dispose();
