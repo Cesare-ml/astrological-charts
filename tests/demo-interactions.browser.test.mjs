@@ -213,6 +213,25 @@ test('Three.js focus palette retains neutral glyphs and colors only selected lin
   } finally { await page.close(); await browser.close(); }
 });
 
+test('native Line2 solid/dashed/dotted strokes keep exact colored focus above gray', {timeout: 60000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundled = await build({
+      entryPoints: ['tests/fixtures/native-natal-line-harness.ts'],
+      bundle: true, write: false, platform: 'browser',
+      format: 'iife', target: 'es2022', tsconfig: 'tsconfig.json'
+    });
+    await page.addScriptTag({content: bundled.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runNativeNatalAspectLineProbe());
+    for (const [name, passed] of Object.entries(result)) {
+      assert.equal(passed, true, name + ': ' + JSON.stringify(result));
+    }
+  } finally { await page.close(); await browser.close(); }
+});
+
 test('Three.js pointer controller emits layer-aware events and restores pinned focus', {timeout: 60000}, async () => {
   const browser = await launch();
   const page = await browser.newPage();
