@@ -118,3 +118,5 @@ Milestones may overlap during development, but **M0 must be cleared before publi
 - [ ] Verify the JSON v1 invalid-planet-name error precedence regression: Angular now checks the identifier before parsing the planet object, matching Node validation even when the planet value is malformed. Added a focused test in `tests/chart-input.test.mjs`; run `npm run test:chart-input` in a complete checkout before considering it verified.
 
 - [ ] Execute the secondary-chart angular-normalization regression (`tests/chart-input.test.mjs`): transits and synastry must normalize independently, preserve signed zero and caller inputs, and leave natal positions unchanged. Added in commit `15a2477`; execution in a full Node/TypeScript checkout remains pending.
+
+- [ ] Execute the optional-secondary-chart planet-name regression in `tests/chart-input.test.mjs`: both Angular and Node must reject Unicode whitespace-only identifiers in supplied transits/synastry even when the selected mode is natal. Added on PR #19; Node execution pending.
