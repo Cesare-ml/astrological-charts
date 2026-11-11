@@ -44,6 +44,9 @@ window.runTransitSpokeGeometryProbe = () => {
     const sun = body('natal', 'Sun');
     sun.position.x = -0.25;
     sun.userData['chartAspectAngle'] = 0;
+    const moon = body('natal', 'Moon');
+    moon.position.x = 0.1;
+    moon.userData['chartAspectAngle'] = Math.PI / 3;
     const transit = body('transit', 'Saturn');
     // This center is *not* at Saturn's actual aspect longitude,
     // as happens when the renderer separates close planet glyphs.
@@ -86,6 +89,44 @@ window.runTransitSpokeGeometryProbe = () => {
       !!distances && distances.getX(1) > 0 &&
       line.renderOrder === 1001;
 
+    // One outer Saturn participates in two synthetic, differently
+    // colored cross-chart aspects. All central lines remain; the single
+    // dashed spoke takes the color of the *closest* orb, regardless of
+    // which relation arrived first from the frontend.
+    const loose = {from:{layer:'natal' as const,name:'Sun'},
+      to:{layer:'transit' as const,name:'Saturn'},type:'opposizione',orb:4};
+    const tight = {from:{layer:'natal' as const,name:'Moon'},
+      to:{layer:'transit' as const,name:'Saturn'},type:'trigono',orb:0.5};
+    controller.highlight({layer:'transit',name:'Saturn'});
+    const spoke = () => scene.children.filter(child =>
+      child.name === 'chart-interaction-transit-connector') as THREE.Line[];
+    const central = () => scene.children.filter(child =>
+      child.name === 'chart-interaction-aspect') as THREE.Line[];
+    controller.setRelations([loose,tight]);
+    const colorsFirst = spoke().map(line =>
+      (line.material as THREE.LineDashedMaterial).color.getHexString());
+    const centralColorsFirst = central().map(line =>
+      (line.material as THREE.LineBasicMaterial).color.getHexString()).sort();
+    controller.setRelations([tight,loose]);
+    const colorsReversed = spoke().map(line =>
+      (line.material as THREE.LineDashedMaterial).color.getHexString());
+    const centralColorsReversed = central().map(line =>
+      (line.material as THREE.LineBasicMaterial).color.getHexString()).sort();
+    results['multiAspectOrderStable' + suffix] =
+      colorsFirst.length === 1 && colorsFirst[0] === '0055ff' &&
+      colorsReversed.length === 1 && colorsReversed[0] === '0055ff' &&
+      centralColorsFirst.join(',') === '0055ff,ff0000' &&
+      centralColorsReversed.join(',') === '0055ff,ff0000';
+    results['multiAspectBodiesNoZoom' + suffix] =
+      [sun,moon,transit].every(mesh => mesh.scale.x === 1 && mesh.scale.y === 1);
+
+    // Return to the basic Saturn/Sun relationship for the old-host
+    // metadata-free fallback and lifecycle checks below.
+    controller.setRelations([{
+      from:{layer:'natal',name:'Sun'},to:{layer:'transit',name:'Saturn'},
+      type:'quadrato',orb:1
+    }]);
+    controller.highlight({layer:'natal',name:'Sun'});
     // Old/synthetic consumers without new metadata still draw their
     // previous fallback connector using the displayed glyph radius.
     controller.highlight(null);
@@ -114,7 +155,7 @@ window.runTransitSpokeGeometryProbe = () => {
     results['cleanup' + suffix] =
       !scene.getObjectByName('chart-interaction-transit-connector') && disposed === 2;
     controller.destroy();
-    for (const mesh of [sun,transit]) {
+    for (const mesh of [sun,moon,transit]) {
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
     }
