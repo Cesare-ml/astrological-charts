@@ -127,3 +127,5 @@ Milestones may overlap during development, but **M0 must be cleared before publi
 - [ ] Execute the optional-secondary-chart planet-name regression in `tests/chart-input.test.mjs`: both Angular and Node must reject Unicode whitespace-only identifiers in supplied transits/synastry even when the selected mode is natal. Added on PR #19; Node execution pending.
 
 - JSON v1 regression (draft PR #19): failed natal/transits/synastry house-cusp validation must leave caller-owned payloads unchanged, including signed zero; source test added, execution on a full checkout still pending (`npm run test:chart-input`).
+
+- [ ] Run `npm run test:validate-chart-input` for browser-free explicit-null `vertex` parity and invalid optional transits/synastry planet identifiers (including Unicode whitespace and overlength names). Added in commit `d760dcf`; GitHub source readback is not an executed Node test. (2026-11-11)
