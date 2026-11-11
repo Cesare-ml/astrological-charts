@@ -76,6 +76,19 @@ covering independent foreground colors, disposal events and repeated
 focus cycles. The 2026-11-11 owner confirmed the prior nonzoom/axis
 version, **not yet** this double-layer revision.
 
+## Native fat-line integration regression
+
+Keep `tests/fixtures/native-natal-line-harness.ts` wired into
+`npm run test:demo-interactions`. Its `Line2`/`LineGeometry`/
+`LineMaterial` objects exercise the native three.js fat-line shape,
+including grouped dash/dot-like segments, not only a simple
+`THREE.Line`. Preserve original native colors, material linewidth,
+chart-group transforms and independent ownership of foreground
+clone geometry/material. When focus changes, dispose only the
+temporary copies, never the native chart's resources. No new
+astronomical calculations, image assets or production changes.
+An unexecuted browser fixture is not proof of visual correctness.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
