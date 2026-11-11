@@ -139,7 +139,9 @@ export function sameChartAspectVisuals(
         winners.set(key,winner ? preferredTransitConnectorAspect(winner,link) : link);
       }
     }
-    return new Map([...winners].map(([key,link]) => [key,link.type]));
+    return new Map<string,string>([...winners].map(
+      ([key,link]): [string,string] => [key,link.type]
+    ));
   };
   const before = guideTypes(previous), after = guideTypes(next);
   if (!before || !after || before.size !== after.size) return false;
