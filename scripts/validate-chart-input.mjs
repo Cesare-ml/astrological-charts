@@ -44,10 +44,6 @@ function chart(value, label) {
     throw new TypeError(`${label}.houseCusps must contain exactly 12 degree values.`);
   }
   input.houseCusps.forEach((x, i) => finite(x, `${label}.houseCusps[${i}]`));
-  optionalFinite(input.vertex, `${label}.vertex`);
-  if (input.australInversion !== undefined && typeof input.australInversion !== 'boolean') {
-    throw new TypeError(`${label}.australInversion must be true or false.`);
-  }
   const planets = record(input.planets, `${label}.planets`);
   if (Object.keys(planets).length === 0) {
     throw new TypeError(`${label}.planets must contain at least one computed celestial body.`);
@@ -61,6 +57,11 @@ function chart(value, label) {
     optionalFinite(p.longitudeSpeed, `${label}.planets.${name}.longitudeSpeed`);
     optionalFinite(p.latitudeSpeed, `${label}.planets.${name}.latitudeSpeed`);
   }
+  // Match Angular parseTheme error precedence: validate planets before flags/vertex.
+  if (input.australInversion !== undefined && typeof input.australInversion !== 'boolean') {
+    throw new TypeError(`${label}.australInversion must be true or false.`);
+  }
+  optionalFinite(input.vertex, `${label}.vertex`);
 }
 
 /** Validate precomputed numeric inputs before launching an Angular browser.
