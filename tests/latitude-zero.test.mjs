@@ -30,8 +30,8 @@ test('latitude renderer keeps zero, negative zero and finite positive/negative l
     Mercury: { latitude: -2.5, longitude: 75 },
     Venus: { latitude: 3.2, longitude: 105 },
     Mars: { latitude: 1, longitude: 135 },
-    Ceres: { latitude: Number.MIN_VALUE },
-    Eris: { latitude: -Number.MIN_VALUE },
+    Ceres: { latitude: Number.MIN_VALUE, longitude: 0 },
+    Eris: { latitude: -Number.MIN_VALUE, longitude: -0 },
     Jupiter: { latitude: null },
     Saturn: { latitude: undefined },
     Uranus: { latitude: Number.NaN },
@@ -50,8 +50,32 @@ test('latitude renderer keeps zero, negative zero and finite positive/negative l
   assert.ok(!Object.hasOwn(selected, 'Mars'), 'disabled body must stay hidden');
 });
 
+
+test('latitude ring excludes bodies with invalid longitude without dropping valid zero', async () => {
+  // Longitude is required to rotate each symbol; undefined, NaN, Infinity,
+  // null or a numeric-looking string would yield invalid/non-numeric geometry.
+  const planets = {
+    Sun: {latitude: 0, longitude: 0},
+    Moon: {latitude: -0, longitude: -0},
+    Mercury: {latitude: 0, longitude: 360},
+    Venus: {latitude: 0, longitude: undefined},
+    Mars: {latitude: 0, longitude: Number.NaN},
+    Jupiter: {latitude: 0, longitude: Number.POSITIVE_INFINITY},
+    Saturn: {latitude: 0, longitude: Number.NEGATIVE_INFINITY},
+    Uranus: {latitude: 0, longitude: null},
+    Neptune: {latitude: 0, longitude: '0'},
+    Pluto: {latitude: 0},
+  };
+  const options = {settaggi: {elementi_celesti:
+    Object.fromEntries(Object.keys(planets).map(name => [name, {att:true}]))}};
+  const selected = await new LatitudeSelectionProbe().getElementiCelesti({planets}, options);
+  assert.deepEqual(Object.keys(selected), ['Sun', 'Moon', 'Mercury']);
+  assert.equal(selected.Sun.longitude, 0, 'longitude exactly zero is valid');
+  assert.ok(Object.is(selected.Moon.longitude, -0), 'negative zero longitude is valid');
+});
+
 test('missing planets are ignored while finite latitude zero remains selectable', async () => {
-  const planets = { Sun: { latitude: 0 }, Venus: { latitude: 0 } };
+  const planets = { Sun: { latitude: 0, longitude: 1 }, Venus: { latitude: 0, longitude: 0 } };
   const options = { settaggi: { elementi_celesti: {
     Moon: {att:true}, Sun: {att:false}, Venus: {att:true},
   } } };

@@ -132,8 +132,10 @@ export class LatitudiniRender {
 
       if(
         temaRender.planets[nome]
-        // Zero is a valid ecliptic latitude; exclude only missing/non-finite values.
+        // Both coordinates are used to position the symbol. Zero is valid;
+        // missing/non-finite longitude would produce an invalid Three.js rotation.
         && Number.isFinite(temaRender.planets[nome].latitude)
+        && Number.isFinite(temaRender.planets[nome].longitude)
         && elOpt.att
       ) {
         elementiCelesti[nome]=temaRender.planets[nome];
