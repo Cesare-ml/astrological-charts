@@ -153,6 +153,20 @@ Keep `tests/fixtures/hover-pin-handoff-harness.ts` in the
 Playwright suite along with the pinned hover-idempotence test;
 do not infer real FPS improvements from source-level checks.
 
+## Inside-canvas focus identity guard
+
+A pointer may leave a planet glyph for **empty space inside the
+canvas** via `move()`, without any canvas-wide `pointerleave`.
+Capture effective visible focus `hovered ?? pinned` before the host
+callbacks, compare with the effective focus afterward and reuse
+existing overlays when both are the same layer-qualified body.
+Do not suppress host enter/leave events or skip redraws for a genuinely
+new focus (including button-selected pins revealed by moving into
+empty space). Preserve scene and visual revision guards for reentrant
+callbacks. The Node interaction test and the augmented
+`pinned-pointer-idempotence-harness.ts` Playwright regression cover
+this. No focus zoom, new calculations or production changes.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
