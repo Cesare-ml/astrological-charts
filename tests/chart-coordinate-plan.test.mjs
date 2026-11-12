@@ -239,3 +239,52 @@ test('per-body valid but mixed outer leader modes require a full chart rebuild',
   }
   assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
 });
+
+
+test('published coordinate reports are immutable including endpoint and dependency data',()=>{
+  for (const mirrored of [false,true]) {
+    const {scene,targets}=sceneWithBodies(mirrored);
+    const unchanged=planChartCoordinateEffects(scene,targets);
+    assert.equal(unchanged.decision,'unchanged');
+    assert.ok(Object.isFrozen(unchanged));
+    assert.ok(Object.isFrozen(unchanged.impacts));
+    assert.ok(Object.isFrozen(unchanged.issues));
+
+    const changedTargets=targets.map(item=>({
+      ref:{...item.ref},
+      longitude:item.ref.layer==='natal'&&item.ref.name==='Sun'
+        ? 5:item.longitude
+    }));
+    const changed=planChartCoordinateEffects(scene,changedTargets);
+    assert.equal(changed.decision,'full-rebuild');
+    assert.ok(changed.impacts.length>0);
+    assert.ok(Object.isFrozen(changed));
+    assert.ok(Object.isFrozen(changed.impacts));
+    assert.ok(Object.isFrozen(changed.issues));
+    for(const impact of changed.impacts) {
+      assert.ok(Object.isFrozen(impact));
+      assert.ok(Object.isFrozen(impact.ref));
+      assert.ok(Object.isFrozen(impact.affectedVisuals));
+    }
+    const sun=changed.impacts.find(impact=>
+      impact.ref.layer==='natal'&&impact.ref.name==='Sun');
+    const previousNext=sun.nextLongitude;
+    const previousName=sun.ref.name;
+    assert.throws(()=>{sun.ref.name='Venus';},TypeError);
+    assert.throws(()=>{sun.affectedVisuals.push('invented');},TypeError);
+    assert.throws(()=>{changed.impacts.pop();},TypeError);
+    changedTargets[0].longitude=190;
+    changedTargets[0].ref.name='Venus';
+    assert.equal(sun.nextLongitude,previousNext);
+    assert.equal(sun.ref.name,previousName);
+    assert.equal(changed.decision,'full-rebuild');
+
+    const unsupported=planChartCoordinateEffects(scene,targets.slice(1));
+    assert.equal(unsupported.decision,'unsupported');
+    assert.ok(Object.isFrozen(unsupported));
+    assert.ok(Object.isFrozen(unsupported.issues));
+    assert.ok(Object.isFrozen(unsupported.impacts));
+    assert.throws(()=>{unsupported.issues.push('made-up');},TypeError);
+    assert.ok(unsupported.issues.includes('missing-target:natal:Sun'));
+  }
+});

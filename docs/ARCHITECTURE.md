@@ -304,3 +304,27 @@ property keys and duplicate names remains intact. New synthetic Node
 and normal/mirrored browser tests cover mixed wheels and restoration.
 The live renderer still rebuilds the scene on coordinate changes;
 this patch does not perform partial geometry updates.
+
+### Immutable coordinate-effect reports (draft PR #22)
+
+`planChartCoordinateEffects(scene, targets)` returns a diagnostic
+**value snapshot**, not a command for editing Three.js objects.
+Its `unchanged`, `full-rebuild`, and `unsupported` reports
+now freeze the report itself and the impact/issue arrays. Each impact
+also freezes its copied layer-qualified planet reference and
+`affectedVisuals` dependency list. No Three.js scene object,
+texture, geometry or input `targets` is frozen or mutated.
+
+A consumer cannot accidentally insert an invented dependency,
+change a verified longitude, or erase a fail-closed issue from an
+already published report. To reflect new ephemerides, houses,
+styles or renderer state, request a fresh report; **even a clean
+coordinate report does not authorize a partial live update**.
+
+The headless Node regression checks all three decisions,
+input isolation and attempted mutations in normal/mirrored
+synthetic scenes; the existing Playwright fixture verifies frozen
+nested reports in both views. Run `npm run test:coordinate-plan`,
+`npm run check:types`, and `npm run test:demo-interactions`
+before PR approval. Real browser/Angular/visual validation is
+not implied by the source-level checks.

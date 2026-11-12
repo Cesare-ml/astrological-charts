@@ -85,6 +85,22 @@ window.runChartCoordinatePlanProbe = () => {
     result['independentLayers'+suffix]=plan.impacts.every(impact=>
       impact.ref.layer==='natal')
       && !plan.impacts.some(impact=>impact.ref.layer==='transit');
+    result['publishedPlanImmutable'+suffix]=Object.isFrozen(plan)
+      && Object.isFrozen(plan.impacts)
+      && Object.isFrozen(plan.issues)
+      && plan.impacts.length>0
+      && plan.impacts.every(impact=>Object.isFrozen(impact)
+        && Object.isFrozen(impact.ref)
+        && Object.isFrozen(impact.affectedVisuals));
+    const missingForFreeze=planChartCoordinateEffects(scene,shifted.slice(1));
+    result['unsupportedPlanImmutable'+suffix]=
+      missingForFreeze.decision==='unsupported'
+      && Object.isFrozen(missingForFreeze)
+      && Object.isFrozen(missingForFreeze.impacts)
+      && Object.isFrozen(missingForFreeze.issues)
+      && Object.isFrozen(baseline)
+      && Object.isFrozen(baseline.impacts)
+      && Object.isFrozen(baseline.issues);
     result['noMutation'+suffix]=glyphs.every((glyph,index)=>
       glyph.getWorldPosition(new THREE.Vector3()).distanceTo(worldBefore[index])<1e-12)
       && glyphs.every((glyph,index)=>glyph.parent?.userData['chartBodyLayout']===layouts[index])

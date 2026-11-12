@@ -34,7 +34,11 @@ export interface ChartCoordinatePlan {
 }
 
 const unsupported = (issues: string[]): ChartCoordinatePlan =>
-  ({decision:'unsupported',impacts:[],issues});
+  Object.freeze({
+    decision:'unsupported' as const,
+    impacts:Object.freeze([] as ChartCoordinateImpact[]),
+    issues:Object.freeze([...issues])
+  });
 
 /**
  * Produce a read-only dependency report for a complete new longitude set.
@@ -158,8 +162,11 @@ export function planChartCoordinateEffects(
       if (trueLongitudeChanged) {
         affectedVisuals.push('native-aspects','cross-chart-guides','derived-decorations');
       }
-      impacts.push({
-        ref:{...owner.ref},
+      // Publish a value-only immutable diagnostic. Future hosts must
+      // request a new report after any upstream/scene change, not edit
+      // an old report or its nested endpoint and visual-dependency list.
+      impacts.push(Object.freeze({
+        ref:Object.freeze({...owner.ref}),
         previousLongitude:old.original,nextLongitude:longitude,
         previousAdjusted:old.adjusted,nextAdjusted,
         previousTickDegrees:beforeAngles.tickDegrees,
@@ -167,13 +174,16 @@ export function planChartCoordinateEffects(
         previousGlyphDegrees:beforeAngles.glyphDegrees,
         nextGlyphDegrees:nextAngles.glyphDegrees,
         trueLongitudeChanged,collisionPlacementChanged,
-        affectedVisuals
-      });
+        affectedVisuals:Object.freeze(affectedVisuals)
+      }));
     }
   }
   if (issues.length) return unsupported(issues);
-  return {
-    decision:impacts.length?'full-rebuild':'unchanged',
-    impacts,issues:[]
-  };
+  const decision: ChartCoordinatePlan['decision'] =
+    impacts.length ? 'full-rebuild' : 'unchanged';
+  return Object.freeze({
+    decision,
+    impacts:Object.freeze(impacts),
+    issues:Object.freeze([] as string[])
+  });
 }
