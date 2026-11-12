@@ -2,7 +2,7 @@
 
 Issue: [#5 — WebGL lifecycle and multiple charts](https://github.com/Cesare-ml/astrological-charts/issues/5).
 
-This local, **manual** benchmark exercises repeated redraws of the Angular synthetic natal demo. It instruments WebGL createTexture and deleteTexture for WebGL 1/2 and records the difference (**outstanding handles**) at baseline, every 10 redraws and the final redraw. WebGL2 methods inherited from WebGL1 are wrapped only once to avoid double counting.
+This local, **manual** benchmark exercises repeated redraws of the Angular synthetic natal demo. It instruments WebGL createTexture and deleteTexture for WebGL 1/2 and records the difference (**outstanding handles**) at baseline, every 10 redraws and the final redraw. The monitor counts only non-null texture handles returned by successful creation calls and the **first completed delete request on the same WebGL context**. Repeated deletes, deletions from another context and unknown/null handles do not reduce the count. WeakMap/WeakSet tracking does not retain these textures. WebGL2 methods inherited from WebGL1 are wrapped only once.
 
 ## Run
 
@@ -26,4 +26,4 @@ Set CHART_TEST_BROWSER=firefox for Firefox after installing a compatible browser
 
 The JSON output includes webglCalls, textureHandles (baseline, final, net growth, peak sampled outstanding and checkpoints), timing percentiles and versions. Review a warm-up run before selecting a limit: cached resources and deferred cleanup may make short runs misleading.
 
-**Important limitations:** API counters measure recorded calls, **not GPU memory**, allocated byte sizes, total browser resource use or a proven leak. The peak is limited to sampled checkpoints. This benchmark uses synthetic art and one natal canvas; it does not validate multi-canvas isolation, all skins, mobile PNG exports, headless Astrolabio, actual artwork or production. Follow up with real WebGL memory measurements, longer runs, browser and device coverage before accepting lifecycle changes. No GitHub Actions, publication or deployment is involved.
+**Important limitations:** These counters track observed handles and first deletion requests (not every API call), **not actual GPU memory**, allocated byte sizes, the driver’s true resource reclamation, total browser resource use or proof of a leak. Even a successful deletion request may defer driver-side release. The peak is limited to sampled checkpoints. This benchmark uses synthetic art and one natal canvas; it does not validate multi-canvas isolation, all skins, mobile PNG exports, headless Astrolabio, actual artwork or production. Follow up with real WebGL memory measurements, longer runs, browser and device coverage before accepting lifecycle changes. No GitHub Actions, publication or deployment is involved.

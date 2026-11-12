@@ -17,8 +17,8 @@ test('inherited WebGL2 methods are instrumented only once', () => {
     globalThis.document = {addEventListener: (...args) => listeners.push(args)};
     const stats = installTextureCounters();
     const gl2 = new GL2();
-    gl2.createTexture();
-    gl2.deleteTexture({id: 1});
+    const texture = gl2.createTexture();
+    gl2.deleteTexture(texture);
     assert.deepEqual(stats, {created: 1, deleted: 1, contextLost: 0});
     assert.equal(listeners.length, 1);
     assert.equal(listeners[0][0], 'webglcontextlost');
@@ -36,16 +36,89 @@ test('independent WebGL2 implementations are counted', () => {
   const keys = ['WebGLRenderingContext', 'WebGL2RenderingContext', 'document', '__benchmarkWebGL'];
   const before = keys.map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]);
   try {
-    class GL1 {createTexture() {} deleteTexture() {}}
-    class GL2 {createTexture() {} deleteTexture() {}}
+    class GL1 {createTexture() {return {}; } deleteTexture() {}}
+    class GL2 {createTexture() {return {}; } deleteTexture() {}}
     globalThis.WebGLRenderingContext = GL1;
     globalThis.WebGL2RenderingContext = GL2;
     globalThis.document = {addEventListener() {}};
     const stats = installTextureCounters();
-    new GL1().createTexture();
-    new GL2().createTexture();
-    new GL2().deleteTexture();
+    const gl1 = new GL1();
+    const gl2 = new GL2();
+    gl1.createTexture();
+    const texture = gl2.createTexture();
+    gl2.deleteTexture(texture);
     assert.deepEqual(stats, {created: 2, deleted: 1, contextLost: 0});
+  } finally {
+    for (const [key, descriptor] of before) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  }
+});
+
+test('null creations, repeated deletes, and foreign-context deletes never skew live handles', () => {
+  const keys = ['WebGLRenderingContext', 'WebGL2RenderingContext', 'document', '__benchmarkWebGL'];
+  const before = keys.map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]);
+  try {
+    class GL1 {
+      createTexture() { return this.fail ? null : {id: 1}; }
+      deleteTexture() { return undefined; }
+    }
+    globalThis.WebGLRenderingContext = GL1;
+    globalThis.WebGL2RenderingContext = undefined;
+    globalThis.document = {addEventListener() {}};
+    const stats = installTextureCounters();
+    const first = new GL1();
+    const other = new GL1();
+    first.fail = true;
+    assert.equal(first.createTexture(), null);
+    assert.equal(stats.created, 0, 'null is not a successful texture allocation');
+    first.fail = false;
+    const tex = first.createTexture();
+    assert.deepEqual(stats, {created: 1, deleted: 0, contextLost: 0});
+    other.deleteTexture(tex);
+    first.deleteTexture({id: 1});
+    first.deleteTexture(null);
+    assert.equal(stats.deleted, 0, 'unknown/foreign/null requests do not release a tracked handle');
+    first.deleteTexture(tex);
+    first.deleteTexture(tex);
+    assert.deepEqual(stats, {created: 1, deleted: 1, contextLost: 0},
+      'releasing the same texture twice must count only once');
+  } finally {
+    for (const [key, descriptor] of before) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  }
+});
+
+test('creation/deletion failures do not change counters', () => {
+  const keys = ['WebGLRenderingContext', 'WebGL2RenderingContext', 'document', '__benchmarkWebGL'];
+  const before = keys.map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]);
+  try {
+    class GL1 {
+      createTexture() {
+        if (this.throwCreate) throw new Error('create failed');
+        return {};
+      }
+      deleteTexture() {if (this.throwDelete) throw new Error('delete failed');}
+    }
+    globalThis.WebGLRenderingContext = GL1;
+    globalThis.WebGL2RenderingContext = undefined;
+    globalThis.document = {addEventListener() {}};
+    const stats = installTextureCounters();
+    const gl = new GL1();
+    gl.throwCreate = true;
+    assert.throws(() => gl.createTexture(), /create failed/);
+    assert.deepEqual(stats, {created: 0, deleted: 0, contextLost: 0});
+    gl.throwCreate = false;
+    const texture = gl.createTexture();
+    gl.throwDelete = true;
+    assert.throws(() => gl.deleteTexture(texture), /delete failed/);
+    assert.deepEqual(stats, {created: 1, deleted: 0, contextLost: 0});
+    gl.throwDelete = false;
+    gl.deleteTexture(texture);
+    assert.deepEqual(stats, {created: 1, deleted: 1, contextLost: 0});
   } finally {
     for (const [key, descriptor] of before) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor);
