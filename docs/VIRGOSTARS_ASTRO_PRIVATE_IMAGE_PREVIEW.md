@@ -17,12 +17,40 @@ The name must be one of `aries` through `pisces`, or `sun`, `moon`, `mercury`, `
 
 ## Locally staging the **private** masks
 
-1. Obtain the owner-approved **private** `VirgoStarsAstro-Private-Chart-Masks-v0.3.zip` package from the owner. Keep it outside any public repository.
-2. Extract `public/assets/img/virgostars-astro/masks/` into a dedicated authorized **local development asset root**. Do **not** commit the images, add them to public npm output or publish them to a CDN.
-3. The existing manifest-gated asset server must validate **all served assets**, including these 22 masks. An ordinary asset manifest containing only the original 1,013 images **cannot serve** these masks. Prepare an independently reviewed private staging manifest with all original assets and mask SHA-256s, preserving the host server's schema and private approval metadata. The mask pack's `manifest.json` records hashes, but is **not** by itself a complete server-compatible manifest.
-4. Start the approved local asset server as described in [local asset preview](LOCAL_ASSET_PREVIEW.md), using the combined *private* staging root and manifest. The demo never needs access to a production backend.
-5. Run the Angular demo (if locally installed): `npm run demo`, open the page and enable **“Preview VirgoStars Astro glyph images”**. Alternatively, append `?astroGlyphs=1` to the demo URL; the flag starts **off** by default.
-6. Switch natal/transits/synastry, light/dark skin and PNG export. Check both the image silhouettes and the pointer/aspect interactions when used alongside the in-progress interaction PR. Turn off the preview to roll back immediately.
+The local asset server now accepts **two separately verified manifests** without copying the artwork into the public charts repository. The original asset pack uses its existing strict `approved-assets.json` schema. The 22 private masks use their separately generated v0.3 `manifest.json` schema, plus a **separate explicit local-only owner authorization record**. Neither replaces or weakens the other.
+
+1. Obtain the owner-approved private `VirgoStarsAstro-Private-Chart-Masks-v0.3.zip` or v0.3.1 package. Extract it to a **private location outside both Git checkouts**. Keep its existing `public/assets/` and `manifest.json` relative layout.
+2. Make sure your independently reviewed `astrological-assets/public/assets` directory and its `manifests/approved-assets.json` are available. The server validates every original asset file via SHA-256.
+3. Create `private-astro-approval.json` **outside the Git repository**. It must be an explicit owner-approved record, restricted to local preview, for example:
+
+```json
+{
+  "scope": "local-preview-only",
+  "rightsHolder": "VirgoStars",
+  "permissionBasis": "Owner-authorized private testing of newly generated glyph images only",
+  "approvalEvidence": "Owner's explicit instruction to use the approved generated images, 2026-11-12"
+}
+```
+
+This attestation is for **local testing only**; it grants no open-source license, font redistribution permission or production deployment. If the owner cannot verify these facts, do not create the approval file or enable the overlay.
+
+4. Start the existing loopback server with the two independent sets of inputs:
+
+```bash
+node scripts/serve-local-assets.mjs \
+  --root ../astrological-assets/public/assets \
+  --manifest ../astrological-assets/manifests/approved-assets.json \
+  --astro-overlay-root ../private-astro-masks/public/assets \
+  --astro-overlay-manifest ../private-astro-masks/manifest.json \
+  --astro-overlay-approval ../private-astro-masks/private-astro-approval.json
+```
+
+The `private-astro-masks` folder name is illustrative. Use the actual private location. The server rejects incomplete overlays, non-local origins, unauthorized uses, wrong hashes, missing/duplicate/incorrectly named masks, wrong PNG dimensions, symlinks and any filename overlap with the original approved assets.
+
+5. Run the Angular demo (if installed): `npm run demo`. Enable **“Preview VirgoStars Astro glyph images”** or append `?astroGlyphs=1` to the demo URL. The preview starts **off** by default and requires the verified mask overlay when enabled.
+6. Test natal/transit/synastry, light/dark and exported PNG. Include pointer/aspect focus checks after merging the separate interaction feature branch. Turn the preview off to restore original image references without changing production.
+
+**Only the local server may read these masks**; it serves them on `127.0.0.1` under the same restricted origin policy as the base pack, and checks each requested file's SHA-256 again before returning it. The private overlay is never copied to the public charts repository.
 
 The opt-in flag is also accessible to an authorized host:
 
@@ -57,12 +85,13 @@ The preview toggle is **global/static** because `GestoreImmagini` is already sta
 ```bash
 npm ci
 npm run test:astro-preview
+node --test tests/private-astro-overlay.test.mjs
 npm run check:types
 npm run build:demo
 ```
 
-The new unit tests exercise the actual TypeScript image-ref helper without loading any copyrighted artwork, fonts or Angular app. They cover all 22 names, legacy prefixes, retrograde preservation, unsupported symbols and malformed/hostile paths.
+The mapping tests exercise the actual TypeScript image-ref helper without loading any proprietary artwork. The separate overlay tests construct synthetic 512x512 PNGs to verify manifest integrity, permission gating, symlink/collision rejection and both positive and negative localhost HTTP requests. The private v0.3 ZIP itself was also verified locally against the new overlay validator (22 masks; 9 positive/negative checks passed).
 
-**Not completed by this PR:** real browser rendering against a combined private manifest, visual snapshots at chart scale, Chromium/Firefox PNG-export tests, any actual natal/transit interaction regression, licensing/public release, integration with VirgoStars website/Desktop, or Astrolabio device tests. Those require a locally staged, authorized private asset root and full runnable checkout.
+**Not completed by this PR:** real browser rendering using the now-supported separate private overlay, visual snapshots at chart scale, Chromium/Firefox PNG-export tests, any actual natal/transit interaction regression, licensing/public release, integration with VirgoStars website/Desktop, or Astrolabio device tests. Those require a locally staged, authorized private asset root and full runnable checkout.
 
 Original source: [Astrological Assets font project issue #8](https://github.com/Cesare-ml/astrological-assets/issues/8). The rights of old raster files are tracked independently in [issue #2](https://github.com/Cesare-ml/astrological-assets/issues/2). No old Astro-SemiBold binary/outline is used here.
