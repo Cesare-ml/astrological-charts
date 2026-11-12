@@ -42,6 +42,10 @@ node scripts/serve-local-assets.mjs --root <assets-repo>/public/assets --manifes
 
 The default base is `http://127.0.0.1:4177/assets/`; change it in the UI or use the `assets` query parameter. The displayed manifest label is informational: the actual manifest is selected at server startup, not verified by the browser label. No public website is used as a fallback.
 
+## Documentation status regression check
+
+Run `npm run test:demo-docs` to check that demo onboarding distinguishes publicly readable renderer source from restricted artwork and does not imply redistribution permission. The same check is included in `npm run preflight`. It reads documentation only; it does not validate Angular builds, WebGL rendering, asset hashes or licensing rights.
+
 ## Local verification
 
 With both servers running, install Chrome/Chromium and set `CHROME_PATH` to its executable if it is not in a standard location, then:
