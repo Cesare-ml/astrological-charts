@@ -31,6 +31,13 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <label for="base">Asset base URL</label>
         <input id="base" [value]="assetBase" (change)="changeBase($event)" [disabled]="busy">
         <p class="muted">Manifest: {{manifestLabel}}</p>
+        <label class="astro-preview" for="astro-preview">
+          <input id="astro-preview" type="checkbox" [checked]="astroPreviewEnabled"
+            (change)="toggleAstroPreview($event)" [disabled]="busy">
+          Preview VirgoStars Astro glyph images
+        </label>
+        <p class="muted">Requires the 22 owner-approved private white-alpha masks
+          staged by the asset host. Disabled by default; older glyphs remain the fallback.</p>
         <p class="status" [class.error]="error" role="status" data-testid="status">{{error || status}}</p>
       </aside>
       <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart"></canvas></section>
@@ -50,6 +57,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   error = '';
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
+  astroPreviewEnabled = new URLSearchParams(location.search).get('astroGlyphs') === '1';
   private readonly radix = makeDemoTheme(0);
   private readonly transit = makeDemoTheme(24);
   private readonly synastry = makeDemoTheme(71);
@@ -57,6 +65,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     try {
       GestoreImmagini.configurePublicAssetsBase(this.assetBase);
+      GestoreImmagini.configureVirgoStarsAstroPreview(this.astroPreviewEnabled);
       this.renderer.inizializzaGraficoRender(this.canvas, {x: 800, y: 800});
       void this.draw();
     } catch (error) { this.showError(error); }
@@ -67,6 +76,11 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   changeBase(event: Event): void {
     try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.draw(); }
     catch (error) { this.showError(error); }
+  }
+  toggleAstroPreview(event: Event): void {
+    this.astroPreviewEnabled = (event.target as HTMLInputElement).checked;
+    GestoreImmagini.configureVirgoStarsAstroPreview(this.astroPreviewEnabled);
+    void this.draw();
   }
   zoom(direction: number): void { direction > 0 ? this.renderer.zoomIn(0.15) : this.renderer.zoomOut(0.15); }
   private options(): any {
