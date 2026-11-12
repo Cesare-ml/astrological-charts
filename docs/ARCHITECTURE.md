@@ -795,3 +795,16 @@ scenes remain mounted. The foreign alias objects are *not drawn*:
 the purpose is ownership preflight, not valid visual content.
 Full Node/Three.js and Chromium/Firefox execution are still required
 before approving PR #22.
+
+### Reentrant Three.js focus disposal safety
+
+`PlanetInteractionController.clearVisuals()` now captures and clears
+its resource ownership collections before any native material,
+geometry or scene `remove` callback can reenter another controller
+operation. The old cleanup can only dispose its own detached
+resources. `setScene()` checks `sceneRevision` after disposal,
+so a nested scene replacement cannot be erased by its stale caller.
+`updateVisuals()` checks the captured scene and paint revisions
+before repainting. This preserves existing neutral glyph scale,
+untinted source material, natal stroke geometry, and explicit redraw
+semantics without new public APIs.

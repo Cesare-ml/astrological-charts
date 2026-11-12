@@ -787,3 +787,85 @@ test('aspect structure equality permits in-place guide tint but not changed link
   assert.equal(api.sameChartAspectStructure([a],[{...a,from:{...natalSun,localX:3}}]),false);
   assert.equal(api.sameChartAspectStructure([a],[]),false);
 });
+
+
+test('reentrant dispose cannot erase newer scene or dispose owned focus resources twice',()=>{
+  const controllerSource=ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts',import.meta.url),'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const declaration=controllerSource.statements.find(node=>
+    ts.isClassDeclaration(node)&&node.name?.text==='PlanetInteractionController');
+  assert.ok(declaration);
+  const methods=['setScene','clearVisuals'].map(name=>{
+    const member=declaration.members.find(node=>
+      ts.isMethodDeclaration(node)&&node.name.getText(controllerSource)===name);
+    assert.ok(member?.body,name);
+    return member.getText(controllerSource);
+  });
+  const compiled=ts.transpileModule(`class SceneProbe {
+    disposed=false;
+    sceneRevision=0;
+    scene:any=null;
+    hovered:any=null;
+    cursor='';
+    canvas={style:{cursor:''}};
+    glyphs=new Map();
+    pickTargets:any[]=[];
+    natalAspectTags:any[]=[];
+    aspectRing:any=null;
+    glyphMaterialOverrides=new Map();
+    natalLineColors=new Map();
+    natalFocusOverlays:any[]=[];
+    lines:any[]=[];
+    transitGuides=new Map();
+    paints=0;
+    updateVisuals(){this.paints++;}
+    send(){}
+    ${methods.join('\n')}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  class MockMesh {
+    constructor(name){this.userData={chartPlanet:{layer:'natal',name}};this.material={};}
+  }
+  const Probe=new Function('THREE','isChartPlanetRef','chartPlanetKey',
+    compiled+'\nreturn SceneProbe;')(
+    {Mesh:MockMesh},api.isChartPlanetRef,api.chartPlanetKey);
+  const mkScene=name=>{
+    const mesh=new MockMesh(name);
+    const scene={userData:{},name,mesh,traverse(cb){cb(scene);cb(mesh);}};
+    return scene;
+  };
+  for(const mode of ['material','line-geometry']){
+    const probe=new Probe();
+    const old=mkScene('Old'),latest=mkScene('New'),stale=mkScene('Stale');
+    const oldMesh=old.mesh;
+    const baseline={disposed:0,dispose(){this.disposed++;}};
+    let materialDisposals=0,geometryDisposals=0,callbackCount=0;
+    const focusCopy={dispose(){
+      materialDisposals++;
+      if(mode==='material'&&++callbackCount===1)probe.setScene(latest);
+    }};
+    const geometry={dispose(){
+      geometryDisposals++;
+      if(mode==='line-geometry'&&++callbackCount===1)probe.setScene(latest);
+    }};
+    const foreground={material:{dispose(){}},geometry,parent:{remove(){}}};
+    probe.scene=old;
+    oldMesh.material=focusCopy;
+    probe.glyphMaterialOverrides.set(oldMesh,{original:baseline,focused:focusCopy});
+    probe.lines=[{geometry,material:{dispose(){}},parent:{remove(){}}}];
+    probe.transitGuides.set('natal:Old',probe.lines[0]);
+    probe.setScene(stale);
+    assert.equal(callbackCount,1,mode+' must invoke nested replacement');
+    assert.equal(materialDisposals,1,mode+' focus material only disposed once');
+    assert.equal(geometryDisposals,1,mode+' line geometry only disposed once');
+    assert.equal(probe.scene,latest,mode+' newer scene retained');
+    assert.equal(probe.glyphs.get('natal:New')?.[0],latest.mesh);
+    assert.equal(probe.glyphs.has('natal:Stale'),false);
+    assert.equal(probe.paints,1,'only newest scene repainted');
+    assert.equal(probe.lines.length,0);
+    assert.equal(probe.transitGuides.size,0);
+    assert.equal(oldMesh.material,baseline,'old mesh material restored');
+    assert.equal(baseline.disposed,0,'never dispose native base');
+    assert.equal(foreground.material.dispose instanceof Function,true);
+  }
+});

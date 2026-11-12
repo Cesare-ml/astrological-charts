@@ -74,6 +74,10 @@ export class PlanetInteractionController {
     if (this.disposed) return;
     const revision = ++this.sceneRevision;
     this.clearVisuals();
+    // Geometry/material 'dispose' listeners are synchronous. A host may
+    // replace or destroy this controller before old visuals finish clearing.
+    // Never detach or overwrite the scene installed by that nested call.
+    if (this.disposed || revision !== this.sceneRevision) return;
     // Detach old scene and glyph references before notifying the host.
     // The synchronous leave callback may call highlight() / setRelations():
     // those must not re-create visuals on a scene that is being disposed.
@@ -362,7 +366,21 @@ export class PlanetInteractionController {
   };
 
   private clearVisuals(): void {
-    for (const [mesh, {original, focused}] of this.glyphMaterialOverrides) {
+    // Detach ALL resources owned by this paint before emitting any
+    // synchronous Three.js remove/dispose events. A disposal listener can
+    // re-enter setScene(), highlight() or destroy(); that nested operation
+    // must never dispose these objects a second time, and this older
+    // cleanup must not delete resources created by the newer repaint.
+    const materials = this.glyphMaterialOverrides;
+    const natalColors = this.natalLineColors;
+    const natalOverlays = this.natalFocusOverlays;
+    const interactionLines = this.lines;
+    this.glyphMaterialOverrides = new Map();
+    this.natalLineColors = new Map();
+    this.natalFocusOverlays = [];
+    this.lines = [];
+    this.transitGuides = new Map();
+    for (const [mesh, {original, focused}] of materials) {
       // A host or another controller may have replaced the material of a
       // transferred mesh since this controller assigned its focus clone.
       // Never overwrite another controller's currently active material.
@@ -386,18 +404,16 @@ export class PlanetInteractionController {
         if (!originals.includes(material)) material.dispose();
       }
     }
-    this.glyphMaterialOverrides.clear();
-    for (const [attribute, values] of this.natalLineColors) {
+    for (const [attribute, values] of natalColors) {
       for (let i = 0; i < values.length; i += 3) {
         attribute.setXYZ(i / 3, values[i], values[i + 1], values[i + 2]);
       }
       if (attribute.data) attribute.data.needsUpdate = true;
       else attribute.needsUpdate = true;
     }
-    this.natalLineColors.clear();
     // Cloned natal geometry and materials are never shared with the source.
     // Dispose the foreground on every focus change, redraw and destroy.
-    for (const overlay of this.natalFocusOverlays) {
+    for (const overlay of natalOverlays) {
       overlay.parent?.remove(overlay);
       overlay.traverse(object => {
         const mesh = object as THREE.Mesh;
@@ -406,14 +422,11 @@ export class PlanetInteractionController {
         for (const material of materials) material.dispose();
       });
     }
-    this.natalFocusOverlays = [];
-    for (const line of this.lines) {
+    for (const line of interactionLines) {
       line.parent?.remove(line);
       line.geometry.dispose();
       (line.material as THREE.Material).dispose();
     }
-    this.lines = [];
-    this.transitGuides.clear();
   }
 
   /** Cached glyphs can be reparented after setScene(). Never recolor a
@@ -642,9 +655,15 @@ export class PlanetInteractionController {
   }
 
   private updateVisuals(): void {
-    ++this.visualRevision;
+    const paintRevision = ++this.visualRevision;
+    const currentScene = this.scene;
+    const currentSceneRevision = this.sceneRevision;
     this.clearVisuals();
-    if (!this.scene) return;
+    // A disposal callback may trigger a newer paint or scene replacement.
+    // The older paint must not recreate overlays over that newer state.
+    if (this.disposed || this.scene !== currentScene ||
+        this.sceneRevision !== currentSceneRevision ||
+        this.visualRevision !== paintRevision || !this.scene) return;
     const focus = this.hovered ?? this.pinned;
     this.paintNatalAspectPalette(focus);
     if (!focus) return;

@@ -1129,3 +1129,35 @@ extracted `setScene` implementation was executed in a V8
 scene-graph probe with **7/7 behavioral assertions passing**,
 but full Angular/Chrome/Firefox GPU execution is still needed.
 No private imagery, production integration or main merge.
+
+### Synchronous disposal callbacks during scene replacement (2026-11-12)
+
+Native Three.js `Material.dispose()` and `BufferGeometry.dispose()`
+dispatch synchronous `dispose` events. A host listening to one of
+those events may immediately replace the chart or destroy the
+controller while an older `setScene()` or focus repaint is still
+cleaning up. Previously, `clearVisuals()` could expose its own
+resource lists during those callbacks, letting nested disposal run
+on the same objects; the outer `setScene()` could also detach the
+newer scene before checking its revision.
+
+The controller now **detaches each owned focus material, native
+color snapshot, temporary foreground and aspect line from its live
+cleanup collections before triggering disposals**. The outer
+`setScene()` checks the revision immediately after cleanup and
+returns if a callback installed a newer scene. `updateVisuals()`
+also refuses to paint stale state after nested replacement or a
+newer visual repaint. Only temporary controller-owned overlays are
+disposed; original natal geometry, materials and texture references
+remain intact.
+
+Node tests extract the **actual TypeScript setScene/clearVisuals
+methods**, reproduce both material-dispose and line-geometry-dispose
+reentry with mocked scene objects, and verify exactly one cleanup,
+latest-scene ownership and no stale repaint. The new registered
+browser fixture `scene-dispose-reentry-harness.ts` repeats the
+same callbacks using genuine Three.js geometry and controller
+instances. This is a lifecycle fix in the chart rendering library,
+not an ephemeris/aspect algorithm change, a zoom change or production
+deployment. Run Node, Angular, Chromium/Firefox and human visual
+checks before merging the draft PR.
