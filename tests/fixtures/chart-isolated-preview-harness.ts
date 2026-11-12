@@ -270,6 +270,28 @@ window.runIsolatedCoordinatePreviewProbe = () => {
     closeMoon.outer.geometry.setAttribute('position',moonOuterAttribute);
     closeMoon.outer.userData['chartIsolatedLeaderSpec']=previousOuterSpec;
 
+    // A buffer owned by a SEPARATE mounted synthetic chart must prevent
+    // updates even when there is no alias within collisionScene itself.
+    const foreignLine=new THREE.Line(
+      new THREE.BufferGeometry().setAttribute('position',
+        new THREE.BufferAttribute(new Float32Array(
+          moonInnerAttribute.array.buffer,
+          moonInnerAttribute.array.byteOffset,
+          moonInnerAttribute.array.length
+        ),3)),
+      new THREE.LineBasicMaterial({color:'#777777'})
+    );
+    scene.add(foreignLine);
+    const externalAlias=applyIsolatedCoordinatePreview(
+      collisionScene,newCollisionTargets,[scene]
+    );
+    results['dualChartStorageGuard'+suffix]=externalAlias.status==='rejected'
+      && externalAlias.updated===0
+      && externalAlias.issues.includes('shared-leader-storage:natal:Moon');
+    scene.remove(foreignLine);
+    foreignLine.geometry.dispose();
+    (foreignLine.material as THREE.Material).dispose();
+
     // Cached bounds must track rewritten endpoint vertices. A cached
     // Box3 should update in place; an absent box should remain lazy.
     closeMoon.inner.geometry.computeBoundingSphere();
@@ -280,10 +302,23 @@ window.runIsolatedCoordinatePreviewProbe = () => {
     const outerSphereBefore=closeMoon.outer.geometry.boundingSphere!;
     const outerBoxWasNull=closeMoon.outer.geometry.boundingBox===null;
     const oldInnerBox=innerBoxBefore.clone();
+    // The first natal fixture is a separate mounted chart. Include its
+    // entire synthetic root in the collision transaction's readonly
+    // peer set; no foreign transforms, buffers or bounds may change.
+    const otherChartSun=sun.glyph.position.clone();
+    const otherChartMoon=moon.glyph.position.clone();
+    const otherChartLine=sun.inner.geometry.getAttribute('position').array.slice();
+    const otherChartLayout=moon.glyph.userData['chartAspectAngle'];
     const collisionUpdate=applyIsolatedCoordinatePreview(
-      collisionScene,newCollisionTargets
+      collisionScene,newCollisionTargets,[scene]
     );
     renderer.render(collisionScene,camera);
+    results['dualChartIsolation'+suffix]=collisionUpdate.status==='applied'
+      && sun.glyph.position.equals(otherChartSun)
+      && moon.glyph.position.equals(otherChartMoon)
+      && sun.inner.geometry.getAttribute('position').array.every(
+        (value,index)=>value===otherChartLine[index])
+      && moon.glyph.userData['chartAspectAngle']===otherChartLayout;
     const newInnerBox=new THREE.Box3().setFromBufferAttribute(
       closeMoon.inner.geometry.getAttribute('position')
     );

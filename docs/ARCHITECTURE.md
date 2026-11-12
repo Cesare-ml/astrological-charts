@@ -642,3 +642,38 @@ successful collision update. These remain **unexecuted full-suite
 gates** pending a clean local Three.js/Angular checkout and browser
 validation. Native VirgoStars scenes, aspects, house geometries,
 public APIs, image assets and exports are not changed.
+
+
+### Multiple synthetic chart roots: explicit readonly peer ownership
+
+A synthetic transaction normally scans only its target scene for shared
+`THREE.BufferGeometry`, position `BufferAttribute` and typed-array
+backing storage. If a second chart shares the same backing memory, a
+target-scene-only scan cannot establish exclusivity and might edit
+both charts unintentionally. This matters especially when two wheels
+display the same layer-qualified Sun/Moon names.
+
+The **internal**, synthetic-only
+`applyIsolatedCoordinatePreview(root,targets,peerRoots?)` optionally
+accepts an explicit readonly array of other synthetic chart roots.
+It rejects non-array, duplicate, self-referential, nested or
+unmarked peer roots. The preflight counts geometry, attribute and
+backing-buffer references **across all declared roots** before writing
+anything, but validates and updates coordinates **only inside the
+first `root`**. A shared cross-chart resource fails closed through
+the existing `shared-leader-geometry`,
+`shared-leader-attribute`, or `shared-leader-storage` reasons.
+Peer meshes, geometry, layout snapshots and bounding caches are
+never staged, mutated or disposed.
+
+The Node regression uses two separate synthetic scenes with identical
+planet identities; it checks isolated sequential updates, repeated
+no-ops, exact peer geometry/layout preservation, all three cross-root
+alias types, invalid root-set rejection and recovery after removing
+an alias. The existing WebGL fixture keeps both synthetic scenes
+mounted to the same renderer and checks the target update does not
+alter the other scene, plus external backing-buffer rejection.
+The caller must supply all relevant peer roots: **omitted or unknown
+peers cannot be proven isolated by this experiment**. It is not
+connected to the Angular/production updater and does not replace
+multi-chart Chromium/Firefox or GPU ownership tests.

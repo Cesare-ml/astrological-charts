@@ -81,16 +81,46 @@ interface StagedBody {
  * collision changes, lunar/dodecatemore decorations, native aspect strokes,
  * untracked objects, malformed owners, unsupported dependencies or a
  * missing opt-in fixture marker. Re-checks every body before mutation.
+ * Optional declared synthetic peer roots are checked for shared writable
+ * geometry storage; omitting peers is NOT proof of cross-chart exclusivity.
  *
  * This is NOT a safe updater for real astrological chart scenes.
  * There is intentionally no production call site or public API export.
  */
 export function applyIsolatedCoordinatePreview(
   root: THREE.Object3D,
-  targets: readonly ChartCoordinateTarget[]
+  targets: readonly ChartCoordinateTarget[],
+  peerRoots: readonly THREE.Object3D[] = []
 ): IsolatedCoordinatePreviewResult {
   if (root.userData['chartSyntheticIsolatedWheel'] !== true)
     return result('rejected',0,['synthetic-fixture-required']);
+
+  // A fixture may contain several independent synthetic charts rendered by
+  // one host. Local uniqueness checks cannot see backing storage shared
+  // with OTHER roots unless those roots are explicitly supplied. Refuse
+  // duplicate, nested and unmarked peer roots to avoid double counting or
+  // accidentally treating real chart scenes as synthetic fixtures.
+  if (!Array.isArray(peerRoots))
+    return result('rejected',0,['invalid-synthetic-peer-roots']);
+  const roots = [root];
+  const seen = new Set<THREE.Object3D>(roots);
+  const contains = (parent: THREE.Object3D, node: THREE.Object3D): boolean => {
+    let current: THREE.Object3D | null = node;
+    while (current) {
+      if (current === parent) return true;
+      current = current.parent;
+    }
+    return false;
+  };
+  for (const peer of peerRoots) {
+    if (!(peer instanceof THREE.Object3D) ||
+        peer.userData['chartSyntheticIsolatedWheel'] !== true ||
+        seen.has(peer) ||
+        roots.some(other=>contains(peer,other) || contains(other,peer)))
+      return result('rejected',0,['invalid-synthetic-peer-roots']);
+    roots.push(peer);
+    seen.add(peer);
+  }
 
   const plan = planChartCoordinateEffects(root,targets);
   if (plan.decision === 'unsupported')
@@ -134,7 +164,7 @@ export function applyIsolatedCoordinatePreview(
   // Track all recognized geometry attributes, not only position: another
   // mesh's UV/normal view may alias a writable leader vertex buffer.
   const storageRefs = new Map<ArrayBufferLike,number>();
-  root.traverse(node => {
+  const countResources = (node: THREE.Object3D): void => {
     if (!(node instanceof THREE.Mesh || node instanceof THREE.Line)) return;
     const geometry = node.geometry;
     if (!(geometry instanceof THREE.BufferGeometry)) return;
@@ -154,7 +184,10 @@ export function applyIsolatedCoordinatePreview(
       const buffer = array.buffer;
       storageRefs.set(buffer,(storageRefs.get(buffer) ?? 0)+1);
     }
-  });
+  };
+  // The primary scene remains the ONLY mutation target. Peer scenes are
+  // read for ownership checks and are never staged, patched or disposed.
+  for (const trackedRoot of roots) trackedRoot.traverse(countResources);
 
   // Validate EVERY body in this isolated wheel before touching the scene,
   // not just the planets included in the impact plan. A stationary Moon can

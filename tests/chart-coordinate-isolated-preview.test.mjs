@@ -610,3 +610,114 @@ test('collision bounds caches update in place and restore their original objects
     assert.equal(applyIsolatedCoordinatePreview(f.scene,changed).status,'unchanged');
   }
 });
+
+
+test('two independent synthetic charts keep geometry, layout and bounds isolated',()=>{
+  for(const mirrored of [false,true]){
+    const first=fixture({mirrored,close:true,profile:true,outer:true});
+    const second=fixture({mirrored:!mirrored,close:true,profile:true,outer:true});
+    const firstMoon=first.parts.get('Moon');
+    const secondMoon=second.parts.get('Moon');
+    const beforeSecond={
+      position:secondMoon.glyph.position.clone(),
+      inner:secondMoon.inner.geometry.getAttribute('position').array.slice(),
+      outer:secondMoon.outerLeader.geometry.getAttribute('position').array.slice(),
+      layout:secondMoon.owner.userData.chartBodyLayout,
+      geometry:secondMoon.inner.geometry
+    };
+    const changeFirst=targetsWith(first.targets,'Sun',5);
+    const changeSecond=targetsWith(second.targets,'Sun',5);
+    const resultA=applyIsolatedCoordinatePreview(first.scene,changeFirst,[second.scene]);
+    assert.equal(resultA.status,'applied');
+    assert.ok(resultA.updated>=1);
+    assert.equal(planChartCoordinateEffects(first.scene,changeFirst).decision,'unchanged');
+    assert.ok(secondMoon.glyph.position.equals(beforeSecond.position));
+    assert.deepEqual(secondMoon.inner.geometry.getAttribute('position').array,
+      beforeSecond.inner);
+    assert.deepEqual(secondMoon.outerLeader.geometry.getAttribute('position').array,
+      beforeSecond.outer);
+    assert.equal(secondMoon.owner.userData.chartBodyLayout,beforeSecond.layout);
+    assert.equal(secondMoon.inner.geometry,beforeSecond.geometry);
+    assert.equal(applyIsolatedCoordinatePreview(first.scene,changeFirst,[second.scene]).status,
+      'unchanged');
+    const resultB=applyIsolatedCoordinatePreview(second.scene,changeSecond,[first.scene]);
+    assert.equal(resultB.status,'applied');
+    assert.ok(resultB.updated>=1);
+    assert.equal(applyIsolatedCoordinatePreview(second.scene,changeSecond,[first.scene]).status,
+      'unchanged');
+    assert.equal(planChartCoordinateEffects(first.scene,changeFirst).decision,'unchanged');
+  }
+});
+
+test('peer roots prevent writes to aliased geometry, attributes and backing storage',()=>{
+  for(const mode of ['geometry','attribute','storage']){
+    const first=fixture({close:true,profile:true,outer:true});
+    const second=fixture({close:true,profile:true,outer:true});
+    const moon=first.parts.get('Moon');
+    const external=second.parts.get('Moon');
+    const oldExternalGeometry=external.inner.geometry;
+    const oldExternalAttribute=external.inner.geometry.getAttribute('position');
+    const mainAttr=moon.inner.geometry.getAttribute('position');
+    const firstBefore=moon.glyph.position.clone();
+    const peerBefore=external.glyph.position.clone();
+    const peerLayout=external.owner.userData.chartBodyLayout;
+    const input=targetsWith(first.targets,'Sun',5);
+    if(mode==='geometry'){
+      external.inner.geometry=moon.inner.geometry;
+    } else if(mode==='attribute'){
+      external.inner.geometry.setAttribute('position',mainAttr);
+    } else {
+      external.inner.geometry.setAttribute('position',new THREE.BufferAttribute(
+        new Float32Array(mainAttr.array.buffer,
+          mainAttr.array.byteOffset,mainAttr.array.length),3));
+    }
+    try{
+      const refused=applyIsolatedCoordinatePreview(first.scene,input,[second.scene]);
+      assert.equal(refused.status,'rejected');
+      assert.equal(refused.updated,0);
+      const expected={
+        geometry:'shared-leader-geometry:natal:Moon',
+        attribute:'shared-leader-attribute:natal:Moon',
+        storage:'shared-leader-storage:natal:Moon'
+      }[mode];
+      assert.ok(refused.issues.includes(expected),refused.issues.join(','));
+      assert.ok(moon.glyph.position.equals(firstBefore));
+      assert.ok(external.glyph.position.equals(peerBefore));
+      assert.equal(external.owner.userData.chartBodyLayout,peerLayout);
+      assert.equal(planChartCoordinateEffects(first.scene,first.targets).decision,'unchanged');
+    }finally{
+      external.inner.geometry=oldExternalGeometry;
+      oldExternalGeometry.setAttribute('position',oldExternalAttribute);
+    }
+    const success=applyIsolatedCoordinatePreview(first.scene,input,[second.scene]);
+    assert.equal(success.status,'applied');
+    assert.equal(applyIsolatedCoordinatePreview(first.scene,input,[second.scene]).status,
+      'unchanged');
+    assert.ok(external.glyph.position.equals(peerBefore));
+  }
+});
+
+test('peer roots must be distinct disjoint synthetic objects',()=>{
+  const first=fixture({close:true,profile:true,outer:true});
+  const second=fixture({close:true,profile:true,outer:true});
+  const target=targetsWith(first.targets,'Sun',5);
+  const sunBefore=first.parts.get('Sun').glyph.position.clone();
+  const other=new THREE.Group();
+  const cases=[
+    [first.scene],
+    [second.scene,second.scene],
+    [second.scene,other],
+    [first.ring],
+    [null],
+    'not-an-array'
+  ];
+  for(const peers of cases){
+    const refused=applyIsolatedCoordinatePreview(first.scene,target,peers);
+    assert.equal(refused.status,'rejected');
+    assert.deepEqual(refused.issues,['invalid-synthetic-peer-roots']);
+    assert.equal(refused.updated,0);
+    assert.ok(first.parts.get('Sun').glyph.position.equals(sunBefore));
+  }
+  assert.equal(applyIsolatedCoordinatePreview(first.scene,target,[second.scene]).status,
+    'applied');
+});
