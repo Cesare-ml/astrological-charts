@@ -87,8 +87,10 @@ export function applyIsolatedCoordinatePreview(
         node.userData['chartAspectRadius'] !== undefined) unknown = true;
   });
   if (unknown) return result('rejected',0,['untracked-scene-visuals']);
-  if (plan.decision === 'unchanged') return result('unchanged',0);
 
+  // Even a zero-impact coordinate plan is not evidence of sound glyph or
+  // leader transforms: a host can move a mesh without updating its layout.
+  // Always validate the wheel before reporting an unchanged scene.
   // Validate EVERY body in this isolated wheel before touching the scene,
   // not just the planets included in the impact plan. A stationary Moon can
   // already have a stale glyph/leader transform while the Sun is moving.
@@ -162,6 +164,10 @@ export function applyIsolatedCoordinatePreview(
       }
     });
   }
+
+  // A no-op is only safe AFTER every glyph/leader has passed preflight.
+  // Do not allocate, reposition or replace any object for this outcome.
+  if (plan.decision === 'unchanged') return result('unchanged',0);
 
   // A failed application restores every staged transform, including
   // metadata, so the next owner redraw can start from its original scene.

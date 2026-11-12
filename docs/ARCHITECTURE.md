@@ -474,3 +474,25 @@ This remains an internal experiment gated by
 `chartSyntheticIsolatedWheel=true`; real charts still require their
 complete render path and this change is **not** production integration.
 Run the actual Node/Angular/browser suites before accepting the draft.
+
+
+### Zero-impact preview still validates all glyph and leader geometry
+
+`planChartCoordinateEffects()` reports whether upstream longitudes
+and collision positions changed; it cannot establish whether a host
+altered a Three.js glyph position, leader rotation or line geometry
+outside the renderer. The synthetic-only
+`applyIsolatedCoordinatePreview()` therefore **does not return
+`unchanged` until the entire isolated wheel passes the same glyph
+and leader preflight used before a real coordinate transaction**.
+A stale stationary glyph, stale line angle or missing line position
+attribute returns `rejected` with no geometry or metadata mutation,
+even if every requested longitude is unchanged.
+
+The headless Node regression checks normal/mirrored roots, missing
+leader buffer attribute, failure recovery and untouched inputs. The
+registered WebGL fixture checks stale Moon on both an actual Sun
+update and a zero-impact repeat. This does not enable changed
+collision geometry or authorize updates to actual charts, which
+still follow the complete redraw path. Node, TypeScript and
+Chromium/Firefox execution remain mandatory acceptance gates.

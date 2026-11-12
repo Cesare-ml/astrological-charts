@@ -266,3 +266,47 @@ test('stationary bodies must be geometrically valid before any other planet move
     assert.equal(moon.inner.rotation.z,originalMoonLeader);
   }
 });
+
+
+test('unchanged coordinate requests reject stale glyph and leader geometry',()=>{
+  for(const mirrored of [false,true]){
+    const f=fixture({mirrored,outer:true});
+    const sun=f.parts.get('Sun'),moon=f.parts.get('Moon');
+    const sourceTargets=structuredClone(f.targets);
+    const sourceLayout=sun.owner.userData.chartBodyLayout;
+    const glyphPosition=moon.glyph.position.clone();
+    const innerAngle=moon.inner.rotation.z;
+
+    assert.equal(planChartCoordinateEffects(f.scene,f.targets).decision,'unchanged');
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,f.targets).status,'unchanged');
+    moon.glyph.position.x+=0.075;
+    const badGlyph=applyIsolatedCoordinatePreview(f.scene,f.targets);
+    assert.equal(badGlyph.status,'rejected');
+    assert.equal(badGlyph.updated,0);
+    assert.ok(badGlyph.issues.includes('stale-glyph-geometry:natal:Moon'));
+    assert.equal(sun.owner.userData.chartBodyLayout,sourceLayout);
+    moon.glyph.position.copy(glyphPosition);
+
+    moon.inner.rotation.z+=0.15;
+    const badLeader=applyIsolatedCoordinatePreview(f.scene,f.targets);
+    assert.equal(badLeader.status,'rejected');
+    assert.equal(badLeader.updated,0);
+    assert.ok(badLeader.issues.includes('stale-leader-geometry:natal:Moon'));
+    moon.inner.rotation.z=innerAngle;
+
+    const badPositions=moon.inner.geometry.getAttribute('position');
+    moon.inner.geometry.deleteAttribute('position');
+    try{
+      const missingGeometry=applyIsolatedCoordinatePreview(f.scene,f.targets);
+      assert.equal(missingGeometry.status,'rejected');
+      assert.ok(missingGeometry.issues.includes('stale-leader-geometry:natal:Moon'));
+    }finally{
+      moon.inner.geometry.setAttribute('position',badPositions);
+    }
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,f.targets).status,'unchanged');
+    assert.deepEqual(f.targets,sourceTargets);
+    assert.ok(moon.glyph.position.equals(glyphPosition));
+    assert.equal(moon.inner.rotation.z,innerAngle);
+    assert.equal(sun.owner.userData.chartBodyLayout,sourceLayout);
+  }
+});

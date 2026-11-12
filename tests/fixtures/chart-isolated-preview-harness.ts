@@ -126,7 +126,14 @@ window.runIsolatedCoordinatePreviewProbe = () => {
       && staleStationary.updated===0
       && staleStationary.issues.includes('stale-glyph-geometry:natal:Moon')
       && sun.glyph.getWorldPosition(new THREE.Vector3()).distanceTo(sunAfter)<1e-12;
+    // The no-op path must not mask that same stationary corruption.
+    const staleNoOp=applyIsolatedCoordinatePreview(scene,targets);
+    results['unchangedPreflightRejectsStale'+suffix]=
+      staleNoOp.status==='rejected' && staleNoOp.updated===0
+      && staleNoOp.issues.includes('stale-glyph-geometry:natal:Moon');
     moon.glyph.position.copy(moonOriginalPosition);
+    results['unchangedPreflightRecovers'+suffix]=
+      applyIsolatedCoordinatePreview(scene,targets).status==='unchanged';
 
     const untracked=new THREE.Group();
     untracked.userData['chartAspectRadius']=0.45;
