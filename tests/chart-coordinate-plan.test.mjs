@@ -333,3 +333,26 @@ test('mutable host ring-id replacement cannot authorize a moved body',()=>{
   wheel.remove(newRing);
   assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
 });
+
+
+test('reparenting an entire collision ring preserves its internal body lineage',()=>{
+  for (const mirrored of [false,true]) {
+    const {scene,wheel,targets,owners}=sceneWithBodies(mirrored);
+    const originalRing=owners.get('natal:Sun').group.parent;
+    const moonRing=owners.get('natal:Moon').group.parent;
+    assert.equal(originalRing,moonRing);
+    const originalSunParent=owners.get('natal:Sun').group.parent;
+    const outerWrapper=new THREE.Group();
+    outerWrapper.name='whole-chart-wrapper';
+    wheel.add(outerWrapper);
+    outerWrapper.add(originalRing);
+    const unchanged=planChartCoordinateEffects(scene,targets);
+    assert.equal(unchanged.decision,'unchanged');
+    assert.deepEqual(unchanged.issues,[]);
+    assert.equal(owners.get('natal:Sun').group.parent,originalSunParent);
+    outerWrapper.remove(originalRing);
+    wheel.add(originalRing);
+    wheel.remove(outerWrapper);
+    assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+  }
+});

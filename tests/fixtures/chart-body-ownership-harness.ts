@@ -66,6 +66,16 @@ window.runChartBodyOwnershipProbe = () => {
     // Unrelated host fields must never escape the typed read-only snapshot.
     const hostPayload={source:'synthetic host-only marker'};
     transit.owner.userData['chartBodyLayout'].hostPayload=hostPayload;
+    const wholeWheelWrapper=new THREE.Group();
+    scene.add(wholeWheelWrapper);
+    wholeWheelWrapper.add(wheel);
+    const relocatedEntireRing=inspectChartBodyOwners(scene);
+    result['wholeWheelReparentAccepted'+suffix]=relocatedEntireRing.complete
+      && relocatedEntireRing.owners.size===3
+      && relocatedEntireRing.owners.get('natal:Sun')?.glyph===natal.glyph;
+    scene.add(wheel);
+    scene.remove(wholeWheelWrapper);
+
     const indexed=inspectChartBodyOwners(scene);
     result['layerQualified'+suffix]=indexed.complete && indexed.owners.size===3
       && indexed.owners.get('natal:Sun')?.glyph===natal.glyph

@@ -352,3 +352,10 @@ headless coordinate-planner Node suite now cover same-layer
 reparenting (both normal and mirrored), restoration, and a corrupted
 layout attempt. The browser planner fixture checks the same failure.
 The preview still never mutates a scene or performs partial updates.
+
+
+Moving the full ring group below a new outer scene wrapper keeps the
+same per-body `ringId` and remains valid. Only changing a body's
+*immediate wheel parent* invalidates the provenance. The Node and
+browser synthetic tests check both directions, so the safety gate
+does not accidentally reject normal chart container composition.
