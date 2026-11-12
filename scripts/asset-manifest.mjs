@@ -97,7 +97,14 @@ export function validateManifest(manifest) {
   if(!manifest || manifest.schemaVersion!==1 || manifest.publicRoot!=='assets/'
     || manifest.algorithm!=='sha256' || !Array.isArray(manifest.files))
     throw new Error('Invalid manifest schema');
-  sortedUnique(manifest.files.map(f=>f.path));
+  // Generated manifests have a canonical order. Reject a reshuffled external
+  // manifest even if someone recalculates its fingerprint: compare() and
+  // verify() must agree on file ordering on every host/platform.
+  const orderedPaths=sortedUnique(manifest.files.map(f=>f.path));
+  for(let i=0;i<orderedPaths.length;i++) {
+    if(manifest.files[i].path!==orderedPaths[i])
+      throw new Error('Manifest files must be in canonical path order: '+manifest.files[i].path);
+  }
   for(const f of manifest.files)
     if(!Number.isSafeInteger(f.bytes) || f.bytes<0 || !/^[a-f0-9]{64}$/.test(f.sha256))
       throw new Error('Invalid metadata for '+f.path);
