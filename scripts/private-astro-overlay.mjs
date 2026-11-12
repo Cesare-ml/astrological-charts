@@ -6,6 +6,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, realpathSync } from 'node:fs';
 import { readSafeAsset } from './verified-asset-pack.mjs';
+import { verifyWhiteAlphaPng } from './png-mask-pixels.mjs';
 
 const ZODIAC = [
   'aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo',
@@ -72,6 +73,9 @@ export function verifyPrivateAstroOverlay(rootPath, manifest, approval) {
     if (sha256 !== record.maskSha256) {
       throw new Error('Astro mask differs from private manifest: ' + id);
     }
+    // Integrity alone is insufficient: a valid black or differently shaped
+    // PNG cannot be tinted correctly by MeshBasicMaterial.color.
+    verifyWhiteAlphaPng(bytes, record.coveragePixels);
     paths.set(path, { bytes: bytes.length, sha256 });
     totalBytes += bytes.length;
   }
