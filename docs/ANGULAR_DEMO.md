@@ -509,3 +509,24 @@ replacement by a host. Run those tests with `check:types` and
 Only synthetic Three.js objects are used, without private chart
 images or ephemeris data. These changes remain unverified on
 the owner's Windows checkout.
+
+## Two-canvas WebGL resource accounting
+
+The interaction browser suite now contains
+`two WebGL chart contexts retain bounded resources over
+60 shared-material focus cycles`. It creates two
+actual WebGL contexts, shares a synthetic 1×1 texture and
+base glyph material, repeatedly focuses Sun/Moon/none
+in both charts, and checks geometries, textures, shader
+programs, per-chart palette isolation and disposal events.
+It then destroys chart A while B is focused and verifies
+that B remains unchanged before destroying B as well.
+
+The fixture `tests/fixtures/multi-chart-gpu-focus-harness.ts`
+does not request any production assets. It only observes
+Three.js `renderer.info` counters and `Material.dispose`
+signals; it does **not** measure VRAM bytes or FPS.
+Run `npm run test:demo-interactions` after starting the
+demo and approved asset server. Browser/Windows execution
+is pending; passing static checks does not certify this
+new stress scenario.
