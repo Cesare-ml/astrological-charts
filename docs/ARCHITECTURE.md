@@ -384,10 +384,16 @@ Node and synthetic normal/southern-mirrored browser regressions use
 owner within the same wheel, compare unchanged/changed reports,
 reject corrupted source-order metadata and verify recovery.
 The actual wheel renderer is source-checked for population of the
-metadata. No glyph transform, native aspect geometry, asset, house
-calculation, production component or live incremental patch changes.
-The usual `npm run test:coordinate-plan`, typecheck, Angular build
-and Chromium/Firefox visual gates remain mandatory before merge.
+metadata. **Impact records use the same saved order**: two scenes with
+identical longitudes produce the same ordered report even if their
+Three.js children have been reordered. The synthetic-only atomic
+coordinate experiment also supplies this original source order in its
+fixture (a missing order must fail safely, not bypass the planner).
+No glyph transform, native aspect geometry, asset, house calculation,
+production component or live incremental patch changes.
+The usual `npm run test:coordinate-plan`, `npm run test:coordinate-isolated`,
+typecheck, Angular build and Chromium/Firefox visual gates remain
+mandatory before merge.
 
 
 ### Synthetic-only atomic glyph/leader coordinate transform experiment
