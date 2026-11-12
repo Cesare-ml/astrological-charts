@@ -22,4 +22,5 @@ export * from './lib/renderers/@carta-astrale/carta-astrale.renderer';
 export * from './lib/renderers/oggetti-semplici.renderer';
 export * from './lib/renderers/gestore-immagini';
 export * from './lib/renderers/chart-asset-urls';
+export * from './lib/renderers/virgostars-astro-image-preview';
 export * from './lib/renderers/_colori.config';
