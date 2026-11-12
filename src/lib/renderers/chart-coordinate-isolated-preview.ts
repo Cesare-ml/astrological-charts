@@ -49,7 +49,12 @@ interface StagedLeader {
   position: THREE.BufferAttribute;
   oldEnd: THREE.Vector3;
   nextEnd: THREE.Vector3;
+  // Keep the original cached objects and a copy of their values:
+  // other owners may hold references to either bounding cache.
   oldBounds: THREE.Sphere | null;
+  oldBoundsValue: THREE.Sphere | null;
+  oldBox: THREE.Box3 | null;
+  oldBoxValue: THREE.Box3 | null;
 }
 
 interface StagedBody {
@@ -249,7 +254,11 @@ export function applyIsolatedCoordinatePreview(
           leaderGeometry.push({
             line,position:attr,
             oldEnd:new THREE.Vector3(attr.getX(0),attr.getY(0),attr.getZ(0)),
-            nextEnd,oldBounds:geometry.boundingSphere?.clone() ?? null
+            nextEnd,
+            oldBounds:geometry.boundingSphere,
+            oldBoundsValue:geometry.boundingSphere?.clone() ?? null,
+            oldBox:geometry.boundingBox,
+            oldBoxValue:geometry.boundingBox?.clone() ?? null
           });
         }
     }
@@ -291,6 +300,9 @@ export function applyIsolatedCoordinatePreview(
         change.position.setXYZ(0,change.nextEnd.x,change.nextEnd.y,0);
         change.position.needsUpdate = true;
         change.line.geometry.computeBoundingSphere();
+        // BoundingBox is lazy in Three.js. Only recompute an existing
+        // cache; do not allocate a new box for geometry that had none.
+        if (change.oldBox) change.line.geometry.computeBoundingBox();
       }
       for (const line of stage.lines) line.rotation.z = stage.newTickAngle;
       stage.glyph.userData['chartAspectAngle'] = stage.newTickAngle;
@@ -302,7 +314,14 @@ export function applyIsolatedCoordinatePreview(
       for (const change of stage.leaderGeometry) {
         change.position.setXYZ(0,change.oldEnd.x,change.oldEnd.y,change.oldEnd.z);
         change.position.needsUpdate = true;
-        change.line.geometry.boundingSphere = change.oldBounds?.clone() ?? null;
+        // Restore the original cache OBJECTS, not only equivalent
+        // clones: other Three.js consumers may retain their references.
+        change.line.geometry.boundingSphere = change.oldBounds;
+        if (change.oldBounds && change.oldBoundsValue)
+          change.oldBounds.copy(change.oldBoundsValue);
+        change.line.geometry.boundingBox = change.oldBox;
+        if (change.oldBox && change.oldBoxValue)
+          change.oldBox.copy(change.oldBoxValue);
       }
       stage.lines.forEach((line,index)=>{line.rotation.z=stage.oldAngles[index];});
       stage.glyph.userData['chartAspectAngle']=stage.oldAspectAngle;

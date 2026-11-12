@@ -612,3 +612,33 @@ recovery once the separate buffer is restored. This does not change
 the source astronomical data, production renderer, public interfaces
 or asset ownership. Full Node, Angular and Chrome/Firefox checks remain
 required before integrating PR #22.
+
+
+### Synthetic collision geometry: bounding-volume cache consistency and rollback
+
+Three.js lazily caches both `BufferGeometry.boundingSphere` and
+`BufferGeometry.boundingBox`. A collision-offset update that rewrites
+two leader vertices but refreshes only `boundingSphere` can leave
+an **existing** `boundingBox` stale, affecting downstream geometry
+queries. An earlier rollback also replaced the sphere cache with an
+equivalent clone, breaking existing external references to that object.
+
+The synthetic-only transaction now snapshots the **original cache
+references and cloned values** before any change. After a vertex write
+it recomputes `boundingSphere`, and `boundingBox` **only if one was
+already present** (preserving lazy allocation). On transactional
+failure it restores the old vertices and assigns the original
+bounding-cache objects, copying their saved contents back so other
+owners retaining those references see the original bounds. Null
+cached bounds stay null on rollback.
+
+Normal and mirrored synthetic Node regressions force a metadata-write
+exception after the collision geometry has changed, then assert
+original vertex values, sphere/box object identities and values,
+successful recovery, accurate refreshed cached boxes and preserved
+lazy boxes. The WebGL fixture checks refreshed Moon inner line bounds,
+stable cache identities and a still-null optional outer box after a
+successful collision update. These remain **unexecuted full-suite
+gates** pending a clean local Three.js/Angular checkout and browser
+validation. Native VirgoStars scenes, aspects, house geometries,
+public APIs, image assets and exports are not changed.

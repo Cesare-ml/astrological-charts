@@ -531,3 +531,69 @@ test('distinct BufferAttributes sharing a typed-array backing store fail closed'
     assert.equal(applyIsolatedCoordinatePreview(f.scene,next).status,'unchanged');
   }
 });
+
+
+test('collision bounds caches update in place and restore their original objects on rollback',()=>{
+  for(const mirrored of [false,true]){
+    const f=fixture({mirrored,close:true,profile:true,outer:true});
+    const sun=f.parts.get('Sun'),moon=f.parts.get('Moon');
+    const changed=targetsWith(f.targets,'Sun',5);
+    const lines=[sun.inner,sun.outerLeader,moon.inner,moon.outerLeader];
+    // Verify nullable lazy caches as well as previously cached bounds.
+    for(const line of [sun.inner,moon.inner,moon.outerLeader]){
+      line.geometry.computeBoundingSphere();
+      line.geometry.computeBoundingBox();
+    }
+    const previous=lines.map(line=>({
+      line,
+      position:line.geometry.getAttribute('position').array.slice(),
+      sphere:line.geometry.boundingSphere,
+      sphereValue:line.geometry.boundingSphere?.clone() ?? null,
+      box:line.geometry.boundingBox,
+      boxValue:line.geometry.boundingBox?.clone() ?? null
+    }));
+    assert.equal(previous[1].box,null,'outer Sun box remains lazy');
+    const moonLayout=moon.owner.userData.chartBodyLayout;
+    Object.defineProperty(moon.owner.userData,'chartBodyLayout',{
+      configurable:true,enumerable:true,
+      get:()=>moonLayout,
+      set(next){if(next!==moonLayout)throw Error('synthetic bounding rollback fault');}
+    });
+    try{
+      const report=applyIsolatedCoordinatePreview(f.scene,changed);
+      assert.equal(report.status,'rejected');
+      assert.deepEqual(report.issues,['transaction-rolled-back']);
+      assert.equal(report.updated,0);
+      for(const entry of previous){
+        assert.deepEqual(
+          Array.from(entry.line.geometry.getAttribute('position').array),
+          Array.from(entry.position),
+          'all endpoint vertex values must be restored');
+        assert.equal(entry.line.geometry.boundingSphere,entry.sphere,
+          'restore original cached sphere identity');
+        assert.equal(entry.line.geometry.boundingBox,entry.box,
+          'restore original cached box identity');
+        if(entry.sphereValue)
+          assert.ok(entry.sphere.equals(entry.sphereValue));
+        if(entry.boxValue)
+          assert.ok(entry.box.equals(entry.boxValue));
+      }
+    }finally{
+      delete moon.owner.userData.chartBodyLayout;
+      moon.owner.userData.chartBodyLayout=moonLayout;
+    }
+    assert.equal(planChartCoordinateEffects(f.scene,f.targets).decision,'unchanged');
+    const success=applyIsolatedCoordinatePreview(f.scene,changed);
+    assert.equal(success.status,'applied');
+    for(const entry of previous){
+      assert.equal(entry.line.geometry.boundingSphere,entry.sphere);
+      assert.equal(entry.line.geometry.boundingBox,entry.box);
+      if(entry.box){
+        const expected=new THREE.Box3().setFromBufferAttribute(
+          entry.line.geometry.getAttribute('position'));
+        assert.ok(entry.box.equals(expected),'cached box must match new vertices');
+      }
+    }
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,changed).status,'unchanged');
+  }
+});

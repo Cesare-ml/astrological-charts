@@ -270,10 +270,31 @@ window.runIsolatedCoordinatePreviewProbe = () => {
     closeMoon.outer.geometry.setAttribute('position',moonOuterAttribute);
     closeMoon.outer.userData['chartIsolatedLeaderSpec']=previousOuterSpec;
 
+    // Cached bounds must track rewritten endpoint vertices. A cached
+    // Box3 should update in place; an absent box should remain lazy.
+    closeMoon.inner.geometry.computeBoundingSphere();
+    closeMoon.inner.geometry.computeBoundingBox();
+    closeMoon.outer.geometry.computeBoundingSphere();
+    const innerBoxBefore=closeMoon.inner.geometry.boundingBox!;
+    const innerSphereBefore=closeMoon.inner.geometry.boundingSphere!;
+    const outerSphereBefore=closeMoon.outer.geometry.boundingSphere!;
+    const outerBoxWasNull=closeMoon.outer.geometry.boundingBox===null;
+    const oldInnerBox=innerBoxBefore.clone();
     const collisionUpdate=applyIsolatedCoordinatePreview(
       collisionScene,newCollisionTargets
     );
     renderer.render(collisionScene,camera);
+    const newInnerBox=new THREE.Box3().setFromBufferAttribute(
+      closeMoon.inner.geometry.getAttribute('position')
+    );
+    results['collisionBoundsRefresh'+suffix]=
+      collisionUpdate.status==='applied'
+      && closeMoon.inner.geometry.boundingBox===innerBoxBefore
+      && innerBoxBefore.equals(newInnerBox)
+      && !innerBoxBefore.equals(oldInnerBox)
+      && closeMoon.inner.geometry.boundingSphere===innerSphereBefore
+      && closeMoon.outer.geometry.boundingSphere===outerSphereBefore
+      && (!outerBoxWasNull || closeMoon.outer.geometry.boundingBox===null);
     const newMoonWorld=closeMoon.glyph.getWorldPosition(new THREE.Vector3());
     results['collisionLeaderVertices'+suffix]=collisionUpdate.status==='applied'
       && collisionUpdate.updated>=1
