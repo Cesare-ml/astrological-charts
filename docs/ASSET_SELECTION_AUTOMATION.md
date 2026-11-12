@@ -26,7 +26,7 @@ node scripts/asset-manifest.mjs verify `
   --manifest ./chart-assets-manifest.local.json
 ```
 
-**When a skin requires an image that does not exist, the program writes the diagnostic report and exits with code 2 without writing a new selection file.** If there is a prior selection file from an earlier run, delete or rename it before rerunning; never treat it as current after a failed check.
+**When a skin image is missing or an active asset reference is not a static literal, the program writes the diagnostic report and exits with code 2 without writing a new selection file.** If there is a prior selection file from an earlier run, delete or rename it before rerunning; never treat it as current after a failed check.
 
 ## How assets are chosen
 
@@ -41,6 +41,34 @@ It also inventories files from these known chart-only directories, preserving ex
 - `img/symbols/planets/dark/_circle`, `img/symbols/planets/light/_circle`
 
 Therefore the output is intentionally a **conservative chart asset superset**, not an ideal or minimal Astrolabio device package. It does not scan the entire website `img/` directory and does not include unrelated logos, tarocchi or user content.
+
+## Fail-closed handling of non-literal sources
+
+The AST extractor now distinguishes **explicitly absent** skin textures
+(`texture: null` or a literal empty string) from values that cannot be
+resolved statically. An active `texture` or `imgRisuonatoreSolare`
+expression such as a function call, concatenation, or template with
+interpolations is added to the JSON report as an **unresolved non-literal
+reference**. The same applies to a spread/computed item in
+`preloadArraySimboli`, or a preload property whose initializer is not
+a literal array.
+
+Each diagnostic identifies the `skin` or `preload` origin and its
+TypeScript file/line/column without copying the expression's full
+source into a report. The report contains `nonLiteralExpressions`, plus
+`totalLiteralReferences` and `uniqueLiteralReferences`, which still
+count only actual static literals. Even if every currently discovered
+host asset exists, the CLI writes the report and exits with **status 2**
+without producing a new selection file whenever such expressions are
+found.
+
+To resolve a diagnostic, enumerate the real permitted assets explicitly
+in the source or create a separately reviewed selection process. Do not
+guess paths, disable the guard, move private artwork into this renderer
+repository or claim that runtime-generated filenames are complete just
+because known static folders were scanned. A static source scan is
+still **not a guarantee** that all paths built dynamically by other
+renderer modules have been discovered.
 
 ## Important limitations
 
