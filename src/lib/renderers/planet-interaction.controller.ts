@@ -380,6 +380,17 @@ export class PlanetInteractionController {
     this.natalFocusOverlays = [];
     this.lines = [];
     this.transitGuides = new Map();
+    // Restore the old natal palette BEFORE disposing any focus material.
+    // THREE.Material.dispose() synchronously notifies host listeners, which
+    // can repaint a newer focus during this very cleanup. Restoring colors
+    // afterward would overwrite the new paint and leave its snapshots stale.
+    for (const [attribute, values] of natalColors) {
+      for (let i = 0; i < values.length; i += 3) {
+        attribute.setXYZ(i / 3, values[i], values[i + 1], values[i + 2]);
+      }
+      if (attribute.data) attribute.data.needsUpdate = true;
+      else attribute.needsUpdate = true;
+    }
     for (const [mesh, {original, focused}] of materials) {
       // A host or another controller may have replaced the material of a
       // transferred mesh since this controller assigned its focus clone.
@@ -406,13 +417,6 @@ export class PlanetInteractionController {
       // The ownership maps were detached before disposal; reentrant host
       // callbacks cannot accidentally dispose these same clones twice.
       for (const copy of owned.keys()) copy.dispose();
-    }
-    for (const [attribute, values] of natalColors) {
-      for (let i = 0; i < values.length; i += 3) {
-        attribute.setXYZ(i / 3, values[i], values[i + 1], values[i + 2]);
-      }
-      if (attribute.data) attribute.data.needsUpdate = true;
-      else attribute.needsUpdate = true;
     }
     // Cloned natal geometry and materials are never shared with the source.
     // Dispose the foreground on every focus change, redraw and destroy.
