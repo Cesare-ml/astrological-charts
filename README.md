@@ -1,8 +1,8 @@
 # Astrological Charts
 
-Private collaborative **Angular 20 / TypeScript / Three.js** library extracted from VirgoStars' `grafici-astrologici` code.
+Publicly readable **Angular 20 / TypeScript / Three.js** library extracted from VirgoStars' `grafici-astrologici` code. Public GitHub visibility alone does **not** authorize source or artwork redistribution.
 
-**Status:** the library and synthetic demo build locally after `npm ci`; they are **not visually validated against original artwork, production-integrated or released**. This repository remains private; no open-source licence or automatic deployments are configured.
+**Status (GitHub metadata verified 2026-11-12):** this repository is **public**, but the source/third-party rights audit has not cleared an open-source release. There is no open-source `LICENSE` on `main` and npm remains `private: true`. Local library/demo builds have been reported, but original-artwork parity, production integration and Astrolabio compatibility are **unverified**. No automatic deployment or npm publication is configured; see [rights audit #20](https://github.com/Cesare-ml/astrological-charts/issues/20).
 
 ## Purpose
 
@@ -12,7 +12,7 @@ Invite known contributors to develop the astrological renderer using Codex, Clau
 
 The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
 
-**Important:** The renderer loads images from a host asset root; the library does not bundle them. A private owner-authorized image pack is available separately in `astrological-assets`, without the unknown-license font. Building TypeScript does not by itself prove visual correctness.
+**Important:** The renderer loads host-owned assets and does not bundle them. The separate [`astrological-assets`](https://github.com/Cesare-ml/astrological-assets) repository is also publicly readable and carries a SHA-256 manifest, but not every individual image has passed a third-party redistribution-rights review. No original font is included. Building TypeScript does not prove visual correctness or licensing clearance.
 
 ## Start developing
 
@@ -44,7 +44,7 @@ These commands and `npm run preflight` passed on Windows with Node 22.18.0. The 
 - [Shared host-owned assets and canonical URLs](docs/SHARED_ASSET_ARCHITECTURE.md)
 - [Deterministic asset manifest and offline version comparison](docs/ASSET_MANIFEST.md)
 - [Derive the chart-only asset inventory from active TypeScript](docs/ASSET_SELECTION_AUTOMATION.md)
-- [Independent contributor asset access and proposed private asset repository](docs/INDEPENDENT_ASSETS_REPOSITORY.md)
+- [Independent contributor asset access and repository integration](docs/INDEPENDENT_ASSETS_REPOSITORY.md)
 - [Three-repository integration checkpoint, release gates and open blockers](docs/MULTIREPO_INTEGRATION_CHECKPOINT.md)
 - [Asset-only local preview: 78 synthetic PNGs or an approved independent pack](docs/LOCAL_ASSET_PREVIEW.md)
 - [Angular renderer demo and browser tests](docs/ANGULAR_DEMO.md)
