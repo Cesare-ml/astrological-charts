@@ -45,7 +45,7 @@ node scripts/serve-local-assets.mjs \
   --astro-overlay-approval ../private-astro-masks/private-astro-approval.json
 ```
 
-The `private-astro-masks` folder name is illustrative. Use the actual private location. The server rejects incomplete overlays, non-local origins, unauthorized uses, wrong hashes, missing/duplicate/incorrectly named masks, wrong PNG dimensions, symlinks and any filename overlap with the original approved assets. **It also decodes the actual RGBA pixels** and rejects any visible RGB that is not white or any alpha coverage count that differs from the private manifest, even if someone refreshes the PNG's hash. This prevents black/colored images from silently defeating the light/dark tint in Three.js.
+The `private-astro-masks` folder name is illustrative. Use the actual private location. The server rejects incomplete overlays, non-local origins, unauthorized uses, wrong hashes, missing/duplicate/incorrectly named masks, wrong PNG dimensions, symlinks and any filename overlap with the original approved assets. **It also decodes the actual RGBA pixels**, rejects all nonwhite RGB **including pixels with zero alpha** (to avoid texture-filtering halos), and rejects any alpha coverage count that differs from the private manifest, even if someone refreshes the PNG's hash. PNG chunk CRCs, a 2 MiB size limit and a 64-chunk limit prevent corrupted or oversized input from being accepted. These controls protect light/dark tinting in Three.js; they do not establish chart rendering quality or font licensing.
 
 5. Run the Angular demo (if installed): `npm run demo`. Enable **“Preview VirgoStars Astro glyph images”** or append `?astroGlyphs=1` to the demo URL. The preview starts **off** by default and requires the verified mask overlay when enabled.
 6. Test natal/transit/synastry, light/dark and exported PNG. Include pointer/aspect focus checks after merging the separate interaction feature branch. Turn the preview off to restore original image references without changing production.
@@ -90,6 +90,8 @@ npm run test:astro-overlay
 npm run check:types
 npm run build:demo
 ```
+
+**Focused local verification (2026-11-12):** the exact newly committed `scripts/png-mask-pixels.mjs` (Git blob `bd1d419570ea48a44f67d5c0bf641c156954c2ee`) was executed with Node 22 against all **22 approved private v0.3.1 PNG masks** and **eight negative cases** (CRC, mismatched coverage, truncated file, trailing bytes, oversize input, invalid coverage and invisible black RGB). **30/30 checks passed**. This is a standalone pixel-validator run, not the complete Node/Angular or browser suite.
 
 The mapping tests exercise the actual TypeScript image-ref helper without loading any proprietary artwork. The separate overlay tests construct synthetic 512x512 PNGs to verify manifest integrity, permission gating, symlink/collision rejection and both positive and negative localhost HTTP requests. The private v0.3 ZIP itself was also verified locally against the new overlay validator (22 masks; 9 positive/negative checks passed).
 
