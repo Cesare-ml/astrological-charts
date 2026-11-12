@@ -877,3 +877,64 @@ test('alternating two isolated charts survives 48 updates and a failed collision
     }
   }
 });
+
+
+test('peer index, morph and instance attributes cannot alias writable leader storage',()=>{
+  for(const mirrored of [false,true]){
+    const first=fixture({mirrored,close:true,profile:true,outer:true});
+    const peer=fixture({mirrored:!mirrored,close:true,profile:true,outer:true});
+    const moon=first.parts.get('Moon');
+    const sun=first.parts.get('Sun');
+    const attr=moon.inner.geometry.getAttribute('position');
+    const before=attr.array.slice();
+    const sunBefore=sun.glyph.position.clone();
+    const peerBefore=peer.parts.get('Moon').glyph.position.clone();
+    const next=targetsWith(first.targets,'Sun',5);
+    for(const mode of ['index','morph','instanceColor','instanceMatrix']){
+      const geometry=new THREE.BufferGeometry().setAttribute('position',
+        new THREE.Float32BufferAttribute([
+          -0.1,0,0,0.1,0,0,0,0.1,0
+        ],3));
+      const material=new THREE.MeshBasicMaterial();
+      let item;
+      if(mode==='index'){
+        geometry.setIndex(new THREE.BufferAttribute(
+          new Uint16Array(attr.array.buffer),1));
+        item=new THREE.Mesh(geometry,material);
+      }else if(mode==='morph'){
+        geometry.morphAttributes.position=[new THREE.BufferAttribute(
+          new Float32Array(attr.array.buffer),3)];
+        item=new THREE.Mesh(geometry,material);
+      }else{
+        item=new THREE.InstancedMesh(geometry,material,1);
+        const shared=new THREE.InstancedBufferAttribute(
+          new Float32Array(attr.array.buffer),mode==='instanceMatrix'?16:3);
+        if(mode==='instanceMatrix') item.instanceMatrix=shared;
+        else item.instanceColor=shared;
+      }
+      // These foreign resources are deliberately never rendered: their
+      // index/matrix arrays are test-only aliases, not valid chart data.
+      peer.scene.add(item);
+      try{
+        const report=applyIsolatedCoordinatePreview(first.scene,next,[peer.scene]);
+        assert.equal(report.status,'rejected',mode);
+        assert.equal(report.updated,0,mode);
+        assert.ok(report.issues.includes('shared-leader-storage:natal:Moon'),
+          mode+': '+report.issues.join(','));
+        assert.ok(sun.glyph.position.equals(sunBefore),mode);
+        assert.ok(peer.parts.get('Moon').glyph.position.equals(peerBefore),mode);
+        assert.deepEqual(attr.array,before,mode);
+        assert.equal(planChartCoordinateEffects(first.scene,first.targets).decision,
+          'unchanged');
+      }finally{
+        peer.scene.remove(item);
+        material.dispose();
+        geometry.dispose();
+      }
+    }
+    const result=applyIsolatedCoordinatePreview(first.scene,next,[peer.scene]);
+    assert.equal(result.status,'applied');
+    assert.equal(applyIsolatedCoordinatePreview(first.scene,next,[peer.scene]).status,
+      'unchanged');
+  }
+});

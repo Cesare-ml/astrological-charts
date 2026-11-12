@@ -179,14 +179,28 @@ export function applyIsolatedCoordinatePreview(
     const position = geometry.getAttribute('position');
     if (position instanceof THREE.BufferAttribute)
       attributeRefs.set(position,(attributeRefs.get(position) ?? 0)+1);
-    for (const attribute of Object.values(geometry.attributes)) {
+    const trackStorage = (attribute: unknown): void => {
       const array = attribute instanceof THREE.BufferAttribute
         ? attribute.array
         : attribute instanceof THREE.InterleavedBufferAttribute
           ? attribute.data.array : null;
-      if (!array) continue;
+      if (!array) return;
       const buffer = array.buffer;
       storageRefs.set(buffer,(storageRefs.get(buffer) ?? 0)+1);
+    };
+    for (const attribute of Object.values(geometry.attributes))
+      trackStorage(attribute);
+    // Index buffers and morph target attributes can also be views of
+    // a target leader's writable backing ArrayBuffer. They are not
+    // present in geometry.attributes, so scanning only position/UV/etc.
+    // falsely reports that backing store as exclusive to the first chart.
+    trackStorage(geometry.index);
+    for (const attributes of Object.values(geometry.morphAttributes))
+      for (const attribute of attributes) trackStorage(attribute);
+    // InstancedMesh owns additional GPU attributes outside its geometry.
+    if (node instanceof THREE.InstancedMesh) {
+      trackStorage(node.instanceMatrix);
+      trackStorage(node.instanceColor);
     }
   };
   // The primary scene remains the ONLY mutation target. Peer scenes are

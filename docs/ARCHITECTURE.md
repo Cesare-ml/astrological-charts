@@ -763,3 +763,35 @@ any glyph, then restore the original layouts and verify a valid
 unchanged report. These tests require actual local Node and browser
 execution before acceptance; no changes are made to the production
 renderer or released public API.
+
+
+### Cross-chart auxiliary geometry and instancing buffers
+
+A synthetic multi-chart ownership scan must account for **all**
+attributes that can share the typed-array backing storage of a
+writable collision-leader position buffer, not just the ordinary
+`BufferGeometry.attributes` dictionary. Otherwise, a different
+scene may own the same `ArrayBuffer` through
+`BufferGeometry.index`, `BufferGeometry.morphAttributes` or
+the `instanceMatrix`/`instanceColor` of a `THREE.InstancedMesh`,
+without the original geometry, position-attribute or storage checks
+ever seeing that reference.
+
+The synthetic-only preview scanner now counts these additional
+backing buffers across the declared target and readonly peer roots.
+Any attempted collision-dependent leader vertex write fails closed
+with the existing `shared-leader-storage:<layer>:<name>` diagnostic
+if an index, morph or instance attribute shares its backing storage.
+This conservatively rejects shared backing storage even when views
+cover different byte ranges. Peers are never patched or disposed,
+and the public Angular/production renderer is untouched.
+
+The headless Node regression exercises a foreign indexed mesh,
+morph-target mesh, instanced color buffer and instance matrix across
+normal and mirrored wheels, verifying zero partial updates and
+successful recovery after removing the alias. Browser WebGL fixture
+checks index, morph and instanced-color aliases while both synthetic
+scenes remain mounted. The foreign alias objects are *not drawn*:
+the purpose is ownership preflight, not valid visual content.
+Full Node/Three.js and Chromium/Firefox execution are still required
+before approving PR #22.

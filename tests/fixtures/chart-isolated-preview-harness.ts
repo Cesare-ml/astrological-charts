@@ -315,6 +315,41 @@ window.runIsolatedCoordinatePreviewProbe = () => {
     foreignPoints.geometry.dispose();
     (foreignPoints.material as THREE.Material).dispose();
 
+    // Peer index/morph/instanced buffers live outside geometry.attributes.
+    // They must count as potential owners even when nothing is drawn from
+    // these deliberately aliasing, test-only GPU resources.
+    let auxiliaryAliasesRejected=true;
+    for (const mode of ['index','morph','instanceColor'] as const) {
+      const geometry=new THREE.BufferGeometry().setAttribute('position',
+        new THREE.Float32BufferAttribute([-0.1,0,0,0.1,0,0,0,0.1,0],3));
+      const material=new THREE.MeshBasicMaterial({color:'#777777'});
+      let foreign:THREE.Mesh;
+      if (mode==='index') {
+        geometry.setIndex(new THREE.BufferAttribute(
+          new Uint16Array(moonInnerAttribute.array.buffer),1));
+        foreign=new THREE.Mesh(geometry,material);
+      } else if (mode==='morph') {
+        geometry.morphAttributes.position=[new THREE.BufferAttribute(
+          new Float32Array(moonInnerAttribute.array.buffer),3)];
+        foreign=new THREE.Mesh(geometry,material);
+      } else {
+        const instanced=new THREE.InstancedMesh(geometry,material,1);
+        instanced.instanceColor=new THREE.InstancedBufferAttribute(
+          new Float32Array(moonInnerAttribute.array.buffer),3);
+        foreign=instanced;
+      }
+      scene.add(foreign);
+      const rejectedAuxiliary=applyIsolatedCoordinatePreview(
+        collisionScene,newCollisionTargets,[scene]);
+      auxiliaryAliasesRejected &&=rejectedAuxiliary.status==='rejected'
+        && rejectedAuxiliary.updated===0
+        && rejectedAuxiliary.issues.includes('shared-leader-storage:natal:Moon');
+      scene.remove(foreign);
+      geometry.dispose();
+      material.dispose();
+    }
+    results['dualChartAuxiliaryStorageGuard'+suffix]=auxiliaryAliasesRejected;
+
     // Cached bounds must track rewritten endpoint vertices. A cached
     // Box3 should update in place; an absent box should remain lazy.
     closeMoon.inner.geometry.computeBoundingSphere();
