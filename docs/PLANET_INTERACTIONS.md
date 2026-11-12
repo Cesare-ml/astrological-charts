@@ -28,6 +28,9 @@ renderer.highlightPlanet(null); // remove pinned selection
 // On host component teardown: renderer.setPlanetInteractionListener(null);
 ```
 
+
+**Aspect identity safety:** internal aspect-stroke and transit-guide deduplication uses a serialized ordered tuple of aspect type plus both layer-qualified endpoint IDs, rather than concatenating untrusted body names with a delimiter. This prevents two distinct precomputed relations from receiving the same rendering key when an upstream/custom planet name contains a pipe character. No orb, aspect calculation, glyph position or camera behavior changes. The Node regression `npm run test:aspect-identity` is part of `npm run preflight`; browser/WebGL visual verification is still required before merging the interactive renderer into `main`.
+
 **Input resilience:** cross-chart aspect relations may arrive from untyped JSON APIs. The relation selector ignores entries whose natal/transit/synastry endpoints are missing, malformed or use an unknown layer. This prevents a bad opposite endpoint from crashing planet hover/highlighting; valid relations retain their existing order. Upstream applications should still validate relation payloads, including types and orbs. No additional astrological calculations are performed.
 
 **Stable live data:** `setCrossChartAspects` takes an independent snapshot of each valid precomputed relation and its `{layer,name}` endpoints in both the service and the on-screen controller. Mutating the host's original objects or an emitted hover-event payload cannot silently alter the active overlays or currently displayed aspects. The host must call `setCrossChartAspects` with new values during live time correction. Invalid links (missing endpoints, empty aspect type) are omitted without calculating astrology.
