@@ -76,10 +76,11 @@ interface StagedBody {
  * containing only normal planet glyphs and inner/outer leader lines,
  * rotate all supported visuals together with zero new GPU allocations.
  *
- * Strictly refuses collision-displacement changes, lunar/dodecatemore
- * decorations, native aspect strokes, any untracked scene objects,
- * malformed owners, unsupported wheel dependencies, or a missing opt-in
- * fixture marker. Re-checks the full input before each attempt.
+ * Supports collision displacement only for explicitly profiled, exclusive
+ * two-vertex synthetic leaders with complete rollback. Refuses unprofiled
+ * collision changes, lunar/dodecatemore decorations, native aspect strokes,
+ * untracked objects, malformed owners, unsupported dependencies or a
+ * missing opt-in fixture marker. Re-checks every body before mutation.
  *
  * This is NOT a safe updater for real astrological chart scenes.
  * There is intentionally no production call site or public API export.

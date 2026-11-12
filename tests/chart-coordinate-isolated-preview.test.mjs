@@ -540,10 +540,15 @@ test('collision bounds caches update in place and restore their original objects
     const changed=targetsWith(f.targets,'Sun',5);
     const lines=[sun.inner,sun.outerLeader,moon.inner,moon.outerLeader];
     // Verify nullable lazy caches as well as previously cached bounds.
-    for(const line of [sun.inner,moon.inner,moon.outerLeader]){
+    for(const line of [sun.inner,moon.inner]){
       line.geometry.computeBoundingSphere();
       line.geometry.computeBoundingBox();
     }
+    // Moon outer WILL change during the collision patch, but starts with
+    // neither lazy bounds cache populated. A failed transaction must
+    // restore both null values, not retain a newly calculated sphere.
+    assert.equal(moon.outerLeader.geometry.boundingSphere,null);
+    assert.equal(moon.outerLeader.geometry.boundingBox,null);
     const previous=lines.map(line=>({
       line,
       position:line.geometry.getAttribute('position').array.slice(),
@@ -553,6 +558,8 @@ test('collision bounds caches update in place and restore their original objects
       boxValue:line.geometry.boundingBox?.clone() ?? null
     }));
     assert.equal(previous[1].box,null,'outer Sun box remains lazy');
+    assert.equal(previous[3].sphere,null,'changing outer Moon sphere starts lazy');
+    assert.equal(previous[3].box,null,'changing outer Moon box starts lazy');
     const moonLayout=moon.owner.userData.chartBodyLayout;
     Object.defineProperty(moon.owner.userData,'chartBodyLayout',{
       configurable:true,enumerable:true,
@@ -586,7 +593,13 @@ test('collision bounds caches update in place and restore their original objects
     const success=applyIsolatedCoordinatePreview(f.scene,changed);
     assert.equal(success.status,'applied');
     for(const entry of previous){
-      assert.equal(entry.line.geometry.boundingSphere,entry.sphere);
+      if(entry.sphere)
+        assert.equal(entry.line.geometry.boundingSphere,entry.sphere);
+      else if(entry.line===moon.outerLeader)
+        assert.ok(entry.line.geometry.boundingSphere instanceof THREE.Sphere,
+          'changed leader receives a lazily computed sphere on success');
+      else
+        assert.equal(entry.line.geometry.boundingSphere,null);
       assert.equal(entry.line.geometry.boundingBox,entry.box);
       if(entry.box){
         const expected=new THREE.Box3().setFromBufferAttribute(
