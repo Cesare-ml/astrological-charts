@@ -442,12 +442,12 @@ export class OggettiSempliciRender {
     return plane;
   }
 
-  public static async getImg(assetsImgRef: string, w: number, h: number, scale: number, flipY = false, color?:string) {
-    const material = await OggettiSempliciRender.getMaterial(assetsImgRef, flipY, color);
+  public static async getImg(assetsImgRef: string, w: number, h: number, scale: number, flipY = false, color?:string, allowAstroPreview = false) {
+    const material = await OggettiSempliciRender.getMaterial(assetsImgRef, flipY, color, allowAstroPreview);
     // The private VirgoStars Astro mask files are square, unlike the legacy
     // 100x69 zodiac and 875x605 planet rasters. Preserve the approved shape
     // without changing geometry when the preview is disabled.
-    const previewSquare = GestoreImmagini.isVirgoStarsAstroPreviewAsset(assetsImgRef);
+    const previewSquare = GestoreImmagini.isVirgoStarsAstroPreviewAsset(assetsImgRef, allowAstroPreview);
     const width = (previewSquare ? Math.min(w, h) : w) * scale;
     const height = (previewSquare ? Math.min(w, h) : h) * scale;
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
@@ -466,8 +466,8 @@ export class OggettiSempliciRender {
     });
   }*/
 
-  public static async getMaterial(assetsImgRef: string, flipY: boolean, color?: string) {
-    const texture = await GestoreImmagini.loadAsync('../../../assets/img/' + assetsImgRef);
+  public static async getMaterial(assetsImgRef: string, flipY: boolean, color?: string, allowAstroPreview = false) {
+    const texture = await GestoreImmagini.loadAsync('../../../assets/img/' + assetsImgRef, allowAstroPreview);
 
     if(flipY) {
       texture.center.set(0.5, 0.5);
