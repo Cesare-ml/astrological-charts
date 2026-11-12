@@ -531,3 +531,27 @@ longitude and aspect direction are retained, and that WebGL geometry
 counts do not grow. New-position raycasting and repeated no-op checks
 run for both normal and mirrored wheel roots. Browser execution is
 still an owner-run gate, not a claimed successful test.
+
+
+### Profiled leader endpoint validation on unchanged synthetic wheels
+
+A `chartIsolatedLeaderSpec` opted-in line used to have its actual
+BufferGeometry endpoints checked only if the proposed collision
+displacement changed. An altered **stationary** leader could therefore
+pass a zero-impact `unchanged` result or allow a different planet
+to move against an already invalid ring. The synthetic-only preflight
+now validates the saved shortened endpoint, anchor, finite vertex
+values and profile shape whenever a line carries that spec, even if
+its displacement is unchanged. A line without the spec remains
+supported for rotation-only updates, but is still refused if its
+collision displacement changes.
+
+Only genuinely changed endpoints are staged or written; shared
+geometry remains rejected when a write would occur. Normal/mirrored
+Node regression tests cover stale stationary Moon endpoints, malformed
+profiles, rejection without partial Sun movement, recovery and valid
+rotation. The synthetic WebGL fixture also alters a previously patched
+Moon endpoint during a no-op and checks rejection and restoration.
+No production geometry, lunar decoration, natal aspect, house,
+export or public API contract changes. Full Node/browser execution
+remains required before approval.

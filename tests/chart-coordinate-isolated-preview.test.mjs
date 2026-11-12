@@ -401,3 +401,45 @@ test('failed second-body geometry write restores first body positions and endpoi
   }
   assert.equal(planChartCoordinateEffects(f.scene,f.targets).decision,'unchanged');
 });
+
+
+test('profiled leader endpoints are validated on stationary and unchanged bodies',()=>{
+  for (const mirrored of [false,true]) {
+    const f=fixture({mirrored,profile:true,outer:true});
+    const sun=f.parts.get('Sun'), moon=f.parts.get('Moon');
+    const next=targetsWith(f.targets,'Sun',15);
+    const sunBefore=sun.glyph.position.clone();
+    const sunLayout=sun.owner.userData.chartBodyLayout;
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,f.targets).status,'unchanged');
+    const positions=moon.inner.geometry.getAttribute('position');
+    const prior=positions.getX(0);
+    positions.setX(0,prior+0.04);
+    try {
+      for (const requested of [f.targets,next]) {
+        const failed=applyIsolatedCoordinatePreview(f.scene,requested);
+        assert.equal(failed.status,'rejected');
+        assert.equal(failed.updated,0);
+        assert.ok(failed.issues.includes('stale-leader-endpoints:natal:Moon'));
+        assert.ok(sun.glyph.position.equals(sunBefore));
+        assert.equal(sun.owner.userData.chartBodyLayout,sunLayout);
+      }
+    } finally {
+      positions.setX(0,prior);
+    }
+    const previousSpec=moon.inner.userData.chartIsolatedLeaderSpec;
+    moon.inner.userData.chartIsolatedLeaderSpec={anchorY:Infinity,trim:0.09};
+    try {
+      const invalid=applyIsolatedCoordinatePreview(f.scene,f.targets);
+      assert.equal(invalid.status,'rejected');
+      assert.equal(invalid.updated,0);
+      assert.ok(invalid.issues.includes('collision-geometry-changed:natal:Moon'));
+    } finally {
+      moon.inner.userData.chartIsolatedLeaderSpec=previousSpec;
+    }
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,f.targets).status,'unchanged');
+    const applied=applyIsolatedCoordinatePreview(f.scene,next);
+    assert.equal(applied.status,'applied');
+    assert.equal(applied.updated,1);
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,next).status,'unchanged');
+  }
+});

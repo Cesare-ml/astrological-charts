@@ -179,10 +179,17 @@ export function applyIsolatedCoordinatePreview(
         return result('rejected',0,['stale-leader-geometry:'+key]);
     }
     const leaderGeometry: StagedLeader[] = [];
-    if (shiftChanged) {
-      for (const candidate of lines) {
+    for (const candidate of lines) {
         const line = candidate as THREE.Line;
         const spec: unknown = line.userData['chartIsolatedLeaderSpec'];
+        // A profiled leader must match its saved endpoint even if no
+        // coordinates or collision offsets changed. Non-profiled legacy
+        // fixtures are only supported when their displacement is stable.
+        if (spec === undefined) {
+          if (shiftChanged)
+            return result('rejected',0,['collision-geometry-changed:'+key]);
+          continue;
+        }
         const data = spec as {anchorY?:unknown;trim?:unknown} | null;
         const anchorY = data?.anchorY;
         const trim = data?.trim;
@@ -195,10 +202,12 @@ export function applyIsolatedCoordinatePreview(
             Object.keys(geometry.attributes).some(k=>k !== 'position')) {
           return result('rejected',0,['collision-geometry-changed:'+key]);
         }
-        if (geometryRefs.get(geometry) !== 1)
+        if (shiftChanged && geometryRefs.get(geometry) !== 1)
           return result('rejected',0,['shared-leader-geometry:'+key]);
         const oldEnd = isolatedSyntheticLeaderEndpoint(radius,oldShift,anchorY,trim);
-        const nextEnd = isolatedSyntheticLeaderEndpoint(radius,newShift,anchorY,trim);
+        const nextEnd = shiftChanged
+          ? isolatedSyntheticLeaderEndpoint(radius,newShift,anchorY,trim)
+          : oldEnd;
         const vertices = [
           attr.getX(0),attr.getY(0),attr.getZ(0),
           attr.getX(1),attr.getY(1),attr.getZ(1)
@@ -211,12 +220,13 @@ export function applyIsolatedCoordinatePreview(
             Math.abs(attr.getY(1)-anchorY) > 2e-6 ||
             Math.abs(attr.getZ(1)) > 2e-6)
           return result('rejected',0,['stale-leader-endpoints:'+key]);
-        leaderGeometry.push({
-          line,position:attr,
-          oldEnd:new THREE.Vector3(attr.getX(0),attr.getY(0),attr.getZ(0)),
-          nextEnd,oldBounds:geometry.boundingSphere?.clone() ?? null
-        });
-      }
+        if (shiftChanged) {
+          leaderGeometry.push({
+            line,position:attr,
+            oldEnd:new THREE.Vector3(attr.getX(0),attr.getY(0),attr.getZ(0)),
+            nextEnd,oldBounds:geometry.boundingSphere?.clone() ?? null
+          });
+        }
     }
     // Unchanged symbols are verified but never moved or reallocated.
     if (!impact) continue;

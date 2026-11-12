@@ -242,6 +242,18 @@ window.runIsolatedCoordinatePreviewProbe = () => {
       && renderer.info.memory.geometries===beforeCollisionAllocations;
     results['collisionRepeatNoOp'+suffix]=
       applyIsolatedCoordinatePreview(collisionScene,newCollisionTargets).status==='unchanged';
+    // Even an unchanged collision profile is not safe if a host edits
+    // its leader endpoint without updating the saved wheel geometry.
+    const moonLeaderAttr=closeMoon.inner.geometry.getAttribute('position');
+    const moonEndpointX=moonLeaderAttr.getX(0);
+    moonLeaderAttr.setX(0,moonEndpointX+0.03);
+    const staleNoOp=applyIsolatedCoordinatePreview(collisionScene,newCollisionTargets);
+    results['collisionProfileNoOpPreflight'+suffix]=staleNoOp.status==='rejected'
+      && staleNoOp.updated===0
+      && staleNoOp.issues.includes('stale-leader-endpoints:natal:Moon');
+    moonLeaderAttr.setX(0,moonEndpointX);
+    results['collisionProfileNoOpRecovery'+suffix]=
+      applyIsolatedCoordinatePreview(collisionScene,newCollisionTargets).status==='unchanged';
     // Source longitudes are only 6° apart; glyph rectangles may overlap.
     // Raycast the Moon itself from its new center rather than inferring
     // which overlapping rectangle wins the shared intersection ordering.
