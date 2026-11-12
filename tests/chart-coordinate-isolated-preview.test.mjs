@@ -7,7 +7,7 @@ const bundled=await build({
     contents:`
       import * as THREE from 'three';
       export {THREE};
-      export {applyIsolatedCoordinatePreview} from './src/lib/renderers/chart-coordinate-isolated-preview';
+      export {applyIsolatedCoordinatePreview,isolatedSyntheticLeaderEndpoint} from './src/lib/renderers/chart-coordinate-isolated-preview';
       export {planChartCoordinateEffects} from './src/lib/renderers/chart-coordinate-plan';
       export {layoutChartGlyphLongitudes,chartBodyRenderAngles} from './src/lib/renderers/planet-layout';
     `,
@@ -18,9 +18,9 @@ const bundled=await build({
 const runtime=await import('data:text/javascript;base64,'+
   Buffer.from(bundled.outputFiles[0].text).toString('base64'));
 const {THREE,applyIsolatedCoordinatePreview,planChartCoordinateEffects,
-  layoutChartGlyphLongitudes,chartBodyRenderAngles}=runtime;
+  layoutChartGlyphLongitudes,chartBodyRenderAngles,isolatedSyntheticLeaderEndpoint}=runtime;
 
-function fixture({mirrored=false,outer=false,close=false}={}) {
+function fixture({mirrored=false,outer=false,close=false,profile=false}={}) {
   const scene=new THREE.Scene();
   scene.userData.chartSyntheticIsolatedWheel=true;
   const wheel=new THREE.Group();
@@ -60,9 +60,16 @@ function fixture({mirrored=false,outer=false,close=false}={}) {
     glyph.position.set(-radius*Math.sin(theta),radius*Math.cos(theta),0);
     owner.add(glyph);
     const leader=(role)=>{
-      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0,0.25,0),new THREE.Vector3(0.03,0.61,0)
-      ]),new THREE.LineBasicMaterial());
+      const anchorY=role==='inner-leader'?0.25:0.75;
+      const tip=profile
+        ? isolatedSyntheticLeaderEndpoint(radius,angles.glyphDisplacementDegrees,anchorY,0.09)
+        : new THREE.Vector3(0,0.25,0);
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(
+        profile
+          ? [tip,new THREE.Vector3(0,anchorY,0)]
+          : [new THREE.Vector3(0,0.25,0),new THREE.Vector3(0.03,0.61,0)]
+      ),new THREE.LineBasicMaterial());
+      if(profile)line.userData.chartIsolatedLeaderSpec={anchorY,trim:0.09};
       line.userData.chartBodyVisualRole=role;
       line.rotation.z=THREE.MathUtils.degToRad(angles.tickDegrees);
       owner.add(line);
@@ -309,4 +316,79 @@ test('unchanged coordinate requests reject stale glyph and leader geometry',()=>
     assert.equal(moon.inner.rotation.z,innerAngle);
     assert.equal(sun.owner.userData.chartBodyLayout,sourceLayout);
   }
+});
+
+
+// This test uses the real legacy two-pass placement to force a stationary
+// Moon to move when the Sun's longitude changes. Both line endpoints
+// must update in the same synthetic-only transaction.
+test('collision displacement patches both leader endpoints and moving neighbor glyphs',()=>{
+  for(const mirrored of [false,true]){
+    const f=fixture({mirrored,close:true,profile:true,outer:true});
+    const sun=f.parts.get('Sun'),moon=f.parts.get('Moon');
+    const oldMoonCenter=moon.glyph.position.clone();
+    const oldSunGeometry=sun.inner.geometry,oldMoonGeometry=moon.inner.geometry;
+    const oldMoonLine=moon.inner.geometry.getAttribute('position').getX(0);
+    const input=targetsWith(f.targets,'Sun',5);
+    const prior=planChartCoordinateEffects(f.scene,input);
+    assert.equal(prior.decision,'full-rebuild');
+    assert.equal(prior.impacts.some(i=>i.ref.name==='Moon'&&i.collisionPlacementChanged),true);
+    const outcome=applyIsolatedCoordinatePreview(f.scene,input);
+    assert.equal(outcome.status,'applied');
+    assert.ok(outcome.updated>=1);
+    assert.equal(sun.inner.geometry,oldSunGeometry);
+    assert.equal(moon.inner.geometry,oldMoonGeometry);
+    assert.ok(!moon.glyph.position.equals(oldMoonCenter));
+    assert.notEqual(moon.inner.geometry.getAttribute('position').getX(0),oldMoonLine);
+    assert.equal(planChartCoordinateEffects(f.scene,input).decision,'unchanged');
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,input).status,'unchanged');
+  }
+});
+
+test('changed collision refuses unprofiled, stale, or shared leader geometries',()=>{
+  const input=f=>targetsWith(f.targets,'Sun',5);
+  const unprofiled=fixture({close:true});
+  assert.equal(applyIsolatedCoordinatePreview(unprofiled.scene,input(unprofiled)).status,'rejected');
+  assert.ok(applyIsolatedCoordinatePreview(unprofiled.scene,input(unprofiled)).issues
+    .some(i=>i.startsWith('collision-geometry-changed:')));
+  const stale=fixture({close:true,profile:true});
+  const sun=stale.parts.get('Sun');
+  sun.inner.geometry.getAttribute('position').setX(0,3);
+  const bad=applyIsolatedCoordinatePreview(stale.scene,input(stale));
+  assert.equal(bad.status,'rejected');
+  assert.ok(bad.issues.some(i=>i.startsWith('stale-leader-endpoints:')));
+  const shared=fixture({close:true,profile:true});
+  const bodies=[shared.parts.get('Sun'),shared.parts.get('Moon')];
+  bodies[1].inner.geometry=bodies[0].inner.geometry;
+  const before=bodies[0].glyph.position.clone();
+  const refused=applyIsolatedCoordinatePreview(shared.scene,input(shared));
+  assert.equal(refused.status,'rejected');
+  assert.ok(refused.issues.some(i=>i.startsWith('shared-leader-geometry:')));
+  assert.ok(bodies[0].glyph.position.equals(before));
+});
+
+test('failed second-body geometry write restores first body positions and endpoints',()=>{
+  const f=fixture({close:true,profile:true,outer:true});
+  const sun=f.parts.get('Sun'),moon=f.parts.get('Moon');
+  const input=targetsWith(f.targets,'Sun',5);
+  const sunOld=sun.glyph.position.clone();
+  const sunEndpoint=sun.inner.geometry.getAttribute('position').getX(0);
+  const sunLayout=sun.owner.userData.chartBodyLayout;
+  const moonOld=moon.owner.userData.chartBodyLayout;
+  Object.defineProperty(moon.owner.userData,'chartBodyLayout',{
+    configurable:true,enumerable:true,get:()=>moonOld,
+    set(value){if(value!==moonOld)throw Error('synthetic transaction fault');}
+  });
+  try {
+    const report=applyIsolatedCoordinatePreview(f.scene,input);
+    assert.equal(report.status,'rejected');
+    assert.deepEqual(report.issues,['transaction-rolled-back']);
+    assert.ok(sun.glyph.position.equals(sunOld));
+    assert.equal(sun.inner.geometry.getAttribute('position').getX(0),sunEndpoint);
+    assert.equal(sun.owner.userData.chartBodyLayout,sunLayout);
+  } finally {
+    delete moon.owner.userData.chartBodyLayout;
+    moon.owner.userData.chartBodyLayout=moonOld;
+  }
+  assert.equal(planChartCoordinateEffects(f.scene,f.targets).decision,'unchanged');
 });

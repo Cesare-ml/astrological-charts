@@ -496,3 +496,27 @@ update and a zero-impact repeat. This does not enable changed
 collision geometry or authorize updates to actual charts, which
 still follow the complete redraw path. Node, TypeScript and
 Chromium/Firefox execution remain mandatory acceptance gates.
+
+
+### Collision-changing synthetic leader geometry (experimental)
+
+The synthetic-only transaction can now rebuild the endpoint of a known
+leader **in-place** when a close neighbor changes the 7-degree
+anti-collision displacement. A line must opt in via
+`chartIsolatedLeaderSpec={anchorY,trim}` and carry exclusively a
+unique, unindexed, two-point position `THREE.BufferAttribute`.
+Before editing, the transaction rederives the old endpoint using the
+historical shortening formula, compares it with the actual BufferGeometry,
+verifies the geometry is **not shared**, and stages the new endpoint and
+old bounds. It then commits leader endpoints, leader rotations, glyph
+centers, true aspect angles and layout provenance as one operation,
+restoring position attributes and bounds on failure. Scene-owned native
+aspects, houses, untagged real leader geometry, nonfinite specs and
+decorations remain unsupported and rejected.
+
+Headless synthetic Node cases cover moving neighboring glyphs while
+their actual source longitudes remain fixed, unchanged geometry object
+identities, stale endpoint and shared geometry refusal, repeated no-op,
+and rollback after the second planet fails. This does not remove the
+need to regenerate **actual** native aspect/house geometries; the
+Angular `GraficoRenderService` remains on full-scene redraw.
