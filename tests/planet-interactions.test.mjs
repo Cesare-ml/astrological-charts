@@ -1329,3 +1329,49 @@ test('new focus render objects are owned before synchronous added callbacks',()=
   assert.equal(interrupted.p.lines.length,0);
   assert.equal(interrupted.p.scene,newScene);
 });
+
+
+test('cached native aspect roots transferred to a peer chart are not recolored or cloned',()=>{
+  const ast=ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts',import.meta.url),'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const cls=ast.statements.find(m=>ts.isClassDeclaration(m)&&m.name?.text==='PlanetInteractionController');
+  const methods=['ownsChartObject','paintNatalAspectPalette'].map(name=>{
+    const member=cls?.members.find(m=>ts.isMethodDeclaration(m)&&m.name.getText(ast)===name);
+    assert.ok(member?.body,name);
+    return member.getText(ast);
+  });
+  const code=ts.transpileModule(`class NativeOwnershipProbe {
+    scene:any=null; natalAspectPresentation='focused'; natalAspectTags:any[]=[];
+    overlayCount=0; tintCount=0;
+    addNatalFocusOverlay(){this.overlayCount++;}
+    tintNatalGeometry(){this.tintCount++;}
+    ${methods.join('\n')}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe=new Function('THREE',code+'\nreturn NativeOwnershipProbe;')(
+    {Color:class {constructor(value){this.value=value;}}});
+  const source={parent:null},other={parent:null};
+  const native={parent:source,userData:{chartNatalAspect:{
+    from:'Sun',to:'Moon',type:'quadrato'
+  }}};
+  const p=new Probe();
+  p.scene=source;
+  p.natalAspectTags=[{root:native,from:'Sun',to:'Moon',type:'quadrato'}];
+  const sun={layer:'natal',name:'Sun'};
+  native.parent=other;
+  p.paintNatalAspectPalette(sun,()=>true);
+  assert.equal(p.overlayCount,0,'no clone must be created in a peer chart');
+  assert.equal(p.tintCount,0,'peer native colors remain unchanged');
+  native.parent=null;
+  p.paintNatalAspectPalette(sun,()=>true);
+  assert.equal(p.overlayCount,0,'detached native aspect is also ignored');
+  assert.equal(p.tintCount,0);
+  native.parent=source;
+  p.paintNatalAspectPalette(sun,()=>true);
+  assert.equal(p.overlayCount,1,'returning a native root restores focus support');
+  assert.equal(p.tintCount,1);
+  const remoteGrandchild={parent:{parent:other}};
+  assert.equal(p.ownsChartObject(remoteGrandchild),false);
+  const localGrandchild={parent:{parent:source}};
+  assert.equal(p.ownsChartObject(localGrandchild),true);
+});

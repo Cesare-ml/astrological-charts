@@ -128,6 +128,51 @@ window.runPlanetFocusStyleProbe = () => {
     repeatedFocusCleanup &&= !scene.getObjectByName('chart-interaction-natal-focus') &&
       Math.abs(start.getX(0)-1) < 1e-6 && Math.abs(start.getY(0)) < 1e-6;
   }
+
+  // The native aspect registry is cached at setScene(). Moving its tagged
+  // stroke to another chart must not let the old controller gray/clone
+  // the foreign geometry. Returning it must restore ordinary focus.
+  const foreignScene=new THREE.Scene();
+  foreignScene.add(natalAspectGroup);
+  controller.setNatalAspectPresentation('focused');
+  const transferredNativeAspectIgnored=
+    start.getX(0)>0.99 && start.getY(0)<0.01 &&
+    !foreignScene.getObjectByName('chart-interaction-natal-focus');
+  controller.setNatalAspectPresentation('all');
+  root.add(natalAspectGroup);
+  controller.setNatalAspectPresentation('focused');
+  const returnedNativeAspectFocused=
+    start.getX(0)<0.5 && Math.abs(start.getX(0)-start.getY(0))<1e-6 &&
+    !!root.getObjectByName('chart-interaction-natal-focus');
+  controller.setNatalAspectPresentation('all');
+
+  // The cached aspect-ring group itself may be transferred, while
+  // its existing planet meshes stay in the original chart. No dashed
+  // transit guide may use geometry owned by the other canvas.
+  const retainedBodies=new THREE.Group();
+  scene.add(retainedBodies);
+  for(const object of [sun,moon,saturn,natalAspectGroup])
+    retainedBodies.add(object);
+  foreignScene.add(root);
+  controller.setRelations([{
+    from:{layer:'natal',name:'Sun'},to:{layer:'transit',name:'Saturn'},
+    type:'quadrato',orb:1
+  }]);
+  const transferredAspectRingIgnored=
+    scene.getObjectByName('chart-interaction-transit-connector')===undefined;
+  scene.add(root);
+  for(const object of [sun,moon,saturn,natalAspectGroup])root.add(object);
+  scene.remove(retainedBodies);
+  // The original ring and native aspect return without reindexing.
+  controller.setRelations([]);
+  controller.setRelations([{
+    from:{layer:'natal',name:'Sun'},to:{layer:'transit',name:'Saturn'},
+    type:'quadrato',orb:1
+  }]);
+  const returnedAspectRingRestored=
+    !!scene.getObjectByName('chart-interaction-transit-connector');
+  controller.setRelations([]);
+
   // An actual pointer-enter followed by pointer-leave must retain the
   // host-selected planet. Coordinates are computed from the fake camera
   // instead of assuming a fixed window layout.
@@ -163,7 +208,9 @@ window.runPlanetFocusStyleProbe = () => {
     nativeForegroundGeometryIndependent, natalOverlayDisposedOnFocusChange,
     natalAspectPartnerColored,
     transitKeepsNatalMuted,
-    allRestoresOriginal, repeatedFocusCleanup, hoverLatchedAfterLeave,
-    neutralRestored, overlaysDisposed
+    allRestoresOriginal, repeatedFocusCleanup,
+    transferredNativeAspectIgnored, returnedNativeAspectFocused,
+    transferredAspectRingIgnored, returnedAspectRingRestored,
+    hoverLatchedAfterLeave, neutralRestored, overlaysDisposed
   };
 };

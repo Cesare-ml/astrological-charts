@@ -486,11 +486,19 @@ export class PlanetInteractionController {
    * symbol now owned by another chart, nor create aspect geometry with it.
    * Traverse only the short parent chain, not the full scene on every hover.
    */
-  private ownsGlyph(mesh: THREE.Mesh): boolean {
-    for (let node: THREE.Object3D | null = mesh; node; node = node.parent) {
+  /** Cached native aspect roots and the ring may be reparented by a host
+   * after setScene(). Do not read/tint/clone geometry now owned by a peer.
+   * The same ownership rule already protects cached planet glyphs.
+   */
+  private ownsChartObject(object: THREE.Object3D): boolean {
+    for (let node: THREE.Object3D | null = object; node; node = node.parent) {
       if (node === this.scene) return true;
     }
     return false;
+  }
+
+  private ownsGlyph(mesh: THREE.Mesh): boolean {
+    return this.ownsChartObject(mesh);
   }
 
   private activeGlyph(ref: ChartPlanetRef): THREE.Mesh | undefined {
@@ -597,6 +605,9 @@ export class PlanetInteractionController {
     const gray = new THREE.Color('#898989');
     for (const aspect of this.natalAspectTags) {
       if (!isCurrent()) return;
+      // An indexed native stroke can move to another chart without the
+      // owner calling setScene() again. Its original color is host-owned.
+      if (!this.ownsChartObject(aspect.root)) continue;
       const connectsFocus = this.natalAspectPresentation === 'focused' &&
         focus?.layer === 'natal' && (aspect.from === focus.name || aspect.to === focus.name);
       // Preserve the original colored pattern above the gray original.
@@ -612,7 +623,9 @@ export class PlanetInteractionController {
    * original outer transit radius, not the collision-shifted glyph X/Y.
    */
   private addTransitConnector(transit: THREE.Mesh, color: string): THREE.Line | null {
-    if (!this.aspectRing) return null;
+    // The cached aspect ring can be transferred to another canvas after
+    // setScene(); it must not provide endpoints for this older chart.
+    if (!this.aspectRing || !this.ownsChartObject(this.aspectRing.root)) return null;
     const angle: unknown = transit.userData['chartAspectAngle'];
     if (typeof angle !== 'number') return null;
     const projected = chartAspectCirclePoint(angle, this.aspectRing.radius);

@@ -1302,3 +1302,35 @@ geometry and one callback-induced `setScene`. This does not
 change natal/transit calculations, displayed colors, glyph
 scale, or screenshot exports. Chrome/Firefox and Angular
 validation remains required before any merge of draft PR #22.
+
+
+### Transferred native aspect and ring ownership after scene indexing
+
+The controller indexes natal aspect strokes and the center aspect ring
+in `setScene()`. A host can subsequently reparent an existing
+`chartNatalAspect` group or `chartAspectRadius` ring to another
+canvas without reinstalling the original scene. Previously
+`paintNatalAspectPalette()` continued to clone and gray the stale
+native aspect root, altering material/vertex colors now owned by
+another chart. Similarly a moved ring could provide the radial
+endpoint for a dashed transit guide in the older chart.
+
+A shared private `ownsChartObject(object)` follows parent links to
+the controller's currently active scene. Before each natal focus
+stroke clone/color update, the controller skips roots that are
+detached or reparented elsewhere. `addTransitConnector()` likewise
+skips a cached ring not currently owned by this scene. `ownsGlyph()`
+uses the same unchanged ownership rule for planet glyphs.
+Reattaching the native root or ring to the original chart restores
+their normal behavior without rerunning astronomical calculations.
+
+A Node regression extracts and runs the actual native palette and
+ownership methods to test foreign/detached/returned native roots.
+The registered Three.js browser focus-style fixture now transfers
+native natal aspect groups and the ring between two synthetic scenes,
+checks the foreign line is not recolored or cloned, checks that no
+foreign ring is used for a transit guide, and confirms both behaviors
+recover when geometry returns. These are screen-only chart ownership
+checks; native geometry, export PNG/JPEG and public interfaces are
+unchanged. Full Node/Angular/Chromium/Firefox and visual review
+remain required before merging draft PR #22.
