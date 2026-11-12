@@ -139,7 +139,9 @@ window.runNatalFocusGpuProbe = () => {
     nativeResourcesUntouched &&= nativeDisposals===0;
     scene.remove(wheel);
     wheel.traverse(obj=>{
-      if (obj instanceof THREE.Mesh) {
+      // Native Line2 extends LineSegments/Line, not Mesh: release its
+      // original GPU resources as well as the three synthetic glyphs.
+      if (obj instanceof THREE.Mesh || obj instanceof THREE.Line) {
         obj.geometry.dispose();
         const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
         for (const material of materials) material.dispose();
