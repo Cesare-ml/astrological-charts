@@ -86,7 +86,11 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       const preview = page.locator('#astro-preview');
       assert.ok(await preview.isVisible(), 'Missing opt-in checkbox');
       assert.equal(await preview.isChecked(), false, 'Preview MUST be disabled by default');
+      assert.equal(maskResponses.length, 0,
+        'Preview OFF must not request even one private glyph mask');
       const originalExport = await exportPixels();
+      assert.equal(maskResponses.length, 0,
+        'Legacy PNG export must not access private glyph masks');
 
       await redraw(() => preview.check());
       const after = await canvas.screenshot();
@@ -120,7 +124,10 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       // Verify rollback on the SAME mode and skin as the first screenshot.
       await redraw(() => page.selectOption('#mode','natal'));
       await redraw(() => page.selectOption('#skin','light'));
+      const privateRequestsBeforeRollback = maskResponses.length;
       await redraw(() => preview.uncheck());
+      assert.equal(maskResponses.length, privateRequestsBeforeRollback,
+        'Rollback must stop requesting private glyph masks');
       const restored = await canvas.screenshot();
       const oldImage = await sharp(before).removeAlpha().raw().toBuffer();
       const newImage = await sharp(restored).removeAlpha().raw().toBuffer();
