@@ -71,11 +71,13 @@ test('detects shared source paths and independent branches without modifying che
   assert.equal(report.clearPairs,2);
   assert.deepEqual(report.branches.map(x=>x.files),
     [['shared.test.mjs'],['shared.test.mjs'],['other.test.mjs']]);
+  assert.ok(report.branches.every(x => x.baseRevision === base && x.mergeBase === base));
+  assert.equal(report.branches[0].revision, git('rev-parse', 'feature/a'));
   assert.equal(git('rev-parse','HEAD'),before);
   assert.equal(git('status','--porcelain'), '');
 }));
 
-test('compares stacked branches against their actual parent rather than main', () => fixture(({root}) => {
+test('compares stacked branches against their actual parent rather than main', () => fixture(({root,git}) => {
   const report = inspectBranchScopes([
     'feat/interactions:test/axis-one',
     'feat/interactions:test/axis-two'
@@ -83,6 +85,10 @@ test('compares stacked branches against their actual parent rather than main', (
   assert.equal(report.overlaps.length,1);
   assert.deepEqual(report.overlaps[0].files,['tests/pilot-axis.browser.test.mjs']);
   assert.deepEqual(report.branches[0].files,['tests/pilot-axis.browser.test.mjs']);
+  const parentSha = git('rev-parse', 'feat/interactions');
+  assert.equal(report.branches[0].baseRevision, parentSha);
+  assert.equal(report.branches[0].mergeBase, parentSha);
+  assert.equal(report.branches[0].revision, git('rev-parse','test/axis-one'));
   assert.equal(report.status,'OVERLAP_REVIEW_REQUIRED');
   assert.throws(()=> inspectBranchScopes(['main:test/axis-one','main:test/axis-one'],root), /Repeated/);
 }));
@@ -117,4 +123,25 @@ test('fails closed for unknown refs and never calls fetch, checkout, or merge', 
   const source=readFileSync(cli,'utf8');
   assert.doesNotMatch(source,/git\(\['(?:fetch|pull|merge|reset|push|checkout)'/i);
   assert.match(source,/\['diff', '--name-only', '-z'/);
+  assert.match(source,/\['merge-base', baseRevision, revision\]/);
+}));
+
+test('records a moving base tip separately from the historical merge-base', () => fixture(({root,git,base}) => {
+  // The head branches were created from the original main, then main advanced.
+  // The audit must use the shared ancestor for its diff, but also record the
+  // latest base SHA to make a stale/concurrent review detectable.
+  writeFileSync(join(root,'README.md'), 'new main commit\n');
+  git('add','README.md');
+  git('commit','-qm','base advanced independently');
+  const newBase = git('rev-parse', 'main');
+  assert.notEqual(newBase,base);
+  const report = inspectBranchScopes(['main:feature/a','main:feature/c'],root);
+  assert.equal(report.status,'NO_FILE_OVERLAP');
+  assert.equal(report.branches[0].baseRevision,newBase);
+  assert.equal(report.branches[0].mergeBase,base);
+  assert.equal(report.branches[1].baseRevision,newBase);
+  assert.equal(report.branches[1].mergeBase,base);
+  assert.deepEqual(report.branches[0].files,['shared.test.mjs']);
+  assert.deepEqual(report.branches[1].files,['other.test.mjs']);
+  assert.equal(report.currentHead,newBase);
 }));
