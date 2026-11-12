@@ -228,3 +228,18 @@ mesh update. Existing full-scene redraw rules, upstream longitude
 values, native natal aspects, exports, artwork, WebGL resource
 ownership, glyph sizes and camera transforms are unchanged. Real
 browser/TypeScript tests are still required before merging PR #22.
+
+
+### Headless Node regression for coordinate dependency planning
+
+`npm run test:coordinate-plan` bundles the actual TypeScript planner and
+Three.js via the existing `esbuild` dev dependency. It runs without
+a browser server or proprietary assets, testing real synthetic scene
+owners, two independent wheels, mirrored roots, a Sun movement that
+displaces a stationary Moon, and fail-closed missing/duplicate/unknown
+or nonfinite coordinates, stale metadata, unsupported latitude mode
+and ambiguous same-name bodies within a single visual wheel.
+It is included in `npm run preflight`. This test checks the
+planner contract only; it does not certify visual rendering or a
+safe partial coordinate update. Run the browser regression suite
+and verify actual chart appearance before any merge.

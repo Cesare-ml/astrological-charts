@@ -20,7 +20,7 @@
     "check:types": "tsc -p tsconfig.lib.json --noEmit",
     "check:extraction": "node scripts/check-extraction.mjs",
     "check:assets": "node scripts/inventory-assets.mjs",
-    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:assets && npm run test:demo-pack && npm run test:demo-asset-coverage && npm run test:latitude-assets && npm run test:planet-interactions && npm run test:planet-layout && npm run test:planet-body-groups",
+    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:assets && npm run test:demo-pack && npm run test:demo-asset-coverage && npm run test:latitude-assets && npm run test:planet-interactions && npm run test:planet-layout && npm run test:planet-body-groups && npm run test:coordinate-plan",
     "test:extraction": "node --test tests/extraction-imports.test.mjs",
     "test:asset-urls": "node --test tests/chart-asset-urls.test.mjs",
     "test:asset-manifest": "node --test tests/asset-manifest.test.mjs",
@@ -36,7 +36,8 @@
     "demo:generate-synthetic": "node scripts/generate-synthetic-pack.mjs --out .local/synthetic-pack",
     "demo:preview": "node scripts/serve-local-assets.mjs --root .local/synthetic-pack/public/assets --manifest .local/synthetic-pack/manifests/approved-assets.json",
     "test:planet-layout": "node --test tests/planet-layout.test.mjs",
-    "test:planet-body-groups": "node --test tests/planet-body-groups.test.mjs"
+    "test:planet-body-groups": "node --test tests/planet-body-groups.test.mjs",
+    "test:coordinate-plan": "node --test tests/chart-coordinate-plan.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
