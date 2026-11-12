@@ -68,3 +68,16 @@ test('contributor instructions use the full Angular verification command', () =>
   assert.equal(pkg.scripts['verify:angular'], 'npm run preflight && npm run build:library && npm run build:demo');
   assert.match(guide, /PASS, FAIL or NOT RUN/);
 });
+
+
+test('agent guidance distinguishes public asset access from redistribution rights', () => {
+  const agents = readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
+  assert.match(agents, /astrological-assets.*publicly readable/i);
+  assert.match(agents, /not cleared for public redistribution/i);
+  assert.match(agents, /manifests\/approved-assets\.json/);
+  assert.match(agents, /per-file SHA-256/);
+  assert.match(agents, /npm run verify:pack/);
+  assert.match(agents, /manifest-gated local server/);
+  assert.match(agents, /original font is not included/);
+  assert.doesNotMatch(agents, /The private `Cesare-ml\/astrological-assets` repository/);
+});
