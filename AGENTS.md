@@ -192,10 +192,18 @@ of active natal/transit aspect lines and dashed guides.
 exact `THREE.Scene`; `activeGlyph` finds the first still-owned
 mesh among possibly duplicated keys. Never recolor a transferred
 mesh or use it for an aspect. Keep the Node extraction test and
-`transferred-glyph-isolation-harness.ts` up to date. This is not a
-license to share mutable material instances across independent
-charts; those must remain owner-isolated. No new astrology or
-private art may be added.
+`transferred-glyph-isolation-harness.ts` up to date. Independent charts may share an untinted base material
+or texture: focus must use disposable **per-mesh cloned materials**,
+not change that shared original. The module-level weak origin map
+allows an arriving controller to recover the untinted material even
+when receiving a mesh carrying another controller's focus clone.
+On cleanup, restore only slots still owned by this controller and
+never overwrite a transferred mesh's new active material. Dispose
+only focused copies, **never shared bases or textures**. Keep
+`tests/fixtures/shared-material-isolation-harness.ts` and the
+Node method-extraction test as regression gates. Cross-chart hosts
+must still avoid sharing mutable scene-wide geometry/state.
+No new astrology or private art may be added.
 
 ## Known technical risks
 
