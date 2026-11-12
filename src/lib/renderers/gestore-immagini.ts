@@ -22,9 +22,9 @@ export class GestoreImmagini {
     this.virgoStarsAstroPreviewEnabled = enabled;
   }
 
-  /** Used by the plane geometry builder to preserve square mask proportions. */
-  public static isVirgoStarsAstroPreviewAsset(reference: string): boolean {
-    return this.virgoStarsAstroPreviewEnabled &&
+  /** Preview only explicitly opted-in primary sign/body render slots. */
+  public static isVirgoStarsAstroPreviewAsset(reference: string, allowAstroPreview = false): boolean {
+    return allowAstroPreview && this.virgoStarsAstroPreviewEnabled &&
       getVirgoStarsAstroImageOverride(reference) !== null;
   }
 
@@ -35,8 +35,8 @@ export class GestoreImmagini {
     this.publicAssetsBase = base;
   }
 
-  public static resolveAssetUrl(ref: string): string {
-    const preview = this.virgoStarsAstroPreviewEnabled
+  public static resolveAssetUrl(ref: string, allowAstroPreview = false): string {
+    const preview = this.isVirgoStarsAstroPreviewAsset(ref, allowAstroPreview)
       ? getVirgoStarsAstroImageOverride(ref) : null;
     const effective = preview ?? ref;
     // Preserve the historical override for older consumers while migrating.
@@ -63,7 +63,7 @@ export class GestoreImmagini {
     return this.pendingTextures.get(texture) ?? Promise.resolve();
   }
 
-  public static async loadAsync(ref: string): Promise<THREE.Texture> {
+  public static async loadAsync(ref: string, allowAstroPreview = false): Promise<THREE.Texture> {
     /*
     if (this.pool.has(ref)) return this.pool.get(ref)!;
     
@@ -76,7 +76,7 @@ export class GestoreImmagini {
     return texture;*/
     
     const loader = new THREE.TextureLoader();
-    const url = this.resolveAssetUrl(ref);
+    const url = this.resolveAssetUrl(ref, allowAstroPreview);
     const promise = new Promise<THREE.Texture>((resolve, reject) => {
       loader.load(url, resolve, undefined, () => reject(new Error(`Unable to load chart asset: ${url}`)));
     });
