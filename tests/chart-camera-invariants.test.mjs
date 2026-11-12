@@ -27,6 +27,10 @@ const setZoom = method(servicePath, 'GraficoRenderService', 'setZoom');
 const focusService = method(servicePath, 'GraficoRenderService', 'highlightPlanet');
 const focusController = method(controllerPath, 'PlanetInteractionController', 'highlight');
 
+const validRef = p => !!p && typeof p === 'object' &&
+  ['natal', 'transit', 'synastry'].includes(p.layer) &&
+  typeof p.name === 'string' && p.name.length > 0;
+
 const serviceCode = ts.transpileModule(`class CameraProbe {
   zoomValue = 1;
   minZoom = 0.05;
@@ -41,11 +45,9 @@ const serviceCode = ts.transpileModule(`class CameraProbe {
   ${setZoom}
   ${focusService}
 }`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
-const CameraProbe = new Function(serviceCode + '\nreturn CameraProbe;')();
+const CameraProbe = new Function('isChartPlanetRef',
+  serviceCode + '\nreturn CameraProbe;')(validRef);
 
-const validRef = p => !!p && typeof p === 'object' &&
-  ['natal', 'transit', 'synastry'].includes(p.layer) &&
-  typeof p.name === 'string' && p.name.length > 0;
 const sameRef = (a, b) => a === b || (!!a && !!b &&
   a.layer === b.layer && a.name === b.name);
 const controllerCode = ts.transpileModule(`class ControllerProbe {
