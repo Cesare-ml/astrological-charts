@@ -914,3 +914,21 @@ Coordinates from upstream still use the existing complete
 `disegnaScena()` refresh. Run `npm run test:planet-body-groups`
 and Playwright's normal/mirrored transit guide tests, and manually
 check visual parity before merging.
+
+## Release retained host state on terminal teardown
+
+A regular `setScene(null)` temporarily detaches the interactive canvas
+during redraws and must preserve the layer-qualified pinned planet and
+the last host-supplied aspect relations. The final `destroy()`, however,
+is terminal: its pointer handlers and overlay GPU resources are removed
+and it now clears **both** retained state references (`pinned = null`,
+`relations = []`). This matters when a stale Angular closure still owns
+an otherwise retired controller: it should not keep the old relation DTO
+array and planet selection alive for the lifetime of that closure.
+
+The existing `planet-scene-switch-harness.ts` (registered in the
+Playwright interaction suite) verifies that a null-scene detach keeps a
+synthetic Mars/Saturn relation and Mars pin, while final destruction
+releases both. Calls to the public setters after destruction are still
+no-ops. No change to interactive appearance, glyph scale, upstream
+aspect calculations, exports, assets or external consumers.

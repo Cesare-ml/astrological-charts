@@ -11,6 +11,8 @@ declare global {
       noHoverOnDetachedScene: boolean;
       listenersDetached: boolean;
       disposedControllerInert: boolean;
+      sceneDetachKeepsSelectionData: boolean;
+      destroyReleasesSelectionData: boolean;
     };
   }
 }
@@ -82,7 +84,24 @@ window.runPlanetSceneSwitchProbe = () => {
     const oldEventCount = events.length;
     move(-0.4);
     const noHoverOnDetachedScene = oldEventCount === events.length;
+    // setScene(null) during redraw must preserve the pin and upstream
+    // aspect snapshot. Only terminal destroy may release those references.
+    const beforeDestroyLinks = [{
+      from:{layer:'natal' as const,name:'Mars'},
+      to:{layer:'transit' as const,name:'Saturn'},
+      type:'quadrato',orb:1.25
+    }];
+    controller.setRelations(beforeDestroyLinks);
+    controller.highlight({layer:'natal',name:'Mars'});
+    const snapshot = controller as unknown as {
+      pinned: {layer:string;name:string}|null;
+      relations: readonly {orb?:number}[];
+    };
+    const sceneDetachKeepsSelectionData = snapshot.pinned?.name==='Mars'
+      && snapshot.relations.length===1 && snapshot.relations[0].orb===1.25;
     controller.destroy();
+    const destroyReleasesSelectionData = snapshot.pinned===null
+      && snapshot.relations.length===0;
     const afterDestroy = events.length;
     controller.setScene(null);
     move(0.4);
@@ -107,7 +126,8 @@ window.runPlanetSceneSwitchProbe = () => {
       && (marsMeshes[0].material as THREE.MeshBasicMaterial).color.getHexString() === 'ffffff'
       && canvas.style.cursor !== 'pointer';
     return {noStaleEnter,newSceneHoverWorks,nestedSceneWins,
-      noHoverOnDetachedScene,listenersDetached,disposedControllerInert};
+      noHoverOnDetachedScene,listenersDetached,disposedControllerInert,
+      sceneDetachKeepsSelectionData,destroyReleasesSelectionData};
   } finally {
     controller.destroy();
     for (const scene of [original,replacement,obsolete]) {

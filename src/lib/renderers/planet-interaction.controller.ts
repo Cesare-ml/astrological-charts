@@ -180,6 +180,11 @@ export class PlanetInteractionController {
     this.canvas.style.cursor = this.cursor;
     this.scene = null;
     this.hovered = null;
+    // Destruction is terminal (unlike setScene(null) during a redraw).
+    // Do not retain host-supplied aspect snapshots or a pinned selection
+    // if a stale Angular closure still references the retired controller.
+    this.pinned = null;
+    this.relations = [];
     this.glyphs.clear();
     this.pickTargets = [];
     this.natalAspectTags = [];
