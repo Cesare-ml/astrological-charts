@@ -185,7 +185,10 @@ export class PlanetInteractionController {
 
   highlight(planet: ChartPlanetRef | null): void {
     if (this.disposed) return;
-    const next = planet && isChartPlanetRef(planet) ? { ...planet } : null;
+    // Invalid untyped host references are not requests to clear focus.
+    // A deliberate clear is expressed only by highlight(null).
+    if (planet !== null && !isChartPlanetRef(planet)) return;
+    const next = planet ? { ...planet } : null;
     // Repeated frontend focus values must preserve existing overlay geometry.
     // A new scene is always refreshed separately by setScene().
     if (sameChartPlanet(this.pinned, next)) return;
@@ -210,6 +213,9 @@ export class PlanetInteractionController {
 
   setNatalAspectPresentation(presentation: 'all' | 'focused' | 'muted'): void {
     if (this.disposed) return;
+    // Runtime callers may bypass TypeScript. Never gray all natal aspects
+    // because a JavaScript/JSON host passed an unrecognized mode.
+    if (presentation !== 'all' && presentation !== 'focused' && presentation !== 'muted') return;
     // Focus-mode buttons may resend the same state during live correction.
     if (this.natalAspectPresentation === presentation) return;
     this.natalAspectPresentation = presentation;

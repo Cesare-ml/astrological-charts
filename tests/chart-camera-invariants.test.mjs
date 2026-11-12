@@ -26,6 +26,12 @@ const controllerPath = 'src/lib/renderers/planet-interaction.controller.ts';
 const setZoom = method(servicePath, 'GraficoRenderService', 'setZoom');
 const focusService = method(servicePath, 'GraficoRenderService', 'highlightPlanet');
 const focusController = method(controllerPath, 'PlanetInteractionController', 'highlight');
+const modeService = method(servicePath, 'GraficoRenderService', 'setNatalAspectPresentation');
+const modeController = method(controllerPath, 'PlanetInteractionController', 'setNatalAspectPresentation');
+
+const validRef = p => !!p && typeof p === 'object' &&
+  ['natal', 'transit', 'synastry'].includes(p.layer) &&
+  typeof p.name === 'string' && p.name.length > 0;
 
 const serviceCode = ts.transpileModule(`class CameraProbe {
   zoomValue = 1;
@@ -34,18 +40,22 @@ const serviceCode = ts.transpileModule(`class CameraProbe {
   projectionCalls = 0;
   requestedFrames = 0;
   selections = [];
+  paletteUpdates = [];
   pinnedPlanet = null;
+  natalAspectPresentation = 'all';
   camera = {zoom:1, updateProjectionMatrix: () => {this.projectionCalls++;}};
-  planetController = {highlight: value => {this.selections.push(value);}};
+  planetController = {
+    highlight: value => {this.selections.push(value);},
+    setNatalAspectPresentation: value => {this.paletteUpdates.push(value);}
+  };
   requestInteractiveFrame() {this.requestedFrames++;}
   ${setZoom}
   ${focusService}
+  ${modeService}
 }`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
-const CameraProbe = new Function(serviceCode + '\nreturn CameraProbe;')();
+const CameraProbe = new Function('isChartPlanetRef',
+  serviceCode + '\nreturn CameraProbe;')(validRef);
 
-const validRef = p => !!p && typeof p === 'object' &&
-  ['natal', 'transit', 'synastry'].includes(p.layer) &&
-  typeof p.name === 'string' && p.name.length > 0;
 const sameRef = (a, b) => a === b || (!!a && !!b &&
   a.layer === b.layer && a.name === b.name);
 const controllerCode = ts.transpileModule(`class ControllerProbe {
@@ -53,12 +63,16 @@ const controllerCode = ts.transpileModule(`class ControllerProbe {
   pinned = null;
   hovered = null;
   scene = {};
+  sceneRevision = 0;
+  visualRevision = 0;
+  natalAspectPresentation = 'all';
   camera = {zoom:1.75, projectionMatrix:{revision:7}};
   painted = 0;
   frames = 0;
-  updateVisuals() {this.painted++;}
+  updateVisuals() {this.painted++;this.visualRevision++;}
   requestRender() {this.frames++;}
   ${focusController}
+  ${modeController}
 }`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
 const ControllerProbe = new Function('sameChartPlanet', 'isChartPlanetRef',
   controllerCode + '\nreturn ControllerProbe;')(sameRef, validRef);
@@ -126,4 +140,92 @@ test('focus method source bodies do not directly call zoom/projection operations
   for (const body of [focusService, focusController]) {
     assert.doesNotMatch(body, /\bsetZoom\s*\(|\bzoom(In|Out)\s*\(|\.camera\.zoom\s*=|\.updateProjectionMatrix\s*\(/);
   }
+});
+
+test('invalid JavaScript focus payloads preserve service selection across reinitialization', () => {
+  const probe = new CameraProbe();
+  const valid = {layer:'natal',name:'AS'};
+  probe.highlightPlanet(valid);
+  assert.deepEqual(probe.pinnedPlanet,valid);
+  assert.notEqual(probe.pinnedPlanet,valid,'service snapshots valid host input');
+  const previous = probe.pinnedPlanet;
+  const initialCalls = probe.selections.length;
+  const cameraBefore = JSON.stringify(probe.camera);
+  for (const bad of [
+    undefined, 0, 42, '', 'natal:AS', false, {},
+    {layer:'none',name:'AS'}, {layer:'natal',name:''},
+    {layer:'natal',name:23}, {layer:'transit'}, {layer:null,name:'Moon'}
+  ]) {
+    probe.highlightPlanet(bad);
+    assert.equal(probe.pinnedPlanet,previous,'invalid host input cannot clear focus');
+    assert.equal(probe.selections.length,initialCalls,'invalid focus must not reach controller');
+    assert.equal(JSON.stringify(probe.camera),cameraBefore);
+  }
+  const replay=[];
+  probe.planetController={highlight:value=>replay.push(value)};
+  probe.planetController.highlight(probe.pinnedPlanet);
+  assert.deepEqual(replay,[valid],'a new controller receives last valid selection');
+  probe.highlightPlanet(null);
+  assert.equal(probe.pinnedPlanet,null,'explicit null still clears focus');
+  assert.equal(replay.at(-1),null);
+});
+
+test('invalid focus requests cannot erase the controller selection or repaint', () => {
+  const probe=new ControllerProbe();
+  const ref={layer:'transit',name:'MC'};
+  probe.highlight(ref);
+  const paints=probe.painted,frames=probe.frames,cameraBefore=JSON.stringify(probe.camera);
+  for (const bad of [
+    undefined,false,'Moon',{}, {layer:'natal',name:''},
+    {layer:'invalid',name:'Sun'}, {layer:'natal',name:123}
+  ]) {
+    probe.highlight(bad);
+    assert.deepEqual(probe.pinned,ref);
+    assert.equal(probe.painted,paints);
+    assert.equal(probe.frames,frames);
+    assert.equal(JSON.stringify(probe.camera),cameraBefore);
+  }
+  probe.highlight(null);
+  assert.equal(probe.pinned,null,'explicit null still clears focus');
+  assert.equal(probe.painted,paints+1);
+  assert.equal(probe.frames,frames+1);
+});
+
+test('invalid palette modes cannot poison saved service state for the next chart', () => {
+  const probe=new CameraProbe();
+  probe.setNatalAspectPresentation('focused');
+  assert.equal(probe.natalAspectPresentation,'focused');
+  const calls=probe.paletteUpdates.length;
+  for (const bad of [null,undefined,'',0,'gray','FOCUSED',false,{}]) {
+    probe.setNatalAspectPresentation(bad);
+    assert.equal(probe.natalAspectPresentation,'focused');
+    assert.equal(probe.paletteUpdates.length,calls);
+  }
+  const replay=[];
+  probe.planetController={setNatalAspectPresentation:value=>replay.push(value)};
+  probe.planetController.setNatalAspectPresentation(probe.natalAspectPresentation);
+  assert.deepEqual(replay,['focused'],'new chart receives last valid palette mode');
+  probe.setNatalAspectPresentation('muted');
+  probe.setNatalAspectPresentation('all');
+  assert.deepEqual(replay,['focused','muted','all']);
+});
+
+test('controller ignores invalid palette modes without muting natal aspects', () => {
+  const probe=new ControllerProbe();
+  const cameraBefore=JSON.stringify(probe.camera);
+  for (const valid of ['focused','muted','all']) {
+    probe.setNatalAspectPresentation(valid);
+    assert.equal(probe.natalAspectPresentation,valid);
+  }
+  const paints=probe.painted,frames=probe.frames;
+  for (const bad of [undefined,null,0,'gray','none','Muted',false,{}]) {
+    probe.setNatalAspectPresentation(bad);
+    assert.equal(probe.natalAspectPresentation,'all');
+    assert.equal(probe.painted,paints);
+    assert.equal(probe.frames,frames);
+  }
+  assert.equal(JSON.stringify(probe.camera),cameraBefore);
+  probe.disposed=true;
+  probe.setNatalAspectPresentation('muted');
+  assert.equal(probe.natalAspectPresentation,'all');
 });
