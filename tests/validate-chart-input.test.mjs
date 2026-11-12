@@ -121,7 +121,7 @@ test('rejects malformed secondary angles and house cusp numbers even in natal mo
     for (const [field, value, expected] of [
       ['ascendant', null, /finite JSON number/],
       ['midheaven', '120', /finite JSON number/],
-      ['houseCusps', Array(12).fill(null), /houseCusps\\[0\\].*finite JSON number/],
+      ['houseCusps', Array(12).fill(null), /houseCusps\[0\].*finite JSON number/],
     ]) {
       const secondary = { ...chart(), [field]: value };
       const invalid = { ...payload(), mode: 'natal', [location]: secondary };
