@@ -35,3 +35,15 @@ test('documentation regression check remains wired into the local preflight', ()
   assert.match(demo, /npm run test:demo-docs/);
   assert.match(demo, /npm run preflight/);
 });
+
+test('demo asset scripts require local manifests and never fall back to production URLs', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const demo = readFileSync(new URL('../docs/ANGULAR_DEMO.md', import.meta.url), 'utf8');
+  for (const name of ['demo:assets', 'demo:assets:repo', 'demo:preview']) {
+    assert.match(pkg.scripts[name], /serve-local-assets\.mjs/);
+    assert.match(pkg.scripts[name], /--root\s+\S+/);
+    assert.match(pkg.scripts[name], /--manifest\s+\S*approved-assets\.json/);
+    assert.doesNotMatch(pkg.scripts[name], /https?:\/\//i);
+  }
+  assert.match(demo, /No public website is used as a fallback/i);
+});
