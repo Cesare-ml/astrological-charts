@@ -10,7 +10,7 @@ The chart renderer currently uses a Three.js `MeshBasicMaterial` and multiplies 
 
 The private **v0.3 staging pack** contains 22 `png/*.png` images transformed into **white RGB (255,255,255) while preserving the original alpha channel byte-for-byte**. Changing RGB to white does **not** change the approved glyph silhouette. As a result, the skin color can tint the image correctly.
 
-The renderer maps only the 22 canonical legacy references to:
+The renderer maps only the 22 canonical legacy references **when the drawing slot explicitly opts in** to:
 `/assets/img/virgostars-astro/masks/<glyph-id>.png`
 
 The name must be one of `aries` through `pisces`, or `sun`, `moon`, `mercury`, `venus`, `mars`, `jupiter`, `saturn`, `uranus`, `neptune`, `pluto`. All paths are lowercase and must remain exact.
@@ -69,14 +69,14 @@ GestoreImmagini.configureVirgoStarsAstroPreview(false);
 
 | Reference kind | Behavior when enabled |
 | --- | --- |
-| `simboli-bianchi/segni/01.png` … `12.png` | Replaced with `virgostars-astro/masks/aries.png` … `pisces.png` |
-| `simboli-bianchi/elementi-celesti/Sun.png` … `Pluto.png` | Replaced with matching lowercase mask |
+| The 12 **primary zodiac ring** slots (`simboli-bianchi/segni/01.png` … `12.png`) | Replaced with `virgostars-astro/masks/aries.png` … `pisces.png` |
+| The 10 **primary celestial ring** slots (`simboli-bianchi/elementi-celesti/Sun.png` … `Pluto.png`) | Replaced with matching lowercase mask |
 | `*-r.png` retrograde glyphs | **Not** replaced; original raster stays in use |
-| AS/DS/MC/IC axes, asteroids, houses, fixed stars, lunar nodes, decans | **Not** replaced |
+| AS/DS/MC/IC axes, asteroids, houses, fixed stars, lunar nodes, decans, decadi and dodecatemoria | **Not** replaced, even when using the same legacy PNG reference |
 | Skin-specific images and latitude-specific assets | **Not** replaced in this initial integration |
 | Preview disabled | **No change** to existing paths or sizes |
 
-The new glyph masks have a square 512x512 canvas. The renderer uses a **square mesh for only mapped images** to avoid distorting them into old 100x69 / 875x605 image aspect ratios. Original mesh sizes stay unchanged whenever the preview flag is off.
+The new glyph masks have a square 512x512 canvas. The renderer uses a **square mesh for only explicitly opted-in main-ring images** to avoid distorting them into old 100x69 / 875x605 image aspect ratios. Original mesh sizes stay unchanged whenever the preview flag is off.
 
 The preview toggle is **global/static** because `GestoreImmagini` is already static; it should not be mutated during an active render. Future per-renderer configuration must avoid the broader global-state concurrency limitation.
 
@@ -85,12 +85,34 @@ The preview toggle is **global/static** because `GestoreImmagini` is already sta
 ```bash
 npm ci
 npm run test:astro-preview
-node --test tests/private-astro-overlay.test.mjs
+npm run test:astro-preview-scope
+npm run test:astro-overlay
 npm run check:types
 npm run build:demo
 ```
 
 The mapping tests exercise the actual TypeScript image-ref helper without loading any proprietary artwork. The separate overlay tests construct synthetic 512x512 PNGs to verify manifest integrity, permission gating, symlink/collision rejection and both positive and negative localhost HTTP requests. The private v0.3 ZIP itself was also verified locally against the new overlay validator (22 masks; 9 positive/negative checks passed).
+
+## Dedicated browser integration test (requires authorized private mask staging)
+
+The standard `npm run test:assets` automatically checks the mapping, exact renderer-slot scope and private-overlay security using **synthetic** assets only. It requires no access to the owner's images.
+
+A separate **end-to-end browser test** was also added. Run it only after the two-manifest asset server and Angular demo have been started exactly as shown above:
+
+```bash
+CHART_ASTRO_TEST_PRIVATE_ASSETS=1 npm run test:astro-preview-browser
+```
+
+PowerShell equivalent:
+
+```powershell
+$env:CHART_ASTRO_TEST_PRIVATE_ASSETS = "1"
+npm run test:astro-preview-browser
+```
+
+This uses local Chromium/Chrome, verifies **preview OFF by default**, observes all 12 zodiac mask requests plus at least one planet, checks light/dark and natal/transit/synastry rendering, tests PNG download **in memory**, then disables the preview and checks that the original chart appearance is restored. It does not upload screenshots or private data. Install the browser or set `CHROME_PATH` if needed.
+
+**This browser test is written but has NOT yet been executed against an Angular demo with the owner's real private asset pack.** Its result must not be reported as PASS until run.
 
 **Not completed by this PR:** real browser rendering using the now-supported separate private overlay, visual snapshots at chart scale, Chromium/Firefox PNG-export tests, any actual natal/transit interaction regression, licensing/public release, integration with VirgoStars website/Desktop, or Astrolabio device tests. Those require a locally staged, authorized private asset root and full runnable checkout.
 
