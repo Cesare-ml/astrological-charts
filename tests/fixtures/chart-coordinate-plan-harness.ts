@@ -1,0 +1,130 @@
+import * as THREE from 'three';
+import { chartBodyRenderAngles, layoutChartGlyphLongitudes } from '../../src/lib/renderers/planet-layout';
+import { planChartCoordinateEffects } from '../../src/lib/renderers/chart-coordinate-plan';
+import type { ChartCoordinateTarget } from '../../src/lib/renderers/chart-coordinate-plan';
+
+declare global {
+  interface Window {
+    runChartCoordinatePlanProbe?: () => Record<string,boolean>;
+  }
+}
+
+/** Synthetic wheels only; this fixture never patches a scene or calculates astronomy. */
+window.runChartCoordinatePlanProbe = () => {
+  const result:Record<string,boolean> = {};
+  for (const mirrored of [false,true]) {
+    const suffix=mirrored?'Mirrored':'Normal';
+    const scene=new THREE.Scene();
+    const wheel=new THREE.Group();
+    wheel.position.set(0.25,-0.2,0.05);
+    wheel.rotation.z=0.22;
+    if (mirrored) wheel.rotation.y=Math.PI;
+    scene.add(wheel);
+    const rings=[
+      {layer:'natal' as const,longitudes:{Sun:10,Moon:11,Mercury:40}},
+      {layer:'transit' as const,longitudes:{Sun:18,Saturn:70}}
+    ];
+    const snapshot:ChartCoordinateTarget[]=[];
+    const glyphs:THREE.Mesh[]=[];
+    const layouts:unknown[]=[];
+    for (const ring of rings) {
+      const parent=new THREE.Group();
+      wheel.add(parent);
+      const positions=layoutChartGlyphLongitudes(
+        Object.fromEntries(Object.entries(ring.longitudes).map(([name,longitude])=>
+          [name,{longitude}])),'longitude'
+      );
+      for (const [name,original] of Object.entries(ring.longitudes)) {
+        const adjusted=positions[name].longitude;
+        const angles=chartBodyRenderAngles(original,adjusted,45,0);
+        const owner=new THREE.Group();
+        owner.userData['chartPlanetBody']={layer:ring.layer,name};
+        owner.userData['chartBodyLayout']={
+          coordinate:'longitude',original,adjusted,ascendant:45,degreesOffset:0,
+          tickDegrees:angles.tickDegrees,glyphDisplacementDegrees:angles.glyphDisplacementDegrees,
+          outerLeaderEnabled:false,moonMarkerEnabled:false
+        };
+        parent.add(owner);
+        const glyph=new THREE.Mesh(new THREE.PlaneGeometry(0.13,0.13),
+          new THREE.MeshBasicMaterial({color:'#171717',side:THREE.DoubleSide}));
+        glyph.userData['chartBodyVisualRole']='glyph';
+        glyph.userData['chartPlanet']={layer:ring.layer,name};
+        glyph.userData['chartAspectAngle']=THREE.MathUtils.degToRad(angles.tickDegrees);
+        glyph.position.set(0.1,0.6,0);
+        owner.add(glyph);
+        glyphs.push(glyph);
+        const inner=new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0,0.3,0),new THREE.Vector3(0,0.57,0)
+        ]),new THREE.LineBasicMaterial());
+        inner.userData['chartBodyVisualRole']='inner-leader';
+        owner.add(inner);
+        snapshot.push({ref:{layer:ring.layer,name},longitude:original});
+        layouts.push(owner.userData['chartBodyLayout']);
+      }
+    }
+    const worldBefore=glyphs.map(glyph=>glyph.getWorldPosition(new THREE.Vector3()));
+    const baseline=planChartCoordinateEffects(scene,snapshot);
+    result['noChanges'+suffix]=baseline.decision==='unchanged'
+      && baseline.impacts.length===0 && baseline.issues.length===0;
+    const shifted=snapshot.map(target=>({
+      ...target,longitude:target.ref.layer==='natal' && target.ref.name==='Sun'
+        ? 5:target.longitude
+    }));
+    const plan=planChartCoordinateEffects(scene,shifted);
+    const sun=plan.impacts.find(impact=>
+      impact.ref.layer==='natal'&&impact.ref.name==='Sun');
+    const moon=plan.impacts.find(impact=>
+      impact.ref.layer==='natal'&&impact.ref.name==='Moon');
+    result['requiresFullRebuild'+suffix]=plan.decision==='full-rebuild'
+      && plan.issues.length===0 && !!sun?.trueLongitudeChanged;
+    result['collisionNeighbor'+suffix]=!!moon && !moon.trueLongitudeChanged
+      && moon.collisionPlacementChanged
+      && moon.previousAdjusted!==moon.nextAdjusted
+      && moon.affectedVisuals.includes('inner-leader')
+      && !moon.affectedVisuals.includes('native-aspects');
+    result['independentLayers'+suffix]=plan.impacts.every(impact=>
+      impact.ref.layer==='natal')
+      && !plan.impacts.some(impact=>impact.ref.layer==='transit');
+    result['noMutation'+suffix]=glyphs.every((glyph,index)=>
+      glyph.getWorldPosition(new THREE.Vector3()).distanceTo(worldBefore[index])<1e-12)
+      && glyphs.every((glyph,index)=>glyph.parent?.userData['chartBodyLayout']===layouts[index])
+      && snapshot[0].longitude===10;
+    const missing=planChartCoordinateEffects(scene,shifted.slice(1));
+    result['missingBodyFailsClosed'+suffix]=missing.decision==='unsupported'
+      && missing.impacts.length===0 && missing.issues.includes('missing-target:natal:Sun');
+    const duplicates=planChartCoordinateEffects(scene,[...snapshot,snapshot[0]]);
+    result['duplicateBodyFailsClosed'+suffix]=duplicates.decision==='unsupported'
+      && duplicates.issues.includes('duplicate-target:natal:Sun');
+    const wrong=planChartCoordinateEffects(scene,[...snapshot,{
+      ref:{layer:'natal',name:'Venus'},longitude:120
+    }]);
+    result['unknownBodyFailsClosed'+suffix]=wrong.decision==='unsupported'
+      && wrong.issues.includes('unknown-target:natal:Venus');
+    const nan=planChartCoordinateEffects(scene,[...snapshot.slice(0,1),{
+      ...snapshot[1],longitude:NaN
+    },...snapshot.slice(2)]);
+    result['nonfiniteFailsClosed'+suffix]=nan.decision==='unsupported'
+      && nan.issues.includes('invalid-target');
+
+    const owner=glyphs[0].parent as THREE.Group;
+    const originalLayout=owner.userData['chartBodyLayout'];
+    owner.userData['chartBodyLayout']={...originalLayout,adjusted:originalLayout.adjusted+1,
+      glyphDisplacementDegrees:originalLayout.glyphDisplacementDegrees+1};
+    const invalidBaseline=planChartCoordinateEffects(scene,snapshot);
+    result['staleCollisionFailsClosed'+suffix]=invalidBaseline.decision==='unsupported'
+      && invalidBaseline.issues.includes('stale-collision-layout:natal:Sun');
+    owner.userData['chartBodyLayout']=originalLayout;
+
+    const geometries=new Set<THREE.BufferGeometry>();
+    const materials=new Set<THREE.Material>();
+    scene.traverse(object=>{
+      const renderable=object as THREE.Mesh;
+      if(renderable.geometry)geometries.add(renderable.geometry);
+      const mats=Array.isArray(renderable.material)?renderable.material:[renderable.material];
+      for(const mat of mats)if(mat)materials.add(mat);
+    });
+    geometries.forEach(g=>g.dispose());
+    materials.forEach(m=>m.dispose());
+  }
+  return result;
+};

@@ -171,3 +171,37 @@ Run `npm run test:planet-body-groups`, `npm run check:types`,
 `npm run build:demo`, and `npm run test:demo-interactions`
 before approving. These browser validations are not claimed to
 have passed solely from committed source checks.
+
+## Read-only coordinated coordinate change planner (draft PR #22)
+
+`src/lib/renderers/chart-coordinate-plan.ts` introduces
+`planChartCoordinateEffects(scene, completeUpstreamTargets)`, an **internal,
+read-only** dependency report. It requires a complete layer-qualified
+set of precomputed `longitude` values for every inspected body, then
+validates the currently displayed owner groups using
+`inspectChartBodyOwners()`. It additionally replays the same historical
+two-pass anticollision layout **per visual wheel** and rejects stale
+original/adjusted layout snapshots, duplicated or missing targets,
+ambiguous body names within one wheel and unsupported coordinate modes.
+It never moves a glyph, edits Three.js geometry, changes focus, or
+calculates positions/orbs/aspects.
+
+The returned `impacts` identify changes to true upstream longitude and
+changes to anticollision display positions independently. This matters
+because a moving natal Sun can displace a stationary nearby Moon glyph;
+its Moon leader geometry still depends on the collision-shifted center,
+while its true radial longitude stays the same. When any impact exists,
+the current decision is always `full-rebuild`; unsafe, incomplete or
+unsupported input returns `unsupported` with **zero impacts**. Only a
+verified complete and unchanged coordinate set returns `unchanged`.
+These decisions are about **coordinates only**: changing skins, houses,
+aspects, Arabic parts or other upstream fields still requires the
+existing `disegnaScena()` path.
+
+`tests/fixtures/chart-coordinate-plan-harness.ts` exercises normal and
+southern-hemisphere-mirrored synthetic natal/transit wheels, including
+a moving Sun that displaces a stationary Moon, same-name planets in
+different layers, no coordinate/scene mutation, and fail-closed invalid
+target and stale-layout cases. Playwright registers this fixture in
+`tests/demo-interactions.browser.test.mjs`. Browser runtime tests,
+TypeScript build and light/dark visual regression remain required.

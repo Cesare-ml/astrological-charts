@@ -525,3 +525,21 @@ test('chart body ownership index rejects incomplete and mutated per-planet group
     }
   } finally { await page.close(); await browser.close(); }
 });
+
+test('coordinate dependency planner catches collision neighbors without moving meshes', {timeout:60000}, async () => {
+  const browser=await launch();
+  const page=await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundle=await build({
+      entryPoints:['tests/fixtures/chart-coordinate-plan-harness.ts'],
+      bundle:true,write:false,platform:'browser',format:'iife',
+      target:'es2022',tsconfig:'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const result=await page.evaluate(()=>window.runChartCoordinatePlanProbe());
+    for (const [name,passes] of Object.entries(result))
+      assert.equal(passes,true,name+': '+JSON.stringify(result));
+  } finally { await page.close(); await browser.close(); }
+});
