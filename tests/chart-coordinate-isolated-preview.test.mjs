@@ -230,3 +230,39 @@ test('role-labelled objects without real line geometry cannot be edited',()=>{
   assert.ok(sun.glyph.position.equals(before));
   assert.equal(sun.owner.userData.chartBodyLayout.original,10);
 });
+
+
+test('stationary bodies must be geometrically valid before any other planet moves',()=>{
+  for (const mirrored of [false,true]) {
+    const f=fixture({mirrored,outer:true});
+    const sun=f.parts.get('Sun'), moon=f.parts.get('Moon');
+    const targets=targetsWith(f.targets,'Sun',15);
+    const originalSun=sun.glyph.position.clone();
+    const originalMoon=moon.glyph.position.clone();
+    const originalMoonLeader=moon.inner.rotation.z;
+    const originalLayout=sun.owner.userData.chartBodyLayout;
+
+    moon.glyph.position.x+=0.04;
+    const staleGlyph=applyIsolatedCoordinatePreview(f.scene,targets);
+    assert.equal(staleGlyph.status,'rejected');
+    assert.ok(staleGlyph.issues.includes('stale-glyph-geometry:natal:Moon'));
+    assert.equal(staleGlyph.updated,0);
+    assert.ok(sun.glyph.position.equals(originalSun));
+    assert.equal(sun.owner.userData.chartBodyLayout,originalLayout);
+    moon.glyph.position.copy(originalMoon);
+
+    moon.inner.rotation.z+=0.15;
+    const staleLeader=applyIsolatedCoordinatePreview(f.scene,targets);
+    assert.equal(staleLeader.status,'rejected');
+    assert.ok(staleLeader.issues.includes('stale-leader-geometry:natal:Moon'));
+    assert.equal(staleLeader.updated,0);
+    assert.ok(sun.glyph.position.equals(originalSun));
+    moon.inner.rotation.z=originalMoonLeader;
+
+    const restored=applyIsolatedCoordinatePreview(f.scene,targets);
+    assert.equal(restored.status,'applied');
+    assert.equal(restored.updated,1);
+    assert.ok(moon.glyph.position.equals(originalMoon));
+    assert.equal(moon.inner.rotation.z,originalMoonLeader);
+  }
+});

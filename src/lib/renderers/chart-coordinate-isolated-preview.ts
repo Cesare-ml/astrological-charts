@@ -89,21 +89,29 @@ export function applyIsolatedCoordinatePreview(
   if (unknown) return result('rejected',0,['untracked-scene-visuals']);
   if (plan.decision === 'unchanged') return result('unchanged',0);
 
-  // Stage and validate EVERY body before touching any Three.js transform.
-  // Existing leader geometry depends on glyph displacement, so only a
-  // constant collision offset permits a rotation-only transform.
+  // Validate EVERY body in this isolated wheel before touching the scene,
+  // not just the planets included in the impact plan. A stationary Moon can
+  // already have a stale glyph/leader transform while the Sun is moving.
+  // Applying the Sun update in that state would compound a corrupt chart.
   const stages: StagedBody[] = [];
-  for (const impact of plan.impacts) {
-    const key = chartPlanetKey(impact.ref);
-    const owner = inspection.owners.get(key);
-    if (!owner) return result('rejected',0,['missing-owner:'+key]);
-    const oldShift = impact.previousAdjusted - impact.previousLongitude;
-    const newShift = impact.nextAdjusted - impact.nextLongitude;
-    if (Math.abs(newShift-oldShift) > 1e-9)
-      return result('rejected',0,['collision-geometry-changed:'+key]);
+  const changed = new Map(plan.impacts.map(impact => [chartPlanetKey(impact.ref),impact]));
+  for (const [key,owner] of inspection.owners) {
+    const impact = changed.get(key);
+    if (impact) {
+      const oldShift = impact.previousAdjusted - impact.previousLongitude;
+      const newShift = impact.nextAdjusted - impact.nextLongitude;
+      // The old leader geometry is only reusable if collision separation
+      // stays constant. Otherwise we must redraw dependent visuals.
+      if (Math.abs(newShift-oldShift) > 1e-9)
+        return result('rejected',0,['collision-geometry-changed:'+key]);
+    }
     const glyph = owner.glyph;
-    const oldGlyphAngle = THREE.MathUtils.degToRad(impact.previousGlyphDegrees);
-    const nextGlyphAngle = THREE.MathUtils.degToRad(impact.nextGlyphDegrees);
+    const oldGlyphDegrees = impact
+      ? impact.previousGlyphDegrees
+      : owner.layout.tickDegrees + owner.layout.glyphDisplacementDegrees;
+    const oldGlyphAngle = THREE.MathUtils.degToRad(oldGlyphDegrees);
+    const nextGlyphAngle = THREE.MathUtils.degToRad(
+      impact ? impact.nextGlyphDegrees : oldGlyphDegrees);
     const radius = Math.hypot(glyph.position.x,glyph.position.y);
     if (!Number.isFinite(radius) || radius <= 0 ||
         Math.abs(glyph.position.x + radius*Math.sin(oldGlyphAngle)) > 1e-6 ||
@@ -112,8 +120,10 @@ export function applyIsolatedCoordinatePreview(
         glyph.rotation.z !== 0)
       return result('rejected',0,['stale-glyph-geometry:'+key]);
 
-    const oldTick = THREE.MathUtils.degToRad(impact.previousTickDegrees);
-    const tick = THREE.MathUtils.degToRad(impact.nextTickDegrees);
+    const oldTick = THREE.MathUtils.degToRad(
+      impact ? impact.previousTickDegrees : owner.layout.tickDegrees);
+    const tick = THREE.MathUtils.degToRad(
+      impact ? impact.nextTickDegrees : owner.layout.tickDegrees);
     const lines = [owner.innerLeader,owner.outerLeader]
       .filter((line): line is THREE.Object3D => !!line);
     for (const line of lines) {
@@ -128,6 +138,9 @@ export function applyIsolatedCoordinatePreview(
           line.scale.x !== 1 || line.scale.y !== 1 || line.scale.z !== 1)
         return result('rejected',0,['stale-leader-geometry:'+key]);
     }
+    // Unchanged symbols are verified but never moved or reallocated.
+    if (!impact) continue;
+    const newShift = impact.nextAdjusted - impact.nextLongitude;
     stages.push({
       group:owner.group,glyph,lines,
       oldPosition:glyph.position.clone(),

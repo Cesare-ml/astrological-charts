@@ -31,6 +31,9 @@ window.runIsolatedCoordinatePreviewProbe = () => {
     const ring=new THREE.Group();
     wheel.add(ring);
     const input={Sun:10,Moon:100};
+    // Match the wheel's real collision tie provenance; the planner must
+    // refuse fixtures that omit the original body enumeration order.
+    ring.userData['chartBodySourceOrder']=Object.freeze(Object.keys(input));
     const adjusted=layoutChartGlyphLongitudes(
       Object.fromEntries(Object.entries(input).map(([name,longitude])=>
         [name,{longitude}])),'longitude'
@@ -111,6 +114,19 @@ window.runIsolatedCoordinatePreviewProbe = () => {
       raycaster.intersectObjects([sun.glyph,moon.glyph],false)[0]?.object===sun.glyph;
     results['repeatUpdateNoOp'+suffix]=
       applyIsolatedCoordinatePreview(scene,targets).status==='unchanged';
+
+    // Stale geometry on an unchanged Moon must block the NEXT Sun update.
+    // A scene with an invalid stationary body cannot be atomically patched.
+    const moonOriginalPosition=moon.glyph.position.clone();
+    moon.glyph.position.x+=0.05;
+    const upcomingTargets=targets.map(item=>({...item,
+      longitude:item.ref.name==='Sun'?20:item.longitude}));
+    const staleStationary=applyIsolatedCoordinatePreview(scene,upcomingTargets);
+    results['stationaryBodyPreflight'+suffix]=staleStationary.status==='rejected'
+      && staleStationary.updated===0
+      && staleStationary.issues.includes('stale-glyph-geometry:natal:Moon')
+      && sun.glyph.getWorldPosition(new THREE.Vector3()).distanceTo(sunAfter)<1e-12;
+    moon.glyph.position.copy(moonOriginalPosition);
 
     const untracked=new THREE.Group();
     untracked.userData['chartAspectRadius']=0.45;

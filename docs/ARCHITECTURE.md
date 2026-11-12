@@ -449,3 +449,28 @@ position, inner/outer leader rotations, aspect-angle metadata and
 layout object are fully restored. A fake Object3D that carries the
 correct leader role but no drawable line geometry must be rejected
 before any transaction begins.
+
+
+### Whole-wheel geometry preflight for synthetic atomic changes
+
+A coordinate impact report lists only bodies whose original longitude or
+collision-adjusted placement changes. However, an apparently stationary
+body can already have stale geometry because host code moved its glyph or
+leader without updating its layout metadata. The **synthetic-only**
+`applyIsolatedCoordinatePreview()` therefore validates the existing
+symbol position and both optional leader transforms for **every inspected
+body** before applying any impacted transform, not just members of
+`plan.impacts`. Unchanged bodies remain untouched.
+
+This fails closed with `stale-glyph-geometry` or
+`stale-leader-geometry` before any mutation. The headless Node test
+covers unchanged Moon / moving Sun with injected stale glyph and leader
+data, successful recovery, and normal/mirrored roots. The WebGL browser
+fixture also checks that an altered stationary Moon blocks the next Sun
+update. The browser fixture now explicitly records
+`chartBodySourceOrder`, matching the real wheel's collision provenance.
+
+This remains an internal experiment gated by
+`chartSyntheticIsolatedWheel=true`; real charts still require their
+complete render path and this change is **not** production integration.
+Run the actual Node/Angular/browser suites before accepting the draft.
