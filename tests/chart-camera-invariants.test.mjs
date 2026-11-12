@@ -26,6 +26,8 @@ const controllerPath = 'src/lib/renderers/planet-interaction.controller.ts';
 const setZoom = method(servicePath, 'GraficoRenderService', 'setZoom');
 const focusService = method(servicePath, 'GraficoRenderService', 'highlightPlanet');
 const focusController = method(controllerPath, 'PlanetInteractionController', 'highlight');
+const modeService = method(servicePath, 'GraficoRenderService', 'setNatalAspectPresentation');
+const modeController = method(controllerPath, 'PlanetInteractionController', 'setNatalAspectPresentation');
 
 const validRef = p => !!p && typeof p === 'object' &&
   ['natal', 'transit', 'synastry'].includes(p.layer) &&
@@ -38,12 +40,18 @@ const serviceCode = ts.transpileModule(`class CameraProbe {
   projectionCalls = 0;
   requestedFrames = 0;
   selections = [];
+  paletteUpdates = [];
   pinnedPlanet = null;
+  natalAspectPresentation = 'all';
   camera = {zoom:1, updateProjectionMatrix: () => {this.projectionCalls++;}};
-  planetController = {highlight: value => {this.selections.push(value);}};
+  planetController = {
+    highlight: value => {this.selections.push(value);},
+    setNatalAspectPresentation: value => {this.paletteUpdates.push(value);}
+  };
   requestInteractiveFrame() {this.requestedFrames++;}
   ${setZoom}
   ${focusService}
+  ${modeService}
 }`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
 const CameraProbe = new Function('isChartPlanetRef',
   serviceCode + '\nreturn CameraProbe;')(validRef);
@@ -55,12 +63,16 @@ const controllerCode = ts.transpileModule(`class ControllerProbe {
   pinned = null;
   hovered = null;
   scene = {};
+  sceneRevision = 0;
+  visualRevision = 0;
+  natalAspectPresentation = 'all';
   camera = {zoom:1.75, projectionMatrix:{revision:7}};
   painted = 0;
   frames = 0;
-  updateVisuals() {this.painted++;}
+  updateVisuals() {this.painted++;this.visualRevision++;}
   requestRender() {this.frames++;}
   ${focusController}
+  ${modeController}
 }`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
 const ControllerProbe = new Function('sameChartPlanet', 'isChartPlanetRef',
   controllerCode + '\nreturn ControllerProbe;')(sameRef, validRef);
