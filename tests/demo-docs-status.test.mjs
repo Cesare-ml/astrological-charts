@@ -106,3 +106,14 @@ test('README quickstart covers both Angular builds and approved sibling assets',
   assert.match(readme, /Chromium and Firefox/);
   assert.match(readme, /VirgoStars/);
 });
+
+
+test('independent asset checkout guide reflects public access and byte verification', () => {
+  const guide = readFileSync(new URL('../docs/INDEPENDENT_ASSETS_REPOSITORY.md', import.meta.url), 'utf8');
+  assert.match(guide, /pubblicamente leggibile/i);
+  assert.match(guide, /npm run verify:pack/);
+  assert.match(guide, /SHA-256/);
+  assert.match(guide, /redistribuzione/);
+  assert.match(guide, /Font originale escluso/);
+  assert.doesNotMatch(guide, /repository privato degli asset|archivio privato/i);
+});
