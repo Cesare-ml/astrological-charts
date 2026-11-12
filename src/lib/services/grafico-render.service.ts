@@ -7,6 +7,7 @@ import {CartaAstraleCreaScena} from '../renderers/@carta-astrale/carta-astrale.r
 import { OggettiSempliciRender } from '../renderers/oggetti-semplici.renderer';
 import { GestoreImmagini } from '../renderers/gestore-immagini';
 import { disposeSceneResources } from '../renderers/scene-resources';
+import { validateChartExportDimensions } from '../renderers/chart-export-dimensions';
 import { PlanetInteractionController } from '../renderers/planet-interaction.controller';
 import type { ChartAspectRelation, ChartPlanetInteractionEvent, ChartPlanetRef } from '../renderers/planet-interaction.types';
 import { snapshotChartAspects } from '../renderers/planet-interaction.types';
@@ -372,6 +373,9 @@ export class GraficoRenderService implements OnDestroy {
     dimensioni: { x: number, y: number } = { x: 1080, y: 1080 },
     scala: number = 2 // per migliorare nitidezza (Retina-style)
   ): Promise<string> {
+    // Validate before entering the global render queue or creating WebGL
+    // resources, so invalid requests cannot obstruct unrelated chart exports.
+    validateChartExportDimensions(dimensioni, scala);
     return GraficoRenderService.runExclusive(() => this.generaImmagineInterna(
       temaRender, temaRenderTransiti, temaRenderSinastria, grafico, opzioni, dimensioni, scala));
   }
