@@ -735,3 +735,31 @@ regression, not a claim of independent multi-canvas performance or
 of production Angular lifecycle correctness. Actual Node, TypeScript,
 Chromium/Firefox, GPU and human screenshot validation remains required
 before accepting PR #22.
+
+
+### Coordinate planner rejects arithmetic overflow before synthetic geometry updates
+
+`planChartCoordinateEffects()` already rejects nonfinite **input**
+longitudes and wheel metadata, but a finite upstream longitude may
+still overflow the legacy render-angle expression once added to a
+finite ascendant and degree offset. An impact with nonfinite
+`tickDegrees`, `glyphDegrees` or displacement would be unsafe for
+any Three.js geometry transaction even though each source field
+individually passed the type and finiteness checks.
+
+After computing original and next `chartBodyRenderAngles()`, the
+planner now verifies all six angle values **and their radian
+conversions** are finite. A failed check reports
+`nonfinite-render-angles:layer:name` with the existing immutable
+`unsupported` / empty-impact result. This is a reject-only
+safety check; it does not clamp, wrap, approximate or compute
+astronomical values, and ordinary finite valid coordinates retain
+their previous behavior.
+
+Normal and mirrored Node and browser-planner fixtures supply finite
+but extreme `Number.MAX_VALUE` input with an otherwise
+self-consistent wheel orientation, verify rejection without moving
+any glyph, then restore the original layouts and verify a valid
+unchanged report. These tests require actual local Node and browser
+execution before acceptance; no changes are made to the production
+renderer or released public API.

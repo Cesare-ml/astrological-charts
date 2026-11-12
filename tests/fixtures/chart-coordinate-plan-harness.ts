@@ -227,6 +227,41 @@ window.runChartCoordinatePlanProbe = () => {
     result['restoredWheelRemainsValid'+suffix]=
       planChartCoordinateEffects(scene,snapshot).decision==='unchanged';
 
+    // An otherwise valid wheel can overflow only after source longitude,
+    // ascendant and tick expressions combine. Reject before publishing
+    // NaN/Infinity positions or a partial full-rebuild impact report.
+    const extremeBodies=glyphs.slice(0,3).map(glyph=>({
+      glyph,owner:glyph.parent as THREE.Group,
+      layout:(glyph.parent as THREE.Group).userData['chartBodyLayout'],
+      angle:glyph.userData['chartAspectAngle']
+    }));
+    for(const item of extremeBodies){
+      const layout=item.layout;
+      const orientation=chartBodyRenderAngles(
+        layout.original,layout.adjusted,-Number.MAX_VALUE,layout.degreesOffset);
+      item.owner.userData['chartBodyLayout']={
+        ...layout,ascendant:-Number.MAX_VALUE,
+        tickDegrees:orientation.tickDegrees
+      };
+      item.glyph.userData['chartAspectAngle']=
+        THREE.MathUtils.degToRad(orientation.tickDegrees);
+    }
+    const extremeTargets=snapshot.map(target=>({
+      ...target,longitude:target.ref.layer==='natal'&&target.ref.name==='Sun'
+        ? Number.MAX_VALUE:target.longitude
+    }));
+    const extremePlan=planChartCoordinateEffects(scene,extremeTargets);
+    result['overflowedFiniteAnglesRejected'+suffix]=
+      extremePlan.decision==='unsupported'
+      && extremePlan.impacts.length===0
+      && extremePlan.issues.includes('nonfinite-render-angles:natal:Sun');
+    for(const item of extremeBodies){
+      item.owner.userData['chartBodyLayout']=item.layout;
+      item.glyph.userData['chartAspectAngle']=item.angle;
+    }
+    result['overflowRestoreValid'+suffix]=
+      planChartCoordinateEffects(scene,snapshot).decision==='unchanged';
+
     const moonOwnerAfter=glyphs[1].parent as THREE.Group;
     const originalMoonRing=moonOwnerAfter.parent as THREE.Object3D;
     const newNatalRing=new THREE.Group();

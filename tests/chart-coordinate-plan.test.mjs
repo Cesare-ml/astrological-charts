@@ -397,3 +397,53 @@ test('equal-longitude collision ties follow original source order after children
     assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
   }
 });
+
+
+test('finite longitudes that overflow rendered wheel angles fail closed',()=>{
+  for(const mirrored of [false,true]){
+    const {scene,targets,owners}=sceneWithBodies(mirrored);
+    const natals=[...owners].filter(([key])=>key.startsWith('natal:'))
+      .map(([,body])=>body);
+    const original=natals.map(body=>({
+      body,layout:body.group.userData.chartBodyLayout,
+      angle:body.glyph.userData.chartAspectAngle,
+      position:body.glyph.position.clone()
+    }));
+    // Every individual source field is a finite number. However the
+    // old tick stays finite while adding MAX_VALUE as a new Sun
+    // longitude overflows the next tick to +Infinity.
+    const invalidAscendant=-Number.MAX_VALUE;
+    for(const {body,layout} of original){
+      const rotated=chartBodyRenderAngles(
+        layout.original,layout.adjusted,invalidAscendant,layout.degreesOffset);
+      assert.ok(Object.values(rotated).every(Number.isFinite));
+      body.group.userData.chartBodyLayout={
+        ...layout,ascendant:invalidAscendant,tickDegrees:rotated.tickDegrees
+      };
+      body.glyph.userData.chartAspectAngle=
+        THREE.MathUtils.degToRad(rotated.tickDegrees);
+    }
+    const extreme=targets.map(t=>({
+      ...t,longitude:t.ref.layer==='natal'&&t.ref.name==='Sun'
+        ? Number.MAX_VALUE:t.longitude
+    }));
+    try{
+      assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+      const plan=planChartCoordinateEffects(scene,extreme);
+      assert.equal(plan.decision,'unsupported');
+      assert.deepEqual(plan.impacts,[]);
+      assert.ok(plan.issues.includes('nonfinite-render-angles:natal:Sun'),
+        plan.issues.join(','));
+      assert.ok(Object.isFrozen(plan));
+      assert.ok(Object.isFrozen(plan.issues));
+      for(const {body,position} of original)
+        assert.ok(body.glyph.position.equals(position),'no vertex or glyph mutation');
+    }finally{
+      for(const {body,layout,angle} of original){
+        body.group.userData.chartBodyLayout=layout;
+        body.glyph.userData.chartAspectAngle=angle;
+      }
+    }
+    assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+  }
+});

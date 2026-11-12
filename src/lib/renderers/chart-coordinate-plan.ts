@@ -172,6 +172,16 @@ export function planChartCoordinateEffects(
         old.ascendant,old.degreesOffset);
       const beforeAngles = chartBodyRenderAngles(old.original,old.adjusted,
         old.ascendant,old.degreesOffset);
+      // Finite upstream longitudes and orientation metadata can still
+      // overflow when combined in the legacy tick-angle expressions.
+      // Do not publish an Infinity/NaN impact or let the synthetic-only
+      // patcher write nonfinite positions into Three.js buffers.
+      const renderAngles = [...Object.values(beforeAngles),...Object.values(nextAngles)];
+      if (!renderAngles.every(Number.isFinite) ||
+          !renderAngles.every(degrees => Number.isFinite(THREE.MathUtils.degToRad(degrees)))) {
+        issues.push('nonfinite-render-angles:'+key);
+        continue;
+      }
       const trueLongitudeChanged = !Object.is(longitude,old.original);
       const collisionPlacementChanged =
         !Object.is(nextAdjusted,old.adjusted);
