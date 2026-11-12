@@ -120,6 +120,8 @@ test('private browser QA must await a fresh successful render, not stale status 
   assert.match(browser, /const restoredExport = await exportPixels\(\)/);
   assert.match(browser, /PNG export must contain the preview glyphs/);
   assert.match(browser, /Turning preview off must restore the original exported glyphs/);
+  assert.match(browser, /Preview OFF must not request even one private glyph mask/);
+  assert.match(browser, /Rollback must stop requesting private glyph masks/);
   assert.doesNotMatch(browser, /await ready\(\)/,
     'The former stale-state waiter must not be used in the browser test');
 });
