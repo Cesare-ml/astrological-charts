@@ -23,7 +23,7 @@
     "test:extraction": "node --test tests/extraction-imports.test.mjs",
     "test:asset-urls": "node --test tests/chart-asset-urls.test.mjs",
     "test:asset-manifest": "node --test tests/asset-manifest.test.mjs",
-    "test:assets": "npm run test:asset-urls && npm run test:asset-manifest && npm run test:asset-selection && npm run test:local-assets && npm run test:astro-preview",
+    "test:assets": "npm run test:asset-urls && npm run test:asset-manifest && npm run test:asset-selection && npm run test:local-assets && npm run test:astro-preview && npm run test:astro-overlay",
     "test:asset-selection": "node --test tests/derive-chart-asset-selection.test.mjs",
     "derive:asset-selection": "node scripts/derive-chart-asset-selection.mjs",
     "dev:assets": "node scripts/serve-local-assets.mjs",
@@ -35,7 +35,8 @@
     "demo:preview": "node scripts/serve-local-assets.mjs --root .local/synthetic-pack/public/assets --manifest .local/synthetic-pack/manifests/approved-assets.json",
     "test:demo-docs": "node --test tests/demo-docs-status.test.mjs",
     "verify:angular": "npm run preflight && npm run build:library && npm run build:demo",
-    "test:astro-preview": "node --test tests/virgostars-astro-image-preview.test.mjs"
+    "test:astro-preview": "node --test tests/virgostars-astro-image-preview.test.mjs",
+    "test:astro-overlay": "node --test tests/private-astro-overlay.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
