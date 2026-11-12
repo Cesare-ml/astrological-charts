@@ -1054,3 +1054,83 @@ test('reentrant relation updates cannot emit stale selection details or duplicat
   assert.deepEqual(destroyed.events,[]);
   assert.equal(destroyed.renders,0);
 });
+
+
+test('reentrant pointermove/leave callbacks keep the newest same-scene hit',()=>{
+  const ast=ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts',import.meta.url),'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const cls=ast.statements.find(n=>ts.isClassDeclaration(n)&&n.name?.text==='PlanetInteractionController');
+  assert.ok(cls);
+  const props=['move','leave'].map(name=>{
+    const prop=cls.members.find(n=>ts.isPropertyDeclaration(n)&&n.name.getText(ast)===name);
+    assert.ok(prop?.initializer,name);
+    return prop.getText(ast);
+  });
+  const js=ts.transpileModule(`class PointerProbe {
+    disposed=false; pointerRevision=0; scene:any={}; sceneRevision=0;
+    hovered:any=null; pinned:any=null; cursor='default';
+    canvas={style:{cursor:'default'}};
+    visualRevision=0; events:string[]=[]; renders=0; paints=0;
+    onSend:any=null; onPaint:any=null;
+    pick(event:any){return event.ref;}
+    send(type:string,planet:any){this.events.push(type+':'+planet.name);this.onSend?.(type,planet);}
+    updateVisuals(){this.paints++;this.visualRevision++;this.onPaint?.();}
+    requestRender(){this.renders++;}
+    ${props.join('\n')}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe=new Function('sameChartPlanet',js+'\nreturn PointerProbe;')(api.sameChartPlanet);
+  const ref=name=>({layer:'natal',name});
+  const move=(probe,name)=>probe.move({ref:ref(name)});
+  const starting=()=>{const p=new Probe();p.hovered=ref('Sun');return p;};
+  const leaveNested=starting();
+  let nested=false;
+  leaveNested.onSend=type=>{
+    if(type==='leave'&&!nested){nested=true;move(leaveNested,'Venus');}
+  };
+  move(leaveNested,'Moon');
+  assert.deepEqual(leaveNested.events,['leave:Sun','enter:Venus']);
+  assert.equal(leaveNested.hovered?.name,'Venus');
+  assert.equal(leaveNested.paints,1);
+  assert.equal(leaveNested.renders,1);
+  const previous=leaveNested.events.length;
+  move(leaveNested,'Venus');
+  assert.equal(leaveNested.events.length,previous,'latched newer hit must not repeat');
+
+  const enterNested=new Probe();
+  nested=false;
+  enterNested.onSend=type=>{
+    if(type==='enter'&&!nested){nested=true;move(enterNested,'Venus');}
+  };
+  move(enterNested,'Moon');
+  assert.deepEqual(enterNested.events,['enter:Moon','leave:Moon','enter:Venus']);
+  assert.equal(enterNested.hovered?.name,'Venus');
+  assert.equal(enterNested.renders,1);
+  assert.equal(enterNested.paints,1);
+
+  const enterLeave=new Probe();
+  enterLeave.onSend=type=>{if(type==='enter')enterLeave.leave();};
+  move(enterLeave,'Moon');
+  assert.deepEqual(enterLeave.events,['enter:Moon','leave:Moon']);
+  assert.equal(enterLeave.hovered,null);
+  assert.equal(enterLeave.renders,1);
+
+  const paintNested=new Probe();
+  nested=false;
+  paintNested.onPaint=()=>{
+    if(!nested){nested=true;move(paintNested,'Venus');}
+  };
+  move(paintNested,'Moon');
+  assert.equal(paintNested.hovered?.name,'Venus');
+  assert.equal(paintNested.renders,1,'obsolete repaint must not request a frame');
+
+  const leavePaintNested=starting();
+  nested=false;
+  leavePaintNested.onPaint=()=>{
+    if(!nested){nested=true;move(leavePaintNested,'Venus');}
+  };
+  leavePaintNested.leave();
+  assert.deepEqual(leavePaintNested.events,['leave:Sun','enter:Venus']);
+  assert.equal(leavePaintNested.hovered?.name,'Venus');
+  assert.equal(leavePaintNested.renders,1);
+});

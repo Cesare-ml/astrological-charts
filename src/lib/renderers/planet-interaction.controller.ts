@@ -24,6 +24,8 @@ export class PlanetInteractionController {
   private pickTargets: THREE.Mesh[] = [];
   private scene: THREE.Scene | null = null;
   private sceneRevision = 0;
+  /** Prevent nested pointer callbacks from reviving a stale hit. */
+  private pointerRevision = 0;
   /** Teardown is terminal; no stale host call may resurrect this canvas. */
   private disposed = false;
   /** Tracks painting work performed by synchronous host callbacks. */
@@ -307,6 +309,8 @@ export class PlanetInteractionController {
   }
 
   private move = (event: PointerEvent): void => {
+    if (this.disposed) return;
+    const pointerRevision = ++this.pointerRevision;
     // Pointer hits are computed against one particular scene. A synchronous
     // leave listener may redraw or destroy that scene before we emit enter.
     const hitScene = this.scene;
@@ -320,13 +324,17 @@ export class PlanetInteractionController {
     const visibleBeforeMove = previous ?? this.pinned;
     this.hovered = null;
     if (previous) this.send('leave', previous);
-    if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
+    // A newer event from the host may have chosen another planet within
+    // this same scene. A scene-only revision check is not sufficient.
+    if (this.disposed || this.pointerRevision !== pointerRevision ||
+        this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.hovered = next ? { ...next } : null;
     const beforeEnterVisuals = this.visualRevision;
     if (this.hovered) this.send('enter', this.hovered);
     // A host may redraw in the enter callback (e.g. pin this planet).
-    // Scene replacement retains its separate stale-pointer guard.
-    if (this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
+    // Also ignore a nested pointermove or pointerleave during enter.
+    if (this.disposed || this.pointerRevision !== pointerRevision ||
+        this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     this.canvas.style.cursor = this.hovered ? 'pointer' : this.cursor;
     // Preserve the existing geometry whenever the *visible* focus is
     // unchanged. Covers entering an already-pinned body AND moving
@@ -337,12 +345,18 @@ export class PlanetInteractionController {
     if (this.visualRevision === beforeEnterVisuals &&
         !sameChartPlanet(visibleBeforeMove, visibleAfterMove)) {
       this.updateVisuals();
-      this.requestRender();
+      // Repainting may dispose a line and synchronously dispatch a newer
+      // pointer event. Do not enqueue the older frame in that case.
+      if (!this.disposed && this.pointerRevision === pointerRevision &&
+          this.scene === hitScene && this.sceneRevision === hitRevision)
+        this.requestRender();
     }
   };
   private leave = (): void => {
+    if (this.disposed) return;
     const leaving = this.hovered;
     if (!leaving) return;
+    const pointerRevision = ++this.pointerRevision;
     // Clear before the callback so synchronous setRelations() cannot emit
     // a stale hover-update after leave has already been delivered.
     this.hovered = null;
@@ -351,7 +365,8 @@ export class PlanetInteractionController {
     const revision = this.sceneRevision;
     const beforeLeaveVisuals = this.visualRevision;
     this.send('leave', leaving);
-    if (this.scene !== activeScene || this.sceneRevision !== revision) return;
+    if (this.disposed || this.pointerRevision !== pointerRevision ||
+        this.scene !== activeScene || this.sceneRevision !== revision) return;
     // Leaving the same pinned planet restores the *identical* focused
     // scene, so there is no need to dispose and rebuild aspect lines.
     // Keep emitting leave to the host; a callback changing selection or
@@ -359,7 +374,9 @@ export class PlanetInteractionController {
     if (this.visualRevision === beforeLeaveVisuals &&
         !sameChartPlanet(leaving, this.pinned)) {
       this.updateVisuals();
-      if (this.scene) this.requestRender();
+      if (!this.disposed && this.pointerRevision === pointerRevision &&
+          this.scene === activeScene && this.sceneRevision === revision)
+        this.requestRender();
     }
   };
   /** Touch has no persistent hover; a tap's synthetic click is handled separately. */

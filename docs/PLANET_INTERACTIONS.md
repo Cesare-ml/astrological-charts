@@ -1210,3 +1210,30 @@ requests a frame. These tests do not add astronomical calculations,
 change existing aspect geometry, alter selection scale or integrate
 the draft interaction controller into production. Full Node,
 Angular and Chromium/Firefox checks are still required before merge.
+
+
+### Reentrant pointer events on the same mounted chart
+
+A host's synchronous `enter`/`leave` listener can dispatch a
+second `pointermove` while the first event is still being processed.
+The previous scene-only guard did not catch this: Sun → Moon could
+emit `leave:Sun`, then a nested move would select Venus, but the
+older handler would resume and incorrectly emit `enter:Moon`,
+repaint and replace Venus. This is not a change of chart scene.
+
+`PlanetInteractionController` now increments `pointerRevision`
+for each active pointermove or pointerleave. After callbacks and
+after WebGL repaint, the older handler checks this token as well
+as its existing scene/disposed guards before assigning hover,
+cursor, focus overlays or requesting a render. The newest event
+wins; latched selection, neutral glyph scales, accessible
+click/touch semantics and existing astrology aspects remain intact.
+
+A Node regression extracts the actual TypeScript move/leave arrow
+properties and tests nested moves during leave and enter, nested
+pointerleave during enter, and newer pointer updates triggered by
+repainting. The new registered browser fixture dispatches genuine
+PointerEvents against three synthetic Three.js glyphs with real
+raycasting, checking newest focus, event order, cursor, single
+render and no zoom. Full installed Node/Angular and Chrome/Firefox
+tests remain acceptance gates; PR #22 stays draft.
