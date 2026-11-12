@@ -387,6 +387,110 @@ window.runIsolatedCoordinatePreviewProbe = () => {
     );
     results['collisionGlyphRaycast'+suffix]=
       raycasterCollision.intersectObject(closeMoon.glyph,false).length>0;
+
+    // Exercise TWO independent synthetic charts over many alternating
+    // renders in ONE WebGL renderer. This catches hidden resource
+    // allocations and cross-chart mutations that one-off probes miss.
+    const firstLayouts=[sun.glyph.parent!.userData['chartBodyLayout'],
+      moon.glyph.parent!.userData['chartBodyLayout']];
+    const initialGeometries=renderer.info.memory.geometries;
+    const initialTextures=renderer.info.memory.textures;
+    const initialPrograms=renderer.info.programs?.length ?? 0;
+    const firstChartBaseline={
+      sunGeometry:sun.glyph.geometry,
+      moonGeometry:moon.glyph.geometry,
+      sunMaterial:sun.glyph.material,
+      moonMaterial:moon.glyph.material
+    };
+    let repeatedUpdates=true,peerIsolation=true,stableGpu=true;
+    for(let step=0;step<32;step++){
+      const collisionActive=step%2===0;
+      const activeScene=collisionActive?collisionScene:scene;
+      const peerScene=collisionActive?scene:collisionScene;
+      const activeInput=collisionActive
+        ? [{ref:{layer:'natal' as const,name:'Sun'},
+            longitude:Math.floor(step/2)%2===0?10:5},
+          {ref:{layer:'natal' as const,name:'Moon'},longitude:11}]
+        : [{ref:{layer:'natal' as const,name:'Sun'},
+            longitude:Math.floor(step/2)%2===0?20:15},
+          {ref:{layer:'natal' as const,name:'Moon'},longitude:100}];
+      const peerSun=collisionActive?sun:closeSun;
+      const peerMoon=collisionActive?moon:closeMoon;
+      const peerSunPosition=peerSun.glyph.position.clone();
+      const peerMoonPosition=peerMoon.glyph.position.clone();
+      const peerSunLayout=peerSun.glyph.parent!.userData['chartBodyLayout'];
+      const peerMoonLayout=peerMoon.glyph.parent!.userData['chartBodyLayout'];
+      const peerInnerArray=peerMoon.inner.geometry.getAttribute('position').array.slice();
+      const peerOuterArray=peerMoon.outer.geometry.getAttribute('position').array.slice();
+      const report=applyIsolatedCoordinatePreview(activeScene,activeInput,[peerScene]);
+      repeatedUpdates &&= report.status==='applied' && report.updated>=1
+        && applyIsolatedCoordinatePreview(activeScene,activeInput,[peerScene]).status==='unchanged';
+      renderer.render(activeScene,camera);
+      renderer.render(peerScene,camera);
+      peerIsolation &&= peerSun.glyph.position.equals(peerSunPosition)
+        && peerMoon.glyph.position.equals(peerMoonPosition)
+        && peerSun.glyph.parent!.userData['chartBodyLayout']===peerSunLayout
+        && peerMoon.glyph.parent!.userData['chartBodyLayout']===peerMoonLayout
+        && peerMoon.inner.geometry.getAttribute('position').array.every(
+          (value,index)=>value===peerInnerArray[index])
+        && peerMoon.outer.geometry.getAttribute('position').array.every(
+          (value,index)=>value===peerOuterArray[index]);
+      stableGpu &&=renderer.info.memory.geometries===initialGeometries
+        && renderer.info.memory.textures===initialTextures
+        && (renderer.info.programs?.length ?? 0)===initialPrograms
+        && sun.glyph.geometry===firstChartBaseline.sunGeometry
+        && moon.glyph.geometry===firstChartBaseline.moonGeometry
+        && sun.glyph.material===firstChartBaseline.sunMaterial
+        && moon.glyph.material===firstChartBaseline.moonMaterial;
+    }
+    results['dualChart32Updates'+suffix]=repeatedUpdates;
+    results['dualChartPeerUnchanged'+suffix]=peerIsolation;
+    results['dualChartGpuStable'+suffix]=stableGpu;
+    // A failed write after Moon vertex mutation must undo the complete
+    // collision transaction without disturbing the other displayed chart.
+    const peerSunBeforeFault=sun.glyph.position.clone();
+    const peerMoonBeforeFault=moon.glyph.position.clone();
+    const collisionMoonBefore=closeMoon.glyph.position.clone();
+    const innerBeforeFault=closeMoon.inner.geometry.getAttribute('position').array.slice();
+    const outerBeforeFault=closeMoon.outer.geometry.getAttribute('position').array.slice();
+    const oldCollisionMoonLayout=closeMoon.owner.userData['chartBodyLayout'];
+    Object.defineProperty(closeMoon.owner.userData,'chartBodyLayout',{
+      configurable:true,enumerable:true,get:()=>oldCollisionMoonLayout,
+      set(next){if(next!==oldCollisionMoonLayout)
+        throw Error('synthetic multi-chart WebGL rollback fault');}
+    });
+    const reverseCollision=[
+      {ref:{layer:'natal' as const,name:'Sun'},longitude:10},
+      {ref:{layer:'natal' as const,name:'Moon'},longitude:11}
+    ];
+    let rejectedCycle:ReturnType<typeof applyIsolatedCoordinatePreview>|null=null;
+    try {
+      rejectedCycle=applyIsolatedCoordinatePreview(
+        collisionScene,reverseCollision,[scene]);
+    } finally {
+      delete closeMoon.owner.userData['chartBodyLayout'];
+      closeMoon.owner.userData['chartBodyLayout']=oldCollisionMoonLayout;
+    }
+    results['dualChartRollback'+suffix]=rejectedCycle?.status==='rejected'
+      && rejectedCycle.updated===0
+      && rejectedCycle.issues.includes('transaction-rolled-back')
+      && closeMoon.glyph.position.equals(collisionMoonBefore)
+      && closeMoon.inner.geometry.getAttribute('position').array.every(
+        (value,index)=>value===innerBeforeFault[index])
+      && closeMoon.outer.geometry.getAttribute('position').array.every(
+        (value,index)=>value===outerBeforeFault[index])
+      && sun.glyph.position.equals(peerSunBeforeFault)
+      && moon.glyph.position.equals(peerMoonBeforeFault);
+    const recoveredCycle=applyIsolatedCoordinatePreview(
+      collisionScene,reverseCollision,[scene]);
+    renderer.render(collisionScene,camera);
+    renderer.render(scene,camera);
+    results['dualChartRollbackRecovery'+suffix]=recoveredCycle.status==='applied'
+      && applyIsolatedCoordinatePreview(collisionScene,reverseCollision,[scene]).status==='unchanged'
+      && renderer.info.memory.geometries===initialGeometries
+      && renderer.info.memory.textures===initialTextures
+      && (renderer.info.programs?.length ?? 0)===initialPrograms;
+
     collisionGeometries.forEach(item=>item.dispose());
     collisionMaterials.forEach(item=>item.dispose());
 

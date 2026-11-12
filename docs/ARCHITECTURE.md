@@ -704,3 +704,34 @@ leader buffer. The WebGL fixture also mounts a foreign point cloud
 during a collision patch, verifies rejection, removes the alias,
 and confirms the later normal transaction is unchanged in scope.
 Real multi-chart Angular and browser execution remain manual gates.
+
+
+### Repeated two-chart synthetic WebGL stability regression
+
+The existing real-WebGL fixture for the isolated coordinate experiment
+now reuses the same renderer with **two separate mounted synthetic
+chart scenes**. It alternates 32 longitude updates between a
+collision-prone Sun/Moon wheel and a distant-body wheel while retaining
+an explicit readonly peer-root set. Each update must apply exactly
+once; an immediate duplicate request must be a no-op. After each
+round both scenes render, the other chart's glyph positions,
+line-buffer vertices and layout object references must remain
+unchanged. The test also holds the `WebGLRenderer.info.memory`
+geometry and texture counts and the compiled-program count at their
+previously warmed baselines, and checks stable initial glyph
+geometry/material ownership. The final check injects a second-body
+metadata assignment fault, confirms the collision leader's vertices
+and peer glyphs are rolled back, and verifies that a retry succeeds
+without a GPU resource increase.
+
+A separate Node regression performs **48 alternating operations**,
+covering normal/southern-mirrored wheels, full per-body
+geometry/material/BufferAttribute identity, exact peer-state
+preservation, deliberate mid-transaction rollback, immediate
+idempotence, and return to the original coordinates after 24
+operations per scene. All fixtures contain synthetic planet names and
+procedural geometry only. This is a shared-renderer/multiple-scene
+regression, not a claim of independent multi-canvas performance or
+of production Angular lifecycle correctness. Actual Node, TypeScript,
+Chromium/Firefox, GPU and human screenshot validation remains required
+before accepting PR #22.

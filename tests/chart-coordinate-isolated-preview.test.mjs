@@ -778,3 +778,102 @@ test('peer Points geometry can never share a collision leader backing buffer',()
       'unchanged');
   }
 });
+
+
+test('alternating two isolated charts survives 48 updates and a failed collision transaction',()=>{
+  for(const mirrored of [false,true]){
+    const first=fixture({mirrored,close:true,profile:true,outer:true});
+    const second=fixture({mirrored:!mirrored,close:true,profile:true,outer:true});
+    const roots=[first,second];
+    const baseline=roots.map(f=>new Map([...f.parts].map(([name,body])=>[name,{
+      glyphGeometry:body.glyph.geometry,glyphMaterial:body.glyph.material,
+      innerGeometry:body.inner.geometry,innerMaterial:body.inner.material,
+      outerGeometry:body.outerLeader.geometry,outerMaterial:body.outerLeader.material,
+      innerAttribute:body.inner.geometry.getAttribute('position'),
+      outerAttribute:body.outerLeader.geometry.getAttribute('position')
+    }])));
+    const capture=f=>new Map([...f.parts].map(([name,body])=>[name,{
+      position:body.glyph.position.clone(),tick:body.inner.rotation.z,
+      outerTick:body.outerLeader.rotation.z,
+      aspect:body.glyph.userData.chartAspectAngle,
+      layout:body.owner.userData.chartBodyLayout,
+      inner:body.inner.geometry.getAttribute('position').array.slice(),
+      outer:body.outerLeader.geometry.getAttribute('position').array.slice(),
+      sphere:body.inner.geometry.boundingSphere,
+      box:body.inner.geometry.boundingBox
+    }]));
+    const unchanged=(f,snapshot)=>{
+      for(const [name,expected] of snapshot){
+        const body=f.parts.get(name);
+        assert.ok(body.glyph.position.equals(expected.position),name+' glyph');
+        assert.equal(body.inner.rotation.z,expected.tick,name+' inner rotation');
+        assert.equal(body.outerLeader.rotation.z,expected.outerTick,name+' outer rotation');
+        assert.equal(body.glyph.userData.chartAspectAngle,expected.aspect);
+        assert.equal(body.owner.userData.chartBodyLayout,expected.layout);
+        assert.deepEqual(body.inner.geometry.getAttribute('position').array,expected.inner);
+        assert.deepEqual(body.outerLeader.geometry.getAttribute('position').array,expected.outer);
+        assert.equal(body.inner.geometry.boundingSphere,expected.sphere);
+        assert.equal(body.inner.geometry.boundingBox,expected.box);
+      }
+    };
+    for(const [index,f] of roots.entries()){
+      for(const [name,body] of f.parts){
+        const expected=baseline[index].get(name);
+        assert.equal(body.glyph.geometry,expected.glyphGeometry);
+        assert.equal(body.glyph.material,expected.glyphMaterial);
+      }
+    }
+    // Each chart toggles independently 10° -> 5° -> 10°. A failure
+    // during Moon metadata assignment must revert both leaders and caches
+    // without changing the other chart, then allow the same request.
+    for(let step=0;step<48;step++){
+      const activeIndex=step%2,active=roots[activeIndex],peer=roots[1-activeIndex];
+      const peerBefore=capture(peer);
+      const activeBefore=capture(active);
+      const operation=Math.floor(step/2);
+      const targets=targetsWith(active.targets,'Sun',operation%2===0?5:10);
+      if(step===17){
+        const moon=active.parts.get('Moon'),old=moon.owner.userData.chartBodyLayout;
+        Object.defineProperty(moon.owner.userData,'chartBodyLayout',{
+          configurable:true,enumerable:true,get:()=>old,
+          set(next){if(next!==old)throw Error('synthetic multi-chart fault');}
+        });
+        try{
+          const rejected=applyIsolatedCoordinatePreview(active.scene,targets,[peer.scene]);
+          assert.equal(rejected.status,'rejected');
+          assert.equal(rejected.updated,0);
+          assert.deepEqual(rejected.issues,['transaction-rolled-back']);
+          unchanged(active,activeBefore);
+          unchanged(peer,peerBefore);
+        }finally{
+          delete moon.owner.userData.chartBodyLayout;
+          moon.owner.userData.chartBodyLayout=old;
+        }
+      }
+      const result=applyIsolatedCoordinatePreview(active.scene,targets,[peer.scene]);
+      assert.equal(result.status,'applied','cycle '+step+' '+result.issues.join(','));
+      assert.ok(result.updated>=1);
+      assert.equal(planChartCoordinateEffects(active.scene,targets).decision,'unchanged');
+      assert.equal(applyIsolatedCoordinatePreview(active.scene,targets,[peer.scene]).status,
+        'unchanged');
+      unchanged(peer,peerBefore);
+      for(const [name,body] of active.parts){
+        const expected=baseline[activeIndex].get(name);
+        assert.equal(body.glyph.geometry,expected.glyphGeometry);
+        assert.equal(body.glyph.material,expected.glyphMaterial);
+        assert.equal(body.inner.geometry,expected.innerGeometry);
+        assert.equal(body.inner.material,expected.innerMaterial);
+        assert.equal(body.outerLeader.geometry,expected.outerGeometry);
+        assert.equal(body.outerLeader.material,expected.outerMaterial);
+        assert.equal(body.inner.geometry.getAttribute('position'),expected.innerAttribute);
+        assert.equal(body.outerLeader.geometry.getAttribute('position'),expected.outerAttribute);
+      }
+    }
+    // 24 operations per scene means both are back at their starting 10°.
+    for(const f of roots){
+      assert.equal(planChartCoordinateEffects(f.scene,f.targets).decision,'unchanged');
+      assert.equal(applyIsolatedCoordinatePreview(f.scene,f.targets,
+        roots.filter(other=>other!==f).map(other=>other.scene)).status,'unchanged');
+    }
+  }
+});
