@@ -184,6 +184,9 @@ export class ElementiCelestiRender {
       // Render-only provenance for the grouped visual parts. No scene
       // transforms or astronomical values are changed by this snapshot.
       elGroup.userData['chartBodyLayout'] = {
+        // Capture the owning ring, not the outer scene. A body moved to
+        // another otherwise identical wheel cannot reuse its old layout.
+        ringId: group.uuid,
         coordinate: parametroDiRender,
         original: elementiCelesti[nome][parametroDiRender],
         adjusted: elementiCelestiRenderPos[nome][parametroDiRender],

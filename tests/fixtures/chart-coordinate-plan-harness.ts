@@ -40,6 +40,7 @@ window.runChartCoordinatePlanProbe = () => {
         const owner=new THREE.Group();
         owner.userData['chartPlanetBody']={layer:ring.layer,name};
         owner.userData['chartBodyLayout']={
+          ringId:parent.uuid,
           coordinate:'longitude',original,adjusted,ascendant:45,degreesOffset:0,
           tickDegrees:angles.tickDegrees,glyphDisplacementDegrees:angles.glyphDisplacementDegrees,
           outerLeaderEnabled:false,moonMarkerEnabled:false
@@ -196,6 +197,21 @@ window.runChartCoordinatePlanProbe = () => {
     moonOwner.remove(outer);
     moonOwner.userData['chartBodyLayout']=moonLayout;
     result['restoredWheelRemainsValid'+suffix]=
+      planChartCoordinateEffects(scene,snapshot).decision==='unchanged';
+
+    const moonOwnerAfter=glyphs[1].parent as THREE.Group;
+    const originalMoonRing=moonOwnerAfter.parent as THREE.Object3D;
+    const newNatalRing=new THREE.Group();
+    wheel.add(newNatalRing);
+    newNatalRing.add(moonOwnerAfter);
+    const reparented=planChartCoordinateEffects(scene,snapshot);
+    result['sameLayerReparentRejected'+suffix]=
+      reparented.decision==='unsupported'
+      && reparented.impacts.length===0
+      && reparented.issues.includes('mismatched-ring-owner:natal:Moon');
+    originalMoonRing.add(moonOwnerAfter);
+    wheel.remove(newNatalRing);
+    result['sameLayerReparentRestored'+suffix]=
       planChartCoordinateEffects(scene,snapshot).decision==='unchanged';
 
     const geometries=new Set<THREE.BufferGeometry>();

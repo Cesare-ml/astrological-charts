@@ -25,6 +25,7 @@ window.runChartBodyOwnershipProbe = () => {
       const original=60+offset, adjusted=67+offset;
       const tickDegrees=75-22+15+original;
       owner.userData['chartBodyLayout'] = {
+        ringId:wheel.uuid,
         coordinate:'longitude',original,adjusted,tickDegrees,
         ascendant:22,degreesOffset:0,
         glyphDisplacementDegrees:adjusted-original,
@@ -136,6 +137,21 @@ window.runChartBodyOwnershipProbe = () => {
     result['duplicateBodyRejected'+suffix]=!doubled.complete
       && doubled.issues.includes('duplicate-body:natal:Sun');
     wheel.remove(duplicate);
+
+    // Reparenting within the same scene is unsafe even if the new
+    // ring uses the identical natal layer, ascendant and visual options.
+    const alternateRing=new THREE.Group();
+    wheel.add(alternateRing);
+    alternateRing.add(natal.owner);
+    const movedRing=inspectChartBodyOwners(scene);
+    result['reparentedSameLayerRejected'+suffix]=!movedRing.complete
+      && movedRing.owners.size===0
+      && movedRing.issues.includes('mismatched-ring-owner:natal:Sun');
+    wheel.add(natal.owner);
+    wheel.remove(alternateRing);
+    const recovered=inspectChartBodyOwners(scene);
+    result['restoredRingIdentity'+suffix]=recovered.complete
+      && recovered.owners.get('natal:Sun')?.glyph===natal.glyph;
 
     natal.owner.position.x=0.01;
     const moved=inspectChartBodyOwners(scene);

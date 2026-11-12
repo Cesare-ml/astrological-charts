@@ -328,3 +328,27 @@ nested reports in both views. Run `npm run test:coordinate-plan`,
 `npm run check:types`, and `npm run test:demo-interactions`
 before PR approval. Real browser/Angular/visual validation is
 not implied by the source-level checks.
+
+
+### Per-ring provenance across same-layer reparenting
+
+A group's validated layer, ascendant and tick angle are not sufficient
+to establish original **collision-ring ownership**. Two otherwise
+identical natal rings can have different members and therefore different
+glyph displacement results. `ElementiCelestiRender` now records the
+original wheel `THREE.Group.uuid` as `chartBodyLayout.ringId` on every
+per-body owner. The read-only `inspectChartBodyOwners()` requires
+`owner.group.parent.uuid` to match the captured ID and refuses
+moved/cloned owners with `mismatched-ring-owner`, even if every other
+render parameter matches. The captured value becomes part of the
+value-only immutable layout inspection snapshot.
+
+This adds no actual rendering changes and does not use UUIDs as
+astronomical identifiers or substitute for `layer:name` keys.
+The lifetime of a wheel group defines the provenance; wrapping or
+moving the *entire wheel* in a different chart preserves the internal
+ring identity and is still allowed. The body-owner fixture and
+headless coordinate-planner Node suite now cover same-layer
+reparenting (both normal and mirrored), restoration, and a corrupted
+layout attempt. The browser planner fixture checks the same failure.
+The preview still never mutates a scene or performs partial updates.

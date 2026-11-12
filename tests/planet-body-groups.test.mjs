@@ -25,6 +25,7 @@ const count = (source,pattern) => source.split(pattern).length-1;
 test('each body owns one identity-transform scene group',()=>{
   assert.ok(loop.includes('var elGroup = new THREE.Group();'));
   assert.ok(loop.includes("elGroup.userData['chartPlanetBody'] = {layer:interactionLayer,name:nome};"));
+  assert.ok(loop.includes("ringId: group.uuid,"),'body layout must track its original wheel');
   assert.ok(loop.includes('group.add(elGroup);'));
   assert.ok(loop.includes('ascendant: ascendente,'));
   assert.ok(loop.includes('degreesOffset: degOffs,'),

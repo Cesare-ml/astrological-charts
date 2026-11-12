@@ -4,6 +4,8 @@ import type { ChartPlanetRef } from './planet-interaction.types';
 
 /** Read-only data captured by the wheel from the upstream coordinate. */
 export interface ChartBodyLayoutSnapshot {
+  /** UUID of the original per-wheel THREE.Group, not the chart scene. */
+  readonly ringId: string;
   readonly coordinate: string;
   readonly original: number;
   readonly adjusted: number;
@@ -48,7 +50,8 @@ export interface ChartBodyOwnerInspection {
 function isLayout(value: unknown): value is ChartBodyLayoutSnapshot {
   if (!value || typeof value !== 'object') return false;
   const v = value as Partial<ChartBodyLayoutSnapshot>;
-  return typeof v.coordinate === 'string' && v.coordinate.length > 0
+  return typeof v.ringId === 'string' && v.ringId.length > 0
+    && typeof v.coordinate === 'string' && v.coordinate.length > 0
     && typeof v.original === 'number' && Number.isFinite(v.original)
     && typeof v.adjusted === 'number' && Number.isFinite(v.adjusted)
     && typeof v.ascendant === 'number' && Number.isFinite(v.ascendant)
@@ -99,6 +102,8 @@ export function inspectChartBodyOwners(root: THREE.Object3D): ChartBodyOwnerInsp
 
     const rawLayout: unknown = object.userData['chartBodyLayout'];
     if (!isLayout(rawLayout)) issues.push('invalid-layout:'+key);
+    else if (object.parent?.uuid !== rawLayout.ringId)
+      issues.push('mismatched-ring-owner:'+key);
 
     const parts = new Map<ChartBodyVisualRole, THREE.Object3D>();
     for (const child of object.children) {
@@ -149,6 +154,7 @@ export function inspectChartBodyOwners(root: THREE.Object3D): ChartBodyOwnerInsp
         // userData is mutable across host redraws. A report must not
         // silently change after inspection if the host edits its layout.
         layout:Object.freeze({
+          ringId:rawLayout.ringId,
           coordinate:rawLayout.coordinate,
           original:rawLayout.original,
           adjusted:rawLayout.adjusted,

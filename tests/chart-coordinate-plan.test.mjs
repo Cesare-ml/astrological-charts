@@ -46,6 +46,7 @@ function sceneWithBodies(mirrored=false) {
       const group=new THREE.Group();
       group.userData.chartPlanetBody={layer,name};
       group.userData.chartBodyLayout={
+        ringId:ring.uuid,
         coordinate:'longitude',original,adjusted,ascendant:42,degreesOffset:0,
         tickDegrees:angles.tickDegrees,glyphDisplacementDegrees:angles.glyphDisplacementDegrees,
         outerLeaderEnabled:false,moonMarkerEnabled:false
@@ -287,4 +288,48 @@ test('published coordinate reports are immutable including endpoint and dependen
     assert.throws(()=>{unsupported.issues.push('made-up');},TypeError);
     assert.ok(unsupported.issues.includes('missing-target:natal:Sun'));
   }
+});
+
+
+test('same-layer, same-orientation reparenting is not the original collision ring',()=>{
+  for (const mirrored of [false,true]) {
+    const {scene,wheel,targets,owners}=sceneWithBodies(mirrored);
+    const moon=owners.get('natal:Moon').group;
+    const originalRing=moon.parent;
+    const freshRing=new THREE.Group();
+    wheel.add(freshRing);
+    assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+    freshRing.add(moon);
+    const changed=planChartCoordinateEffects(scene,targets);
+    assert.equal(changed.decision,'unsupported');
+    assert.deepEqual(changed.impacts,[]);
+    assert.ok(changed.issues.includes('mismatched-ring-owner:natal:Moon'));
+    originalRing.add(moon);
+    wheel.remove(freshRing);
+    assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+  }
+});
+
+test('mutable host ring-id replacement cannot authorize a moved body',()=>{
+  const {scene,wheel,targets,owners}=sceneWithBodies();
+  const sun=owners.get('natal:Sun').group;
+  const parent=sun.parent;
+  const original=sun.userData.chartBodyLayout;
+  const newRing=new THREE.Group();
+  wheel.add(newRing);
+  newRing.add(sun);
+  // Inspecting the newly mounted body requires metadata and parent
+  // identity to agree. An external host cannot gain authorization by
+  // merely changing a plan's frozen output after it was returned.
+  assert.equal(planChartCoordinateEffects(scene,targets).decision,'unsupported');
+  sun.userData.chartBodyLayout={...original,ringId:newRing.uuid};
+  // A new host provenance entry is not a geometry update; the ring now
+  // contains only Sun, but the legacy layout depended on Moon/Mercury.
+  const noBaseline=planChartCoordinateEffects(scene,targets);
+  assert.equal(noBaseline.decision,'unsupported');
+  assert.ok(noBaseline.issues.some(issue=>issue.startsWith('stale-collision-layout:')));
+  parent.add(sun);
+  sun.userData.chartBodyLayout=original;
+  wheel.remove(newRing);
+  assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
 });
