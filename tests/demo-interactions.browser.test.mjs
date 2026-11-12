@@ -376,6 +376,25 @@ test('raycasting chooses the closest overlapping glyph and ignores outside-canva
   } finally { await page.close(); await browser.close(); }
 });
 
+test('independent charts isolate shared glyph materials and transferred focus clones', {timeout:60000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundle = await build({
+      entryPoints:['tests/fixtures/shared-material-isolation-harness.ts'],
+      bundle:true,write:false,platform:'browser',
+      format:'iife',target:'es2022',tsconfig:'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runSharedMaterialIsolationProbe());
+    for (const [name, passed] of Object.entries(result)) {
+      assert.equal(passed,true,name+': '+JSON.stringify(result));
+    }
+  } finally { await page.close(); await browser.close(); }
+});
+
 test('transferred cached glyph never contaminates other chart focus', {timeout:60000}, async () => {
   const browser = await launch();
   const page = await browser.newPage();
