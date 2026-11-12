@@ -359,6 +359,13 @@ test('changed collision refuses unprofiled, stale, or shared leader geometries',
   const bad=applyIsolatedCoordinatePreview(stale.scene,input(stale));
   assert.equal(bad.status,'rejected');
   assert.ok(bad.issues.some(i=>i.startsWith('stale-leader-endpoints:')));
+  const nonfinite=fixture({close:true,profile:true});
+  const nanLeader=nonfinite.parts.get('Moon').inner;
+  nanLeader.geometry.getAttribute('position').setX(0,NaN);
+  const invalid=applyIsolatedCoordinatePreview(nonfinite.scene,input(nonfinite));
+  assert.equal(invalid.status,'rejected');
+  assert.ok(invalid.issues.some(i=>i.startsWith('stale-leader-endpoints:')));
+
   const shared=fixture({close:true,profile:true});
   const bodies=[shared.parts.get('Sun'),shared.parts.get('Moon')];
   bodies[1].inner.geometry=bodies[0].inner.geometry;

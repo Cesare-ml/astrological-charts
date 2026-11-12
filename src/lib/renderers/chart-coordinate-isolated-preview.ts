@@ -199,7 +199,11 @@ export function applyIsolatedCoordinatePreview(
           return result('rejected',0,['shared-leader-geometry:'+key]);
         const oldEnd = isolatedSyntheticLeaderEndpoint(radius,oldShift,anchorY,trim);
         const nextEnd = isolatedSyntheticLeaderEndpoint(radius,newShift,anchorY,trim);
-        if (!oldEnd || !nextEnd ||
+        const vertices = [
+          attr.getX(0),attr.getY(0),attr.getZ(0),
+          attr.getX(1),attr.getY(1),attr.getZ(1)
+        ];
+        if (!oldEnd || !nextEnd || !vertices.every(Number.isFinite) ||
             Math.abs(attr.getX(0)-oldEnd.x) > 2e-6 ||
             Math.abs(attr.getY(0)-oldEnd.y) > 2e-6 ||
             Math.abs(attr.getZ(0)) > 2e-6 ||
