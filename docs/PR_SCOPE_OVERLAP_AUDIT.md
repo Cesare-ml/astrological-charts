@@ -24,9 +24,9 @@ For a permanent workflow use the explicit actual branch names/ref SHAs retrieved
 
 ## Report and return codes
 
-The tool checks each pair using `git diff --name-only -z base...head --`. It compares the **filenames changed since the merge-base**, preserving filenames containing spaces via NUL separation. It does not compare patches or simulate a merge.
+The tool first resolves **both local refs to immutable commit SHA values**, then determines their historical common ancestor with `git merge-base <baseRevision> <revision>`. Finally it compares only that snapshot using `git diff --name-only -z <mergeBase> <revision> --`. This matches the changed-file semantics of `base...head`, but protects against concurrent base/head ref movement between commands. It preserves filenames containing spaces via NUL separation. It does not compare patches or simulate a merge.
 
-The JSON report contains the checked-out HEAD, each head's resolved commit SHA, exact base/head refs, sorted changed files, pairwise overlaps, number of clear pairs, and limitations.
+The JSON report contains the checked-out HEAD, the exact `base` and `head` ref names, **`baseRevision`** and **`revision`** commit SHAs, the historical **`mergeBase`** SHA, sorted changed files, pairwise overlaps, number of clear pairs, and limitations. Reviewers should compare these SHAs with the PRs' current GitHub branch tips before using an older report: re-run the audit if either branch has advanced. A change to the base tip can leave the historical merge-base unchanged.
 
 - Exit **0**: no same-file overlap among the supplied pairs (`NO_FILE_OVERLAP`).
 - Exit **2**: overlapping files need human review (`OVERLAP_REVIEW_REQUIRED`), but this does not prove a Git conflict.
@@ -46,6 +46,6 @@ PR #22, PR #43 and PR #44 share a different relation: the latter two target #22 
 node --test tests/check-pr-overlap.test.mjs
 ```
 
-Five tests create **disposable synthetic local Git repositories** and exercise ref validation, independent/overlapping branches, stacked PRs, CLI exit codes and unknown refs. These tests are part of the project's local `preflight`. They do not require GitHub connectivity, WebGL, a real asset pack or test credentials.
+Six tests create **disposable synthetic local Git repositories** and exercise ref validation, independent/overlapping branches, stacked PRs, CLI exit codes, unknown refs and advancing base tips. The moving-base test proves the new report distinguishes the current base commit from the older merge-base while preserving the same changed-file audit. These tests are part of the project's local `preflight`. They do not require GitHub connectivity, WebGL, a real asset pack or test credentials.
 
 Do not treat this as a substitute for `npm run verify:angular`, Chromium/Firefox interactions, real-artwork parity or Astrolabio/headless checks. Consult `docs/LOCAL_QA_REPORT.md` for the complete Windows gate.
