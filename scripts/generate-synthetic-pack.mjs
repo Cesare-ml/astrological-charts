@@ -50,17 +50,79 @@ export function makeSyntheticPng(seed) {
     PNG_SIGNATURE,chunk('IHDR',ihdr),chunk('IDAT',deflateSync(rgba)),chunk('IEND',Buffer.alloc(0))
   ]);
 }
+/**
+ * Read only a static array of quoted PNG paths. This is intentionally
+ * stricter than JavaScript: a generated fixture pack must not silently omit
+ * spread entries, variables, template strings or concatenations from the
+ * real preload declaration. No TypeScript runtime dependency is required.
+ */
 export function sourcePreloadPaths(text) {
-  const start=text.indexOf('public static preloadArraySimboli');
-  if(start<0)throw new Error('Preload list missing in extracted renderer');
-  const match=text.slice(start).match(/=\s*\[([\s\S]*?)\]\s*[;}]/);
-  if(!match)throw new Error('Preload list is no longer a static literal array');
-  const paths=[...match[1].matchAll(/["'](\/assets\/img\/[^"']+\.png)["']/g)]
-    .map(m=>m[1].replace(/^\/assets\//,''));
-  if(paths.length!==78||new Set(paths).size!==78)
+  const declarations=[...text.matchAll(/^[ \t]*public\s+static\s+preloadArraySimboli\s*(?::\s*string\s*\[\s*\])?\s*=\s*\[/gm)];
+  if (declarations.length!==1)
+    throw new Error('Expected exactly one static preloadArraySimboli declaration');
+  let cursor=declarations[0].index+declarations[0][0].length;
+  const paths=[];
+  const skipTrivia=()=>{
+    while (cursor<text.length) {
+      const rest=text.slice(cursor);
+      const whitespace=/^\s+/.exec(rest);
+      if (whitespace) { cursor+=whitespace[0].length; continue; }
+      if (rest.startsWith('//')) {
+        const end=text.indexOf('\n',cursor+2);
+        cursor=end===-1?text.length:end+1;
+        continue;
+      }
+      if (rest.startsWith('/*')) {
+        const end=text.indexOf('*/',cursor+2);
+        if (end===-1) throw new Error('Unterminated preload array comment');
+        cursor=end+2;
+        continue;
+      }
+      break;
+    }
+  };
+  while (true) {
+    skipTrivia();
+    if (text[cursor]===']') { cursor++; break; }
+    const quote=text[cursor];
+    if (quote!=='"' && quote!=="'")
+      throw new Error('Preload array must contain only static quoted PNG paths');
+    cursor++;
+    const begin=cursor;
+    while (cursor<text.length && text[cursor]!==quote) {
+      // Escaped or computed strings cannot be reliably represented by a
+      // textual source inventory. Reject rather than silently drop assets.
+      if (text[cursor]==='\\' || text[cursor]==='\n' || text[cursor]==='\r')
+        throw new Error('Escaped or multiline preload paths are unsupported');
+      cursor++;
+    }
+    if (cursor>=text.length) throw new Error('Unterminated preload path');
+    const value=text.slice(begin,cursor++);
+    if (!/^\/assets\/img\/[A-Za-z0-9 _./-]+\.png$/.test(value) ||
+        value.split('/').some(segment=>segment==='' && value.indexOf(segment)!==0)) {
+      // Double slashes and nonliteral URL characters are not asset paths.
+      // The first slash is expected, so check the body separately below.
+      throw new Error('Invalid preload PNG path: '+value);
+    }
+    const relative=value.slice('/assets/'.length);
+    if (relative.split('/').some(segment=>!segment || segment==='.' || segment==='..'))
+      throw new Error('Unsafe preload path segment: '+value);
+    paths.push(relative);
+    skipTrivia();
+    if (text[cursor]===',') { cursor++; continue; }
+    if (text[cursor]===']') { cursor++; break; }
+    throw new Error('Preload list contains a nonliteral expression or invalid separator');
+  }
+  skipTrivia();
+  // Reject e.g. [...78 literals].concat(dynamic): the textual inventory
+  // would otherwise pass its count check but omit runtime preload entries.
+  if (text[cursor]!==';' && text[cursor]!=='}')
+    throw new Error('Preload list must be a standalone literal array');
+  if(paths.length!==78 || new Set(paths).size!==78)
     throw new Error('Expected exactly 78 unique source preload paths, got '+paths.length);
   return paths.sort();
 }
+
 export function generateSyntheticPack(outputDir,sourceText=readFileSync(source,'utf8')) {
   const destination=resolve(outputDir);
   if(existsSync(destination))
