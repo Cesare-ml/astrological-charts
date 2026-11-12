@@ -84,6 +84,26 @@ test('rejects an altered approved file even after the server has started',async(
   });
 });
 
+test('CORS preflight and HEAD never bypass local origin or asset integrity checks',async()=>{
+  await withAssetServer(async({url,root,file})=>{
+    const path='/assets/'+file;
+    const options=await fetch(url+path,{
+      method:'OPTIONS',headers:{Origin:'http://127.0.0.1:4200'}
+    });
+    assert.equal(options.status,204);
+    assert.equal(options.headers.get('access-control-allow-origin'),'http://127.0.0.1:4200');
+    assert.match(options.headers.get('access-control-allow-methods'),/HEAD/);
+    const rejected=await fetch(url+path,{
+      method:'OPTIONS',headers:{Origin:'https://evil.example'}
+    });
+    assert.equal(rejected.status,403);
+    writeFileSync(join(root,...file.split('/')),'tampered after startup');
+    const head=await fetch(url+path,{method:'HEAD'});
+    assert.equal(head.status,409);
+    assert.equal((await head.arrayBuffer()).byteLength,0);
+  });
+});
+
 test('requires an approved manifest with valid SHA-256 and safe local origins',async()=>{
   const dir=mkdtempSync(join(tmpdir(),'chart-verified-'));
   try {
