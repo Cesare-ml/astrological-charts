@@ -37,7 +37,8 @@
     "verify:angular": "npm run preflight && npm run build:library && npm run build:demo",
     "test:astro-preview": "node --test tests/virgostars-astro-image-preview.test.mjs",
     "test:astro-overlay": "node --test tests/private-astro-overlay.test.mjs",
-    "test:astro-preview-scope": "node --test tests/astro-preview-renderer-scope.test.mjs"
+    "test:astro-preview-scope": "node --test tests/astro-preview-renderer-scope.test.mjs",
+    "test:astro-preview-browser": "node --test tests/astro-preview-browser.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
