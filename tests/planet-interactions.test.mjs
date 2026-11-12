@@ -1252,7 +1252,6 @@ test('new focus render objects are owned before synchronous added callbacks',()=
   // The actual updateVisuals implementation is run with a tiny Three-like
   // controller host. Added callbacks clear its tracked lines immediately,
   // then replace the scene. No older stage may publish a disposed guide.
-  const update=methods[0].replace(/private updateVisuals\(\): void/,'updateVisuals()');
   const compiled=ts.transpileModule(`class AddedProbe {
     disposed=false;visualRevision=0;sceneRevision=0;
     scene:any={};pinned:any={layer:'natal',name:'Sun'};hovered:any=null;
@@ -1279,8 +1278,8 @@ test('new focus render objects are owned before synchronous added callbacks',()=
     },
     LineBasicMaterial:class {disposed=0;dispose(){this.disposed++;}},
     Line:class {
-      parent:any=null;geometry:any;material:any;name='';renderOrder=0;
-      constructor(geometry:any,material:any){this.geometry=geometry;this.material=material;}
+      parent=null;geometry=null;material=null;name='';renderOrder=0;
+      constructor(geometry,material){this.geometry=geometry;this.material=material;}
     }
   };
   const relation={
@@ -1300,12 +1299,12 @@ test('new focus render objects are owned before synchronous added callbacks',()=
     p.glyphs.set('natal:Sun',[sun]);
     p.glyphs.set('transit:Saturn',[saturn]);
     const scene={added:[],updateMatrixWorld(){},
-      add(line:any){
+      add(line){
         line.parent=this;
         this.added.push(line);
         p.onAdd?.(line);
       },
-      remove(line:any){line.parent=null;this.added=this.added.filter(v=>v!==line);}
+      remove(line){line.parent=null;this.added=this.added.filter(v=>v!==line);}
     };
     p.scene=scene;
     return {p,scene};
