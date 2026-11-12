@@ -483,3 +483,29 @@ normal demo readiness checks. The associated Node unit test checks
 source. Both tests use generated Three.js primitives only.
 Run them together with existing two-canvas/50-redraw and WebGL memory
 tests before approving integration.
+
+## Shared material focus isolation between chart canvases
+
+Two independent chart canvases can reuse one original
+`THREE.MeshBasicMaterial` (and one `THREE.Texture`). Focusing a
+planet in the first chart must not recolor unfocused bodies in the
+second, even when those bodies share the very same underlying
+material object. Focus creates temporary independent material
+copies; clearing or destroying a chart restores the original
+material without disposing shared textures.
+
+The new browser fixture
+`tests/fixtures/shared-material-isolation-harness.ts` checks
+single- and multi-material meshes, two simultaneous chart focuses,
+a focused Saturn mesh moved from A to B, and disposal order where
+the previous controller clears **after** the new one highlights.
+The destination must still restore the undisturbed original,
+never the previous controller's disposed clone.
+
+The Node `test:planet-interactions` suite also extracts and tests
+the current private material focus methods, including partial array
+replacement by a host. Run those tests with `check:types` and
+`test:demo-interactions` in Chrome/Firefox before integration.
+Only synthetic Three.js objects are used, without private chart
+images or ephemeris data. These changes remain unverified on
+the owner's Windows checkout.
