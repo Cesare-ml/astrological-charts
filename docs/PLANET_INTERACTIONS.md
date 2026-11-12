@@ -964,11 +964,59 @@ The destination aspect overlay and tint remain unaffected by source
 focus changes. The fixture is included in
 `npm run test:demo-interactions` and uses only synthetic data.
 
-**Limitations:** controllers are meant to own different scenes and
+**Scope:** controllers are meant to own different scenes and
 normal host lifecycle should call `setScene()` after rebuilds.
-If a host *shares the exact same material object* across unrelated
-scenes, material-level color mutation still requires host-level
-material separation; this change specifically guards transferred
-**mesh references**, not arbitrary cross-scene shared materials.
-The new Node/Angular/browser tests have not yet been run on the
-owner's Windows checkout. Keep PR #22 draft pending those checks.
+The separate focus-material isolation layer below addresses **shared
+base materials** as well as transferred mesh references. It does
+not make arbitrary shared scene geometry or host state safe.
+Node/Angular/browser validation on the owner's Windows checkout
+remains a release gate; keep PR #22 draft pending those checks.
+
+
+### Per-mesh focus materials: sharing without cross-chart tint (2026-11-12)
+
+**Problem:** Three.js allows multiple `Mesh` instances in different
+charts to reference the same `Material`. Previously
+`PlanetInteractionController.tintGlyph` called `paint.color.set()`
+on that shared original, so focusing natal Sun in chart A could also
+recolor a visually unrelated glyph in chart B, despite isolated
+scene and planet IDs.
+
+**Implementation:** each focused mesh now receives a **temporary
+material clone per tintable slot**; only those copies are recolored.
+The original unmodified material and its texture objects are retained
+and shared normally. A module-scoped `WeakMap<THREE.Material,
+THREE.Material>` records the untinted source of a focus clone,
+so a destination controller receiving an already-focused mesh can
+derive its own clone from the *original baseline*, not from a
+soon-to-be-disposed source clone.
+
+During `clearVisuals()`, scene replacement or controller destruction,
+the controller restores only material references still pointing to
+its own focus copies. If another controller or host replaced a whole
+material or individual array slot, that replacement is preserved.
+The controller disposes **only the clones it created**, not shared
+base materials or referenced textures. No planet enlargement,
+aspect calculation, image copying or source renderer mutation
+is introduced.
+
+**Regression gates:** `tests/planet-interactions.test.mjs` extracts
+the current private `tintGlyph` and `clearVisuals` methods and
+tests exact restoration/disposal, independent focus with one shared
+base, a multi-material symbol, cross-controller ownership takeover,
+and an externally replaced single material-array slot. The real
+Three.js browser fixture
+`tests/fixtures/shared-material-isolation-harness.ts` creates two
+chart scenes sharing one source material and texture and transfers
+an already-focused Saturn between them. It checks palette isolation,
+texture identity, one-time disposal of focused clones, restoration
+to the *live* base and unchanged palette after subsequent focus
+cycles. The new Playwright case is registered in
+`npm run test:demo-interactions`.
+
+**Limits and validation:** this isolates materials modified by
+interactive focus, **not** all shared mutable Three.js resources in
+third-party scenes. Shader/program counts and visual equivalence
+require real Chrome/Firefox and WebGL memory tests. The owner has
+not yet executed the revised tests on Windows; they must pass
+before merge, publication or VirgoStars Desktop integration.
