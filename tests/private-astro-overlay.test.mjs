@@ -42,7 +42,7 @@ async function withPrivatePack(fn) {
       assets.push({
         id, maskPath: path, maskSha256: SHA(img),
         sourceSha256: SHA('synthetic original ' + id),
-        dimensions: [512, 512], coveragePixels: 1,
+        dimensions: [512, 512], coveragePixels: 512 * 512,
       });
     }
     const manifest = { schemaVersion: 1, assets };
@@ -98,6 +98,25 @@ test('rejects changed bytes, unexpected PNG dimensions and symlinks',async t=>{
       throw err;
     }
     assert.throws(()=>verifyPrivateAstroOverlay(root,manifest,approval),/symlink forbidden/);
+  });
+});
+
+test('rejects nonwhite pixels and incorrect alpha counts even if SHA-256 was refreshed',async()=>{
+  await withPrivatePack(async({root,manifest,approval})=>{
+    const target=join(root,'img/virgostars-astro/masks/aries.png');
+    const original=readFileSync(target);
+    const bad=await sharp({
+      create:{width:512,height:512,channels:4,
+        background:{r:0,g:0,b:0,alpha:1}}
+    }).png().toBuffer();
+    writeFileSync(target,bad);
+    const altered=structuredClone(manifest);
+    altered.assets[0].maskSha256=SHA(bad);
+    assert.throws(()=>verifyPrivateAstroOverlay(root,altered,approval),/nonwhite visible RGB/);
+    writeFileSync(target,original);
+    const coverage=structuredClone(manifest);
+    coverage.assets[0].coveragePixels=512 * 512 - 1;
+    assert.throws(()=>verifyPrivateAstroOverlay(root,coverage,approval),/alpha coverage differs/);
   });
 });
 
