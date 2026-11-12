@@ -92,6 +92,11 @@ node --test tests/verify-local-runner.test.mjs
   lockfile, and `-SkipInstall` with and without `node_modules`. The suite
   checks actual process exit status and parses the emitted JSON report.
   It is **SKIPPED automatically on non-Windows** hosts.
+  The fake `npm.cmd` implements `--version` (returning a synthetic version)
+  separately from the logged `ci` and `run verify:angular` calls, so
+  version detection does not alter the expected command sequence. Disposable
+  directories deliberately have no `.git`; the runner does not attempt a
+  Git revision lookup there and records `revision: "not available"`.
 
 The Windows integration suite never invokes real npm; its fake executable
 tests only the **control flow and report writing** of PowerShell. The normal
