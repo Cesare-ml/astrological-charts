@@ -92,6 +92,21 @@ export function planChartCoordinateEffects(
 
   const impacts: ChartCoordinateImpact[] = [];
   for (const members of wheels.values()) {
+    // Scene reparenting cannot merge independent longitude layouts. Every
+    // ring is produced by one renderer call with a common layer,
+    // ascendant, degree offset, and outer-leader option. Confirm those
+    // prerequisites even when the body names are all distinct.
+    const first = members[0];
+    for (const member of members) {
+      const anchor = chartPlanetKey(first.ref);
+      if (member.ref.layer !== first.ref.layer)
+        issues.push('mixed-wheel-layers:'+anchor);
+      if (!Object.is(member.layout.ascendant,first.layout.ascendant) ||
+          !Object.is(member.layout.degreesOffset,first.layout.degreesOffset))
+        issues.push('mixed-wheel-orientation:'+anchor);
+      if (member.layout.outerLeaderEnabled !== first.layout.outerLeaderEnabled)
+        issues.push('mixed-wheel-leader-mode:'+anchor);
+    }
     // Avoid inherited properties in the legacy name-keyed collision inputs.
     // '__proto__' is also unsafe for the legacy output's plain-object
     // assignment: it changes the result prototype instead of adding a key.

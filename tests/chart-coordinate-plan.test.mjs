@@ -179,3 +179,63 @@ test('special prototype key fails closed without changing existing chart layout'
   }
   assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
 });
+
+
+test('an independently constructed transit body cannot join a natal collision wheel',()=>{
+  const {scene,targets,owners}=sceneWithBodies();
+  const saturn=owners.get('transit:Saturn').group;
+  const natalRing=owners.get('natal:Sun').group.parent;
+  const originalParent=saturn.parent;
+  natalRing.add(saturn);
+  const plan=planChartCoordinateEffects(scene,targets);
+  assert.equal(plan.decision,'unsupported');
+  assert.deepEqual(plan.impacts,[]);
+  assert.ok(plan.issues.includes('mixed-wheel-layers:natal:Sun'),plan.issues.join(','));
+  originalParent.add(saturn);
+  assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+});
+
+test('one wheel must use consistent ascendant and degree offsets',()=>{
+  const {scene,targets,owners}=sceneWithBodies();
+  const moon=owners.get('natal:Moon');
+  const previous=moon.group.userData.chartBodyLayout;
+  const previousAngle=moon.glyph.userData.chartAspectAngle;
+  const attempt=(changes)=>{
+    const layout={...previous,...changes};
+    layout.tickDegrees=75-layout.ascendant+15+layout.original+layout.degreesOffset;
+    moon.group.userData.chartBodyLayout=layout;
+    moon.glyph.userData.chartAspectAngle=THREE.MathUtils.degToRad(layout.tickDegrees);
+    const plan=planChartCoordinateEffects(scene,targets);
+    assert.equal(plan.decision,'unsupported');
+    assert.deepEqual(plan.impacts,[]);
+    assert.ok(plan.issues.includes('mixed-wheel-orientation:natal:Sun'),plan.issues.join(','));
+  };
+  try {
+    attempt({ascendant:previous.ascendant+1});
+    attempt({degreesOffset:previous.degreesOffset+11});
+  } finally {
+    moon.group.userData.chartBodyLayout=previous;
+    moon.glyph.userData.chartAspectAngle=previousAngle;
+  }
+  assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+});
+
+test('per-body valid but mixed outer leader modes require a full chart rebuild',()=>{
+  const {scene,targets,owners}=sceneWithBodies();
+  const moon=owners.get('natal:Moon');
+  const oldLayout=moon.group.userData.chartBodyLayout;
+  const outer=new THREE.Object3D();
+  outer.userData.chartBodyVisualRole='outer-leader';
+  moon.group.add(outer);
+  moon.group.userData.chartBodyLayout={...oldLayout,outerLeaderEnabled:true};
+  try {
+    const plan=planChartCoordinateEffects(scene,targets);
+    assert.equal(plan.decision,'unsupported');
+    assert.deepEqual(plan.impacts,[]);
+    assert.ok(plan.issues.includes('mixed-wheel-leader-mode:natal:Sun'));
+  } finally {
+    moon.group.remove(outer);
+    moon.group.userData.chartBodyLayout=oldLayout;
+  }
+  assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+});

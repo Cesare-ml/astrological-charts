@@ -137,6 +137,51 @@ window.runChartCoordinatePlanProbe = () => {
       && invalidBaseline.issues.includes('stale-collision-layout:natal:Sun');
     owner.userData['chartBodyLayout']=originalLayout;
 
+    // Independently rendered natal/transit layers must not be merged
+    // by reparenting a body into another wheel.
+    const saturn=glyphs[4].parent as THREE.Group;
+    const transitParent=saturn.parent as THREE.Object3D;
+    const natalParent=glyphs[0].parent?.parent as THREE.Object3D;
+    natalParent.add(saturn);
+    const wrongLayerWheel=planChartCoordinateEffects(scene,snapshot);
+    result['mixedWheelLayerFailsClosed'+suffix]=
+      wrongLayerWheel.decision==='unsupported'
+      && wrongLayerWheel.impacts.length===0
+      && wrongLayerWheel.issues.includes('mixed-wheel-layers:natal:Sun');
+    transitParent.add(saturn);
+
+    const moonOwner=glyphs[1].parent as THREE.Group;
+    const moonLayout=moonOwner.userData['chartBodyLayout'];
+    const moonAngle=glyphs[1].userData['chartAspectAngle'];
+    const differentAsc={...moonLayout,ascendant:moonLayout.ascendant+5};
+    differentAsc.tickDegrees=75-differentAsc.ascendant+15
+      +differentAsc.original+differentAsc.degreesOffset;
+    moonOwner.userData['chartBodyLayout']=differentAsc;
+    glyphs[1].userData['chartAspectAngle']=THREE.MathUtils.degToRad(
+      differentAsc.tickDegrees
+    );
+    const wrongOrientation=planChartCoordinateEffects(scene,snapshot);
+    result['mixedWheelOrientationFailsClosed'+suffix]=
+      wrongOrientation.decision==='unsupported'
+      && wrongOrientation.impacts.length===0
+      && wrongOrientation.issues.includes('mixed-wheel-orientation:natal:Sun');
+    moonOwner.userData['chartBodyLayout']=moonLayout;
+    glyphs[1].userData['chartAspectAngle']=moonAngle;
+
+    const outer=new THREE.Object3D();
+    outer.userData['chartBodyVisualRole']='outer-leader';
+    moonOwner.add(outer);
+    moonOwner.userData['chartBodyLayout']={...moonLayout,outerLeaderEnabled:true};
+    const wrongLeaders=planChartCoordinateEffects(scene,snapshot);
+    result['mixedWheelLeaderModeFailsClosed'+suffix]=
+      wrongLeaders.decision==='unsupported'
+      && wrongLeaders.impacts.length===0
+      && wrongLeaders.issues.includes('mixed-wheel-leader-mode:natal:Sun');
+    moonOwner.remove(outer);
+    moonOwner.userData['chartBodyLayout']=moonLayout;
+    result['restoredWheelRemainsValid'+suffix]=
+      planChartCoordinateEffects(scene,snapshot).decision==='unchanged';
+
     const geometries=new Set<THREE.BufferGeometry>();
     const materials=new Set<THREE.Material>();
     scene.traverse(object=>{

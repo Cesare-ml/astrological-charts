@@ -283,3 +283,24 @@ regression and the normal/southern-mirrored browser fixture test the
 failure, untouched geometry, and successful planning after restoring
 the original Sun identity. The browser fixture still requires an
 actual Chromium/Firefox run before merge.
+
+
+### Reject mixed visual-wheel origins before planning coordinate changes
+
+Even if every `chart-planet-body` owner passes its individual metadata
+inspection, the parent Three.js group is not automatically a valid
+collision ring. The original wheel renderer creates one ring at a time,
+with one `natal`/`transit`/`synastry` layer, ascendant, degree
+offset and outer-leader option. Cross-scene reparenting or inconsistent
+host options can violate these shared invariants without changing any
+individual body's true angle.
+
+The read-only coordinate planner now rejects such groups with
+`mixed-wheel-layers`, `mixed-wheel-orientation` or
+`mixed-wheel-leader-mode`, with zero returned impacts. This guard is
+applied before accepting the ring's previous or proposed layout, even
+when every body has a different name. Existing protection for unsafe
+property keys and duplicate names remains intact. New synthetic Node
+and normal/mirrored browser tests cover mixed wheels and restoration.
+The live renderer still rebuilds the scene on coordinate changes;
+this patch does not perform partial geometry updates.
