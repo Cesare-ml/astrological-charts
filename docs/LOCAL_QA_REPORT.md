@@ -80,7 +80,22 @@ generated JSON alone.
 node --test tests/verify-local-runner.test.mjs
 ```
 
-This is a **source-contract test**. Running it with Node checks that the
-PowerShell script targets the correct canonical gate and produces the intended
-report fields. It does **not** execute PowerShell or `npm ci`. Run the actual
-`verify-local.ps1` on a Windows checkout before shipping this change.
+`npm run test:verify-local` now includes **two complementary suites**:
+
+- `tests/verify-local-runner.test.mjs`: source-contract tests runnable on
+  Windows, Linux and macOS. They check that the runner uses the canonical gate
+  and includes the required report fields.
+- `tests/verify-local-windows.integration.test.mjs`: executes **real Windows
+  PowerShell** from five disposable directories, with a temporary `npm.cmd`
+  stub placed first in the child process PATH. The stub logs commands and
+  simulates successful npm, failed `npm ci`, failed `verify:angular`, absent
+  lockfile, and `-SkipInstall` with and without `node_modules`. The suite
+  checks actual process exit status and parses the emitted JSON report.
+  It is **SKIPPED automatically on non-Windows** hosts.
+
+The Windows integration suite never invokes real npm; its fake executable
+tests only the **control flow and report writing** of PowerShell. The normal
+`powershell -NoProfile -File .\\scripts\\verify-local.ps1` command still needs
+to run in a clean real checkout to validate dependency installation, Angular
+tests and builds. No green mocked-npm result means the application builds, its
+browser screenshots are correct, or Astrolabio has been tested.
