@@ -33,7 +33,11 @@ export function resolveChartAssetUrl(reference: string, publicAssetsBase: string
   else if (!path.startsWith('img/') && !path.startsWith('fonts/')) path = `img/${path}`;
 
   const segments = path.split('/');
-  if (segments.some((part) => part === '' || part === '.' || part === '..')) {
+  // Asset references must be literal manifest paths. Percent-encoded dot segments
+  // (such as %2e%2e) can become traversal when the browser parses the URL.
+  // Reject encoded bytes and control characters before handing paths to a host.
+  if (segments.some((part) => part === '' || part === '.' || part === '..'
+    || /[%\u0000-\u001f\u007f]/.test(part))) {
     throw new Error(`Invalid chart asset path: ${reference}`);
   }
 
