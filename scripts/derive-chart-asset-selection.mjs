@@ -26,6 +26,18 @@ function propertyName(node) {
 function literal(node) {
   return node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) ? node.text : null;
 }
+function dynamicReference(node, source, origin, property) {
+  // Surface unsupported expressions without embedding arbitrary source text
+  // (which may contain host-specific information) in the JSON report.
+  const { line, character } = source.getLineAndCharacterOfPosition(node.getStart(source));
+  return {
+    reference: '<dynamic ' + property + '>',
+    origin,
+    problem: 'Non-literal asset reference at ' + source.fileName + ':'
+      + (line + 1) + ':' + (character + 1)
+      + '; enumerate the required asset paths explicitly before packaging',
+  };
+}
 // Parse active TypeScript AST nodes, not comments or historical example URLs.
 export function extractStaticReferences(skinsTs, imagesTs) {
   const refs = [];
@@ -33,16 +45,23 @@ export function extractStaticReferences(skinsTs, imagesTs) {
     if (ts.isPropertyAssignment(node) && ['texture', 'imgRisuonatoreSolare'].includes(propertyName(node.name))) {
       const value = literal(node.initializer);
       if (value) refs.push({ reference: value, origin: 'skin' });
+      // null and empty strings mean "no texture" in the existing skins.
+      else if (value === null && node.initializer.kind !== ts.SyntaxKind.NullKeyword)
+        refs.push(dynamicReference(node.initializer, skinsTs, 'skin', propertyName(node.name)));
     }
     ts.forEachChild(node, visitSkins);
   }
   ts.forEachChild(skinsTs, visitSkins);
   function visitImages(node) {
-    if (ts.isPropertyDeclaration(node) && propertyName(node.name) === 'preloadArraySimboli'
-        && node.initializer && ts.isArrayLiteralExpression(node.initializer)) {
-      for (const item of node.initializer.elements) {
-        const value = literal(item);
-        if (value) refs.push({ reference: value, origin: 'preload' });
+    if (ts.isPropertyDeclaration(node) && propertyName(node.name) === 'preloadArraySimboli') {
+      if (!node.initializer || !ts.isArrayLiteralExpression(node.initializer)) {
+        refs.push(dynamicReference(node, imagesTs, 'preload', 'preloadArraySimboli'));
+      } else {
+        for (const item of node.initializer.elements) {
+          const value = literal(item);
+          if (value) refs.push({ reference: value, origin: 'preload' });
+          else refs.push(dynamicReference(item, imagesTs, 'preload', 'preloadArraySimboli'));
+        }
       }
     }
     ts.forEachChild(node, visitImages);
@@ -82,7 +101,12 @@ export function deriveSelection(assetsRoot, sourceRoot = DEFAULT_SOURCE) {
   const refs = extractStaticReferences(skins, images);
   const referenced = new Set();
   const unresolved = [];
-  for (const { reference, origin } of refs) {
+  const literalRefs = refs.filter(ref => !ref.problem);
+  for (const { reference, origin, problem } of refs) {
+    if (problem) {
+      unresolved.push({ reference, origin, problem });
+      continue;
+    }
     let path;
     try { path = assetPath(reference); } catch (err) {
       unresolved.push({ reference, origin, problem: err.message });
@@ -97,8 +121,9 @@ export function deriveSelection(assetsRoot, sourceRoot = DEFAULT_SOURCE) {
   const report = {
     schemaVersion: 1,
     scope: 'Conservative chart families, not a device-minimal selection',
-    totalLiteralReferences: refs.length,
-    uniqueLiteralReferences: new Set(refs.map(r => r.reference)).size,
+    totalLiteralReferences: literalRefs.length,
+    uniqueLiteralReferences: new Set(literalRefs.map(r => r.reference)).size,
+    nonLiteralExpressions: refs.length - literalRefs.length,
     discoveredFamilyFiles: discovered.size,
     selectedFiles: files.length,
     unresolved,
@@ -125,7 +150,7 @@ function cli(argv) {
   const { files, report } = deriveSelection(args['--root'], args['--source'] || DEFAULT_SOURCE);
   writeFileSync(args['--report'], JSON.stringify(report, null, 2) + '\n');
   if (report.unresolved.length) {
-    console.error('Blocked: ' + report.unresolved.length + ' unresolved literal references. Details: ' + args['--report']);
+    console.error('Blocked: ' + report.unresolved.length + ' unresolved or non-literal asset references. Details: ' + args['--report']);
     process.exitCode = 2;
     return;
   }
