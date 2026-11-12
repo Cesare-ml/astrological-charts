@@ -30,10 +30,11 @@ function dynamicReference(node, source, origin, property) {
   // Surface unsupported expressions without embedding arbitrary source text
   // (which may contain host-specific information) in the JSON report.
   const { line, character } = source.getLineAndCharacterOfPosition(node.getStart(source));
+  const file = origin === 'skin' ? '@skin-manager.ts' : 'gestore-immagini.ts';
   return {
     reference: '<dynamic ' + property + '>',
     origin,
-    problem: 'Non-literal asset reference at ' + source.fileName + ':'
+    problem: 'Non-literal asset reference at ' + file + ':'
       + (line + 1) + ':' + (character + 1)
       + '; enumerate the required asset paths explicitly before packaging',
   };
