@@ -24,13 +24,13 @@ Choose natal, transits, synastry or latitudes, one of the seven skins, zoom and 
 
 ## Approved real asset pack
 
-Clone the private `astrological-assets` repository next to `astrological-charts` and start the manifest-verified server from the Charts directory:
+Clone the publicly readable [`Cesare-ml/astrological-assets`](https://github.com/Cesare-ml/astrological-assets) repository next to `astrological-charts` and start the manifest-verified server from the Charts directory. Public visibility does not clear individual artwork for redistribution: review the asset repository's rights policy before any distribution.
 
 ```sh
 npm run demo:assets:repo
 ```
 
-Then start `npm run demo` in a separate terminal. The server verifies the supplied manifest and allows only its listed, hash-matching files. The private pack contains 1,013 owner-authorized images; no font files are included. On 2026-11-10 the four demo modes and seven skins passed locally with this pack in Chromium and Firefox. This is not a comparison with an approved production baseline and does not prove all advanced options have complete assets.
+Then start `npm run demo` in a separate terminal. The server verifies the supplied manifest and allows only its listed, hash-matching files. The separate pack contains 1,013 images listed in its SHA-256 manifest; no font files are included. Verify the checked-out pack with `npm run verify:pack` from `astrological-assets` before starting the chart demo. This integrity check does not grant redistribution rights. On 2026-11-10 the four demo modes and seven skins passed locally with this pack in Chromium and Firefox. This is not a comparison with an approved production baseline and does not prove all advanced options have complete assets.
 
 The owner selected the existing `risuonatore-solare-bn.png` for the two monochrome skins. Latitude house symbols use the same white source images as the base chart, tinted by the chosen skin. Natal latitude planet markers use `_circle` images; transit markers keep their outlined-ring images. Skin-specific settings and colors remain separate from the shared artwork family.
 
