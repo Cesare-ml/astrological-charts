@@ -57,6 +57,8 @@ npm run build:library
 npm run build:demo
 ```
 
+Alternatively, run `npm run verify:angular` after `npm ci` to execute the preflight and both Angular builds sequentially. This is a local convenience command, **not** a browser/WebGL test or a substitute for the manual Chromium/Firefox and asset-manifest checks below. It does not publish or deploy anything.
+
 For actual Three.js rendering, generate the synthetic pack (`npm run demo:pack`) and run `npm run demo:assets` and `npm run demo` in separate terminals. In a third terminal run `npm run test:demo` in Chromium, then install the Playwright-compatible Firefox and run `CHART_TEST_BROWSER=firefox npm run test:demo` in a POSIX shell (or set `$env:CHART_TEST_BROWSER = 'firefox'` in PowerShell). Inspect the saved PNGs for all four modes and seven skins, plus keyboard focus and PNG export. Run `npm run test:offline` separately for the synthetic offline smoke test. For approved original artwork, use only the separate manifest-verified `astrological-assets` checkout; verify its hashes with the local asset server and do not commit or redistribute its files. A successful synthetic run does not establish real-artwork visual parity, scientific correctness or Astrolabio device compatibility.
 
 Record each command as **PASS**, **FAIL** or **NOT RUN**, with its exit code and environment. Do not infer success from static inspection, a GitHub commit, or the PR mergeability indicator. Leave the PR in Draft if any required validation is unavailable or fails; no GitHub Actions, npm publishing or production deployment is implied.
