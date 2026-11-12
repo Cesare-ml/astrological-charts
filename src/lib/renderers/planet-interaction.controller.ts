@@ -366,25 +366,29 @@ export class PlanetInteractionController {
       // A host or another controller may have replaced the material of a
       // transferred mesh since this controller assigned its focus clone.
       // Never overwrite another controller's currently active material.
+      const copies = Array.isArray(focused) ? focused : [focused];
+      const originals = Array.isArray(original) ? original : [original];
+      // Restore only materials still owned by this controller. A host may
+      // reorder, add/remove slots, or switch array <-> single material while
+      // focus is active. Looking up by old slot index could leave a disposed
+      // clone attached, so match individual clone identities instead.
+      const owned = new Map<THREE.Material, THREE.Material>();
+      copies.forEach((copy, index) => {
+        if (copy !== originals[index]) owned.set(copy, originals[index]);
+      });
       const current = mesh.material;
-      if (Array.isArray(focused) && Array.isArray(original) && Array.isArray(current)) {
-        // Arrays can be updated slot-by-slot by another scene/host while
-        // one focus is active. Restore only slots still using our clones.
-        const restored = current.map((material, index) =>
-          material === focused[index] ? original[index] : material
-        );
+      if (Array.isArray(current)) {
+        const restored = current.map(material => owned.get(material) ?? material);
         if (restored.some((material, index) => material !== current[index])) {
           mesh.material = restored;
         }
-      } else if (current === focused) {
-        mesh.material = original;
+      } else {
+        const base = owned.get(current);
+        if (base) mesh.material = base;
       }
-      const copies = Array.isArray(focused) ? focused : [focused];
-      const originals = Array.isArray(original) ? original : [original];
-      for (const material of new Set(copies)) {
-        // A non-tintable material was left untouched, not cloned.
-        if (!originals.includes(material)) material.dispose();
-      }
+      // All of our clones have now been detached from this mesh. Never
+      // dispose host-owned materials or another controller's replacement.
+      for (const copy of owned.keys()) copy.dispose();
     }
     this.glyphMaterialOverrides.clear();
     for (const [attribute, values] of this.natalLineColors) {
