@@ -403,6 +403,10 @@ export class PlanetInteractionController {
     this.natalFocusOverlays = [];
     this.lines = [];
     this.transitGuides = new Map();
+    // Restore the native natal palette BEFORE disposing any focus material.
+    // THREE.Material.dispose() synchronously notifies host listeners, which
+    // may paint a newer selection. An older restore after that callback
+    // would overwrite the new color and corrupt its baseline snapshot.
     for (const [mesh, {original, focused}] of materials) {
       // A host or another controller may have replaced the material of a
       // transferred mesh since this controller assigned its focus clone.
