@@ -347,6 +347,45 @@ test('focus uses independent material clones, with safe transfer and disposal', 
   assert.ok(mixedCopies.every(copy=>copy.disposed===1));
   assert.equal(external.disposed,0);
 
+  // A host may collapse a material ARRAY to a single currently focused
+  // slot. Teardown must not leave that clone attached after disposing it.
+  const collapsed = {material:[shared,shared]};
+  a.tintGlyph(collapsed,'#ff0000');
+  const collapsedCopies = collapsed.material;
+  collapsed.material = collapsedCopies[1];
+  a.clearVisuals();
+  assert.equal(collapsed.material,shared,
+    'array-to-single host replacement must restore the surviving clone');
+  assert.ok(collapsedCopies.every(copy=>copy.disposed===1));
+  assert.equal(shared.disposed,0);
+
+  // The inverse change is also legal: a host can wrap an existing focused
+  // material in a new array containing external materials.
+  const expanded = {material:shared};
+  a.tintGlyph(expanded,'#ff0000');
+  const expandedCopy = expanded.material;
+  expanded.material = [external,expandedCopy];
+  a.clearVisuals();
+  assert.deepEqual(expanded.material,[external,shared],
+    'single-to-array changes must preserve host material order');
+  assert.equal(expandedCopy.disposed,1);
+  assert.equal(external.disposed,0);
+
+  // Reordering active clone slots must not restore by their OLD indexes:
+  // every clone retains its own baseline, independent of array position.
+  const firstBase = material('#345678');
+  const secondBase = material('#abcdef');
+  const reordered = {material:[firstBase,secondBase]};
+  a.tintGlyph(reordered,'#ff0000');
+  const reorderedCopies = reordered.material;
+  reordered.material = [reorderedCopies[1],external,reorderedCopies[0]];
+  a.clearVisuals();
+  assert.deepEqual(reordered.material,[secondBase,external,firstBase]);
+  assert.ok(reorderedCopies.every(copy=>copy.disposed===1));
+  assert.equal(firstBase.disposed,0);
+  assert.equal(secondBase.disposed,0);
+  assert.equal(external.disposed,0);
+
   const nonTintable={disposed:0,clone(){throw Error('should not clone')},
     dispose(){this.disposed++}};
   const mesh={material:nonTintable};

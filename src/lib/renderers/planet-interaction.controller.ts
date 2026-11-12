@@ -384,25 +384,28 @@ export class PlanetInteractionController {
       // A host or another controller may have replaced the material of a
       // transferred mesh since this controller assigned its focus clone.
       // Never overwrite another controller's currently active material.
+      const copies = Array.isArray(focused) ? focused : [focused];
+      const originals = Array.isArray(original) ? original : [original];
+      // Match by owned clone identity, not by an old material-array index.
+      // The host may collapse, expand or reorder the material layout while
+      // focused; replacing only our clones preserves its other changes.
+      const owned = new Map<THREE.Material, THREE.Material>();
+      copies.forEach((copy, index) => {
+        if (copy !== originals[index]) owned.set(copy, originals[index]);
+      });
       const current = mesh.material;
-      if (Array.isArray(focused) && Array.isArray(original) && Array.isArray(current)) {
-        // Arrays can be updated slot-by-slot by another scene/host while
-        // one focus is active. Restore only slots still using our clones.
-        const restored = current.map((material, index) =>
-          material === focused[index] ? original[index] : material
-        );
+      if (Array.isArray(current)) {
+        const restored = current.map(material => owned.get(material) ?? material);
         if (restored.some((material, index) => material !== current[index])) {
           mesh.material = restored;
         }
-      } else if (current === focused) {
-        mesh.material = original;
+      } else {
+        const baseline = owned.get(current);
+        if (baseline) mesh.material = baseline;
       }
-      const copies = Array.isArray(focused) ? focused : [focused];
-      const originals = Array.isArray(original) ? original : [original];
-      for (const material of new Set(copies)) {
-        // A non-tintable material was left untouched, not cloned.
-        if (!originals.includes(material)) material.dispose();
-      }
+      // The ownership maps were detached before disposal; reentrant host
+      // callbacks cannot accidentally dispose these same clones twice.
+      for (const copy of owned.keys()) copy.dispose();
     }
     for (const [attribute, values] of natalColors) {
       for (let i = 0; i < values.length; i += 3) {

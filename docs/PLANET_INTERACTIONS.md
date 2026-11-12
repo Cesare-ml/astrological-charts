@@ -71,6 +71,22 @@ actual Chromium and Firefox runs with local assets and manual review.
 Keep those stacked PRs independent: both currently add the same filename,
 and neither should be integrated twice.
 
+## Focus clone ownership under dynamic material layouts
+
+The interactive controller temporarily clones focus-tinted `THREE.Material`
+instances; the original host materials and textures remain owned by the chart.
+When host rendering changes a focused glyph from a single material to an array,
+collapses an array to one slot, reorders an array or replaces individual slots,
+cleanup must restore **only** still-owned clone identities to their matching
+baseline materials. It must not restore by stale array index, overwrite a
+different controller's tint or dispose a newly installed host material.
+
+`npm run test:planet-interactions` includes synthetic material ownership
+regressions for these shape changes, slot reordering, material transfer and
+partial replacement. These are code-level tests; true Three.js/WebGL lifetime,
+multi-canvas behavior, PNG and Firefox/Chromium verification remain required
+before draft PR #22 can merge to `main`.
+
 ## Multi-chart lifetime regression
 
 The opt-in browser suite `npm run test:demo-interactions` now includes a two-canvas test with the same planet identities in **independent** controllers. It checks that events and active overlays cannot leak between charts; repeats **50 synthetic scene replacements** with a pinned natal planet; observes `dispose` notifications on each retired overlay's geometry and material; verifies scaling is restored; checks southern-hemisphere mirror coordinates; and ensures both canvases stop emitting pointer events after their controllers are destroyed. It does not instantiate a WebGLRenderer or measure GPU-memory usage. Visual Chrome/Firefox and full WebGL tests are still separate merge gates.
