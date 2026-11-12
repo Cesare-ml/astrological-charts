@@ -8,6 +8,8 @@ import sharp from 'sharp';
 // existing local Angular demo (:4200) and approved/synthetic assets (:4177).
 // This test intentionally does not patch the renderer, demo or scene.
 const browserName = process.env.CHART_TEST_BROWSER || 'chromium';
+assert.ok(['chromium', 'firefox'].includes(browserName),
+  'CHART_TEST_BROWSER must be chromium or firefox');
 assert.ok(['chromium', 'firefox'].includes(browserName));
 const candidates = browserName === 'firefox'
   ? [process.env.FIREFOX_PATH, firefox.executablePath()].filter(Boolean)
@@ -33,6 +35,10 @@ async function selected(page, expected) {
 }
 
 async function chartSnapshot(page) {
+  // Wait for the queued Three.js paint to complete before reading pixels.
+  // This is more deterministic than relying solely on a fixed timeout.
+  await page.evaluate(() => new Promise(resolve =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve))));
   // Screenshot the CANVAS alone; sidebar changes cannot create a false pass.
   const png = await page.locator('[data-testid=chart]').screenshot();
   const { data, info } = await sharp(png).removeAlpha().raw()
@@ -41,7 +47,9 @@ async function chartSnapshot(page) {
   const state = await page.evaluate(() => {
     const canvas = document.querySelector('[data-testid=chart]');
     const bounds = canvas.getBoundingClientRect();
-    const gl = canvas.getContext('webgl2');
+    // Three.js may have initialized WebGL1 instead of WebGL2.
+    // Both are valid, but a canvas without either context is not a valid test.
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
     let camera = null;
     let sceneId = null;
     // In Angular dev mode the debug API may expose the service. It is
@@ -68,11 +76,15 @@ async function chartSnapshot(page) {
       canvasWidth: canvas.width, canvasHeight: canvas.height,
       clientWidth: bounds.width, clientHeight: bounds.height,
       drawingBuffer: gl ? [gl.drawingBufferWidth, gl.drawingBufferHeight] : null,
+      hasWebGL: !!gl && !gl.isContextLost(),
       renderRevision: Number(document.querySelector('[data-testid=status]')
         ?.getAttribute('data-render-revision')),
       camera, sceneId,
     };
   });
+  assert.ok(state.hasWebGL, 'A live WebGL canvas is required; CSS-only screenshots are insufficient');
+  assert.ok(state.drawingBuffer?.every(value => value > 0),
+    'WebGL drawing buffer must be nonzero');
   return { data, info, state };
 }
 
@@ -107,7 +119,7 @@ function pixelDifference(before, after) {
 function assertViewInvariants(before, after, context) {
   const a = before.state, b = after.state;
   for (const key of ['canvasWidth', 'canvasHeight', 'clientWidth', 'clientHeight',
-    'drawingBuffer', 'renderRevision']) {
+    'drawingBuffer', 'hasWebGL', 'renderRevision']) {
     assert.deepEqual(b[key], a[key], context + ': unexpected ' + key + ' change');
   }
   if (a.camera && b.camera && a.sceneId && b.sceneId) {
