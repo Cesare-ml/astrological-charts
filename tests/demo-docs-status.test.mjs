@@ -19,3 +19,10 @@ test('demo distinguishes public renderer source from restricted real artwork', (
   assert.match(demo, /no font files are included/i);
   assert.match(demo, /not a comparison with an approved production baseline/i);
 });
+
+test('package metadata describes public source without implying an approved release', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(pkg.description, /public source pending rights audit/i);
+  assert.doesNotMatch(pkg.description, /private collaborative/i);
+  assert.equal(pkg.private, true, 'npm publishing must remain disabled pending rights review');
+});
