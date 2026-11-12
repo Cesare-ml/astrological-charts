@@ -366,6 +366,21 @@ export class PlanetInteractionController {
     this.transitGuides.clear();
   }
 
+  /** Cached glyphs can be reparented after setScene(). Never recolor a
+   * symbol now owned by another chart, nor create aspect geometry with it.
+   * Traverse only the short parent chain, not the full scene on every hover.
+   */
+  private ownsGlyph(mesh: THREE.Mesh): boolean {
+    for (let node: THREE.Object3D | null = mesh; node; node = node.parent) {
+      if (node === this.scene) return true;
+    }
+    return false;
+  }
+
+  private activeGlyph(ref: ChartPlanetRef): THREE.Mesh | undefined {
+    return this.glyphs.get(chartPlanetKey(ref))?.find(mesh => this.ownsGlyph(mesh));
+  }
+
   /** Recolor only the on-screen glyph material, keeping the texture and
    * baseline skin tint untouched for future redraws/PNG exports.
    */
@@ -522,8 +537,8 @@ export class PlanetInteractionController {
       const id = [chartPlanetKey(link.from), chartPlanetKey(link.to), link.type].join('|');
       if (centralIds.has(id)) return false;
       centralIds.add(id);
-      const from = this.glyphs.get(chartPlanetKey(link.from))?.[0];
-      const to = this.glyphs.get(chartPlanetKey(link.to))?.[0];
+      const from = this.activeGlyph(link.from);
+      const to = this.activeGlyph(link.to);
       if (!from || !to) return false;
       for (const ref of [link.from,link.to]) {
         if (ref.layer !== 'transit') continue;
@@ -586,6 +601,7 @@ export class PlanetInteractionController {
       }
     }
     for (const key of related) for (const mesh of this.glyphs.get(key) ?? []) {
+      if (!this.ownsGlyph(mesh)) continue;
       // Focus is visual tint + aspect highlighting only. Never change the
       // glyph scale: hit targets and planet positions remain stable.
       const ref = mesh.userData['chartPlanet'] as ChartPlanetRef;
@@ -601,8 +617,8 @@ export class PlanetInteractionController {
       const id = [chartPlanetKey(link.from), chartPlanetKey(link.to), link.type].join('|');
       if (drawn.has(id)) continue;
       drawn.add(id);
-      const from = this.glyphs.get(chartPlanetKey(link.from))?.[0];
-      const to = this.glyphs.get(chartPlanetKey(link.to))?.[0];
+      const from = this.activeGlyph(link.from);
+      const to = this.activeGlyph(link.to);
       if (!from || !to) continue;
       const a = this.aspectEndpoint(from, to, true);
       const b = this.aspectEndpoint(from, to, false);
