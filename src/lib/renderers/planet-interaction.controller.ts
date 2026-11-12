@@ -274,6 +274,14 @@ export class PlanetInteractionController {
       if (node === this.scene) belongsToActiveScene = true;
     }
     if (!belongsToActiveScene) return false;
+    // A glyph can be visually absent even when material.visible is true:
+    // transparent opacity 0 still leaves its mesh in Raycaster results.
+    // Ignore that hit so an actually drawn planet behind it remains
+    // selectable. Keep opaque materials pickable even with opacity 0,
+    // because Three.js can still render them when blending is disabled.
+    const canPickMaterial = (item: THREE.Material | null | undefined): boolean =>
+      !!item && item.visible === true &&
+      (!item.transparent || (Number.isFinite(item.opacity) && item.opacity > 0));
     const material = (hit.object as THREE.Mesh).material;
     if (Array.isArray(material)) {
       // Multi-material meshes can hide individual triangle groups. A face
@@ -281,9 +289,9 @@ export class PlanetInteractionController {
       // visibility: never fall back to an unrelated visible group.
       const index = hit.face?.materialIndex;
       return Number.isSafeInteger(index) && index >= 0 && index < material.length
-        && material[index]?.visible === true;
+        && canPickMaterial(material[index]);
     }
-    return !!material && material.visible === true;
+    return canPickMaterial(material);
   }
 
   private pick(event: MouseEvent): ChartPlanetRef | null {
