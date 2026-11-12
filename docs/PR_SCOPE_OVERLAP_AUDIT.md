@@ -9,10 +9,10 @@ Fetch the specific PR branches you want to compare into distinct local refs usin
 ```powershell
 node scripts/check-pr-overlap.mjs --out .local/pr-overlap-report.json `
   main:fix/windows-full-verify-report-20261112 `
-  main:fix/chart-export-dimension-guards-20261112
+  main:fix/local-asset-server-host-header-20261112
 ```
 
-The second example above is **illustrative only**: PR #43 actually targets the PR #22 feature branch rather than `main`. In a real audit use each PR's actual base, as below:
+The first example compares two independent PRs targeting `main`. For stacked PRs such as #27 and #28, use the actual parent feature branch as their base:
 
 ```powershell
 node scripts/check-pr-overlap.mjs --out .local/pr-overlap-report.json `
