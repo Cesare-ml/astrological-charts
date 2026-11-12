@@ -57,3 +57,11 @@ test('local Angular validation runs preflight and both builds in order', () => {
   );
   assert.doesNotMatch(pkg.scripts['verify:angular'], /(?:deploy|publish|github-actions)/i);
 });
+
+test('contributor instructions use the full Angular verification command', () => {
+  const guide = readFileSync(new URL('../CONTRIBUTING.md', import.meta.url), 'utf8');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(guide, /npm run verify:angular/);
+  assert.equal(pkg.scripts['verify:angular'], 'npm run preflight && npm run build:library && npm run build:demo');
+  assert.match(guide, /PASS, FAIL or NOT RUN/);
+});
