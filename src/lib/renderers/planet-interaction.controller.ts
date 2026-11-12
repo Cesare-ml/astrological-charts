@@ -240,13 +240,14 @@ export class PlanetInteractionController {
     if (!belongsToActiveScene) return false;
     const material = (hit.object as THREE.Mesh).material;
     if (Array.isArray(material)) {
-      // Multi-material meshes can hide just one group of triangles.
+      // Multi-material meshes can hide individual triangle groups. A face
+      // with an unknown/non-integer material index has no trustworthy
+      // visibility: never fall back to an unrelated visible group.
       const index = hit.face?.materialIndex;
-      return typeof index === 'number' && index >= 0 && index < material.length
-        ? material[index].visible
-        : material.some(candidate => candidate.visible);
+      return Number.isSafeInteger(index) && index >= 0 && index < material.length
+        && material[index]?.visible === true;
     }
-    return !!material && material.visible;
+    return !!material && material.visible === true;
   }
 
   private pick(event: MouseEvent): ChartPlanetRef | null {

@@ -507,6 +507,46 @@ test('cached picking respects current scene ancestry when glyphs are moved', () 
   assert.equal(probe.visiblePlanetHit(hit),false, 'hidden material prevents hits');
   mesh.material.visible = true;
   assert.equal(probe.visiblePlanetHit(hit),true, 'restoring material visibility restores hit');
+
+  // Three.js multi-material mesh faces carry a materialIndex. A raycast hit
+  // on an invisible submesh must NEVER be accepted merely because a different
+  // triangle group has a visible material.
+  const hidden = {visible:false};
+  const shown = {visible:true};
+  mesh.material = [hidden, shown];
+  hit.face = {materialIndex:0};
+  assert.equal(probe.visiblePlanetHit(hit),false,
+    'invisible triangle group must not be picked');
+  hit.face.materialIndex = 1;
+  assert.equal(probe.visiblePlanetHit(hit),true,
+    'the visible group of the same glyph remains pickable');
+  mesh.material[1].visible = false;
+  assert.equal(probe.visiblePlanetHit(hit),false,
+    'visibility changes are checked on every pointer event');
+  mesh.material[1].visible = true;
+
+  for (const index of [-1, 2, 0.5, Number.NaN, Number.POSITIVE_INFINITY, '1']) {
+    hit.face = {materialIndex:index};
+    assert.equal(probe.visiblePlanetHit(hit),false,
+      'invalid/ambiguous material index must fail closed: '+String(index));
+  }
+  hit.face = undefined;
+  assert.equal(probe.visiblePlanetHit(hit),false,
+    'missing raycast face cannot inherit visibility of another triangle group');
+  hit.face = {materialIndex:0};
+  mesh.material = [null, shown];
+  assert.equal(probe.visiblePlanetHit(hit),false,
+    'a missing material slot must not throw or match');
+  hit.face.materialIndex = 1;
+  assert.equal(probe.visiblePlanetHit(hit),true,
+    'the valid material slot remains pickable');
+  mesh.material = [];
+  assert.equal(probe.visiblePlanetHit(hit),false,
+    'an empty material list is never pickable');
+  mesh.material = {visible:true};
+  hit.face = undefined;
+  assert.equal(probe.visiblePlanetHit(hit),true,
+    'single-material picking remains backwards compatible');
 });
 
 test('hover-to-pin callback paints once and preserves deferred button focus', () => {
