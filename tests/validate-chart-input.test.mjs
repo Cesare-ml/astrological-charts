@@ -71,7 +71,7 @@ test('rejects explicit null vertex in every chart while allowing an omitted vert
   assert.equal(validateChartPayloadV1(original), original);
   for (const location of ['natal', 'transits', 'synastry']) {
     const invalid = {...payload(), [location]: {...chart(), vertex: null}};
-    assert.throws(() => validateChartPayloadV1(invalid), new RegExp(location + '\\.vertex.*finite JSON number'));
+    assert.throws(() => validateChartPayloadV1(invalid), new RegExp(location + '\.vertex.*finite JSON number'));
     assert.equal(invalid[location].vertex, null);
   }
 });
@@ -93,7 +93,7 @@ test('rejects explicit null optional planet numbers in all chart layers without 
       const invalid = {...payload(), [location]: {...chart(), planets: {Sun: planet}}};
       assert.throws(
         () => validateChartPayloadV1(invalid, {mode: 'natal'}),
-        new RegExp(location + '\\.' + 'planets\\.Sun\\.' + field + '.*finite JSON number'),
+        new RegExp(location + '\.' + 'planets\.Sun\.' + field + '.*finite JSON number'),
         location + ' / ' + field,
       );
       assert.equal(planet[field], null);
