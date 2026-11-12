@@ -863,3 +863,39 @@ executed in a JavaScript isolate with synthetic callbacks (10/10
 behavior cases passed). Full Node/TypeScript/Angular/Chrome tests are
 still needed on the owner's Windows installation. No astronomical
 calculation, public API, private imagery or production code changed.
+
+### Detached-glyph pointer safety (2026-11-12)
+
+The interaction controller caches planet meshes at `setScene()`
+for cheap raycasting. A host can subsequently remove a mesh or
+reparent it into a different chart, e.g. while filtering a layer,
+without replacing the scene or rebuilding this cache. Three.js
+`Raycaster.intersectObjects(cachedTargets)` can continue reporting
+that obsolete mesh even though it no longer belongs to the active
+rendered scene.
+
+`visiblePlanetHit` now requires a complete, visible ancestor chain
+that **reaches the exact active `THREE.Scene`**. It already checked
+object/parent visibility and material visibility; the new
+ownership check prevents stale planet glyphs from stealing clicks or
+hover when detached or moved to another canvas. Reattaching a mesh
+to the original scene immediately restores picking without rescanning
+the scene or duplicating approved image assets. This is a live
+pointer safety check only; no astronomical data, aspect calculation
+or PNG-export code was modified.
+
+Tests now cover this state transition both without a browser (the
+Node test extracts the **actual private hit-filter method** from
+TypeScript and checks attach/detach/reparent/reattach) and in the
+existing real Three.js Playwright picking fixture. The latter checks
+hover and click fall through to the still-visible natal Moon,
+reattachment restores Uranus, and the cached targets array stays
+unchanged. Combined with the earlier checks for hidden parents,
+materials, camera layer masks and overlapping glyphs, this protects
+dynamic chart visibility and multiple independent chart canvases.
+
+**Verification gate:** `npm run test:planet-interactions`,
+`npm run check:types`, `npm run build:demo` and
+`npm run test:demo-interactions` after pulling the draft branch
+and restarting the demo on Windows. These newly added regressions
+have not yet been run in the owner's browser.
