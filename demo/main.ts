@@ -38,7 +38,7 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         </label>
         <p class="muted">Requires the 22 owner-approved private white-alpha masks
           staged by the asset host. Disabled by default; older glyphs remain the fallback.</p>
-        <p class="status" [class.error]="error" role="status" data-testid="status">{{error || status}}</p>
+        <p class="status" [class.error]="error" role="status" data-testid="status" [attr.data-render-revision]="renderRevision">{{error || status}}</p>
       </aside>
       <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart"></canvas></section>
     </section>
@@ -54,6 +54,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   skin = 'light';
   busy = false;
   status = 'Preparing renderer…';
+  /** Increases only after a successful draw; browser QA must await each revision. */
+  renderRevision = 0;
   error = '';
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
@@ -97,6 +99,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     try {
       await this.renderer.disegnaScena(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
+      this.renderRevision += 1;
       this.status = 'Rendered with the configured asset server.';
     } catch (error) { this.showError(error); }
     finally { this.busy = false; this.changes.markForCheck(); }
