@@ -4,7 +4,7 @@
  * It detects shared changed paths, not Git merge conflicts or test success.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -93,6 +93,31 @@ export function inspectBranchScopes(inputPairs, cwd = process.cwd(), runGit = ex
   };
 }
 
+/**
+ * Reports are disposable local QA artifacts, never arbitrary file writes.
+ * Accept only a single JSON filename under .local and reject symlink
+ * destinations: a typo must not overwrite package.json or source files.
+ */
+export function resolveReportOutputPath(outPath, cwd = process.cwd()) {
+  if (typeof outPath !== 'string' ||
+      !/^\\.local\\/[A-Za-z0-9][A-Za-z0-9._-]*\\.json$/.test(outPath) ||
+      outPath.includes('..')) {
+    throw new Error('Report output must be .local/<filename>.json');
+  }
+  const folder = resolve(cwd, '.local');
+  const destination = resolve(cwd, outPath);
+  if (existsSync(folder) && lstatSync(folder).isSymbolicLink()) {
+    throw new Error('Report directory .local must not be a symlink');
+  }
+  if (existsSync(destination) && !lstatSync(destination).isFile()) {
+    throw new Error('Report destination must be a regular file');
+  }
+  if (existsSync(destination) && lstatSync(destination).isSymbolicLink()) {
+    throw new Error('Report destination must not be a symlink');
+  }
+  return destination;
+}
+
 function main(args) {
   const outIndex = args.indexOf('--out');
   let outPath = null;
@@ -103,13 +128,16 @@ function main(args) {
     outPath = args[outIndex + 1];
     args = args.filter((_, index) => index !== outIndex && index !== outIndex + 1);
   }
+  // Validate output safety before expensive Git operations or any writes.
+  const safeOutput = outPath === null ? null : resolveReportOutputPath(outPath);
   const report = inspectBranchScopes(args);
   const text = JSON.stringify(report, null, 2) + '\n';
-  if (outPath) {
-    const filename = resolve(outPath);
-    mkdirSync(dirname(filename), { recursive: true });
-    writeFileSync(filename, text, { flag: 'w' });
-    console.log('Report: ' + filename);
+  if (safeOutput) {
+    mkdirSync(dirname(safeOutput), { recursive: true });
+    // Re-check after creating the folder to refuse a preexisting symlink.
+    resolveReportOutputPath(outPath);
+    writeFileSync(safeOutput, text, { flag: 'w' });
+    console.log('Report: ' + safeOutput);
   } else process.stdout.write(text);
   if (report.overlaps.length) process.exitCode = 2;
 }
