@@ -526,6 +526,7 @@ test('native natal aspect focus keeps bounded GPU resources across 120 selection
       'copiesBounded','gpuGeometriesBounded','texturesStable','programsStable',
       'clonesDisposedExactlyOnce','nativeResourcesUntouched',
       'originalColorsMutedDuringFocus','originalsRestored',
+      'nestedTagsIndexedOnce',
       'clearedToBaseline','noGpuLeaksAfterTeardown'
     ]) assert.equal(result[name],true,name+': '+JSON.stringify(result));
   } finally { await page.close(); await browser.close(); }
