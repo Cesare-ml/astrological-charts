@@ -3,7 +3,7 @@ import { Colori } from './_colori.config';
 import { chartAspectCirclePoint, chartTransitConnectorRadii } from './planet-interaction.geometry';
 import {
   ChartAspectRelation, ChartPlanetRef, ChartPlanetInteractionEvent,
-  chartPlanetKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects,
+  chartPlanetKey, chartAspectRelationKey, isChartPlanetRef, relatedChartAspects, sameChartPlanet, snapshotChartAspects,
   sameChartAspects, sameChartAspectVisuals, sameChartAspectStructure,
   preferredTransitConnectorAspect
 } from './planet-interaction.types';
@@ -595,7 +595,7 @@ export class PlanetInteractionController {
     const winners = new Map<string,ChartAspectRelation>();
     const centralIds = new Set<string>();
     for (const link of aspects) {
-      const id = [chartPlanetKey(link.from), chartPlanetKey(link.to), link.type].join('|');
+      const id = chartAspectRelationKey(link);
       if (centralIds.has(id)) return false;
       centralIds.add(id);
       const from = this.activeGlyph(link.from);
@@ -675,7 +675,7 @@ export class PlanetInteractionController {
       mesh: THREE.Mesh; relation: ChartAspectRelation;
     }>();
     for (const link of aspects) {
-      const id = [chartPlanetKey(link.from), chartPlanetKey(link.to), link.type].join('|');
+      const id = chartAspectRelationKey(link);
       if (drawn.has(id)) continue;
       drawn.add(id);
       const from = this.activeGlyph(link.from);

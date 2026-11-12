@@ -15,6 +15,18 @@ export interface ChartPlanetInteractionEvent {
 export function chartPlanetKey(planet: ChartPlanetRef): string {
   return planet.layer + ':' + planet.name;
 }
+
+/**
+ * Collision-free ordered identity for an aspect's rendering endpoints and type.
+ * Joining layer-qualified names with a delimiter is ambiguous when a source
+ * body name itself contains that delimiter (for example "|" in JSON inputs).
+ * JSON tuple boundaries keep distinct host-provided aspect links distinct.
+ */
+export function chartAspectRelationKey(link: ChartAspectRelation): string {
+  return JSON.stringify([
+    link.type, chartPlanetKey(link.from), chartPlanetKey(link.to)
+  ]);
+}
 export function isChartPlanetRef(value: unknown): value is ChartPlanetRef {
   if (!value || typeof value !== 'object') return false;
   const p = value as Partial<ChartPlanetRef>;
@@ -44,8 +56,7 @@ export function preferredTransitConnectorAspect(
   const a = orbRank(current);
   const b = orbRank(candidate);
   if (a !== b) return b < a ? candidate : current;
-  const stableKey = (link: ChartAspectRelation): string =>
-    [link.type, chartPlanetKey(link.from), chartPlanetKey(link.to)].join('\\u0000');
+  const stableKey = chartAspectRelationKey;
   return stableKey(candidate) < stableKey(current) ? candidate : current;
 }
 
@@ -139,7 +150,7 @@ export function sameChartAspectVisuals(
     for (const link of links) {
       // Keep any duplicates on the conservative redraw path: the visual
       // controller deduplicates central strokes before choosing guide colors.
-      const lineId = [chartPlanetKey(link.from),chartPlanetKey(link.to),link.type].join('|');
+      const lineId = chartAspectRelationKey(link);
       if (lineIds.has(lineId)) return null;
       lineIds.add(lineId);
       for (const ref of [link.from,link.to]) {
