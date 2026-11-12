@@ -97,3 +97,32 @@ test('reject URI delimiters, encoded segments and control characters before asse
     assert.throws(() => validateManifest(tampered), /Invalid asset path/);
   });
 });
+
+test('rejects reordered manifest entries even with a recomputed fingerprint', async () => {
+  await fixture(async root => {
+    // The producer always writes a stable path order, regardless of which
+    // order the user supplied in the selection.
+    const canonical = await generate(root, [
+      'img/zodiac/Sun.png', 'fonts/font.woff2', 'img/zodiac/Moon.png',
+    ]);
+    const normal = await generate(root, [
+      'fonts/font.woff2', 'img/zodiac/Moon.png', 'img/zodiac/Sun.png',
+    ]);
+    assert.deepEqual(canonical, normal);
+    assert.deepEqual(canonical.files.map(file => file.path), [
+      'fonts/font.woff2', 'img/zodiac/Moon.png', 'img/zodiac/Sun.png',
+    ]);
+    assert.doesNotThrow(() => validateManifest(canonical));
+
+    // A different entry order is noncanonical, even when its digest matches
+    // the reshuffled array. Verification/diff must refuse ambiguous metadata.
+    const reshuffled = structuredClone(canonical);
+    reshuffled.files.reverse();
+    const { fingerprint } = await import('../scripts/asset-manifest.mjs');
+    reshuffled.fingerprint = fingerprint(reshuffled.files);
+    assert.throws(() => validateManifest(reshuffled), /canonical path order/);
+    await assert.rejects(() => verify(root, reshuffled), /canonical path order/);
+    assert.throws(() => compare(canonical, reshuffled), /canonical path order/);
+    assert.throws(() => compare(reshuffled, canonical), /canonical path order/);
+  });
+});
