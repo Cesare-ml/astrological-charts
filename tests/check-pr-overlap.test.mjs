@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectBranchScopes, parseBranchPair } from '../scripts/check-pr-overlap.mjs';
+import { inspectBranchScopes, parseBranchPair, resolveReportOutputPath } from '../scripts/check-pr-overlap.mjs';
 
 const cli = fileURLToPath(new URL('../scripts/check-pr-overlap.mjs', import.meta.url));
 
@@ -104,7 +104,7 @@ test('CLI emits machine-readable JSON, exit 2 for overlaps, 0 for distinct paths
   });
   assert.equal(noOverlap.status,0,noOverlap.stderr);
   assert.equal(JSON.parse(noOverlap.stdout).status,'NO_FILE_OVERLAP');
-  const out='local-report.json';
+  const out='.local/local-report.json';
   const reported=spawnSync(process.execPath,[cli,'--out',out,
     'feat/interactions:test/axis-one', 'feat/interactions:test/axis-two'],{
       cwd:root,encoding:'utf8'
@@ -145,4 +145,21 @@ test('records a moving base tip separately from the historical merge-base', () =
   assert.deepEqual(report.branches[0].files,['shared.test.mjs']);
   assert.deepEqual(report.branches[1].files,['other.test.mjs']);
   assert.equal(report.currentHead,newBase);
+}));
+
+test('reports stay under .local and never overwrite a source file', () => fixture(({root}) => {
+  assert.equal(resolveReportOutputPath('.local/review-2026.json',root), join(root,'.local','review-2026.json'));
+  for (const invalid of [
+    'package.json', 'README.md', '../secret.json',
+    '.local/../README.md', '.local/subdir/report.json', '.local\\\\report.json',
+    '.local/report.txt', '.local/.json', '.local/a..json',
+    '/tmp/foreign.json', '.local/report.json/extra'
+  ]) assert.throws(() => resolveReportOutputPath(invalid,root), /Report output must/,invalid);
+  const original=readFileSync(join(root,'README.md'),'utf8');
+  const result=spawnSync(process.execPath,[cli,'--out','README.md',
+    'main:feature/a','main:feature/b'],{cwd:root,encoding:'utf8'});
+  assert.equal(result.status,1,result.stderr);
+  assert.match(result.stderr,/Report output must/);
+  assert.equal(readFileSync(join(root,'README.md'),'utf8'),original);
+  assert.equal(existsSync(join(root,'.local','review-2026.json')),false);
 }));
