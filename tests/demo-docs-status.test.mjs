@@ -92,3 +92,17 @@ test('agent asset policy keeps artwork outside the renderer and blocks productio
   assert.match(pkg.scripts['demo:assets:repo'], /\.\.\/astrological-assets\/manifests\/approved-assets\.json/);
   assert.doesNotMatch(pkg.scripts['demo:assets:repo'], /https?:\/\//i);
 });
+
+
+test('README quickstart covers both Angular builds and approved sibling assets', () => {
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(readme, /npm run verify:angular/);
+  assert.equal(pkg.scripts['verify:angular'], 'npm run preflight && npm run build:library && npm run build:demo');
+  assert.match(readme, /npm run verify:pack/);
+  assert.match(readme, /npm run demo:assets:repo/);
+  assert.match(readme, /per-file SHA-256/);
+  assert.match(readme, /do not grant artwork redistribution rights/i);
+  assert.match(readme, /Chromium and Firefox/);
+  assert.match(readme, /VirgoStars/);
+});
