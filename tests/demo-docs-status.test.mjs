@@ -47,3 +47,13 @@ test('demo asset scripts require local manifests and never fall back to producti
   }
   assert.match(demo, /No public website is used as a fallback/i);
 });
+
+test('local Angular validation runs preflight and both builds in order', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(
+    pkg.scripts['verify:angular'],
+    'npm run preflight && npm run build:library && npm run build:demo',
+    'do not skip preflight or either Angular target'
+  );
+  assert.doesNotMatch(pkg.scripts['verify:angular'], /(?:deploy|publish|github-actions)/i);
+});
