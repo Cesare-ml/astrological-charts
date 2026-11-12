@@ -352,8 +352,10 @@ test('changed collision refuses unprofiled, stale, or shared leader geometries',
   assert.ok(applyIsolatedCoordinatePreview(unprofiled.scene,input(unprofiled)).issues
     .some(i=>i.startsWith('collision-geometry-changed:')));
   const stale=fixture({close:true,profile:true});
-  const sun=stale.parts.get('Sun');
-  sun.inner.geometry.getAttribute('position').setX(0,3);
+  const moon=stale.parts.get('Moon');
+  // Sun's collision offset is unchanged (0°); Moon changes 6° -> 1°.
+  // Corrupt the leader that must be geometrically rebuilt.
+  moon.inner.geometry.getAttribute('position').setX(0,3);
   const bad=applyIsolatedCoordinatePreview(stale.scene,input(stale));
   assert.equal(bad.status,'rejected');
   assert.ok(bad.issues.some(i=>i.startsWith('stale-leader-endpoints:')));

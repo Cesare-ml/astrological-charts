@@ -242,15 +242,16 @@ window.runIsolatedCoordinatePreviewProbe = () => {
       && renderer.info.memory.geometries===beforeCollisionAllocations;
     results['collisionRepeatNoOp'+suffix]=
       applyIsolatedCoordinatePreview(collisionScene,newCollisionTargets).status==='unchanged';
+    // Source longitudes are only 6° apart; glyph rectangles may overlap.
+    // Raycast the Moon itself from its new center rather than inferring
+    // which overlapping rectangle wins the shared intersection ordering.
     const moonProjected=newMoonWorld.clone().project(camera);
     const raycasterCollision=new THREE.Raycaster();
     raycasterCollision.setFromCamera(
       new THREE.Vector2(moonProjected.x,moonProjected.y),camera
     );
     results['collisionGlyphRaycast'+suffix]=
-      raycasterCollision.intersectObjects(
-        [closeSun.glyph,closeMoon.glyph],false
-      )[0]?.object===closeMoon.glyph;
+      raycasterCollision.intersectObject(closeMoon.glyph,false).length>0;
     collisionGeometries.forEach(item=>item.dispose());
     collisionMaterials.forEach(item=>item.dispose());
 
