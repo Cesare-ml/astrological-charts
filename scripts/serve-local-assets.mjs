@@ -83,6 +83,12 @@ export function createAssetServer({
   const overlay=overlayRequested
     ? verifyPrivateAstroOverlay(astroOverlayRoot,astroOverlayManifest,astroOverlayApproval)
     : null;
+  const repositoryRoot=realpathSync(resolve(dirname(fileURLToPath(import.meta.url)),'..'));
+  const inside=(path,parent)=>path===parent || path.startsWith(parent+sep);
+  if(overlay && (inside(overlay.root,pack.root)
+    || inside(pack.root,overlay.root)
+    || inside(overlay.root,repositoryRoot)))
+    throw new Error('Private Astro overlay must remain outside public asset and renderer checkouts');
   if(overlay && [...overlay.paths.keys()].some(path=>pack.paths.has(path)))
     throw new Error('Private Astro overlay collides with approved base asset paths');
   const allowed=new Set(origins);
@@ -141,7 +147,7 @@ function run(args){
     if(!['--root','--manifest','--port','--origin',
       '--astro-overlay-root','--astro-overlay-manifest','--astro-overlay-approval'].includes(args[i])
       ||!args[i+1]||Object.hasOwn(flags,args[i]))
-      throw new Error('Usage: --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json [--port 4177] [--origin http://localhost:4200]');
+      throw new Error('Usage: --root ASSET_DIR --manifest BASE_APPROVED_MANIFEST.json [--astro-overlay-root PRIVATE_MASK_DIR --astro-overlay-manifest PRIVATE_MASK_MANIFEST.json --astro-overlay-approval PRIVATE_APPROVAL.json] [--port 4177] [--origin http://localhost:4200]');
     flags[args[i]]=args[i+1];
   }
   if(!flags['--root']||!flags['--manifest'])
