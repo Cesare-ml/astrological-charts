@@ -1020,3 +1020,45 @@ third-party scenes. Shader/program counts and visual equivalence
 require real Chrome/Firefox and WebGL memory tests. The owner has
 not yet executed the revised tests on Windows; they must pass
 before merge, publication or VirgoStars Desktop integration.
+
+### Two simultaneous WebGL chart contexts: focus stress gate (2026-11-12)
+
+After the interactive-focus material isolation work, the browser
+suite includes an **independent GPU-accounting regression** for
+simultaneous chart canvases:
+`tests/fixtures/multi-chart-gpu-focus-harness.ts`. It creates
+**two actual `THREE.WebGLRenderer` instances and two separate
+WebGL contexts**, each drawing a natal Sun/Moon and transiting
+Saturn from purely synthetic positions. Both scenes share one
+**untinted `THREE.MeshBasicMaterial` and 1×1 `THREE.DataTexture`**
+to exercise the strictest material ownership case.
+
+Across **60 alternating focus cycles per chart**, including clear
+selections, the fixture renders both contexts and records
+`renderer.info.memory.geometries`,
+`renderer.info.memory.textures`, and
+`renderer.info.programs?.length`. Each chart must retain precisely
+its three persistent glyph geometries plus at most two live
+focused-aspect overlays (one central line and one dashed transit
+guide); texture counts may not grow, and shader-program counts
+are bounded independently per context. All focus-colour copies
+are observed through `Material.dispose` events and must be
+released **exactly once**. The shared base material and texture
+must never be mutated or disposed by interactive focus.
+
+A final teardown gate destroys chart A while chart B still
+has highlighted natal Moon and a live transit link. B must
+keep its material tint, overlay object identity and GPU geometry
+count. Destroying B then releases both charts' overlays and
+returns each renderer's geometry count to its unfocused baseline.
+No original image/font or real natal data is included.
+
+This measures **GPU resource counts, not allocated bytes,
+frame rate or operating-system memory**. It complements the
+existing single-canvas GPU and native natal-stroke suites
+rather than replacing them. Run
+`npm run test:demo-interactions` with Chrome or Firefox,
+the Angular demo on 4200 and the approved asset server on
+4177. **The new fixture is committed but not yet executed
+in the owner's browser**, so no performance or leak-free
+claim is certified until the full test passes.
