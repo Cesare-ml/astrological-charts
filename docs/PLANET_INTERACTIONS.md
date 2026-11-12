@@ -48,6 +48,27 @@ renderer.highlightPlanet(null); // remove pinned selection
 
 **Manual acceptance before merging:** Chrome+Firefox with assets approved, both Sun layers distinct, natal ↔ transit hover each way, persistence of pinned focus after hover leaves, names containing spaces, zoom/resize, skin changes, 50 redraws/no lingering pointer callbacks or WebGL resources, no differences to screenshot/export paths. Full `npm ci`, `npm run preflight`, `npm run build` and `npm run build:demo` must pass in a clean checkout. No changes to production VirgoStars/Astrolabio or asset packaging.
 
+
+## Four-axis demo fixture contract (synthetic only)
+
+The angular demo supplies one illustrative **natal** relationship each for
+AS/DS/MC/IC, with partners Neptune/Mars/Neptune/Mercury respectively, all
+\`semiquadrato\`. In the synthetic **hard-only** aspect filter, these four
+links are intentionally hidden; returning to **all** restores the original
+supplied relationships. No new aspect or orb is calculated here. The
+house-derived axes must also remain visible/selectable in the Angular demo
+and have their aspect-endpoint options (\`att\`, \`aspVerso\`) enabled.
+
+Run \`npm run test:demo-axis-contract\` (part of \`npm run preflight\`) for six
+pure Node/TypeScript contract checks covering the real source fixture,
+relation selector, live Angular demo getter/methods and axis tint metadata.
+This verifies the demo contract only; it does **not** show that the rendered
+AS/DS/MC/IC lines or radial spokes are visible on a WebGL canvas. The
+independent Playwright screenshot/pixel tests in PRs #27/#28 still require
+actual Chromium and Firefox runs with local assets and manual review.
+Keep those stacked PRs independent: both currently add the same filename,
+and neither should be integrated twice.
+
 ## Multi-chart lifetime regression
 
 The opt-in browser suite `npm run test:demo-interactions` now includes a two-canvas test with the same planet identities in **independent** controllers. It checks that events and active overlays cannot leak between charts; repeats **50 synthetic scene replacements** with a pinned natal planet; observes `dispose` notifications on each retired overlay's geometry and material; verifies scaling is restored; checks southern-hemisphere mirror coordinates; and ensures both canvases stop emitting pointer events after their controllers are destroyed. It does not instantiate a WebGLRenderer or measure GPU-memory usage. Visual Chrome/Firefox and full WebGL tests are still separate merge gates.
