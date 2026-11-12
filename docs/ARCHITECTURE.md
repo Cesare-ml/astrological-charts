@@ -243,3 +243,24 @@ It is included in `npm run preflight`. This test checks the
 planner contract only; it does not certify visual rendering or a
 safe partial coordinate update. Run the browser regression suite
 and verify actual chart appearance before any merge.
+
+## Interactive focus material ownership
+
+The on-screen `PlanetInteractionController` is not the owner of
+the original chart's textures or material objects. Separate chart
+instances may reuse a base Three.js material, and exports must
+remain unaffected by a temporary focus highlight. The controller
+therefore assigns temporary **per-glyph material clones** for
+focus, keeps texture references intact, restores the untouched
+baselines on focus clear/redraw, and disposes only its own copies.
+A weak origin mapping enables a transferred mesh to be retinted
+by its new chart without keeping a disposed source clone as its
+restoration target. Individual slots in multi-material meshes
+must be restored only when still owned by that controller.
+
+This contract applies only to interactive focus, not arbitrary
+shared mutable scene or buffer geometry. Host services still own
+scene construction/disposal, and this PR cannot be treated as an
+automatic VirgoStars/Astrolabio production rollout. Regression
+tests: `test:planet-interactions`, `test:demo-interactions`
+(shared-material fixture), plus real WebGL memory inspection.
