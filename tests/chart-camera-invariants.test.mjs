@@ -1,0 +1,129 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+import ts from 'typescript';
+
+/**
+ * Small service/controller method regression. It executes the actual
+ * TypeScript method bodies in synthetic classes, without a real WebGL canvas.
+ * Browser visual, scene and GPU tests remain separate mandatory gates.
+ */
+function method(path, className, methodName) {
+  const src = ts.createSourceFile(path,
+    readFileSync(new URL('../' + path, import.meta.url), 'utf8'),
+    ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const declaration = src.statements.find(node =>
+    ts.isClassDeclaration(node) && node.name?.text === className);
+  assert.ok(declaration, className + ' is present in ' + path);
+  const found = declaration.members.find(node =>
+    ts.isMethodDeclaration(node) && node.name.getText(src) === methodName);
+  assert.ok(found?.body, className + '.' + methodName + ' must have a body');
+  return found.getText(src);
+}
+
+const servicePath = 'src/lib/services/grafico-render.service.ts';
+const controllerPath = 'src/lib/renderers/planet-interaction.controller.ts';
+const setZoom = method(servicePath, 'GraficoRenderService', 'setZoom');
+const focusService = method(servicePath, 'GraficoRenderService', 'highlightPlanet');
+const focusController = method(controllerPath, 'PlanetInteractionController', 'highlight');
+
+const serviceCode = ts.transpileModule(`class CameraProbe {
+  zoomValue = 1;
+  minZoom = 0.05;
+  maxZoom = 5;
+  projectionCalls = 0;
+  requestedFrames = 0;
+  selections = [];
+  pinnedPlanet = null;
+  camera = {zoom:1, updateProjectionMatrix: () => {this.projectionCalls++;}};
+  planetController = {highlight: value => {this.selections.push(value);}};
+  requestInteractiveFrame() {this.requestedFrames++;}
+  ${setZoom}
+  ${focusService}
+}`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
+const CameraProbe = new Function(serviceCode + '\nreturn CameraProbe;')();
+
+const validRef = p => !!p && typeof p === 'object' &&
+  ['natal', 'transit', 'synastry'].includes(p.layer) &&
+  typeof p.name === 'string' && p.name.length > 0;
+const sameRef = (a, b) => a === b || (!!a && !!b &&
+  a.layer === b.layer && a.name === b.name);
+const controllerCode = ts.transpileModule(`class ControllerProbe {
+  disposed = false;
+  pinned = null;
+  hovered = null;
+  scene = {};
+  camera = {zoom:1.75, projectionMatrix:{revision:7}};
+  painted = 0;
+  frames = 0;
+  updateVisuals() {this.painted++;}
+  requestRender() {this.frames++;}
+  ${focusController}
+}`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
+const ControllerProbe = new Function('sameChartPlanet', 'isChartPlanetRef',
+  controllerCode + '\nreturn ControllerProbe;')(sameRef, validRef);
+
+test('nonfinite zoom requests never corrupt the camera projection', () => {
+  const probe = new CameraProbe();
+  for (const value of [NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    probe.setZoom(value);
+    assert.equal(probe.zoomValue, 1);
+    assert.equal(probe.camera.zoom, 1);
+    assert.equal(probe.projectionCalls, 0);
+    assert.equal(probe.requestedFrames, 0);
+  }
+});
+
+test('valid finite zoom values keep existing clamping behavior', () => {
+  const probe = new CameraProbe();
+  for (const [requested, expected] of [[1.5, 1.5], [10, 5], [-8, 0.05], [0.9, 0.9]]) {
+    probe.setZoom(requested);
+    assert.equal(probe.camera.zoom, expected);
+    assert.equal(probe.zoomValue, expected);
+  }
+  assert.equal(probe.projectionCalls, 4);
+  assert.equal(probe.requestedFrames, 4);
+});
+
+test('service focus of natal/transit axes and planets preserves camera state', () => {
+  const probe = new CameraProbe();
+  probe.setZoom(1.25);
+  const projectionBefore = probe.projectionCalls;
+  const framesBefore = probe.requestedFrames;
+  const refs = ['AS','DS','MC','IC','Sun','Moon'].flatMap(name => [
+    {layer:'natal',name}, {layer:'transit',name}
+  ]);
+  for (const ref of refs) {
+    probe.highlightPlanet(ref);
+    assert.equal(probe.zoomValue, 1.25, ref.name + ': zoom value changed');
+    assert.equal(probe.camera.zoom, 1.25, ref.name + ': camera zoom changed');
+    assert.equal(probe.projectionCalls, projectionBefore, 'focus updated camera projection');
+    assert.equal(probe.requestedFrames, framesBefore, 'focus called the zoom render path');
+    assert.deepEqual(probe.pinnedPlanet, ref);
+    assert.notEqual(probe.pinnedPlanet, ref, 'selection must copy host ref');
+  }
+  assert.equal(probe.selections.length, refs.length);
+  probe.highlightPlanet(null);
+  assert.equal(probe.pinnedPlanet, null);
+  assert.equal(probe.camera.zoom, 1.25);
+});
+
+test('controller focus schedules paint but never adjusts zoom or projection', () => {
+  const probe = new ControllerProbe();
+  const initialCamera = JSON.stringify(probe.camera);
+  const refs = ['AS','DS','MC','IC'].map(name => ({layer:'natal',name}));
+  for (const ref of refs) probe.highlight(ref);
+  assert.equal(probe.painted, refs.length);
+  assert.equal(probe.frames, refs.length);
+  assert.equal(JSON.stringify(probe.camera), initialCamera);
+  probe.highlight({...refs.at(-1)});
+  assert.equal(probe.painted, refs.length, 'identical focus must not repaint');
+  probe.highlight(null);
+  assert.equal(JSON.stringify(probe.camera), initialCamera);
+});
+
+test('focus method source bodies do not directly call zoom/projection operations', () => {
+  for (const body of [focusService, focusController]) {
+    assert.doesNotMatch(body, /\bsetZoom\s*\(|\bzoom(In|Out)\s*\(|\.camera\.zoom\s*=|\.updateProjectionMatrix\s*\(/);
+  }
+});
