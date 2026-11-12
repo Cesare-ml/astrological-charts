@@ -256,6 +256,91 @@ test('repeated programmatic focus and unchanged natal palette avoid repainting',
   ], 'identical selections/modes must never schedule duplicate renders');
 });
 
+test('focus uses independent material clones, with safe transfer and disposal', () => {
+  const src = ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const cls = src.statements.find(stmt =>
+    ts.isClassDeclaration(stmt) && stmt.name?.text==='PlanetInteractionController');
+  assert.ok(cls);
+  const method = name => {
+    const m = cls.members.find(member =>
+      ts.isMethodDeclaration(member) && member.name.getText(src)===name);
+    assert.ok(m?.body,'controller method missing: '+name);
+    return m.getText(src);
+  };
+  const code = ts.transpileModule(`class MaterialFocusProbe {
+    glyphMaterialOverrides = new Map<any,any>();
+    natalLineColors = new Map<any,any>();
+    natalFocusOverlays: any[] = [];
+    lines: any[] = [];
+    transitGuides = new Map<any,any>();
+    ${method('tintGlyph')}
+    ${method('clearVisuals')}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe = new Function('focusMaterialOrigins',
+    code+'\nreturn MaterialFocusProbe;')(new WeakMap());
+  const texture = {};
+  const material = value => ({
+    color: {
+      value,
+      set(next) {this.value=next;}
+    },
+    map:texture,
+    disposed:0,
+    clone() {return material(this.color.value);},
+    dispose() {this.disposed++;}
+  });
+  const shared = material('#171717');
+  const a = new Probe();
+  const b = new Probe();
+  const sun = {material:[shared,shared]};
+  const moon = {material:shared};
+  const moved = {material:shared};
+  a.tintGlyph(sun,'#ff0000');
+  const sunCopies = sun.material;
+  assert.ok(Array.isArray(sunCopies));
+  assert.equal(sunCopies.length,2);
+  assert.notEqual(sunCopies[0],sunCopies[1]);
+  assert.ok(sunCopies.every(copy=>copy!==shared && copy.map===texture &&
+    copy.color.value==='#ff0000'));
+  assert.equal(shared.color.value,'#171717',
+    'tinting A may never alter the base material shared with B');
+  b.tintGlyph(moon,'#c0c0c0');
+  assert.equal(moon.material.color.value,'#c0c0c0');
+  assert.equal(sunCopies[0].color.value,'#ff0000');
+  assert.notEqual(sunCopies[0],moon.material);
+  a.tintGlyph(moved,'#9e02ff');
+  const sourceCopy=moved.material;
+  b.tintGlyph(moved,'#0055ff'); // transferred without notifying A
+  const destinationCopy=moved.material;
+  assert.notEqual(sourceCopy,destinationCopy);
+  assert.equal(destinationCopy.map,texture);
+  assert.equal(destinationCopy.color.value,'#0055ff');
+  a.clearVisuals();
+  assert.equal(moved.material,destinationCopy,
+    'old controller cannot overwrite the new controller focus');
+  assert.equal(sourceCopy.disposed,1);
+  assert.deepEqual(sun.material,[shared,shared]);
+  assert.ok(sunCopies.every(copy=>copy.disposed===1));
+  assert.equal(destinationCopy.disposed,0);
+  assert.equal(shared.disposed,0);
+  b.clearVisuals();
+  assert.equal(moved.material,shared,
+    'destination must restore the base, never a disposed source clone');
+  assert.equal(moon.material,shared);
+  assert.equal(destinationCopy.disposed,1);
+  assert.equal(shared.color.value,'#171717');
+  assert.equal(shared.disposed,0);
+  const nonTintable={disposed:0,clone(){throw Error('should not clone')},
+    dispose(){this.disposed++}};
+  const mesh={material:nonTintable};
+  a.tintGlyph(mesh,'#ff0000');
+  a.clearVisuals();
+  assert.equal(mesh.material,nonTintable);
+  assert.equal(nonTintable.disposed,0);
+});
+
 test('active aspect endpoints skip glyphs transferred outside the source chart', () => {
   const src = ts.createSourceFile('planet-interaction.controller.ts',
     readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
