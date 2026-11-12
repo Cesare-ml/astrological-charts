@@ -869,3 +869,52 @@ test('reentrant dispose cannot erase newer scene or dispose owned focus resource
     assert.equal(foreground.material.dispose instanceof Function,true);
   }
 });
+
+
+test('nested repaint or scene replacement makes the older paint a no-op',()=>{
+  const ast=ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts',import.meta.url),'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const cls=ast.statements.find(node=>
+    ts.isClassDeclaration(node)&&node.name?.text==='PlanetInteractionController');
+  const method=cls?.members.find(member=>
+    ts.isMethodDeclaration(member)&&member.name.getText(ast)==='updateVisuals');
+  assert.ok(method?.body);
+  const compiled=ts.transpileModule(`class PaintProbe {
+    disposed=false;
+    scene:any={};
+    sceneRevision=0;
+    visualRevision=0;
+    hovered:any=null;
+    pinned:any=null;
+    paints=0;
+    onClear:any=null;
+    clearVisuals(){this.onClear?.();}
+    paintNatalAspectPalette(){this.paints++;}
+    ${method.getText(ast)}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe=new Function(compiled+'\nreturn PaintProbe;')();
+  const changedScene=new Probe();
+  changedScene.onClear=()=>{
+    changedScene.scene={};
+    changedScene.sceneRevision++;
+  };
+  changedScene.updateVisuals();
+  assert.equal(changedScene.paints,0,
+    'a retired scene cannot be repainted after a disposal callback');
+  const disposed=new Probe();
+  disposed.onClear=()=>{disposed.disposed=true;};
+  disposed.updateVisuals();
+  assert.equal(disposed.paints,0,'destroyed controllers must not paint');
+  const nested=new Probe();
+  let invoked=false;
+  nested.onClear=()=>{
+    if(invoked)return;
+    invoked=true;
+    nested.updateVisuals();
+  };
+  nested.updateVisuals();
+  assert.equal(nested.visualRevision,2);
+  assert.equal(nested.paints,1,
+    'the nested repaint wins; the older paint must not run afterward');
+});
