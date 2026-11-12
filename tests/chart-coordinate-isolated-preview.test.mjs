@@ -484,3 +484,50 @@ test('distinct line geometries cannot mutate a shared position buffer',()=>{
     assert.equal(applyIsolatedCoordinatePreview(f.scene,next).status,'unchanged');
   }
 });
+
+
+test('distinct BufferAttributes sharing a typed-array backing store fail closed',()=>{
+  for (const mirrored of [false,true]) {
+    const f=fixture({mirrored,close:true,profile:true,outer:true});
+    const sun=f.parts.get('Sun'),moon=f.parts.get('Moon');
+    const moonInner=moon.inner.geometry.getAttribute('position');
+    const moonOuter=moon.outerLeader.geometry.getAttribute('position');
+    const savedOuterSpec=moon.outerLeader.userData.chartIsolatedLeaderSpec;
+    const sunBefore=sun.glyph.position.clone();
+    const moonBefore=moon.glyph.position.clone();
+    const oldInnerX=moonInner.getX(0);
+    const next=targetsWith(f.targets,'Sun',5);
+
+    // New THREE.BufferAttribute and new Float32Array view, but the SAME
+    // underlying memory as Moon's other leader. The two geometry objects
+    // and attribute instances are not equal.
+    const aliasedView=new Float32Array(
+      moonInner.array.buffer,moonInner.array.byteOffset,moonInner.array.length
+    );
+    const alias=new THREE.BufferAttribute(aliasedView,3);
+    assert.notEqual(alias,moonInner);
+    assert.notEqual(alias.array,moonInner.array);
+    assert.equal(alias.array.buffer,moonInner.array.buffer);
+    assert.notEqual(moon.inner.geometry,moon.outerLeader.geometry);
+    moon.outerLeader.geometry.setAttribute('position',alias);
+    moon.outerLeader.userData.chartIsolatedLeaderSpec={
+      ...moon.inner.userData.chartIsolatedLeaderSpec
+    };
+    try {
+      const report=applyIsolatedCoordinatePreview(f.scene,next);
+      assert.equal(report.status,'rejected');
+      assert.equal(report.updated,0);
+      assert.ok(report.issues.includes('shared-leader-storage:natal:Moon'),
+        report.issues.join(','));
+      assert.ok(sun.glyph.position.equals(sunBefore));
+      assert.ok(moon.glyph.position.equals(moonBefore));
+      assert.equal(moonInner.getX(0),oldInnerX);
+      assert.equal(planChartCoordinateEffects(f.scene,f.targets).decision,'unchanged');
+    } finally {
+      moon.outerLeader.geometry.setAttribute('position',moonOuter);
+      moon.outerLeader.userData.chartIsolatedLeaderSpec=savedOuterSpec;
+    }
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,next).status,'applied');
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,next).status,'unchanged');
+  }
+});

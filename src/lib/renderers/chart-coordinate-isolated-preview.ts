@@ -123,6 +123,11 @@ export function applyIsolatedCoordinatePreview(
   // mutate a *different* line when one body's collision offset changes.
   const geometryRefs = new Map<THREE.BufferGeometry,number>();
   const attributeRefs = new Map<THREE.BufferAttribute,number>();
+  // Distinct BufferAttribute wrappers can still share one typed-array
+  // backing store (including separate views of the same ArrayBuffer).
+  // Track all recognized geometry attributes, not only position: another
+  // mesh's UV/normal view may alias a writable leader vertex buffer.
+  const storageRefs = new Map<ArrayBufferLike,number>();
   root.traverse(node => {
     if (!(node instanceof THREE.Mesh || node instanceof THREE.Line)) return;
     const geometry = node.geometry;
@@ -134,6 +139,15 @@ export function applyIsolatedCoordinatePreview(
     const position = geometry.getAttribute('position');
     if (position instanceof THREE.BufferAttribute)
       attributeRefs.set(position,(attributeRefs.get(position) ?? 0)+1);
+    for (const attribute of Object.values(geometry.attributes)) {
+      const array = attribute instanceof THREE.BufferAttribute
+        ? attribute.array
+        : attribute instanceof THREE.InterleavedBufferAttribute
+          ? attribute.data.array : null;
+      if (!array) continue;
+      const buffer = array.buffer;
+      storageRefs.set(buffer,(storageRefs.get(buffer) ?? 0)+1);
+    }
   });
 
   // Validate EVERY body in this isolated wheel before touching the scene,
@@ -213,6 +227,8 @@ export function applyIsolatedCoordinatePreview(
           return result('rejected',0,['shared-leader-geometry:'+key]);
         if (shiftChanged && attributeRefs.get(attr) !== 1)
           return result('rejected',0,['shared-leader-attribute:'+key]);
+        if (shiftChanged && storageRefs.get(attr.array.buffer) !== 1)
+          return result('rejected',0,['shared-leader-storage:'+key]);
         const oldEnd = isolatedSyntheticLeaderEndpoint(radius,oldShift,anchorY,trim);
         const nextEnd = shiftChanged
           ? isolatedSyntheticLeaderEndpoint(radius,newShift,anchorY,trim)

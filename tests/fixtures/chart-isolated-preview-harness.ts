@@ -245,6 +245,31 @@ window.runIsolatedCoordinatePreviewProbe = () => {
       && sharedAttribute.issues.includes('shared-leader-attribute:natal:Moon');
     closeMoon.outer.geometry.setAttribute('position',moonOuterAttribute);
     closeMoon.outer.userData['chartIsolatedLeaderSpec']=previousOuterSpec;
+
+    // Different BufferAttribute instances may still alias the same bytes.
+    // Test the actual typed-array backing store independently of identity.
+    const backingAlias=new THREE.BufferAttribute(new Float32Array(
+      moonInnerAttribute.array.buffer,
+      moonInnerAttribute.array.byteOffset,
+      moonInnerAttribute.array.length
+    ),3);
+    closeMoon.outer.geometry.setAttribute('position',backingAlias);
+    closeMoon.outer.userData['chartIsolatedLeaderSpec']={
+      ...closeMoon.inner.userData['chartIsolatedLeaderSpec']
+    };
+    const aliasResult=applyIsolatedCoordinatePreview(
+      collisionScene,newCollisionTargets
+    );
+    results['collisionSharedStorageRefused'+suffix]=
+      backingAlias!==moonInnerAttribute
+      && backingAlias.array!==moonInnerAttribute.array
+      && backingAlias.array.buffer===moonInnerAttribute.array.buffer
+      && aliasResult.status==='rejected'
+      && aliasResult.updated===0
+      && aliasResult.issues.includes('shared-leader-storage:natal:Moon');
+    closeMoon.outer.geometry.setAttribute('position',moonOuterAttribute);
+    closeMoon.outer.userData['chartIsolatedLeaderSpec']=previousOuterSpec;
+
     const collisionUpdate=applyIsolatedCoordinatePreview(
       collisionScene,newCollisionTargets
     );

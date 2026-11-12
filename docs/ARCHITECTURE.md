@@ -582,3 +582,33 @@ fixture verifies rejection and subsequent successful collision patch
 under the same conditions. No changes to actual chart artwork,
 production scenes or chart public APIs; real local/browser test
 execution remains required before merging PR #22.
+
+
+### Synthetic collision buffers: shared typed-array storage guard
+
+Two independently constructed `THREE.BufferAttribute` instances can
+hold different typed-array views onto the **same underlying
+`ArrayBuffer`**. Checking only `THREE.BufferGeometry` and
+`THREE.BufferAttribute` object identities misses this alias:
+writing a leader endpoint could silently modify another line or even
+an unrelated geometry attribute backed by those bytes.
+
+For opt-in synthetic collision updates,
+`applyIsolatedCoordinatePreview()` now counts the backing buffer of
+every recognized `BufferAttribute` or `InterleavedBufferAttribute`
+in the isolated scene. A proposed endpoint write requires exclusive
+ownership of its position attribute's backing buffer in addition to
+unique geometry and attribute identity. Otherwise the report rejects
+with `shared-leader-storage:layer:name`, before any mutation.
+Conservatively rejecting *any* shared backing buffer avoids needing
+fragile offset/byte-range overlap assumptions. A no-op does not
+modify shared storage and remains supported.
+
+Node and registered WebGL regressions use **different** geometry
+objects, `BufferAttribute` instances and `Float32Array` views sharing
+a single buffer, for normal and mirrored rings. They confirm
+fail-closed behavior, no partial glyph/leader edits and successful
+recovery once the separate buffer is restored. This does not change
+the source astronomical data, production renderer, public interfaces
+or asset ownership. Full Node, Angular and Chrome/Firefox checks remain
+required before integrating PR #22.
