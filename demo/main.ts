@@ -56,6 +56,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   status = 'Preparing renderer…';
   /** Increases only after a successful draw; browser QA must await each revision. */
   renderRevision = 0;
+  /** Prevent an obsolete asynchronous draw from claiming the latest frame. */
+  private drawRequest = 0;
   error = '';
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
@@ -95,14 +97,25 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     return opts;
   }
   async draw(): Promise<void> {
+    const request = ++this.drawRequest;
     this.busy = true; this.error = ''; this.status = 'Rendering…'; this.changes.markForCheck();
     try {
       await this.renderer.disegnaScena(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
+      // The renderer can cancel older queued draws without throwing. Never
+      // count those as completed; otherwise Playwright sees a false revision.
+      if (request !== this.drawRequest) return;
       this.renderRevision += 1;
       this.status = 'Rendered with the configured asset server.';
-    } catch (error) { this.showError(error); }
-    finally { this.busy = false; this.changes.markForCheck(); }
+    } catch (error) {
+      if (request === this.drawRequest) this.showError(error);
+    } finally {
+      // An old request must not unlock controls while the latest one is busy.
+      if (request === this.drawRequest) {
+        this.busy = false;
+        this.changes.markForCheck();
+      }
+    }
   }
   async exportPng(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
