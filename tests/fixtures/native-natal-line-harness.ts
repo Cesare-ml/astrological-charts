@@ -46,6 +46,14 @@ window.runNativeNatalAspectLineProbe = () => {
     const segments: Line2[] = [];
     for (let index = 0; index < parts; index++) {
       const line = stroke(index * 0.13 - 0.27, parts * 0.065, 1.3 + parts / 10);
+      // Some native line factories annotate both the compound stroke
+      // group and each segment with the SAME aspect relation. Those
+      // redundant child tags must not add more colored foregrounds.
+      if (name === 'dashes' || name === 'dots') {
+        line.userData['chartNatalAspect'] = {
+          from, to, type:'quadrato'
+        };
+      }
       segments.push(line);
       group.add(line);
     }
@@ -63,6 +71,12 @@ window.runNativeNatalAspectLineProbe = () => {
   }
   const controller = new PlanetInteractionController(canvas, camera, () => {}, () => {});
   controller.setScene(scene);
+  const registered = (controller as unknown as {
+    natalAspectTags:{root:THREE.Object3D;from:string;to:string;type:string}[]
+  }).natalAspectTags;
+  const redundantChildTagsDeduplicated =
+    registered.length === 3 &&
+    registered.every((entry,index) => entry.root === groups[index].group);
   controller.setNatalAspectPresentation('focused');
   controller.highlight({layer:'natal',name:'Sun'});
 
@@ -104,6 +118,21 @@ window.runNativeNatalAspectLineProbe = () => {
   }
   controller.highlight({layer:'natal',name:'Venus'});
   const previousForegroundDisposed = cloneDisposals === 8;
+  // Repeated switches may never multiply the 1+3 and 4-segment copies,
+  // even though all dashed/dotted child segments are also tagged.
+  let rapidSwitchesAvoidDuplicateOverlays = true;
+  for (let index=0;index<40;index++) {
+    const focus = index%2===0 ? 'Sun' : 'Venus';
+    controller.highlight({layer:'natal',name:focus});
+    const overlays = wheel.children.filter(obj =>
+      obj.name === 'chart-interaction-natal-focus');
+    const copiedSegments = overlays.reduce((sum,group)=>sum+group.children.length,0);
+    rapidSwitchesAvoidDuplicateOverlays &&=
+      overlays.length === (focus==='Sun'?2:1) &&
+      copiedSegments === 4 &&
+      originals.every(line=>hasColor(line,gray));
+  }
+  // Leave the original Venus focus active for downstream assertions.
   const switchRemovedSunOverlays =
     wheel.children.filter(obj => obj.name === 'chart-interaction-natal-focus').length === 1;
   const unrelatedSunLinksStayMuted =
@@ -124,6 +153,7 @@ window.runNativeNatalAspectLineProbe = () => {
   canvas.remove();
   return {
     foregroundCopyCount, allNativeMuted, onlyRelevantForegroundColored,
+    redundantChildTagsDeduplicated, rapidSwitchesAvoidDuplicateOverlays,
     linesAreUnshared, exactTransform, previousForegroundDisposed,
     switchRemovedSunOverlays, unrelatedSunLinksStayMuted, allColorsRestored,
     noOrphanForegrounds, originalsNeverDisposed
