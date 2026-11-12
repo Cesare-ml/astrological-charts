@@ -106,6 +106,28 @@ window.runChartCoordinatePlanProbe = () => {
     result['nonfiniteFailsClosed'+suffix]=nan.decision==='unsupported'
       && nan.issues.includes('invalid-target');
 
+    // Reserve the legacy JavaScript prototype setter name. This must be
+    // rejected before building a collision map, even if host metadata
+    // and target identities are mutually consistent.
+    const specialGlyph=glyphs[0];
+    const specialOwner=specialGlyph.parent as THREE.Group;
+    const originalOwnerRef=specialOwner.userData['chartPlanetBody'];
+    const originalGlyphRef=specialGlyph.userData['chartPlanet'];
+    specialOwner.userData['chartPlanetBody']={layer:'natal',name:'__proto__'};
+    specialGlyph.userData['chartPlanet']={layer:'natal',name:'__proto__'};
+    const specialTargets=snapshot.map(target=>
+      target.ref.layer==='natal' && target.ref.name==='Sun'
+        ? {ref:{layer:'natal' as const,name:'__proto__'},longitude:target.longitude}
+        : target);
+    const special=planChartCoordinateEffects(scene,specialTargets);
+    result['prototypeNameFailsClosed'+suffix]=special.decision==='unsupported'
+      && special.impacts.length===0
+      && special.issues.includes('unsafe-wheel-name:natal:__proto__');
+    specialOwner.userData['chartPlanetBody']=originalOwnerRef;
+    specialGlyph.userData['chartPlanet']=originalGlyphRef;
+    result['afterPrototypeRestore'+suffix]=
+      planChartCoordinateEffects(scene,snapshot).decision==='unchanged';
+
     const owner=glyphs[0].parent as THREE.Group;
     const originalLayout=owner.userData['chartBodyLayout'];
     owner.userData['chartBodyLayout']={...originalLayout,adjusted:originalLayout.adjusted+1,

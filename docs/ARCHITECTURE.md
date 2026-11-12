@@ -264,3 +264,22 @@ scene construction/disposal, and this PR cannot be treated as an
 automatic VirgoStars/Astrolabio production rollout. Regression
 tests: `test:planet-interactions`, `test:demo-interactions`
 (shared-material fixture), plus real WebGL memory inspection.
+
+### Prototype-safe wheel coordinate previews
+
+The read-only `planChartCoordinateEffects()` uses prototype-free
+temporary input dictionaries while replaying the legacy collision
+algorithm. A body actually named `__proto__` is explicitly rejected
+with `unsafe-wheel-name:layer:__proto__`: the historical
+`layoutChartGlyphLongitudes()` writes results to an ordinary
+JavaScript object, where that key changes the object's prototype
+instead of creating a normal named planet property.
+
+Rejecting this ambiguous input is safer than returning a partial
+impact report. All valid historical planet/axis names and rendered
+geometry are unchanged; the patch neither changes nor replaces the
+legacy glyph-layout helper. Both the headless Node coordinate-plan
+regression and the normal/southern-mirrored browser fixture test the
+failure, untouched geometry, and successful planning after restoring
+the original Sun identity. The browser fixture still requires an
+actual Chromium/Firefox run before merge.

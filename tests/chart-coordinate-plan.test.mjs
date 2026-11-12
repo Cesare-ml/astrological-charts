@@ -153,3 +153,29 @@ test('ambiguous same-name bodies inside one ring require full redraw instead of 
   assert.deepEqual(report.impacts,[]);
   assert.ok(report.issues.includes('ambiguous-wheel-name:Sun'));
 });
+
+test('special prototype key fails closed without changing existing chart layout',()=>{
+  const {scene,targets,owners}=sceneWithBodies();
+  const sun=owners.get('natal:Sun');
+  const originalRef=sun.group.userData.chartPlanetBody;
+  const originalGlyphRef=sun.glyph.userData.chartPlanet;
+  const originalPosition=sun.glyph.position.clone();
+  // A parsed JSON key may literally be "__proto__". The legacy collision
+  // helper uses ordinary object keys, where this key mutates the prototype.
+  sun.group.userData.chartPlanetBody={layer:'natal',name:'__proto__'};
+  sun.glyph.userData.chartPlanet={layer:'natal',name:'__proto__'};
+  const badTargets=targets.map(target=>target.ref.layer==='natal'&&target.ref.name==='Sun'
+    ? {ref:{layer:'natal',name:'__proto__'},longitude:target.longitude}
+    : target);
+  try {
+    const report=planChartCoordinateEffects(scene,badTargets);
+    assert.equal(report.decision,'unsupported');
+    assert.deepEqual(report.impacts,[]);
+    assert.ok(report.issues.includes('unsafe-wheel-name:natal:__proto__'));
+    assert.ok(sun.glyph.position.equals(originalPosition));
+  } finally {
+    sun.group.userData.chartPlanetBody=originalRef;
+    sun.glyph.userData.chartPlanet=originalGlyphRef;
+  }
+  assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+});

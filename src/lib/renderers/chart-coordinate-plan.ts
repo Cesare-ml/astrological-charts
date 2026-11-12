@@ -92,10 +92,18 @@ export function planChartCoordinateEffects(
 
   const impacts: ChartCoordinateImpact[] = [];
   for (const members of wheels.values()) {
-    const baseline: Record<string,{longitude:number}> = {};
-    const next: Record<string,{longitude:number}> = {};
+    // Avoid inherited properties in the legacy name-keyed collision inputs.
+    // '__proto__' is also unsafe for the legacy output's plain-object
+    // assignment: it changes the result prototype instead of adding a key.
+    // Reject it rather than produce a partially trustworthy impact plan.
+    const baseline: Record<string,{longitude:number}> = Object.create(null);
+    const next: Record<string,{longitude:number}> = Object.create(null);
     for (const owner of members) {
       const name = owner.ref.name;
+      if (name === '__proto__') {
+        issues.push('unsafe-wheel-name:'+chartPlanetKey(owner.ref));
+        continue;
+      }
       if (Object.prototype.hasOwnProperty.call(baseline,name)) {
         // Same body name under multiple layers in one ring cannot be
         // represented by the legacy name-keyed collision algorithm.
