@@ -444,7 +444,13 @@ export class OggettiSempliciRender {
 
   public static async getImg(assetsImgRef: string, w: number, h: number, scale: number, flipY = false, color?:string) {
     const material = await OggettiSempliciRender.getMaterial(assetsImgRef, flipY, color);
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w * scale, h * scale), material);
+    // The private VirgoStars Astro mask files are square, unlike the legacy
+    // 100x69 zodiac and 875x605 planet rasters. Preserve the approved shape
+    // without changing geometry when the preview is disabled.
+    const previewSquare = GestoreImmagini.isVirgoStarsAstroPreviewAsset(assetsImgRef);
+    const width = (previewSquare ? Math.min(w, h) : w) * scale;
+    const height = (previewSquare ? Math.min(w, h) : h) * scale;
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
     return plane;
   }
 /*
