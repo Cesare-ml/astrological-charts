@@ -10,6 +10,9 @@ This roadmap is for the **Astrological Charts** Angular 20 / TypeScript / Three.
 4. Submit or update a **draft PR** with changed files, executed commands, results, screenshots where relevant, risks, and the next step. Do not claim tests passed without running them.
 5. Never deploy, publish a package, enable GitHub Actions or merge to main without explicit maintainer approval.
 
+
+- JSON v1 error-path regression: fixed four over-escaped `RegExp` fragments in `tests/validate-chart-input.test.mjs` so `vertex` and optional planet-number assertions match literal dotted field paths (and not a literal backslash plus wildcard). Verified 15 generated patterns with 30 positive/negative assertions using local Node.js; the repository's full `npm run test:validate-chart-input` and Angular/browser preflight remain pending.
+
 ## M0 — Public-release safety (blocking)
 
 - [ ] Audit extracted source and Git history for redistribution rights, credentials, private data and third-party notices.
