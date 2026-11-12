@@ -205,3 +205,26 @@ different layers, no coordinate/scene mutation, and fail-closed invalid
 target and stale-layout cases. Playwright registers this fixture in
 `tests/demo-interactions.browser.test.mjs`. Browser runtime tests,
 TypeScript build and light/dark visual regression remain required.
+
+### Stable value snapshots across scene metadata changes
+
+`inspectChartBodyOwners(scene)` now copies and freezes each accepted
+`chartBodyLayout` value. An earlier inspection report cannot silently
+change when an Angular host mutates its scene's `userData` during a
+later redraw, while the scene object itself remains untouched and
+editable. This distinction is intentional: the report's layout data
+is immutable; its references to Three.js geometry/owner groups are
+**not** deep-frozen and must be revalidated before any future action.
+
+The synthetic normal/mirrored ownership regression mutates a source
+rotation offset after a successful inspection: the earlier snapshot
+retains the verified value, while a new inspection fails closed with
+`invalid-layout` and no owners until the source is restored.
+It also asserts `Object.isFrozen(layout)` and that the snapshot is
+not the same object as `userData.chartBodyLayout`.
+
+This is a read-only inspection hardening change, not an incremental
+mesh update. Existing full-scene redraw rules, upstream longitude
+values, native natal aspects, exports, artwork, WebGL resource
+ownership, glyph sizes and camera transforms are unchanged. Real
+browser/TypeScript tests are still required before merging PR #22.

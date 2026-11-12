@@ -74,6 +74,22 @@ window.runChartBodyOwnershipProbe = () => {
       indexed.owners.get('natal:Sun')?.outerLeader===natal.owner.children
         .find(child=>child.userData['chartBodyVisualRole']==='outer-leader');
 
+    // Scene.userData stays mutable for redraws. An earlier successful
+    // inspection must retain its own immutable value snapshot even after
+    // the host changes the layout in place.
+    const sourceLayout=transit.owner.userData['chartBodyLayout'];
+    const inspectedLayout=indexed.owners.get('transit:Sun')?.layout;
+    const previousOffset=sourceLayout.degreesOffset;
+    sourceLayout.degreesOffset=previousOffset+1;
+    const invalidFreshInspection=inspectChartBodyOwners(scene);
+    result['immutableLayoutSnapshot'+suffix]=!!inspectedLayout
+      && inspectedLayout!==sourceLayout && Object.isFrozen(inspectedLayout)
+      && inspectedLayout.degreesOffset===previousOffset
+      && !invalidFreshInspection.complete
+      && invalidFreshInspection.owners.size===0
+      && invalidFreshInspection.issues.includes('invalid-layout:transit:Sun');
+    sourceLayout.degreesOffset=previousOffset;
+
     natal.owner.remove(natal.inner);
     const missing=inspectChartBodyOwners(scene);
     result['missingLeaderRejected'+suffix]=!missing.complete

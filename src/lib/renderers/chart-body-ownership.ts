@@ -34,6 +34,7 @@ export interface ChartBodyOwner {
   readonly innerLeader: THREE.Object3D;
   readonly outerLeader?: THREE.Object3D;
   readonly extras: ReadonlyMap<ChartBodyVisualRole, THREE.Object3D>;
+  /** Value snapshot, not the host's mutable scene.userData object. */
   readonly layout: ChartBodyLayoutSnapshot;
 }
 
@@ -144,7 +145,10 @@ export function inspectChartBodyOwners(root: THREE.Object3D): ChartBodyOwnerInsp
       extras.delete('outer-leader');
       candidates.set(key,{
         ref:{...ref},group:object,glyph,innerLeader:leader,
-        outerLeader:parts.get('outer-leader'),extras,layout:rawLayout
+        outerLeader:parts.get('outer-leader'),extras,
+        // userData is mutable across host redraws. A report must not
+        // silently change after inspection if the host edits its layout.
+        layout:Object.freeze({...rawLayout})
       });
     }
   });
