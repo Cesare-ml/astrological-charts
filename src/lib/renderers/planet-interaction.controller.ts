@@ -349,11 +349,18 @@ export class PlanetInteractionController {
       // transferred mesh since this controller assigned its focus clone.
       // Never overwrite another controller's currently active material.
       const current = mesh.material;
-      const stillOurs = Array.isArray(focused)
-        ? Array.isArray(current) && focused.length === current.length &&
-          focused.every((material, index) => material === current[index])
-        : current === focused;
-      if (stillOurs) mesh.material = original;
+      if (Array.isArray(focused) && Array.isArray(original) && Array.isArray(current)) {
+        // Arrays can be updated slot-by-slot by another scene/host while
+        // one focus is active. Restore only slots still using our clones.
+        const restored = current.map((material, index) =>
+          material === focused[index] ? original[index] : material
+        );
+        if (restored.some((material, index) => material !== current[index])) {
+          mesh.material = restored;
+        }
+      } else if (current === focused) {
+        mesh.material = original;
+      }
       const copies = Array.isArray(focused) ? focused : [focused];
       const originals = Array.isArray(original) ? original : [original];
       for (const material of new Set(copies)) {
