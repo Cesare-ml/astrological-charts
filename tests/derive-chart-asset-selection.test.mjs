@@ -93,7 +93,9 @@ test('reports nonliteral skin expressions but ignores intentionally absent null 
   assert.equal(unsafe.filter(ref => ref.origin === 'skin').length, 2);
   assert.equal(unsafe.filter(ref => ref.origin === 'preload').length, 2);
   assert.ok(unsafe.every(ref => /Non-literal asset reference at .*:[0-9]+:[0-9]+;/.test(ref.problem)));
-  assert.ok(unsafe.every(ref => !ref.problem.includes('chooseTexture')));
+  assert.ok(unsafe.filter(ref => ref.origin === 'skin').every(ref => ref.problem.includes('@skin-manager.ts:')));
+  assert.ok(unsafe.filter(ref => ref.origin === 'preload').every(ref => ref.problem.includes('gestore-immagini.ts:')));
+  assert.ok(unsafe.every(ref => !ref.problem.includes('chooseTexture') && !ref.problem.includes('/private/')));
 });
 
 test('reports a non-array preload initializer instead of treating selection as complete', () => {
