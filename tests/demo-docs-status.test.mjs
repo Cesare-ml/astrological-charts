@@ -81,3 +81,14 @@ test('agent guidance distinguishes public asset access from redistribution right
   assert.match(agents, /original font is not included/);
   assert.doesNotMatch(agents, /The private `Cesare-ml\/astrological-assets` repository/);
 });
+
+test('agent asset policy keeps artwork outside the renderer and blocks production hotlinks', () => {
+  const agents = readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(agents, /Never copy them into this renderer repository, package output or demo/i);
+  assert.match(agents, /Do not silently hotlink the production website/i);
+  assert.match(agents, /Repository visibility and a passing integrity check do not establish redistribution rights/i);
+  assert.match(pkg.scripts['demo:assets:repo'], /\.\.\/astrological-assets\/public\/assets/);
+  assert.match(pkg.scripts['demo:assets:repo'], /\.\.\/astrological-assets\/manifests\/approved-assets\.json/);
+  assert.doesNotMatch(pkg.scripts['demo:assets:repo'], /https?:\/\//i);
+});
