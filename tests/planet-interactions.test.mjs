@@ -256,6 +256,46 @@ test('repeated programmatic focus and unchanged natal palette avoid repainting',
   ], 'identical selections/modes must never schedule duplicate renders');
 });
 
+test('cached picking respects current scene ancestry when glyphs are moved', () => {
+  const controllerSource = ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
+    ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const declaration = controllerSource.statements.find(statement =>
+    ts.isClassDeclaration(statement) && statement.name?.text === 'PlanetInteractionController');
+  assert.ok(declaration);
+  const member = declaration.members.find(node =>
+    ts.isMethodDeclaration(node) &&
+    node.name.getText(controllerSource) === 'visiblePlanetHit');
+  assert.ok(member?.body, 'private hit filter must exist');
+  const code = ts.transpileModule(`class HitProbe {
+    scene: any;
+    constructor(scene: any) { this.scene = scene; }
+    ${member.getText(controllerSource)}
+  }`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe = new Function(code + '\nreturn HitProbe;')();
+
+  const scene = {visible:true, parent:null};
+  const otherScene = {visible:true, parent:null};
+  const group = {visible:true, parent:scene};
+  const mesh = {visible:true, parent:group, material:{visible:true}};
+  const hit = {object:mesh};
+  const probe = new Probe(scene);
+  assert.equal(probe.visiblePlanetHit(hit),true, 'attached visible glyph can be picked');
+  mesh.parent = null;
+  assert.equal(probe.visiblePlanetHit(hit),false, 'detached glyph remains cached but cannot be selected');
+  mesh.parent = otherScene;
+  assert.equal(probe.visiblePlanetHit(hit),false, 'glyph in another chart must not receive this canvas pointer');
+  mesh.parent = group;
+  assert.equal(probe.visiblePlanetHit(hit),true, 'reattaching to original group restores hit without reindex');
+  group.visible = false;
+  assert.equal(probe.visiblePlanetHit(hit),false, 'hidden ancestor prevents hits');
+  group.visible = true;
+  mesh.material.visible = false;
+  assert.equal(probe.visiblePlanetHit(hit),false, 'hidden material prevents hits');
+  mesh.material.visible = true;
+  assert.equal(probe.visiblePlanetHit(hit),true, 'restoring material visibility restores hit');
+});
+
 test('hover-to-pin callback paints once and preserves deferred button focus', () => {
   const controllerSource = ts.createSourceFile('planet-interaction.controller.ts',
     readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
