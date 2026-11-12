@@ -144,7 +144,7 @@ After fast-forwarding to `a2e3e98`, preflight, both builds, the four-case browse
 
 ## Opt-in owner-approved VirgoStars Astro glyph image preview
 
-The demo now has a **Preview VirgoStars Astro glyph images** checkbox. It defaults to **off** and never loads proprietary assets unless explicitly enabled. A host-maintained private, SHA-verified staging pack with the 22 **white-alpha** masks is required. A public or synthetic-only pack **does not** contain these images; enabling the preview without correctly staged masks will cause a visible load error instead of silently replacing the artwork.
+The demo now has a **Preview VirgoStars Astro glyph images** checkbox. It defaults to **off** and never loads proprietary assets unless explicitly enabled. A host-maintained private, SHA-verified staging pack with the 22 **white-alpha** masks is required. A public or synthetic-only pack **does not** contain these images; enabling the preview without correctly staged masks will cause a visible load error instead of silently replacing the artwork. The local asset server supports an optional **second private overlay** with its own 22-mask SHA-256 manifest and separate local-only permission record, preserving the base pack's verified manifest (see the [private preview guide](VIRGOSTARS_ASTRO_PRIVATE_IMAGE_PREVIEW.md)).
 
 The private masks, source/rights controls, canonical paths, test command and fallback behavior are documented in [VirgoStars Astro private image preview](VIRGOSTARS_ASTRO_PRIVATE_IMAGE_PREVIEW.md). You can start the checkbox selected using `?astroGlyphs=1` only for a development run whose verified asset server has those files.
 
