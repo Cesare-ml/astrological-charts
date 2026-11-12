@@ -256,6 +256,53 @@ test('repeated programmatic focus and unchanged natal palette avoid repainting',
   ], 'identical selections/modes must never schedule duplicate renders');
 });
 
+test('active aspect endpoints skip glyphs transferred outside the source chart', () => {
+  const src = ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const declaration = src.statements.find(stmt =>
+    ts.isClassDeclaration(stmt) && stmt.name?.text==='PlanetInteractionController');
+  assert.ok(declaration);
+  const method = name => {
+    const found = declaration.members.find(member =>
+      ts.isMethodDeclaration(member) && member.name.getText(src)===name);
+    assert.ok(found?.body,name+' must be present');
+    return found.getText(src);
+  };
+  const code = ts.transpileModule(`class EndpointProbe {
+    scene: any;
+    glyphs = new Map<string,any[]>();
+    constructor(scene: any) { this.scene=scene; }
+    ${method('ownsGlyph')}
+    ${method('activeGlyph')}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe = new Function('chartPlanetKey',
+    code+'\nreturn EndpointProbe;')(api.chartPlanetKey);
+  const sourceScene={parent:null};
+  const destinationScene={parent:null};
+  const sourceRoot={parent:sourceScene};
+  const destinationRoot={parent:destinationScene};
+  const moved={parent:destinationRoot};
+  const remaining={parent:sourceRoot};
+  const ref={layer:'transit',name:'Saturn'};
+  const probe=new Probe(sourceScene);
+  probe.glyphs.set('transit:Saturn',[moved,remaining]);
+  assert.equal(probe.ownsGlyph(moved),false);
+  assert.equal(probe.ownsGlyph(remaining),true);
+  assert.equal(probe.activeGlyph(ref),remaining,
+    'pick the still-attached duplicate, not the first stale cached mesh');
+  remaining.parent=null;
+  assert.equal(probe.activeGlyph(ref),undefined,
+    'a chart with no still-owned partner must not render stale aspect endpoints');
+  moved.parent=sourceRoot;
+  assert.equal(probe.activeGlyph(ref),moved,
+    'reattaching restores the already indexed glyph');
+  moved.parent=destinationRoot;
+  probe.scene=destinationScene;
+  assert.equal(probe.activeGlyph(ref),moved,
+    'destination controller can select its own transferred glyph');
+});
+
 test('cached picking respects current scene ancestry when glyphs are moved', () => {
   const controllerSource = ts.createSourceFile('planet-interaction.controller.ts',
     readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
