@@ -4,7 +4,7 @@ The Angular workspace contains an application that imports the library's actual 
 
 ## Start with synthetic assets
 
-Requirements: Node 22.18 or another version supported by the package, npm and access to this private repository. From the repository root:
+Requirements: Node 22.18 or another version supported by the package, npm and a checkout of this publicly readable repository (public visibility does not grant redistribution rights). From the repository root:
 
 ```sh
 npm ci
