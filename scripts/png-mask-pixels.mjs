@@ -1,4 +1,4 @@
-import { inflateSync } from 'node:zlib';
+import { crc32, inflateSync } from 'node:zlib';
 
 const PNG_SIGNATURE = Buffer.from('89504e470d0a1a0a', 'hex');
 const WIDTH = 512;
@@ -6,16 +6,20 @@ const HEIGHT = 512;
 const BPP = 4;
 const STRIDE = WIDTH * BPP;
 const DECODED_LENGTH = HEIGHT * (STRIDE + 1);
+const MAX_PNG_BYTES = 2 * 1024 * 1024;
+const MAX_PNG_CHUNKS = 64;
 
 /**
  * Inspect a tightly scoped, 512x512, 8-bit RGBA PNG without writing files.
- * Reject visible dark/colored pixels which would defeat Three.js color tint.
+ * Reject dark/colored RGB including fully transparent pixels to prevent
+ * filtering halos when Three.js samples along antialiased glyph edges.
  * Reject uncompressed / interlaced / indexed formats and excessive decompression.
  */
 export function verifyWhiteAlphaPng(buffer, expectedCoverage) {
   if (!Buffer.isBuffer(buffer) || buffer.length < 57 || !buffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
     throw new Error('Astro mask must be a valid PNG buffer');
   }
+  if (buffer.length > MAX_PNG_BYTES) throw new Error('Astro PNG exceeds the safe 2 MiB size limit');
   if (!Number.isSafeInteger(expectedCoverage) || expectedCoverage <= 0 || expectedCoverage > WIDTH * HEIGHT) {
     throw new Error('Invalid expected Astro alpha coverage');
   }
@@ -23,14 +27,19 @@ export function verifyWhiteAlphaPng(buffer, expectedCoverage) {
   let sawHeader = false;
   let sawEnd = false;
   let sawData = false;
+  let chunkCount = 0;
   const chunks = [];
   while (offset < buffer.length) {
+    if (++chunkCount > MAX_PNG_CHUNKS) throw new Error('Astro PNG has too many chunks');
     if (offset + 12 > buffer.length) throw new Error('Truncated Astro PNG chunk');
     const length = buffer.readUInt32BE(offset);
     const type = buffer.toString('ascii', offset + 4, offset + 8);
     const start = offset + 8;
     const end = start + length;
     if (end + 4 > buffer.length) throw new Error('Truncated Astro PNG payload');
+    if (crc32(buffer.subarray(offset + 4, end)) !== buffer.readUInt32BE(end)) {
+      throw new Error('Astro PNG has an invalid chunk CRC: ' + type);
+    }
     if (!sawHeader && type !== 'IHDR') throw new Error('Astro PNG must start with IHDR');
     if (type === 'IHDR') {
       if (sawHeader || length !== 13 || buffer.readUInt32BE(start) !== WIDTH ||
@@ -86,12 +95,10 @@ export function verifyWhiteAlphaPng(buffer, expectedCoverage) {
       row[x] = (row[x] + predictor) & 255;
     }
     for (let x = 0; x < STRIDE; x += BPP) {
-      if (row[x + 3] > 0) {
-        visible++;
-        if (row[x] !== 255 || row[x + 1] !== 255 || row[x + 2] !== 255) {
-          throw new Error('Astro PNG has nonwhite visible RGB pixels');
-        }
+      if (row[x] !== 255 || row[x + 1] !== 255 || row[x + 2] !== 255) {
+        throw new Error('Astro PNG has nonwhite RGB pixels, including transparent areas');
       }
+      if (row[x + 3] > 0) visible++;
     }
     previous = row;
   }
