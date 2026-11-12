@@ -121,9 +121,9 @@ test('dynamic asset references block selection with a diagnostic report and no o
     assert.equal(report.unresolved.length, 2);
     assert.ok(report.unresolved.every(issue => /Non-literal asset reference/.test(issue.problem)));
     assert.deepEqual(files, [
-      'img/risuonatore-solare-bianco.png',
-      'img/simboli-bianchi/segni/01.png', 'img/textures/texture-oro-1.jpg',
-    ].filter(path => path !== 'img/risuonatore-solare-bianco.png'));
+      'img/simboli-bianchi/segni/01.png',
+      'img/textures/texture-oro-1.jpg',
+    ], 'Non-referenced artwork outside chart families must stay excluded');
 
     const out = join(assets, 'selection.json');
     const reportFile = join(assets, 'selection.report.json');
