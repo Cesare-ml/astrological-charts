@@ -74,8 +74,7 @@ window.runTransferredGlyphIsolationProbe = () => {
     controllerB.highlight({layer:'natal',name:'Moon'});
     const bLine = sceneB.getObjectByName('chart-interaction-aspect');
     result.destinationFocusWorks = !!bLine &&
-      color(moon)==='ffffff' ? false :
-      !!bLine && color(moon)!=='171717' && color(transferredSaturn)==='9e02ff';
+      color(moon)==='c0c0c0' && color(transferredSaturn)==='9e02ff';
 
     controllerA.highlight({layer:'natal',name:'Sun'});
     const aLine = sceneA.getObjectByName('chart-interaction-aspect') as THREE.Line|undefined;
