@@ -34,28 +34,41 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
     const status = page.locator('[data-testid=status]');
     const canvas = page.locator('canvas[data-testid=chart]');
     const screenshotHash = buffer => createHash('sha256').update(buffer).digest('hex');
-    async function ready() {
-      await page.waitForFunction(() => {
-        const text = document.querySelector('[data-testid=status]')?.textContent ?? '';
-        return (/Rendered|Rendering failed/.test(text)) &&
-          !document.querySelector('#mode')?.disabled;
-      }, undefined, { timeout: 45000 });
+    async function renderedRevision() {
+      const value = await status.getAttribute('data-render-revision');
+      assert.match(value ?? '', /^\\d+$/, 'Demo must expose a numeric render revision');
+      return Number(value);
+    }
+    async function readyAfter(previousRevision) {
+      // A stale "Rendered" status from the prior frame must never satisfy QA.
+      await page.waitForFunction((before) => {
+        const element = document.querySelector('[data-testid=status]');
+        const text = element?.textContent ?? '';
+        const revision = Number(element?.getAttribute('data-render-revision') ?? -1);
+        return /Rendering failed/.test(text) ||
+          (revision > before && /Rendered/.test(text) &&
+            !document.querySelector('#mode')?.disabled);
+      }, previousRevision, { timeout: 45000 });
       assert.match(await status.textContent(), /Rendered/, 'Angular chart must render');
+      assert.ok(await renderedRevision() > previousRevision,
+        'The browser must observe a NEW completed draw, not cached status text');
+    }
+    async function redraw(action) {
+      const before = await renderedRevision();
+      await action();
+      await readyAfter(before);
     }
     try {
       await page.goto('http://127.0.0.1:4200/', { waitUntil: 'domcontentloaded' });
-      await ready();
-      await page.selectOption('#mode','natal');
-      await ready();
-      await page.selectOption('#skin','light');
-      await ready();
+      await readyAfter(0);
+      assert.equal(await page.locator('#mode').inputValue(), 'natal');
+      assert.equal(await page.locator('#skin').inputValue(), 'light');
       const before = await canvas.screenshot();
       const preview = page.locator('#astro-preview');
       assert.ok(await preview.isVisible(), 'Missing opt-in checkbox');
       assert.equal(await preview.isChecked(), false, 'Preview MUST be disabled by default');
 
-      await preview.check();
-      await ready();
+      await redraw(() => preview.check());
       const after = await canvas.screenshot();
       assert.notEqual(screenshotHash(before), screenshotHash(after),
         'Enabling approved glyphs must change chart pixels');
@@ -70,13 +83,11 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       assert.ok(maskResponses.every(r => r.status === 200),
         'Mask requests must succeed with the private approved asset server');
 
-      await page.selectOption('#skin','dark');
-      await ready();
+      await redraw(() => page.selectOption('#skin','dark'));
       assert.notEqual(screenshotHash(await canvas.screenshot()), screenshotHash(after),
         'The same glyph shapes must render with dark skin colors');
       for (const mode of ['transits','synastry']) {
-        await page.selectOption('#mode',mode);
-        await ready();
+        await redraw(() => page.selectOption('#mode',mode));
         const png = await canvas.screenshot();
         const stats = await sharp(png).stats();
         assert.ok(stats.channels.some(ch => ch.stdev > 5),
@@ -96,12 +107,9 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       assert.equal(meta.height,1600);
 
       // Verify rollback on the SAME mode and skin as the first screenshot.
-      await page.selectOption('#mode','natal');
-      await ready();
-      await page.selectOption('#skin','light');
-      await ready();
-      await preview.uncheck();
-      await ready();
+      await redraw(() => page.selectOption('#mode','natal'));
+      await redraw(() => page.selectOption('#skin','light'));
+      await redraw(() => preview.uncheck());
       const restored = await canvas.screenshot();
       const oldImage = await sharp(before).removeAlpha().raw().toBuffer();
       const newImage = await sharp(restored).removeAlpha().raw().toBuffer();
