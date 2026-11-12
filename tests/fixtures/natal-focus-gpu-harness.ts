@@ -51,6 +51,9 @@ window.runNatalFocusGpuProbe = () => {
     const material = new LineMaterial({linewidth:1.5,vertexColors:true});
     material.resolution.set(160,160);
     const line = new Line2(geometry,material);
+    // Deliberately duplicate the exact parent aspect metadata on the
+    // child Line2, as can happen in grouped native dashed strokes.
+    line.userData['chartNatalAspect'] = {from,to,type:'trigono'};
     tagged.add(line);
     originals.push(line);
     wheel.add(tagged);
@@ -85,11 +88,17 @@ window.runNatalFocusGpuProbe = () => {
   let clonesDisposedExactlyOnce = true;
   let nativeResourcesUntouched = true;
   let originalColorsMutedDuringFocus = true;
+  let nestedTagsIndexedOnce = false;
   let originalsRestored = false;
   let clearedToBaseline = false;
   let noGpuLeaksAfterTeardown = false;
   try {
     controller.setScene(scene);
+    const tags=(controller as unknown as {
+      natalAspectTags:{root:THREE.Object3D}[]
+    }).natalAspectTags;
+    nestedTagsIndexedOnce = tags.length===3 &&
+      tags.every(tag=>tag.root instanceof THREE.Group);
     renderer.render(scene,camera);
     baselineGeometries = renderer.info.memory.geometries;
     const baselineTextures = renderer.info.memory.textures;
@@ -159,7 +168,7 @@ window.runNatalFocusGpuProbe = () => {
     copiesBounded, gpuGeometriesBounded, texturesStable, programsStable,
     clonesDisposedExactlyOnce, nativeResourcesUntouched,
     originalColorsMutedDuringFocus, originalsRestored,
-    clearedToBaseline, noGpuLeaksAfterTeardown,
+    nestedTagsIndexedOnce, clearedToBaseline, noGpuLeaksAfterTeardown,
     cycles, baselineGeometries, peakGeometries
   };
 };
