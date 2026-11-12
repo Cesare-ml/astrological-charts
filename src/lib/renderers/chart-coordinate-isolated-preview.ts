@@ -117,9 +117,15 @@ export function applyIsolatedCoordinatePreview(
     const lines = [owner.innerLeader,owner.outerLeader]
       .filter((line): line is THREE.Object3D => !!line);
     for (const line of lines) {
-      if (!nearAngle(line.rotation.z,oldTick) ||
+      // A role tag alone does not guarantee a drawable radial line.
+      // Never rotate arbitrary host Object3Ds as if they were leaders.
+      if (!(line instanceof THREE.Line) ||
+          !line.geometry.getAttribute('position') ||
+          line.geometry.getAttribute('position').count < 2 ||
+          !nearAngle(line.rotation.z,oldTick) ||
           line.rotation.x !== 0 || line.rotation.y !== 0 ||
-          line.position.lengthSq() !== 0)
+          line.position.lengthSq() !== 0 ||
+          line.scale.x !== 1 || line.scale.y !== 1 || line.scale.z !== 1)
         return result('rejected',0,['stale-leader-geometry:'+key]);
     }
     stages.push({

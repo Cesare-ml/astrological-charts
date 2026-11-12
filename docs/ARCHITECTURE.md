@@ -421,3 +421,17 @@ stale leader/symbol safety and preflight atomicity. This code is **not
 wired** into `GraficoRenderService` or public APIs. In real charts,
 native aspects, houses, styling, decorations and interaction controllers
 still require a complete `disegnaScena()` rebuild when positions change.
+
+
+The synthetic isolated transform also has a real-browser WebGL
+regression fixture (`tests/fixtures/chart-isolated-preview-harness.ts`)
+registered in `test:demo-interactions`. For both normal and mirrored
+wheel roots it renders a glyph and its leader lines, applies the
+transaction, checks the previous and next world-space positions,
+unchanged geometry identity/GPU resource counts, raycasts the new
+glyph location, checks idempotence, and verifies fail-closed behavior
+when a native aspect ring appears. The transaction now also requires
+true `THREE.Line` objects with drawable position geometry and
+unscaled/untranslated leader transforms; mere role metadata is
+insufficient. These are **unexecuted browser regression gates**
+until run locally by the owner.
