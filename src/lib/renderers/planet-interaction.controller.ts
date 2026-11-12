@@ -194,11 +194,16 @@ export class PlanetInteractionController {
   /** Raycaster intersections include non-rendered meshes in some Three.js
    * paths. Respect current scene/group/mesh and material visibility without
    * rebuilding the cached pickTargets array whenever the host hides a layer.
+   * A removed or reparented mesh can remain in that cache: it must never
+   * receive clicks or steal hover after leaving this particular scene.
    */
   private visiblePlanetHit(hit: THREE.Intersection<THREE.Object3D>): boolean {
+    let belongsToActiveScene = false;
     for (let node: THREE.Object3D | null = hit.object; node; node = node.parent) {
       if (!node.visible) return false;
+      if (node === this.scene) belongsToActiveScene = true;
     }
+    if (!belongsToActiveScene) return false;
     const material = (hit.object as THREE.Mesh).material;
     if (Array.isArray(material)) {
       // Multi-material meshes can hide just one group of triangles.
