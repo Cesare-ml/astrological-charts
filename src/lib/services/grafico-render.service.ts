@@ -102,6 +102,9 @@ export class GraficoRenderService implements OnDestroy {
 
   // ### ZOOM ###
   public setZoom(zoom: number): void {
+    // NaN would corrupt PerspectiveCamera's projection matrix. Ignore all
+    // non-finite host inputs rather than silently changing the chart view.
+    if (!Number.isFinite(zoom)) return;
     this.zoomValue = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
     if (this.camera) {
       this.camera.zoom = this.zoomValue;
