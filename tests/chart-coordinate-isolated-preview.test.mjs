@@ -174,3 +174,59 @@ test('stale symbol center and nested decorations must not be partially patched',
   assert.equal(report.status,'rejected');
   assert.ok(report.issues.includes('unsupported-decorations'));
 });
+
+
+test('runtime failure on the second body rolls every staged transform and layout back',()=>{
+  const f=fixture({outer:true});
+  const sun=f.parts.get('Sun'), moon=f.parts.get('Moon');
+  const sunBefore=sun.glyph.position.clone();
+  const moonBefore=moon.glyph.position.clone();
+  const sunTickBefore=sun.inner.rotation.z;
+  const sunOuterBefore=sun.outerLeader.rotation.z;
+  const sunAngleBefore=sun.glyph.userData.chartAspectAngle;
+  const sunLayoutBefore=sun.owner.userData.chartBodyLayout;
+  const moonLayoutBefore=moon.owner.userData.chartBodyLayout;
+
+  // The setter allows the old object during rollback but rejects its
+  // replacement. Sun has already changed when Moon throws.
+  Object.defineProperty(moon.owner.userData,'chartBodyLayout',{
+    configurable:true,enumerable:true,
+    get:()=>moonLayoutBefore,
+    set(next){if(next!==moonLayoutBefore)throw Error('synthetic write failure');}
+  });
+  try {
+    const input=f.targets.map(t=>({...t,longitude:t.longitude+4}));
+    const report=applyIsolatedCoordinatePreview(f.scene,input);
+    assert.equal(report.status,'rejected');
+    assert.deepEqual(report.issues,['transaction-rolled-back']);
+    assert.equal(report.updated,0);
+    assert.ok(sun.glyph.position.equals(sunBefore));
+    assert.ok(moon.glyph.position.equals(moonBefore));
+    assert.equal(sun.inner.rotation.z,sunTickBefore);
+    assert.equal(sun.outerLeader.rotation.z,sunOuterBefore);
+    assert.equal(sun.glyph.userData.chartAspectAngle,sunAngleBefore);
+    assert.equal(sun.owner.userData.chartBodyLayout,sunLayoutBefore);
+    assert.equal(moon.owner.userData.chartBodyLayout,moonLayoutBefore);
+  } finally {
+    delete moon.owner.userData.chartBodyLayout;
+    moon.owner.userData.chartBodyLayout=moonLayoutBefore;
+  }
+  assert.equal(planChartCoordinateEffects(f.scene,f.targets).decision,'unchanged');
+});
+
+test('role-labelled objects without real line geometry cannot be edited',()=>{
+  const f=fixture();
+  const moon=f.parts.get('Moon');
+  moon.owner.remove(moon.inner);
+  const imitation=new THREE.Object3D();
+  imitation.userData.chartBodyVisualRole='inner-leader';
+  moon.owner.add(imitation);
+  const sun=f.parts.get('Sun');
+  const before=sun.glyph.position.clone();
+  const report=applyIsolatedCoordinatePreview(f.scene,
+    f.targets.map(t=>({...t,longitude:t.longitude+4})));
+  assert.equal(report.status,'rejected');
+  assert.ok(report.issues.includes('stale-leader-geometry:natal:Moon'));
+  assert.ok(sun.glyph.position.equals(before));
+  assert.equal(sun.owner.userData.chartBodyLayout.original,10);
+});

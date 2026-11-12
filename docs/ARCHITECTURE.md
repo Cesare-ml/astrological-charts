@@ -441,3 +441,11 @@ true `THREE.Line` objects with drawable position geometry and
 unscaled/untranslated leader transforms; mere role metadata is
 insufficient. These are **unexecuted browser regression gates**
 until run locally by the owner.
+
+
+The headless Node suite also forces a synthetic write exception after
+the first body has been transformed and verifies that its glyph
+position, inner/outer leader rotations, aspect-angle metadata and
+layout object are fully restored. A fake Object3D that carries the
+correct leader role but no drawable line geometry must be rejected
+before any transaction begins.
