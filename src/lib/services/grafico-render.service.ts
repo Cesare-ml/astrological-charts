@@ -9,7 +9,7 @@ import { GestoreImmagini } from '../renderers/gestore-immagini';
 import { disposeSceneResources } from '../renderers/scene-resources';
 import { PlanetInteractionController } from '../renderers/planet-interaction.controller';
 import type { ChartAspectRelation, ChartPlanetInteractionEvent, ChartPlanetRef } from '../renderers/planet-interaction.types';
-import { snapshotChartAspects } from '../renderers/planet-interaction.types';
+import { isChartPlanetRef, snapshotChartAspects } from '../renderers/planet-interaction.types';
 //import {ElementiRender} from '../renderers/elementi.renderer';
 import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer';
 //import {OrePlanetarieRender} from '../renderers/ore-planetarie.renderer';
@@ -90,12 +90,18 @@ export class GraficoRenderService implements OnDestroy {
 
   /** On-screen natal aspect palette: all colored, focused colored, or gray. */
   public setNatalAspectPresentation(presentation: 'all' | 'focused' | 'muted'): void {
+    // TypeScript types do not validate untyped JavaScript/JSON host inputs.
+    // Reject an unknown mode rather than caching it for the next redraw.
+    if (presentation !== 'all' && presentation !== 'focused' && presentation !== 'muted') return;
     this.natalAspectPresentation = presentation;
     this.planetController?.setNatalAspectPresentation(presentation);
   }
 
   /** Programmatic focus for buttons/keyboard controls. null clears it. */
   public highlightPlanet(planet: ChartPlanetRef | null): void {
+    // Only an explicit null clears selection. A malformed host payload
+    // must not silently erase the current keyboard/pointer focus.
+    if (planet !== null && !isChartPlanetRef(planet)) return;
     this.pinnedPlanet = planet ? { ...planet } : null;
     this.planetController?.highlight(this.pinnedPlanet);
   }
