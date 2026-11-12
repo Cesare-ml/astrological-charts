@@ -91,6 +91,17 @@ test('synthetic preload fails closed on missing, duplicate or malformed array de
     assert.throws(() => sourcePreloadPaths(input), /78 unique|declaration|static quoted|comment|nonliteral/i);
 });
 
+test('synthetic preload preserves existing missing-list diagnostic and refuses duplicate declarations', () => {
+  // tests/serve-local-assets.test.mjs already depends on this diagnostic.
+  // This regression protects the legacy local asset smoke suite, not only
+  // the tests added alongside the strict parser.
+  assert.throws(() => sourcePreloadPaths('no preload here'), /Preload list missing/);
+  assert.throws(
+    () => sourcePreloadPaths(sourcePreload + '\n' + sourcePreload),
+    /exactly one static preloadArraySimboli declaration/
+  );
+});
+
 test('synthetic preload tolerates comments but does not treat their URLs as entries', () => {
   const mutated=mutatePreload(originalCase02,
     '// "/assets/img/comment-should-not-count.png"\n    ' + originalCase02);
