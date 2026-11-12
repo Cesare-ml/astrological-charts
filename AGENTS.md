@@ -205,6 +205,24 @@ Node method-extraction test as regression gates. Cross-chart hosts
 must still avoid sharing mutable scene-wide geometry/state.
 No new astrology or private art may be added.
 
+## Two-chart WebGL focus lifecycle gate
+
+The on-screen controller uses material clones for glyph focus.
+Keep the dedicated stress fixture
+`tests/fixtures/multi-chart-gpu-focus-harness.ts`
+registered in `tests/demo-interactions.browser.test.mjs`.
+It renders **two WebGL contexts simultaneously**, with the
+same underlying base material and synthetic 1×1 texture;
+60 changing focus cycles per chart must not grow geometry,
+texture or shader-program counts. Every transient material
+must emit exactly one `dispose`, and destroying one
+controller must never affect the remaining chart.
+`renderer.info.memory` reports resource **counts**, not
+VRAM bytes or OS memory; no FPS or leak-free claim may
+be made without the owner-run browser suite and GPU
+review. Keep source/texture ownership intact; do not
+copy production artwork or modify astronomy.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
