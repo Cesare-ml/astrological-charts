@@ -100,7 +100,7 @@ export function inspectBranchScopes(inputPairs, cwd = process.cwd(), runGit = ex
  */
 export function resolveReportOutputPath(outPath, cwd = process.cwd()) {
   if (typeof outPath !== 'string' ||
-      !/^\\.local\\/[A-Za-z0-9][A-Za-z0-9._-]*\\.json$/.test(outPath) ||
+      !/^\.local\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/.test(outPath) ||
       outPath.includes('..')) {
     throw new Error('Report output must be .local/<filename>.json');
   }
