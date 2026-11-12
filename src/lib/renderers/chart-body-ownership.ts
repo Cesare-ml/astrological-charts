@@ -7,6 +7,9 @@ export interface ChartBodyLayoutSnapshot {
   readonly coordinate: string;
   readonly original: number;
   readonly adjusted: number;
+  /** Render rotation provenance, never a new astronomical calculation. */
+  readonly ascendant: number;
+  readonly degreesOffset: number;
   readonly tickDegrees: number;
   readonly glyphDisplacementDegrees: number;
   /** Optional parts are required only when enabled for this chart. */
@@ -47,7 +50,10 @@ function isLayout(value: unknown): value is ChartBodyLayoutSnapshot {
   return typeof v.coordinate === 'string' && v.coordinate.length > 0
     && typeof v.original === 'number' && Number.isFinite(v.original)
     && typeof v.adjusted === 'number' && Number.isFinite(v.adjusted)
+    && typeof v.ascendant === 'number' && Number.isFinite(v.ascendant)
+    && typeof v.degreesOffset === 'number' && Number.isFinite(v.degreesOffset)
     && typeof v.tickDegrees === 'number' && Number.isFinite(v.tickDegrees)
+    && v.tickDegrees === 75 - v.ascendant + 15 + v.original + v.degreesOffset
     && typeof v.glyphDisplacementDegrees === 'number'
     && Number.isFinite(v.glyphDisplacementDegrees)
     && v.glyphDisplacementDegrees === v.adjusted - v.original

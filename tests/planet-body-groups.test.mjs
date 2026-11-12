@@ -26,6 +26,9 @@ test('each body owns one identity-transform scene group',()=>{
   assert.ok(loop.includes('var elGroup = new THREE.Group();'));
   assert.ok(loop.includes("elGroup.userData['chartPlanetBody'] = {layer:interactionLayer,name:nome};"));
   assert.ok(loop.includes('group.add(elGroup);'));
+  assert.ok(loop.includes('ascendant: ascendente,'));
+  assert.ok(loop.includes('degreesOffset: degOffs,'),
+    'the inspector must receive the same render rotation provenance');
   assert.equal(count(loop,'elGroup.position.'),0);
   assert.equal(count(loop,'elGroup.rotation.'),0);
   assert.equal(count(loop,'elGroup.scale.'),0);

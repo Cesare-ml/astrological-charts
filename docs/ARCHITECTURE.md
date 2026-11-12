@@ -141,3 +141,33 @@ missing **or unrequested** optional parts. It checks that the
 collision displacement matches the original/adjusted coordinates,
 so a future updater cannot mistake stale or inconsistent metadata
 for a complete visual group.
+
+### Verify original-longitude rotation provenance (draft PR #22)
+
+The per-body owner metadata now captures the exact **render-only**
+`ascendant` and `degreesOffset` inputs, alongside upstream
+`original` and collision-adjusted longitude, the true leader
+`tickDegrees`, and glyph displacement. The read-only
+`inspectChartBodyOwners()` rejects a group unless the stored
+tick angle matches the exact legacy expression order:
+
+```ts
+75 - ascendant + 15 + original + degreesOffset
+```
+
+This guards against a subtle stale-snapshot case: modifying both a
+glyph's `chartAspectAngle` and its `tickDegrees` used to make
+them mutually consistent even when they no longer corresponded to
+the original upstream longitude. The inspection now fails closed
+with `invalid-layout` and an empty owner map; the regular renderer
+continues using `chartBodyRenderAngles()` and never changes
+positions, house/aspect mathematics, glyph size or visual assets.
+
+The synthetic normal/mirrored browser fixture checks a coherently
+modified tick+glyph angle, a changed rotation offset, and the
+existing ownership/role cases. `tests/planet-body-groups.test.mjs`
+asserts that the actual wheel renderer populates both fields.
+Run `npm run test:planet-body-groups`, `npm run check:types`,
+`npm run build:demo`, and `npm run test:demo-interactions`
+before approving. These browser validations are not claimed to
+have passed solely from committed source checks.

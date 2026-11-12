@@ -26,6 +26,7 @@ window.runChartBodyOwnershipProbe = () => {
       const tickDegrees=75-22+15+original;
       owner.userData['chartBodyLayout'] = {
         coordinate:'longitude',original,adjusted,tickDegrees,
+        ascendant:22,degreesOffset:0,
         glyphDisplacementDegrees:adjusted-original,
         outerLeaderEnabled: optional,moonMarkerEnabled:optional
       };
@@ -133,6 +134,30 @@ window.runChartBodyOwnershipProbe = () => {
     result['staleAspectRejected'+suffix]=!stale.complete
       && stale.issues.includes('mismatched-aspect-angle:transit:Sun');
     transit.glyph.userData['chartAspectAngle']=oldAngle;
+
+    // A corrupt original longitude could previously pass inspection as
+    // long as the glyph and stored tick angle agreed with each other.
+    const originalLayout=transit.owner.userData['chartBodyLayout'];
+    transit.owner.userData['chartBodyLayout']={
+      ...originalLayout,tickDegrees:originalLayout.tickDegrees+1
+    };
+    transit.glyph.userData['chartAspectAngle']=THREE.MathUtils.degToRad(
+      originalLayout.tickDegrees+1
+    );
+    const coherentButStale=inspectChartBodyOwners(scene);
+    result['staleTickProvenanceRejected'+suffix]=!coherentButStale.complete
+      && coherentButStale.issues.includes('invalid-layout:transit:Sun')
+      && coherentButStale.owners.size===0;
+    transit.owner.userData['chartBodyLayout']=originalLayout;
+    transit.glyph.userData['chartAspectAngle']=oldAngle;
+
+    // Wrong or missing rotation provenance must fail closed as well.
+    const wrongOffset={...originalLayout,degreesOffset:1};
+    transit.owner.userData['chartBodyLayout']=wrongOffset;
+    const invalidOffset=inspectChartBodyOwners(scene);
+    result['invalidRotationOffsetRejected'+suffix]=!invalidOffset.complete
+      && invalidOffset.issues.includes('invalid-layout:transit:Sun');
+    transit.owner.userData['chartBodyLayout']=originalLayout;
 
     const priorLayout=synastry.owner.userData['chartBodyLayout'];
     synastry.owner.userData['chartBodyLayout']={

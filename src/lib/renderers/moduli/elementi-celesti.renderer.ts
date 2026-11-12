@@ -187,6 +187,8 @@ export class ElementiCelestiRender {
         coordinate: parametroDiRender,
         original: elementiCelesti[nome][parametroDiRender],
         adjusted: elementiCelestiRenderPos[nome][parametroDiRender],
+        ascendant: ascendente,
+        degreesOffset: degOffs,
         tickDegrees: bodyAngles.tickDegrees,
         glyphDisplacementDegrees: bodyAngles.glyphDisplacementDegrees,
         outerLeaderEnabled: !!lineaSuCerchioEsterno,
