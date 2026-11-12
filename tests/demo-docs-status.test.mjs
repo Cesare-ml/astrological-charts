@@ -26,3 +26,12 @@ test('package metadata describes public source without implying an approved rele
   assert.doesNotMatch(pkg.description, /private collaborative/i);
   assert.equal(pkg.private, true, 'npm publishing must remain disabled pending rights review');
 });
+
+test('documentation regression check remains wired into the local preflight', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const demo = readFileSync(new URL('../docs/ANGULAR_DEMO.md', import.meta.url), 'utf8');
+  assert.equal(pkg.scripts['test:demo-docs'], 'node --test tests/demo-docs-status.test.mjs');
+  assert.match(pkg.scripts.preflight, /(?:^|\s)npm run test:demo-docs(?:\s|$)/);
+  assert.match(demo, /npm run test:demo-docs/);
+  assert.match(demo, /npm run preflight/);
+});
