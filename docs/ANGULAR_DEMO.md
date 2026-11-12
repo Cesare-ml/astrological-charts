@@ -141,3 +141,7 @@ On a fresh local checkout of `a421969`, `npm ci`, preflight, both builds, synthe
 After fast-forwarding that checkout to `3fd073f`, `npm run test:offline` passed with Firefox 142.0.1: four nonblank 400×400 PNGs from verified synthetic local files, browser context offline and no HTTP(S) requests observed. The installed Astrolabio adapter and hardware were not exercised.
 
 After fast-forwarding to `a2e3e98`, preflight, both builds, the four-case browser suite in Chromium and Firefox, and the offline test passed. The new failure-path test covers cleanup of repeating timelines when body, house or nested synastry construction is interrupted. This does not prove disposal of every resource in all failed partial scenes.
+
+### Local asset CORS preflight
+
+The manifest-gated loopback server responds to `OPTIONS` only for existing, approved asset paths; unknown paths return HTTP 404 and non-local origins return HTTP 403. This prevents an unapproved URL from receiving a successful preflight response. Run `node --test tests/asset-preflight.test.mjs` to exercise these cases with generated synthetic assets. This is an HTTP regression check, **not** proof of Angular build success, real-artwork integrity, or WebGL visual correctness.
