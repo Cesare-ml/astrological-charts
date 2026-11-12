@@ -1270,3 +1270,35 @@ winning frame (or none after scene replacement), unchanged native
 resource ownership and no stale callback repaint. Actual installed
 Angular, Node/Three.js and Chromium/Firefox acceptance still gates
 the existing draft PR #22.
+
+
+### Reentrant Three.js `added` events during aspect-line construction
+
+`Object3D.add()` dispatches synchronous `added` notifications.
+Previously the interactive controller appended new central aspect
+lines, dashed transit guides and cloned natal-focus foregrounds
+to their owned cleanup arrays **after** adding them to the
+Three.js scene. If an `added` listener synchronously replaced
+the chart or destroyed the controller, its cleanup could not
+see the new objects; the original paint could then continue
+drawing obsolete lines into the replacement scene.
+
+Newly constructed screen-only geometry/materials are now tracked
+**before** `Object3D.add()`. The repaint owns a scene and visual
+revision token: it checks again after natal foreground addition,
+before and after central-line addition, and before/after
+transit-guide creation. If a callback replaced the scene or
+started a newer paint, the earlier pass exits without publishing
+stale guides or mutating the retired natal aspect palette. The
+new chart's normal redraw remains independently owned.
+
+Node tests exercise the actual `updateVisuals()` body with
+minimal Three-like geometry and a synchronous `scene.add`
+callback, verifying disposal of the in-flight line and
+latest-scene retention. The real-Three.js browser lifecycle
+fixture covers `added` callbacks for central lines, dashed
+guides and native natal foreground clones with synthetic
+geometry and one callback-induced `setScene`. This does not
+change natal/transit calculations, displayed colors, glyph
+scale, or screenshot exports. Chrome/Firefox and Angular
+validation remains required before any merge of draft PR #22.

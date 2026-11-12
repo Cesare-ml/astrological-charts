@@ -578,18 +578,26 @@ export class PlanetInteractionController {
       copy.renderOrder = 999;
     }
     overlay.name = 'chart-interaction-natal-focus';
-    root.parent.add(overlay);
+    // Object3D.add emits synchronous events. Publish ownership *before*
+    // add(), so a reentrant setScene/destroy disposes this new clone.
     this.natalFocusOverlays.push(overlay);
+    root.parent.add(overlay);
   }
 
-  private paintNatalAspectPalette(focus: ChartPlanetRef | null): void {
+  private paintNatalAspectPalette(
+    focus: ChartPlanetRef | null, isCurrent: () => boolean
+  ): void {
     if (this.natalAspectPresentation === 'all') return;
     const gray = new THREE.Color('#898989');
     for (const aspect of this.natalAspectTags) {
+      if (!isCurrent()) return;
       const connectsFocus = this.natalAspectPresentation === 'focused' &&
         focus?.layer === 'natal' && (aspect.from === focus.name || aspect.to === focus.name);
       // Preserve the original colored pattern above the gray original.
       if (connectsFocus) this.addNatalFocusOverlay(aspect.root);
+      // A native overlay's 'added' listener may replace the entire chart.
+      // Never gray an obsolete chart after its overlay was disposed.
+      if (!isCurrent()) return;
       this.tintNatalGeometry(aspect.root, gray);
     }
   }
@@ -639,8 +647,9 @@ export class PlanetInteractionController {
     line.computeLineDistances();
     line.name = 'chart-interaction-transit-connector';
     line.renderOrder = 1001;
-    this.scene?.add(line);
+    // Track before add(): a callback may synchronously clear the scene.
     this.lines.push(line);
+    this.scene?.add(line);
     return line;
   }
 
@@ -705,15 +714,17 @@ export class PlanetInteractionController {
     const paintRevision = ++this.visualRevision;
     const currentScene = this.scene;
     const currentSceneRevision = this.sceneRevision;
+    const isCurrent = () => !this.disposed && !!currentScene &&
+      this.scene === currentScene &&
+      this.sceneRevision === currentSceneRevision &&
+      this.visualRevision === paintRevision;
     this.clearVisuals();
     // A disposal callback may trigger a newer paint or scene replacement.
     // The older paint must not recreate overlays over that newer state.
-    if (this.disposed || this.scene !== currentScene ||
-        this.sceneRevision !== currentSceneRevision ||
-        this.visualRevision !== paintRevision || !this.scene) return;
+    if (!isCurrent()) return;
     const focus = this.hovered ?? this.pinned;
-    this.paintNatalAspectPalette(focus);
-    if (!focus) return;
+    this.paintNatalAspectPalette(focus,isCurrent);
+    if (!isCurrent() || !focus) return;
     const aspects = relatedChartAspects(focus, this.relations);
     const related = new Set([chartPlanetKey(focus)]);
     for (const link of aspects) {
@@ -729,6 +740,7 @@ export class PlanetInteractionController {
       }
     }
     for (const key of related) for (const mesh of this.glyphs.get(key) ?? []) {
+      if (!isCurrent()) return;
       if (!this.ownsGlyph(mesh)) continue;
       // Focus is visual tint + aspect highlighting only. Never change the
       // glyph scale: hit targets and planet positions remain stable.
@@ -736,12 +748,14 @@ export class PlanetInteractionController {
       const tint = (Colori.elementiCelesti as Record<string, string>)[ref.name];
       if (tint) this.tintGlyph(mesh, tint);
     }
-    this.scene.updateMatrixWorld(true);
+    if (!isCurrent()) return;
+    currentScene!.updateMatrixWorld(true);
     const drawn = new Set<string>();
     const connectedTransits = new Map<string, {
       mesh: THREE.Mesh; relation: ChartAspectRelation;
     }>();
     for (const link of aspects) {
+      if (!isCurrent()) return;
       const id = chartAspectRelationKey(link);
       if (drawn.has(id)) continue;
       drawn.add(id);
@@ -758,8 +772,10 @@ export class PlanetInteractionController {
       const line = new THREE.Line(geometry, material);
       line.name = 'chart-interaction-aspect';
       line.renderOrder = 1000;
-      this.scene.add(line);
+      // Track new resources before Three.js dispatches the 'added' event.
       this.lines.push(line);
+      currentScene!.add(line);
+      if (!isCurrent()) return;
       // Retain all colored central aspect lines, but only ONE dashed
       // spoke per transit planet. When a transit has several aspects,
       // its spoke color must not depend on upstream relation order.
@@ -777,8 +793,12 @@ export class PlanetInteractionController {
     // Draw only after every visible link has been considered: a more
     // exact aspect wins the guide color; ties use a stable type/key rule.
     for (const [key,{mesh, relation}] of connectedTransits) {
+      if (!isCurrent()) return;
       const color = (Colori.aspetti as Record<string, string>)[relation.type] ?? '#b08a35';
       const guide = this.addTransitConnector(mesh, color);
+      // An 'added' callback can replace the chart during guide creation.
+      // Never reattach a disposed guide to the newly mounted scene's map.
+      if (!isCurrent()) return;
       if (guide) this.transitGuides.set(key,guide);
     }
   }

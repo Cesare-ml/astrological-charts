@@ -1236,3 +1236,97 @@ test('programmatic focus and aspect mode never render after nested disposal upda
   assert.equal(newerFocusDuringMode.renders,1,
     'mode refresh must not duplicate the newer focus frame');
 });
+
+
+test('new focus render objects are owned before synchronous added callbacks',()=>{
+  const ast=ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts',import.meta.url),'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const cls=ast.statements.find(n=>ts.isClassDeclaration(n)&&n.name?.text==='PlanetInteractionController');
+  assert.ok(cls);
+  const methods=['updateVisuals','addTransitConnector','addNatalFocusOverlay'].map(name=>{
+    const m=cls.members.find(n=>ts.isMethodDeclaration(n)&&n.name.getText(ast)===name);
+    assert.ok(m?.body,name);
+    return m.getText(ast);
+  });
+  // The actual updateVisuals implementation is run with a tiny Three-like
+  // controller host. Added callbacks clear its tracked lines immediately,
+  // then replace the scene. No older stage may publish a disposed guide.
+  const update=methods[0].replace(/private updateVisuals\(\): void/,'updateVisuals()');
+  const compiled=ts.transpileModule(`class AddedProbe {
+    disposed=false;visualRevision=0;sceneRevision=0;
+    scene:any={};pinned:any={layer:'natal',name:'Sun'};hovered:any=null;
+    glyphs=new Map();natalAspectTags:any[]=[];natalAspectPresentation='all';
+    lines:any[]=[];transitGuides=new Map();
+    aspectRing:any=null;relations:any[]=[];
+    created:any[]=[];onAdd:any=null;
+    clearVisuals(){
+      const old=this.lines;this.lines=[];this.transitGuides=new Map();
+      for(const line of old){line.parent?.remove(line);line.geometry.dispose();line.material.dispose();}
+    }
+    paintNatalAspectPalette(){}
+    ownsGlyph(){return true;}
+    tintGlyph(){}
+    activeGlyph(ref:any){return this.glyphs.get(ref.layer+':'+ref.name)?.[0]??null;}
+    aspectEndpoint(mesh:any){return {x:mesh.x,y:mesh.y,z:0};}
+    addTransitConnector(){return null;}
+    ${methods[0]}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const fakeThree={
+    BufferGeometry:class {
+      disposed=0;setFromPoints(){return this;}
+      dispose(){this.disposed++;}
+    },
+    LineBasicMaterial:class {disposed=0;dispose(){this.disposed++;}},
+    Line:class {
+      parent:any=null;geometry:any;material:any;name='';renderOrder=0;
+      constructor(geometry:any,material:any){this.geometry=geometry;this.material=material;}
+    }
+  };
+  const relation={
+    from:{layer:'natal',name:'Sun'},
+    to:{layer:'transit',name:'Saturn'},
+    type:'quadrato',orb:1
+  };
+  const Probe=new Function('THREE','Colori','relatedChartAspects','chartPlanetKey',
+    'chartAspectRelationKey','preferredTransitConnectorAspect',
+    compiled+'\nreturn AddedProbe;')(
+    fakeThree,{elementiCelesti:{},aspetti:{quadrato:'#ff0000'}},
+    ()=>[relation],ref=>ref.layer+':'+ref.name,()=> 'natal:Sun-transit:Saturn',(a)=>a);
+  const starting=()=>{
+    const p=new Probe();
+    const sun={x:-0.3,y:0,userData:{chartPlanet:relation.from}};
+    const saturn={x:0.3,y:0,userData:{chartPlanet:relation.to}};
+    p.glyphs.set('natal:Sun',[sun]);
+    p.glyphs.set('transit:Saturn',[saturn]);
+    const scene={added:[],updateMatrixWorld(){},
+      add(line:any){
+        line.parent=this;
+        this.added.push(line);
+        p.onAdd?.(line);
+      },
+      remove(line:any){line.parent=null;this.added=this.added.filter(v=>v!==line);}
+    };
+    p.scene=scene;
+    return {p,scene};
+  };
+  const ordinary=starting();
+  ordinary.p.updateVisuals();
+  assert.equal(ordinary.scene.added.length,1);
+  assert.equal(ordinary.p.lines.length,1);
+  assert.equal(ordinary.scene.added[0].geometry.disposed,0);
+
+  const interrupted=starting();
+  const newScene={updateMatrixWorld(){}};
+  interrupted.p.onAdd=line=>{
+    assert.ok(interrupted.p.lines.includes(line),'owner records line before add()');
+    interrupted.p.clearVisuals();
+    interrupted.p.scene=newScene;
+    interrupted.p.sceneRevision++;
+  };
+  interrupted.p.updateVisuals();
+  assert.equal(interrupted.scene.added.length,0,
+    'old scene contains no orphan line after nested teardown');
+  assert.equal(interrupted.p.lines.length,0);
+  assert.equal(interrupted.p.scene,newScene);
+});

@@ -156,5 +156,91 @@ window.runSceneDisposeReentryProbe = () => {
     }
   }
 
+
+  // Three.js Object3D.add() dispatches synchronous 'added' events.
+  // Replace the chart while a newly constructed central line or transit
+  // connector is being attached, or while a natal foreground is added.
+  for(const mode of ['central-added','guide-added','foreground-added'] as const){
+    const canvas=document.createElement('canvas');
+    canvas.width=canvas.height=160;
+    document.body.appendChild(canvas);
+    const scene=new THREE.Scene(),replacement=new THREE.Scene();
+    const group=new THREE.Group();
+    group.userData['chartAspectRadius']=0.35;
+    scene.add(group);
+    const glyph=(ref:{layer:'natal'|'transit';name:string},x:number,angle:number)=>{
+      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.12,0.12),
+        new THREE.MeshBasicMaterial({color:'#171717'}));
+      mesh.position.x=x;
+      mesh.userData['chartPlanet']=ref;
+      mesh.userData['chartAspectAngle']=angle;
+      group.add(mesh);
+      return mesh;
+    };
+    const sun=glyph(ref,-0.4,0);
+    const saturn=glyph({layer:'transit',name:'Saturn'},0.65,Math.PI/2);
+    const native=new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-0.2,0,0),new THREE.Vector3(0.2,0,0)
+      ]),
+      new THREE.LineBasicMaterial({color:'#ff0000'})
+    );
+    native.userData['chartNatalAspect']={
+      from:'Sun',to:'Moon',type:'trigono'
+    };
+    group.add(native);
+    const tracked:THREE.Object3D[]=[];
+    let triggered=0,freedGeometry=0,freedMaterial=0;
+    const controller=new PlanetInteractionController(canvas,camera,()=>{},()=>{});
+    try{
+      controller.setRelations(link);
+      if(mode==='foreground-added')controller.setNatalAspectPresentation('focused');
+      controller.setScene(scene);
+      const parent=mode==='foreground-added'?group:scene;
+      const originalAdd=parent.add.bind(parent);
+      parent.add=(...objects:THREE.Object3D[])=>{
+        for(const object of objects){
+          const wanted=mode==='central-added'?'chart-interaction-aspect':
+            mode==='guide-added'?'chart-interaction-transit-connector':
+            'chart-interaction-natal-focus';
+          if(object.name!==wanted)continue;
+          tracked.push(object);
+          object.traverse(child=>{
+            const render=child as THREE.Mesh;
+            render.geometry?.addEventListener('dispose',()=>freedGeometry++);
+            const materials=Array.isArray(render.material)?render.material:
+              render.material?[render.material]:[];
+            for(const mat of materials)
+              mat.addEventListener('dispose',()=>freedMaterial++);
+          });
+          object.addEventListener('added',()=>{
+            if(triggered++)return;
+            controller.setScene(replacement);
+          });
+        }
+        return originalAdd(...objects);
+      };
+      controller.highlight(ref);
+      results[mode+'Reentered']=triggered===1;
+      results[mode+'NoOrphan']=tracked.length===1
+        && tracked[0].parent===null
+        && !scene.getObjectByName('chart-interaction-aspect')
+        && !scene.getObjectByName('chart-interaction-transit-connector')
+        && !group.getObjectByName('chart-interaction-natal-focus');
+      results[mode+'ReleasedOwnedGeometry']=freedGeometry>=1 && freedMaterial>=1;
+      results[mode+'LatestSceneRetained']=!replacement.getObjectByName('chart-interaction-aspect');
+    }finally{
+      controller.destroy();
+      for(const mesh of [sun,saturn]){
+        mesh.geometry.dispose();
+        const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
+        for(const material of materials)material.dispose();
+      }
+      native.geometry.dispose();
+      (native.material as THREE.Material).dispose();
+      canvas.remove();
+    }
+  }
+
   return results;
 };
