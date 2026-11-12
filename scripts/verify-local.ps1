@@ -50,7 +50,10 @@ try {
     $report.npmVersion = (& npm.cmd --version | Select-Object -First 1)
     if ($LASTEXITCODE -ne 0) { throw 'npm --version failed' }
     $gitCommand = Get-Command git.exe -ErrorAction SilentlyContinue
-    if ($gitCommand) {
+    # A disposable Windows test sandbox is deliberately NOT a Git checkout.
+    # Skip rev-parse there: under ErrorActionPreference=Stop, Git's stderr
+    # outside a repository can otherwise abort verification before npm runs.
+    if ($gitCommand -and (Test-Path -LiteralPath '.git')) {
         $sha = & git.exe rev-parse --verify HEAD 2>$null
         if ($LASTEXITCODE -eq 0) { $report.revision = ($sha | Select-Object -First 1) }
     }
