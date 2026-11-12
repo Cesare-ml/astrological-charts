@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAssetServer, resolveAssetRequest } from '../scripts/serve-local-assets.mjs';
+import { validatePackPath } from '../scripts/verified-asset-pack.mjs';
 import { generateSyntheticPack, sourcePreloadPaths, makeSyntheticPng } from '../scripts/generate-synthetic-pack.mjs';
 
 async function withAssetServer(fn) {
@@ -117,4 +118,16 @@ test('server rejects symlinked approved assets (where supported)',async t=>{
     }
     assert.equal(resolveAssetRequest(root,'/assets/'+file),null);
   });
+});
+
+test('approved-pack path validation rejects control bytes and ambiguous URLs', () => {
+  for (const path of [
+    'img/planet%2e.png',
+    'img/planet?.png',
+    'img/planet#.png',
+    'img/planet:alt.png',
+    'img/planet\n.png',
+    'img/planet\u007f.png',
+  ]) assert.throws(() => validatePackPath(path), /Unsafe asset path/);
+  assert.equal(validatePackPath('img/mean Apogee.png'), 'img/mean Apogee.png');
 });
