@@ -449,6 +449,35 @@ test('reentrant leave and update callbacks cannot request renders of retired sce
   } finally { await page.close(); await browser.close(); }
 });
 
+test('two WebGL chart contexts retain bounded resources over 60 shared-material focus cycles', {timeout:120000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundle = await build({
+      entryPoints:['tests/fixtures/multi-chart-gpu-focus-harness.ts'],
+      bundle:true,write:false,platform:'browser',format:'iife',
+      target:'es2022',tsconfig:'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundle.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runMultiChartGpuFocusProbe());
+    assert.equal(result.cycles,60,JSON.stringify(result));
+    for (const name of [
+      'twoSeparateWebGLContexts','initialScenesRendered',
+      'focusGeometryCountsStable','focusTextureCountsStable',
+      'shaderProgramsBounded','independentFocusColors',
+      'baseMaterialsUntouched','destroyOneChartDoesNotTouchOther',
+      'bothOverlaySetsReleased','allObservedFocusClonesDisposedOnce',
+      'sharedBaseTextureNeverDisposed'
+    ]) assert.equal(result[name],true,name+': '+JSON.stringify(result));
+    assert.ok(result.observedFocusCloneCount>=100,JSON.stringify(result));
+  } finally {
+    await page.close();
+    await browser.close();
+  }
+});
+
 test('real WebGL memory stays bounded across 90 aspect updates and 20 scene redraws', {timeout: 90000}, async () => {
   const browser = await launch();
   const page = await browser.newPage();
