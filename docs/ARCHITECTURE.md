@@ -677,3 +677,30 @@ The caller must supply all relevant peer roots: **omitted or unknown
 peers cannot be proven isolated by this experiment**. It is not
 connected to the Angular/production updater and does not replace
 multi-chart Chromium/Firefox or GPU ownership tests.
+
+
+### Cross-chart `THREE.Points` geometry ownership
+
+`THREE.Points` inherits from `Object3D` directly rather than from
+`THREE.Mesh` or `THREE.Line`. A foreign synthetic chart might use
+point-cloud geometry that references the *same* position attribute or
+backing typed-array storage as a target wheel's collision leader.
+Restricting peer ownership traversal to meshes and lines therefore
+missed an entire valid Three.js drawable category.
+
+The synthetic-only ownership scanner now includes `THREE.Points`
+in its geometry, attribute and backing-buffer counts across the
+target and explicitly supplied peer roots. A collision write fails
+closed with the existing shared-geometry / shared-attribute /
+shared-storage diagnostic before any mutation when a peer point
+cloud aliases a leader. Point clouds are **not** authorized as
+extra decorations in the target wheel, which still accepts only
+its explicit synthetic glyph/leader roles.
+
+Normal and mirrored Node regressions test both a peer `Points`
+instance referencing the exact leader geometry and an independent
+`Points` geometry with a distinct typed-array view sharing the
+leader buffer. The WebGL fixture also mounts a foreign point cloud
+during a collision patch, verifies rejection, removes the alias,
+and confirms the later normal transaction is unchanged in scope.
+Real multi-chart Angular and browser execution remain manual gates.

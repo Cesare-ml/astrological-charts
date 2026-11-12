@@ -721,3 +721,60 @@ test('peer roots must be distinct disjoint synthetic objects',()=>{
   assert.equal(applyIsolatedCoordinatePreview(first.scene,target,[second.scene]).status,
     'applied');
 });
+
+
+test('peer Points geometry can never share a collision leader backing buffer',()=>{
+  for (const mirrored of [false,true]) {
+    const primary=fixture({mirrored,close:true,profile:true,outer:true});
+    const peer=fixture({mirrored:!mirrored,close:true,profile:true,outer:true});
+    const moon=primary.parts.get('Moon');
+    const sun=primary.parts.get('Sun');
+    const attr=moon.inner.geometry.getAttribute('position');
+    const target=targetsWith(primary.targets,'Sun',5);
+    const sunBefore=sun.glyph.position.clone();
+    const endpointBefore=attr.array.slice();
+    const peerBefore=peer.parts.get('Sun').glyph.position.clone();
+
+    // Points is NOT a subclass of THREE.Mesh or THREE.Line. Both an
+    // identical geometry and independent views of its backing storage
+    // must be visible to the peer-resource isolation gate.
+    const sameGeometry=new THREE.Points(
+      moon.inner.geometry,new THREE.PointsMaterial({size:0.01}));
+    peer.scene.add(sameGeometry);
+    try {
+      const result=applyIsolatedCoordinatePreview(primary.scene,target,[peer.scene]);
+      assert.equal(result.status,'rejected');
+      assert.equal(result.updated,0);
+      assert.ok(result.issues.includes('shared-leader-geometry:natal:Moon'));
+    } finally {
+      peer.scene.remove(sameGeometry);
+      sameGeometry.material.dispose();
+    }
+
+    const pointsBuffer=new THREE.BufferAttribute(
+      new Float32Array(attr.array.buffer,attr.array.byteOffset,attr.array.length),3);
+    const points=new THREE.Points(
+      new THREE.BufferGeometry().setAttribute('position',pointsBuffer),
+      new THREE.PointsMaterial({size:0.01}));
+    peer.scene.add(points);
+    try {
+      const result=applyIsolatedCoordinatePreview(primary.scene,target,[peer.scene]);
+      assert.equal(result.status,'rejected');
+      assert.equal(result.updated,0);
+      assert.ok(result.issues.includes('shared-leader-storage:natal:Moon'));
+      assert.ok(sun.glyph.position.equals(sunBefore));
+      assert.deepEqual(attr.array,endpointBefore);
+      assert.ok(peer.parts.get('Sun').glyph.position.equals(peerBefore));
+      assert.equal(planChartCoordinateEffects(primary.scene,primary.targets).decision,
+        'unchanged');
+    } finally {
+      peer.scene.remove(points);
+      points.geometry.dispose();
+      points.material.dispose();
+    }
+    assert.equal(applyIsolatedCoordinatePreview(primary.scene,target,[peer.scene]).status,
+      'applied');
+    assert.equal(applyIsolatedCoordinatePreview(primary.scene,target,[peer.scene]).status,
+      'unchanged');
+  }
+});

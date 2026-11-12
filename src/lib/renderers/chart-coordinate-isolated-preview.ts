@@ -163,9 +163,13 @@ export function applyIsolatedCoordinatePreview(
   // backing store (including separate views of the same ArrayBuffer).
   // Track all recognized geometry attributes, not only position: another
   // mesh's UV/normal view may alias a writable leader vertex buffer.
+  // THREE.Points is a separate Object3D subclass (not Mesh or Line).
+  // A peer chart can hold another view of our leader's vertex memory in
+  // point-cloud geometry, so it must also participate in the scan.
   const storageRefs = new Map<ArrayBufferLike,number>();
   const countResources = (node: THREE.Object3D): void => {
-    if (!(node instanceof THREE.Mesh || node instanceof THREE.Line)) return;
+    if (!(node instanceof THREE.Mesh || node instanceof THREE.Line ||
+          node instanceof THREE.Points)) return;
     const geometry = node.geometry;
     if (!(geometry instanceof THREE.BufferGeometry)) return;
     geometryRefs.set(geometry,(geometryRefs.get(geometry) ?? 0)+1);

@@ -292,6 +292,29 @@ window.runIsolatedCoordinatePreviewProbe = () => {
     foreignLine.geometry.dispose();
     (foreignLine.material as THREE.Material).dispose();
 
+    // THREE.Points is neither Mesh nor Line. A foreign point cloud must
+    // still count as a geometry owner when its position memory aliases
+    // a leader in the first chart.
+    const foreignPoints=new THREE.Points(
+      new THREE.BufferGeometry().setAttribute('position',
+        new THREE.BufferAttribute(new Float32Array(
+          moonInnerAttribute.array.buffer,
+          moonInnerAttribute.array.byteOffset,
+          moonInnerAttribute.array.length
+        ),3)),
+      new THREE.PointsMaterial({size:0.01})
+    );
+    scene.add(foreignPoints);
+    const pointsAlias=applyIsolatedCoordinatePreview(
+      collisionScene,newCollisionTargets,[scene]
+    );
+    results['dualChartPointsGuard'+suffix]=pointsAlias.status==='rejected'
+      && pointsAlias.updated===0
+      && pointsAlias.issues.includes('shared-leader-storage:natal:Moon');
+    scene.remove(foreignPoints);
+    foreignPoints.geometry.dispose();
+    (foreignPoints.material as THREE.Material).dispose();
+
     // Cached bounds must track rewritten endpoint vertices. A cached
     // Box3 should update in place; an absent box should remain lazy.
     closeMoon.inner.geometry.computeBoundingSphere();
