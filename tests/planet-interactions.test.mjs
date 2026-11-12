@@ -332,6 +332,21 @@ test('focus uses independent material clones, with safe transfer and disposal', 
   assert.equal(destinationCopy.disposed,1);
   assert.equal(shared.color.value,'#171717');
   assert.equal(shared.disposed,0);
+
+  // A host can replace just one material array slot while focused.
+  // Clearing this controller must restore only the slot still owned by
+  // its focus clone and must not overwrite the new host material.
+  const external = material('#123456');
+  const mixed = {material:[shared,shared]};
+  a.tintGlyph(mixed,'#ff0000');
+  const mixedCopies = mixed.material;
+  mixed.material=[mixedCopies[0],external];
+  a.clearVisuals();
+  assert.equal(mixed.material[0],shared);
+  assert.equal(mixed.material[1],external);
+  assert.ok(mixedCopies.every(copy=>copy.disposed===1));
+  assert.equal(external.disposed,0);
+
   const nonTintable={disposed:0,clone(){throw Error('should not clone')},
     dispose(){this.disposed++}};
   const mesh={material:nonTintable};
