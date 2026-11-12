@@ -145,3 +145,7 @@ After fast-forwarding to `a2e3e98`, preflight, both builds, the four-case browse
 ### Local asset CORS preflight
 
 The manifest-gated loopback server responds to `OPTIONS` only for existing, approved asset paths; unknown paths return HTTP 404 and non-local origins return HTTP 403. This prevents an unapproved URL from receiving a successful preflight response. Run `node --test tests/asset-preflight.test.mjs` to exercise these cases with generated synthetic assets. This is an HTTP regression check, **not** proof of Angular build success, real-artwork integrity, or WebGL visual correctness.
+
+### Integrity-aware CORS preflight
+
+The approved local asset server responds `204` to `OPTIONS` only for paths in the manifest whose current bytes still match the recorded SHA-256. Unlisted paths return `404`, modified approved files return `409`, and foreign origins return `403`. This is a local development safety check, not proof of artwork redistribution rights or WebGL correctness. Run `node --test tests/asset-preflight.test.mjs` to exercise these responses with generated synthetic assets; browser rendering must still be tested separately.
