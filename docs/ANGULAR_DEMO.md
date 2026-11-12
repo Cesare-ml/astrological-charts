@@ -463,3 +463,23 @@ This is covered by the existing
 `raycasting chooses the closest overlapping glyph` Playwright
 case and a smaller Node regression in `test:planet-interactions`.
 The change has not yet been browser-tested by the owner.
+
+## Cross-chart scene transfer during interactive focus
+
+This synthetic lifecycle test targets two *independent* chart scenes:
+a natal Sun with two cached Saturn glyphs in chart A, and a natal
+Moon in chart B. The first cached Saturn is moved from A to B,
+without refreshing A's cache. Selecting natal Sun in chart A must
+use the **remaining attached Saturn** for cross-chart lines and
+may not recolor Saturn now owned by B. Once the other Saturn also
+leaves A, selecting Sun must not create a stale transit aspect or
+dashed spoke; B keeps its own color and overlays.
+
+The Playwright test `transferred cached glyph never contaminates
+other chart focus` runs the new fixture
+`tests/fixtures/transferred-glyph-isolation-harness.ts` after the
+normal demo readiness checks. The associated Node unit test checks
+`ownsGlyph` and `activeGlyph` directly from the committed controller
+source. Both tests use generated Three.js primitives only.
+Run them together with existing two-canvas/50-redraw and WebGL memory
+tests before approving integration.
