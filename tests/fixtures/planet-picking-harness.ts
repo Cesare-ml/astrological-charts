@@ -15,6 +15,9 @@ interface PickingProbe {
   showingAncestorRestoresPick: boolean;
   hiddenMaterialFallsThrough: boolean;
   hiddenMaterialClickFallsThrough: boolean;
+  transparentMaterialFallsThrough: boolean;
+  transparentMaterialClickFallsThrough: boolean;
+  restoredOpacitySelectable: boolean;
   cameraExcludedLayerIgnored: boolean;
   cameraEnabledLayerSelected: boolean;
   cameraLayerSwitchSelected: boolean;
@@ -158,6 +161,26 @@ window.runPlanetPickingProbe = (): PickingProbe => {
     const hiddenMaterialClickFallsThrough = events.at(-1)?.type === 'click'
       && events.at(-1)?.planet.name === 'Moon';
 
+    // Material.visible alone is not the same as a drawable glyph.
+    // Test the actual Three.js mesh with a foreground Jupiter whose
+    // transparent opacity is zero, then restore its drawn opacity.
+    (grouped.material as THREE.Material).visible = true;
+    pointer(0.08); // enter Jupiter before hiding it with opacity
+    (grouped.material as THREE.MeshBasicMaterial).transparent = true;
+    (grouped.material as THREE.MeshBasicMaterial).opacity = 0;
+    pointer(0.08);
+    const transparentMaterialFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    pointer(0.08, 'click');
+    const transparentMaterialClickFallsThrough = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Moon';
+    (grouped.material as THREE.MeshBasicMaterial).transparent = true;
+    (grouped.material as THREE.MeshBasicMaterial).opacity = 1;
+    pointer(0.08);
+    const restoredOpacitySelectable = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Jupiter';
+    (grouped.material as THREE.Material).visible = false;
+
     // Camera layers are independent from Raycaster layers. The pointer
     // must follow the camera's CURRENT visibility mask after toggling.
     const outer = glyph('Neptune', 0.08, 0.3);
@@ -227,7 +250,9 @@ window.runPlanetPickingProbe = (): PickingProbe => {
       outsideCanvasClearsHover, outsideClickIgnored, noStaleUpdateDuringLeave,
       frontLayerWins, hiddenFrontFallsThrough, hiddenAncestorFallsThrough,
       showingAncestorRestoresPick, hiddenMaterialFallsThrough,
-      hiddenMaterialClickFallsThrough, cameraExcludedLayerIgnored,
+      hiddenMaterialClickFallsThrough, transparentMaterialFallsThrough,
+      transparentMaterialClickFallsThrough, restoredOpacitySelectable,
+      cameraExcludedLayerIgnored,
       cameraEnabledLayerSelected, cameraLayerSwitchSelected,
       cameraLayerSwitchClick, cameraLayerResetRestoresSelection,
       attachedNewGlyphSelected, detachedGlyphFallsThrough,
