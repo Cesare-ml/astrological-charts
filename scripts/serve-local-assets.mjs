@@ -8,6 +8,7 @@ import { existsSync, lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readSafeAsset, verifyApprovedAssetPack, verifyRequestBytes } from './verified-asset-pack.mjs';
+import { verifyPrivateAstroOverlay } from './private-astro-overlay.mjs';
 
 const MIME=Object.freeze({
   '.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg',
@@ -65,13 +66,25 @@ function previewHtml(pack) {
     '<div class="grid">'+items+'</div></body></html>';
 }
 
-export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
+export function createAssetServer({
+  root, manifest, origins=DEFAULT_ORIGINS,
+  astroOverlayRoot=null, astroOverlayManifest=null, astroOverlayApproval=null
+}) {
   if(typeof root!=='string'||!root)throw new Error('Asset root directory is required.');
   if(!manifest)throw new Error('Approved asset manifest required.');
   const absolute=resolve(root);
   if(!existsSync(absolute)||!lstatSync(absolute).isDirectory()||lstatSync(absolute).isSymbolicLink())
     throw new Error('Invalid asset root: '+absolute);
   const pack=verifyApprovedAssetPack(absolute,manifest);
+  const overlayArgs=[astroOverlayRoot,astroOverlayManifest,astroOverlayApproval];
+  const overlayRequested=overlayArgs.some(value=>value!==null);
+  if(overlayRequested && overlayArgs.some(value=>value===null))
+    throw new Error('Private Astro overlay requires root, manifest and approval together');
+  const overlay=overlayRequested
+    ? verifyPrivateAstroOverlay(astroOverlayRoot,astroOverlayManifest,astroOverlayApproval)
+    : null;
+  if(overlay && [...overlay.paths.keys()].some(path=>pack.paths.has(path)))
+    throw new Error('Private Astro overlay collides with approved base asset paths');
   const allowed=new Set(origins);
   for(const origin of allowed) {
     const url=new URL(origin);
@@ -100,14 +113,19 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
         'Content-Length':Buffer.byteLength(html)});
       res.end(req.method==='HEAD'?'':html);return;
     }
-    const requested=resolveAssetRequest(absolute,pathname);
-    if(!requested||!pack.paths.has(requested.path)){
+    const privateRequest=overlay ? resolveAssetRequest(overlay.root,pathname) : null;
+    const usePrivate=Boolean(privateRequest && overlay.paths.has(privateRequest.path));
+    const requested=usePrivate?privateRequest:resolveAssetRequest(absolute,pathname);
+    const expected=requested
+      ? (usePrivate ? overlay.paths.get(requested.path) : pack.paths.get(requested.path))
+      : null;
+    if(!requested||!expected){
       res.writeHead(404);res.end('Not in approved manifest');return;
     }
     try{
-      // Recheck integrity on each request to avoid accidentally serving a changed asset.
-      const body=readSafeAsset(absolute,requested.path);
-      if(!verifyRequestBytes(body,pack.paths.get(requested.path))){
+      // Both manifests are pinned; recheck bytes on every request.
+      const body=readSafeAsset(usePrivate?overlay.root:absolute,requested.path);
+      if(!verifyRequestBytes(body,expected)){
         res.writeHead(409);res.end('Pack file changed since verification');return;
       }
       res.writeHead(200,{'Content-Type':requested.type,'Content-Length':body.length});
@@ -120,7 +138,8 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
 function run(args){
   const flags={};
   for(let i=0;i<args.length;i+=2){
-    if(!['--root','--manifest','--port','--origin'].includes(args[i])
+    if(!['--root','--manifest','--port','--origin',
+      '--astro-overlay-root','--astro-overlay-manifest','--astro-overlay-approval'].includes(args[i])
       ||!args[i+1]||Object.hasOwn(flags,args[i]))
       throw new Error('Usage: --root ../astrological-assets/public/assets --manifest ../astrological-assets/manifests/approved-assets.json [--port 4177] [--origin http://localhost:4200]');
     flags[args[i]]=args[i+1];
@@ -131,14 +150,20 @@ function run(args){
   if(!Number.isInteger(port)||port<1024||port>65535)
     throw new Error('Port must be between 1024 and 65535');
   const manifest=JSON.parse(readFileSync(flags['--manifest'],'utf8'));
+  const optionalJson=path=>path?JSON.parse(readFileSync(path,'utf8')):null;
   const server=createAssetServer({
     root:flags['--root'],manifest,
-    origins:flags['--origin']?[flags['--origin']]:DEFAULT_ORIGINS
+    origins:flags['--origin']?[flags['--origin']]:DEFAULT_ORIGINS,
+    astroOverlayRoot:flags['--astro-overlay-root']??null,
+    astroOverlayManifest:optionalJson(flags['--astro-overlay-manifest']),
+    astroOverlayApproval:optionalJson(flags['--astro-overlay-approval'])
   });
   server.listen(port,'127.0.0.1',()=>{
     console.log('Approved assets (local only): http://127.0.0.1:'+port+'/assets/');
     console.log('Asset preview: http://127.0.0.1:'+port+'/__preview');
     console.log('Set GestoreImmagini.configurePublicAssetsBase("http://127.0.0.1:'+port+'/assets/") in the local Angular demo.');
+    if(flags['--astro-overlay-root'])
+      console.log('Private Astro preview overlay active: 22 SHA-256 verified masks (localhost only).');
   });
 }
 if(process.argv[1]&&resolve(process.argv[1])===resolve(fileURLToPath(import.meta.url))){
