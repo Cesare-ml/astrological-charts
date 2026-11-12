@@ -9,7 +9,10 @@ const TYPES=new Set(['.png','.jpg','.jpeg','.webp','.svg','.gif','.avif','.bmp',
 const ROOTS=new Set(['img','fonts']);
 
 export function validatePath(ref) {
-  if(typeof ref!=='string' || !ref || ref.includes('\\') || ref.startsWith('/') || ref.includes('\0'))
+  // Match the renderer URL resolver and approved-pack checks: never encode URI
+  // delimiters or control bytes in a manifest's literal host-owned file path.
+  if(typeof ref!=='string' || !ref || ref.includes('\\') || ref.startsWith('/')
+    || /[%?#:\u0000-\u001f\u007f]/.test(ref))
     throw new Error('Invalid asset path: '+String(ref));
   const parts=ref.split('/');
   if(parts.length<2 || !ROOTS.has(parts[0]) || parts.some(p=>!p || p==='.' || p==='..'))

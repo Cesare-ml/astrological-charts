@@ -10,7 +10,8 @@ import { extname, join } from 'node:path';
 const allowedTypes = new Set(['.png','.jpg','.jpeg','.webp','.gif','.svg','.avif','.bmp','.ico','.woff','.woff2','.ttf','.otf','.json']);
 
 export function validatePackPath(path) {
-  if (typeof path !== 'string' || !path || path.includes('\\') || path.includes('\0')
+  if (typeof path !== 'string' || !path || path.includes('\\')
+    || /[\u0000-\u001f\u007f]/.test(path)
     || path.startsWith('/') || path.includes('%') || path.includes('?') || path.includes('#'))
     throw new Error('Unsafe asset path: ' + String(path));
   const parts=path.split('/');

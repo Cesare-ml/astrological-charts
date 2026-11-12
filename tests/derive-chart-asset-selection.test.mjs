@@ -63,3 +63,15 @@ test('selects the latitude circle family without unrelated site symbols', () => 
     assert.ok(!files.includes('img/symbols/planets/dark/Sun.png'));
   });
 });
+
+test('rejects URI-encoded or ambiguous static asset references before selection', () => {
+  for (const ref of [
+    'assets/img/%2e%2e/Sun.png',
+    'img/symbols/Sun%20.png',
+    'img/textures/a?.png',
+    'img/textures/a#.png',
+    'img/textures/Sun:alt.png',
+    'img/textures/a\n.png',
+  ]) assert.throws(() => assetPath(ref), /Invalid asset path/);
+  assert.equal(assetPath('img/simboli/mean Apogee.png'), 'img/simboli/mean Apogee.png');
+});

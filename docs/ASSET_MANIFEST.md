@@ -45,6 +45,12 @@ L'esempio `examples/chart-assets.selection.example.json` è **illustrativo e inc
 
 Il generatore **richiede una selezione esplicita**; per una scansione di tutti gli asset grafici e i font, occorre richiedere esplicitamente `--all yes`. Questo evita di includere per errore migliaia di immagini estranee al renderer. La scansione riguarda esclusivamente `img/` e `fonts/` e tipi consentiti. Symlink, path traversal e nomi collidenti per maiuscole/minuscole producono errori.
 
+### Canonical asset path validation
+
+Generated, imported and approved asset paths must be **literal relative** `img/...` or `fonts/...` filenames. Spaces in filenames are supported. Paths containing percent escapes (`%2e`), URL query/fragment delimiters (`?`, `#`), colons or ASCII control bytes are rejected before hashing, selection or approved-pack serving. These byte sequences could otherwise be interpreted differently by a URL parser, filesystem or WebGL host. Legacy `../../../assets/img/...` references are normalized by the chart-selection helper before validation.
+
+If an existing asset has an ambiguous name, resolve the naming and source references in the host-owned asset catalogue under a separately reviewed migration; do not silently rename or copy artwork here. This path validation checks safety, **not** redistribution rights or image completeness.
+
 Il manifest va generato in una directory di lavoro, revisionato e usato per verificare la disponibilità delle risorse prima del rilascio. **Non** è richiesto al browser per mostrare un grafico né va importato come insieme di immagini durante la build.
 
 ## Aggiornamenti Astrolabio
