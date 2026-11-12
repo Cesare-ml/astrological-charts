@@ -1237,3 +1237,25 @@ PointerEvents against three synthetic Three.js glyphs with real
 raycasting, checking newest focus, event order, cursor, single
 render and no zoom. Full installed Node/Angular and Chrome/Firefox
 tests remain acceptance gates; PR #22 stays draft.
+
+### Reentrant natal palette restoration order
+
+When the renderer fades native natal aspect lines, it saves their original
+vertex colors. During a later focus switch, disposing an old temporary glyph
+material can synchronously invoke host callbacks that select a **new** planet
+and repaint those native aspect lines. If cleanup restores the old colors
+**after** the material `dispose` callback, it overwrites the new focus and
+corrupts its pending baseline snapshot (visible as a stale line color).
+
+The controller now restores its detached `natalLineColors` snapshots **before
+the first owned material is disposed**, while retaining the previous
+ownership-detachment and reentrant scene guards. A new host-triggered repaint
+therefore sees the true original natal palette and retains its own colors.
+`npm run test:planet-interactions` includes a synthetic regression using the
+actual controller cleanup method for both ordinary and interleaved vertex-color
+attributes, checking nested cleanup, single disposal and a second reset.
+
+This changes only cleanup ordering for on-screen focus overlays; no natal
+aspect arithmetic, ephemeris data, glyph scale, skin resource or headless
+rendering API is changed. Chromium/Firefox real WebGL and visual testing are
+still required before merging the parent draft PR #22 to `main`.
