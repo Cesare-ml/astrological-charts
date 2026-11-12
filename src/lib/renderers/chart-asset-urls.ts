@@ -37,7 +37,7 @@ export function resolveChartAssetUrl(reference: string, publicAssetsBase: string
   // (such as %2e%2e) can become traversal when the browser parses the URL.
   // Reject encoded bytes and control characters before handing paths to a host.
   if (segments.some((part) => part === '' || part === '.' || part === '..'
-    || /[%\u0000-\u001f\u007f]/.test(part))) {
+    || /[%?#:\u0000-\u001f\u007f]/.test(part))) {
     throw new Error(`Invalid chart asset path: ${reference}`);
   }
 
