@@ -932,3 +932,43 @@ synthetic Mars/Saturn relation and Mars pin, while final destruction
 releases both. Calls to the public setters after destruction are still
 no-ops. No change to interactive appearance, glyph scale, upstream
 aspect calculations, exports, assets or external consumers.
+
+### Multi-chart ownership for focus rendering (2026-11-12)
+
+The cached target list already guards **pointer picking** against
+planet meshes that a host detached or reparented to another scene.
+However, visual focus previously still used the first cached mesh
+for every relationship and recolored *all* cached meshes under each
+selected name, even if some of them now belonged to a different chart.
+
+The draft controller now uses a small parent-chain ownership check,
+`ownsGlyph(mesh)`, also in the **focus rendering path**. Before
+tinting related bodies, it skips any glyph that no longer reaches the
+controller's exact active `THREE.Scene`. Its `activeGlyph(ref)`
+selects the first **still-owned** mesh, instead of the first cached
+mesh, for both native on-screen cross-theme aspect endpoints and
+orb-only dashed-guide recoloring. If no in-scene endpoint exists,
+the relationship is skipped rather than referencing a transferred
+planet. No additional per-pointer `scene.traverse()` or astronomical
+calculation is introduced.
+
+**Synthetic regressions:** a Node unit case extracts these two real
+TypeScript methods to verify moved/remaining/reattached duplicates.
+`tests/fixtures/transferred-glyph-isolation-harness.ts` creates
+two independent scenes and controllers, transfers the first cached
+Saturn to the destination scene, and checks that the source chart
+uses its still-attached Saturn while the destination retains its
+own colored focus. When the last Saturn leaves the source chart,
+the source must not draw any stale central aspect or transit guide.
+The destination aspect overlay and tint remain unaffected by source
+focus changes. The fixture is included in
+`npm run test:demo-interactions` and uses only synthetic data.
+
+**Limitations:** controllers are meant to own different scenes and
+normal host lifecycle should call `setScene()` after rebuilds.
+If a host *shares the exact same material object* across unrelated
+scenes, material-level color mutation still requires host-level
+material separation; this change specifically guards transferred
+**mesh references**, not arbitrary cross-scene shared materials.
+The new Node/Angular/browser tests have not yet been run on the
+owner's Windows checkout. Keep PR #22 draft pending those checks.
