@@ -46,6 +46,21 @@ The default base is `http://127.0.0.1:4177/assets/`; change it in the UI or use 
 
 Run `npm run test:demo-docs` to check that demo onboarding distinguishes publicly readable renderer source from restricted artwork and does not imply redistribution permission. The same check is included in `npm run preflight`. It reads documentation only; it does not validate Angular builds, WebGL rendering, asset hashes or licensing rights.
 
+## Release-candidate validation gate (manual, no CI)
+
+The `preflight` command checks extraction, types, asset tooling and documentation; **it does not run the interactive browser suite or build either Angular target**. Before requesting review or merging a renderer change, record the exact branch commit SHA, Node/npm versions, asset-pack manifest version and browser versions, then run on a clean checkout:
+
+```sh
+npm ci
+npm run preflight
+npm run build:library
+npm run build:demo
+```
+
+For actual Three.js rendering, generate the synthetic pack (`npm run demo:pack`) and run `npm run demo:assets` and `npm run demo` in separate terminals. In a third terminal run `npm run test:demo` in Chromium, then install the Playwright-compatible Firefox and run `CHART_TEST_BROWSER=firefox npm run test:demo` in a POSIX shell (or set `$env:CHART_TEST_BROWSER = 'firefox'` in PowerShell). Inspect the saved PNGs for all four modes and seven skins, plus keyboard focus and PNG export. Run `npm run test:offline` separately for the synthetic offline smoke test. For approved original artwork, use only the separate manifest-verified `astrological-assets` checkout; verify its hashes with the local asset server and do not commit or redistribute its files. A successful synthetic run does not establish real-artwork visual parity, scientific correctness or Astrolabio device compatibility.
+
+Record each command as **PASS**, **FAIL** or **NOT RUN**, with its exit code and environment. Do not infer success from static inspection, a GitHub commit, or the PR mergeability indicator. Leave the PR in Draft if any required validation is unavailable or fails; no GitHub Actions, npm publishing or production deployment is implied.
+
 ## Local verification
 
 With both servers running, install Chrome/Chromium and set `CHROME_PATH` to its executable if it is not in a standard location, then:
