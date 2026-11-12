@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAssetServer } from '../scripts/serve-local-assets.mjs';
@@ -27,6 +27,10 @@ test('CORS preflight only advertises approved existing local asset paths', async
     for (const path of ['/assets/img/unapproved.png', '/assets/img/../missing.png', '/__preview']) {
       assert.equal((await request(path)).status, 404, path);
     }
+    // Mutating a previously approved file must invalidate both OPTIONS and GET.
+    writeFileSync(join(root, 'img/simboli-bianchi/segni/01.png'), 'tampered bytes');
+    assert.equal((await request('/assets/img/simboli-bianchi/segni/01.png')).status, 409);
+    assert.equal((await fetch(url + '/assets/img/simboli-bianchi/segni/01.png')).status, 409);
     const forbidden = await fetch(url + '/assets/img/simboli-bianchi/segni/01.png', {
       method: 'OPTIONS', headers: { Origin: 'https://example.org' }
     });
