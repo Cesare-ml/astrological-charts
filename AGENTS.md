@@ -182,6 +182,21 @@ headless Node method extraction and
 `tests/fixtures/planet-picking-harness.ts` regression in sync.
 No separate chart's meshes may steal pointer events.
 
+## Cross-scene focus rendering ownership
+
+A cached `chartPlanet` mesh may be detached or moved into another
+chart after `setScene()`. Scene ownership applies not only when
+picking, but also when tinting glyphs and choosing the endpoints
+of active natal/transit aspect lines and dashed guides.
+`ownsGlyph` checks parent ancestry against this controller's
+exact `THREE.Scene`; `activeGlyph` finds the first still-owned
+mesh among possibly duplicated keys. Never recolor a transferred
+mesh or use it for an aspect. Keep the Node extraction test and
+`transferred-glyph-isolation-harness.ts` up to date. This is not a
+license to share mutable material instances across independent
+charts; those must remain owner-isolated. No new astrology or
+private art may be added.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
