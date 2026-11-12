@@ -25,7 +25,7 @@ const runtime=await import('data:text/javascript;base64,'+
   Buffer.from(bundled.outputFiles[0].text).toString('base64'));
 const {THREE,planChartCoordinateEffects,chartBodyRenderAngles,layoutChartGlyphLongitudes}=runtime;
 
-function sceneWithBodies(mirrored=false) {
+function sceneWithBodies(mirrored=false, natalLongitudes={Sun:10,Moon:11,Mercury:40}) {
   const scene=new THREE.Scene();
   const wheel=new THREE.Group();
   wheel.rotation.z=0.29;
@@ -35,6 +35,7 @@ function sceneWithBodies(mirrored=false) {
   const owners=new Map();
   const buildRing=(layer,longitudes)=>{
     const ring=new THREE.Group();
+    ring.userData.chartBodySourceOrder=Object.freeze(Object.keys(longitudes));
     wheel.add(ring);
     const positions=layoutChartGlyphLongitudes(
       Object.fromEntries(Object.entries(longitudes).map(([name,longitude])=>[name,{longitude}])),
@@ -67,7 +68,7 @@ function sceneWithBodies(mirrored=false) {
       targets.push({ref:{layer,name},longitude:original});
     }
   };
-  buildRing('natal',{Sun:10,Moon:11,Mercury:40});
+  buildRing('natal',natalLongitudes);
   buildRing('transit',{Sun:18,Saturn:70});
   return {scene,wheel,targets,owners};
 }
@@ -353,6 +354,46 @@ test('reparenting an entire collision ring preserves its internal body lineage',
     outerWrapper.remove(originalRing);
     wheel.add(originalRing);
     wheel.remove(outerWrapper);
+    assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+  }
+});
+
+
+test('equal-longitude collision ties follow original source order after children reorder',()=>{
+  for (const mirrored of [false,true]) {
+    const {scene,targets,owners}=sceneWithBodies(mirrored,{Sun:10,Moon:10,Mercury:40});
+    const sun=owners.get('natal:Sun').group;
+    const moon=owners.get('natal:Moon').group;
+    const mercury=owners.get('natal:Mercury').group;
+    const ring=sun.parent;
+    assert.deepEqual(ring.userData.chartBodySourceOrder,['Sun','Moon','Mercury']);
+    const before=planChartCoordinateEffects(scene,targets);
+    assert.equal(before.decision,'unchanged');
+    const shifted=targets.map(t=>({...t,longitude:t.ref.layer==='natal'&&t.ref.name==='Sun'
+      ? 5:t.longitude}));
+    const originalPlan=planChartCoordinateEffects(scene,shifted);
+    assert.equal(originalPlan.decision,'full-rebuild');
+    // This moves an owner to the end without changing its parent ring,
+    // UUID or original astronomical value.
+    ring.add(sun);
+    try {
+      const reordered=planChartCoordinateEffects(scene,targets);
+      const shiftedReordered=planChartCoordinateEffects(scene,shifted);
+      assert.equal(reordered.decision,'unchanged');
+      assert.deepEqual(shiftedReordered,originalPlan,
+        'collision tie resolution must not follow current Three.js child order');
+    } finally {
+      ring.add(moon);
+      ring.add(mercury);
+    }
+    assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
+    const originalSourceOrder=ring.userData.chartBodySourceOrder;
+    ring.userData.chartBodySourceOrder=['Moon','Moon','Mercury'];
+    const bad=planChartCoordinateEffects(scene,targets);
+    assert.equal(bad.decision,'unsupported');
+    assert.deepEqual(bad.impacts,[]);
+    assert.ok(bad.issues.includes('invalid-wheel-source-order:natal:Sun'));
+    ring.userData.chartBodySourceOrder=originalSourceOrder;
     assert.equal(planChartCoordinateEffects(scene,targets).decision,'unchanged');
   }
 });

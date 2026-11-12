@@ -73,6 +73,12 @@ export class ElementiCelestiRender {
     }
 
     var elementiCelestiRenderPos = this.getRenderPosPianeti(elementiCelesti,parametroDiRender);
+    // The legacy collision helper preserves input order to break ties
+    // between identical longitudes. Scene.children may be reordered by
+    // consumers without changing this ring's original source order.
+    const chartBodySourceOrder: string[] = [];
+    for (const sourceName in elementiCelesti) chartBodySourceOrder.push(sourceName);
+    group.userData['chartBodySourceOrder'] = Object.freeze(chartBodySourceOrder);
 
 
     var raggioConfineAnelloPianeti = diametroCerchioEsterno/2;

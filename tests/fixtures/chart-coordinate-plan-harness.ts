@@ -21,7 +21,7 @@ window.runChartCoordinatePlanProbe = () => {
     if (mirrored) wheel.rotation.y=Math.PI;
     scene.add(wheel);
     const rings=[
-      {layer:'natal' as const,longitudes:{Sun:10,Moon:11,Mercury:40}},
+      {layer:'natal' as const,longitudes:{Sun:10,Moon:10,Mercury:40}},
       {layer:'transit' as const,longitudes:{Sun:18,Saturn:70}}
     ];
     const snapshot:ChartCoordinateTarget[]=[];
@@ -29,6 +29,7 @@ window.runChartCoordinatePlanProbe = () => {
     const layouts:unknown[]=[];
     for (const ring of rings) {
       const parent=new THREE.Group();
+      parent.userData['chartBodySourceOrder']=Object.freeze(Object.keys(ring.longitudes));
       wheel.add(parent);
       const positions=layoutChartGlyphLongitudes(
         Object.fromEntries(Object.entries(ring.longitudes).map(([name,longitude])=>
@@ -86,6 +87,33 @@ window.runChartCoordinatePlanProbe = () => {
     result['independentLayers'+suffix]=plan.impacts.every(impact=>
       impact.ref.layer==='natal')
       && !plan.impacts.some(impact=>impact.ref.layer==='transit');
+
+    // Three.js group children can be reordered by a host. The pair Sun/Moon
+    // deliberately has identical original longitudes: stable tie resolution
+    // must follow the recorded source order, not the reordered children.
+    const sourceRing=glyphs[0].parent?.parent as THREE.Group;
+    const sourceSun=glyphs[0].parent as THREE.Group;
+    const sourceMoon=glyphs[1].parent as THREE.Group;
+    const sourceMercury=glyphs[2].parent as THREE.Group;
+    sourceRing.add(sourceSun);
+    const reorderedBaseline=planChartCoordinateEffects(scene,snapshot);
+    const reorderedShift=planChartCoordinateEffects(scene,shifted);
+    result['collisionSourceOrderStable'+suffix]=
+      reorderedBaseline.decision==='unchanged'
+      && reorderedShift.decision==='full-rebuild'
+      && JSON.stringify(reorderedShift.impacts)===JSON.stringify(plan.impacts);
+    sourceRing.add(sourceMoon);
+    sourceRing.add(sourceMercury);
+    const savedSourceOrder=sourceRing.userData['chartBodySourceOrder'];
+    sourceRing.userData['chartBodySourceOrder']=['Moon','Moon','Mercury'];
+    const invalidOrder=planChartCoordinateEffects(scene,snapshot);
+    result['invalidCollisionSourceOrderRejected'+suffix]=
+      invalidOrder.decision==='unsupported'
+      && invalidOrder.impacts.length===0
+      && invalidOrder.issues.includes('invalid-wheel-source-order:natal:Sun');
+    sourceRing.userData['chartBodySourceOrder']=savedSourceOrder;
+    result['sourceOrderRestoreValid'+suffix]=
+      planChartCoordinateEffects(scene,snapshot).decision==='unchanged';
     result['publishedPlanImmutable'+suffix]=Object.isFrozen(plan)
       && Object.isFrozen(plan.impacts)
       && Object.isFrozen(plan.issues)

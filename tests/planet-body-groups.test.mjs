@@ -27,6 +27,9 @@ test('each body owns one identity-transform scene group',()=>{
   assert.ok(loop.includes("elGroup.userData['chartPlanetBody'] = {layer:interactionLayer,name:nome};"));
   assert.ok(loop.includes("ringId: group.uuid,"),'body layout must track its original wheel');
   assert.ok(loop.includes('group.add(elGroup);'));
+  assert.ok(content.includes("group.userData['chartBodySourceOrder'] = Object.freeze(chartBodySourceOrder);"),
+    'wheel must preserve the legacy source-enumeration order before adding groups');
+  assert.ok(content.includes('for (const sourceName in elementiCelesti) chartBodySourceOrder.push(sourceName);'));
   assert.ok(loop.includes('ascendant: ascendente,'));
   assert.ok(loop.includes('degreesOffset: degOffs,'),
     'the inspector must receive the same render rotation provenance');

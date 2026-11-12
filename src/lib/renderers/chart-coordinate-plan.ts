@@ -133,8 +133,27 @@ export function planChartCoordinateEffects(
       next[name] = {longitude:requested.get(chartPlanetKey(owner.ref))!};
     }
     if (issues.length) continue;
-    const oldLayout = layoutChartGlyphLongitudes(baseline,'longitude');
-    const newLayout = layoutChartGlyphLongitudes(next,'longitude');
+    // Three.js child order is mutable, but the legacy two-pass collision
+    // algorithm breaks equal-longitude ties using original input order.
+    // Replay that order, not today's scene traversal order. Refuse missing,
+    // duplicated or foreign names rather than guessing an unsafe layout.
+    const sourceOrder: unknown = first.group.parent?.userData['chartBodySourceOrder'];
+    if (!Array.isArray(sourceOrder) ||
+        sourceOrder.length !== members.length ||
+        new Set(sourceOrder).size !== members.length ||
+        !sourceOrder.every(name => typeof name === 'string' &&
+          Object.prototype.hasOwnProperty.call(baseline,name))) {
+      issues.push('invalid-wheel-source-order:'+chartPlanetKey(first.ref));
+      continue;
+    }
+    const orderedBaseline: Record<string,{longitude:number}> = Object.create(null);
+    const orderedNext: Record<string,{longitude:number}> = Object.create(null);
+    for (const name of sourceOrder) {
+      orderedBaseline[name] = baseline[name];
+      orderedNext[name] = next[name];
+    }
+    const oldLayout = layoutChartGlyphLongitudes(orderedBaseline,'longitude');
+    const newLayout = layoutChartGlyphLongitudes(orderedNext,'longitude');
     for (const owner of members) {
       const key = chartPlanetKey(owner.ref);
       const old = owner.layout;

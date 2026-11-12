@@ -359,3 +359,32 @@ same per-body `ringId` and remains valid. Only changing a body's
 *immediate wheel parent* invalidates the provenance. The Node and
 browser synthetic tests check both directions, so the safety gate
 does not accidentally reject normal chart container composition.
+
+### Preserve tie-break input order independently of scene traversal
+
+The legacy two-pass seven-degree collision algorithm uses stable input
+enumeration order to break ties between bodies at **identical** original
+longitudes. A host can reorder a wheel's `THREE.Group.children`
+without changing its `uuid` or individual body owner snapshots.
+Using the new scene child order to reconstruct an old or proposed
+layout would silently change the winner of an equal-longitude tie.
+
+`ElementiCelestiRender` now records the actual `for...in` body
+enumeration as `chartBodySourceOrder` on each original visual ring
+after calculating its display layout. The **read-only**
+`planChartCoordinateEffects()` replays both previous and proposed
+collision layouts in that saved order, regardless of subsequent
+Three.js child reordering. Absent, duplicated, incomplete or foreign
+names fail closed with `invalid-wheel-source-order` and no impacts.
+The metadata is a rendering-only list, not an ephemeris or an
+astrological sorting rule.
+
+Node and synthetic normal/southern-mirrored browser regressions use
+**exactly coincident Sun/Moon longitudes**, reorder an existing
+owner within the same wheel, compare unchanged/changed reports,
+reject corrupted source-order metadata and verify recovery.
+The actual wheel renderer is source-checked for population of the
+metadata. No glyph transform, native aspect geometry, asset, house
+calculation, production component or live incremental patch changes.
+The usual `npm run test:coordinate-plan`, typecheck, Angular build
+and Chromium/Firefox visual gates remain mandatory before merge.
