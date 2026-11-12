@@ -8,6 +8,12 @@ import {
   preferredTransitConnectorAspect
 } from './planet-interaction.types';
 
+/** Material clones retain their untinted origin across controllers.
+ * Weak keys prevent retaining transient focus material copies after disposal;
+ * material arrays and texture references are never deep-cloned.
+ */
+const focusMaterialOrigins = new WeakMap<THREE.Material, THREE.Material>();
+
 /** Interactive canvas only. Export canvases remain independent of pointer state. */
 export class PlanetInteractionController {
   private readonly raycaster = new THREE.Raycaster();
@@ -23,7 +29,13 @@ export class PlanetInteractionController {
   /** Tracks painting work performed by synchronous host callbacks. */
   private visualRevision = 0;
   private glyphs = new Map<string, THREE.Mesh[]>();
-  private glyphTints = new Map<THREE.Material, THREE.Color>();
+  /** Screen-only color copies. A mesh's original material may also be used
+   * by another canvas; never recolor or dispose it.
+   */
+  private glyphMaterialOverrides = new Map<THREE.Mesh, {
+    original: THREE.Material | THREE.Material[];
+    focused: THREE.Material | THREE.Material[];
+  }>();
   private natalLineColors = new Map<any, number[]>();
   /** Screen-only copies of the native focused natal strokes.
    * Every copy owns its own geometry/material; original natal lines
@@ -332,11 +344,24 @@ export class PlanetInteractionController {
   };
 
   private clearVisuals(): void {
-    for (const [material, previous] of this.glyphTints) {
-      const paint = material as THREE.MeshBasicMaterial;
-      paint.color?.copy(previous);
+    for (const [mesh, {original, focused}] of this.glyphMaterialOverrides) {
+      // A host or another controller may have replaced the material of a
+      // transferred mesh since this controller assigned its focus clone.
+      // Never overwrite another controller's currently active material.
+      const current = mesh.material;
+      const stillOurs = Array.isArray(focused)
+        ? Array.isArray(current) && focused.length === current.length &&
+          focused.every((material, index) => material === current[index])
+        : current === focused;
+      if (stillOurs) mesh.material = original;
+      const copies = Array.isArray(focused) ? focused : [focused];
+      const originals = Array.isArray(original) ? original : [original];
+      for (const material of new Set(copies)) {
+        // A non-tintable material was left untouched, not cloned.
+        if (!originals.includes(material)) material.dispose();
+      }
     }
-    this.glyphTints.clear();
+    this.glyphMaterialOverrides.clear();
     for (const [attribute, values] of this.natalLineColors) {
       for (let i = 0; i < values.length; i += 3) {
         attribute.setXYZ(i / 3, values[i], values[i + 1], values[i + 2]);
@@ -381,17 +406,29 @@ export class PlanetInteractionController {
     return this.glyphs.get(chartPlanetKey(ref))?.find(mesh => this.ownsGlyph(mesh));
   }
 
-  /** Recolor only the on-screen glyph material, keeping the texture and
-   * baseline skin tint untouched for future redraws/PNG exports.
+  /** A highlighted mesh owns its temporary material, not the underlying
+   * base texture/material. Multiple scenes can share an immutable material
+   * without inheriting another canvas's focus tint.
    */
   private tintGlyph(mesh: THREE.Mesh, color: string): void {
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const material of materials) {
+    if (this.glyphMaterialOverrides.has(mesh)) return;
+    const originals = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const baselines = originals.map(material => focusMaterialOrigins.get(material) ?? material);
+    let changed = false;
+    const focused = baselines.map(material => {
       const paint = material as THREE.MeshBasicMaterial;
-      if (!paint.color) continue;
-      if (!this.glyphTints.has(material)) this.glyphTints.set(material, paint.color.clone());
-      paint.color.set(color);
-    }
+      if (!paint.color) return material;
+      const copy = material.clone();
+      focusMaterialOrigins.set(copy, material);
+      (copy as THREE.MeshBasicMaterial).color.set(color);
+      changed = true;
+      return copy;
+    });
+    if (!changed) return;
+    const original = Array.isArray(mesh.material) ? baselines : baselines[0];
+    const replacement = Array.isArray(mesh.material) ? focused : focused[0];
+    this.glyphMaterialOverrides.set(mesh, {original, focused: replacement});
+    mesh.material = replacement;
   }
 
   /** The existing AspettiRender creates vertex-colored Line2 geometry.
