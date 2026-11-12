@@ -35,7 +35,7 @@ Il generatore si rifiuta di sovrascrivere una directory già esistente. Il wrapp
 
 - Crea 78 PNG di test 48×48, con nomi e directory esattamente corrispondenti ai 78 percorsi statici di `GestoreImmagini.preloadArraySimboli`.
 - Il generatore legge l'array di preload con un controllo **fail-closed**: accetta solo stringhe letterali PNG con percorsi locali `/assets/img/...`. Rifiuta valori calcolati, spread, template string, concatenazioni, URL esterni, segmenti `..`, sequenze escape e duplicati, anche se i 78 percorsi letterali sono ancora presenti. Il pacchetto sintetico non deve mai attestare una copertura incompleta.
-- La regressione è inclusa nel test esistente `npm run test:demo-pack` (già previsto dal `preflight`), che verifica anche la corrispondenza con l'elenco reale dei 78 simboli. Non legge o copia alcun asset autentico.
+- Le regressioni sono incluse nel test esistente `npm run test:demo-pack` (già previsto dal `preflight`), che verifica anche la corrispondenza con l'elenco reale dei 78 simboli. La diagnostica `Preload list missing` rimane compatibile con il test storico `npm run test:local-assets` (richiamato da `npm run test:assets`). Entrambi i test vanno eseguiti dopo ogni aggiornamento del parser. Non viene letto o copiato alcun asset autentico.
 
 - Genera `manifests/approved-assets.json` con SHA-256 e marcatura esplicita **synthetic**; non include nessuna immagine di VirgoStars, nessuna texture stock e nessun dato personale.
 - Il server verifica l'intero manifest **all'avvio**; a ogni richiesta ricontrolla i byte del file richiesto.
