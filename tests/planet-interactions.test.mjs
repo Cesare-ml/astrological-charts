@@ -975,7 +975,7 @@ test('reentrant material disposal cannot overwrite a newer natal aspect palette'
     transitGuides = new Map();
     ${method.getText(src)}
   }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
-  const Probe = new Function(compiled + '\\nreturn PaletteProbe;')();
+  const Probe = new Function(compiled + '\nreturn PaletteProbe;')();
 
   for (const interleaved of [false,true]) {
     const probe = new Probe();
