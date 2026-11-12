@@ -1177,3 +1177,36 @@ instances. This is a lifecycle fix in the chart rendering library,
 not an ephemeris/aspect algorithm change, a zoom change or production
 deployment. Run Node, Angular, Chromium/Firefox and human visual
 checks before merging the draft PR.
+
+
+### Reentrant aspect-relation updates and stale host events (2026-11-12)
+
+`setRelations()` can synchronously trigger a full focus redraw.
+Disposing an old overlay may invoke another host `setRelations()`,
+`setScene()` or focus selection before the original call finishes.
+Previously the outer `setRelations()` could still emit a stale
+`update` notification and request an extra frame, even though a
+newer relation snapshot, chart scene or selected planet had won.
+The same duplicate-frame problem occurred when the host replaced
+relations from within the `update` callback.
+
+The controller now snapshots the initial scene and scene revision
+before starting the redraw. It checks that the active relation
+snapshot, selected planet, scene and revision still match before
+dispatching the focus details; it checks again after `send()`
+before requesting a render. A superseded update cannot emit a stale
+second event or repaint the wrong chart. A metadata-only update
+that remains current still emits its normal detail event without
+allocating new geometry.
+
+A Node regression executes the actual `setRelations()` method
+extracted from TypeScript and tests ordinary updates, newer
+relations during redraw, scene replacement, changed focus,
+reentrant host updates during `send()` and destruction.
+The synthetic real-Three.js browser fixture now covers both an
+aspect geometry `dispose` reentry and a nested relations update
+during `update` delivery, checking that only the winning update
+requests a frame. These tests do not add astronomical calculations,
+change existing aspect geometry, alter selection scale or integrate
+the draft interaction controller into production. Full Node,
+Angular and Chromium/Firefox checks are still required before merge.

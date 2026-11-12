@@ -153,6 +153,8 @@ export class PlanetInteractionController {
     // A changing orb updates the host's displayed details, but the actual
     // strokes change only if the tightest-orb transit guide color changes.
     const visualsChanged = !sameChartAspectVisuals(previousVisible, nextVisible);
+    const activeScene = this.scene;
+    const revision = this.sceneRevision;
     this.relations = next;
     if (!visibleChanged) return;
     if (visualsChanged) {
@@ -163,15 +165,19 @@ export class PlanetInteractionController {
         && this.recolorTransitGuides(nextVisible);
       if (!recolored) this.updateVisuals();
     }
-    const activeScene = this.scene;
-    const revision = this.sceneRevision;
+    // Disposing the former aspect strokes can synchronously call the host,
+    // which may install newer relations, focus or a different chart. This
+    // older update must not send stale focus details or render that scene.
+    const isCurrent = () => !this.disposed &&
+      this.relations === next && this.scene === activeScene &&
+      this.sceneRevision === revision &&
+      sameChartPlanet(focus,this.hovered ?? this.pinned);
+    if (!isCurrent()) return;
     if (activeScene) {
-      // Keep visible aspect details current for both hovered and pinned
-      // planets, even when a metadata-only update skips a WebGL repaint.
+      // Metadata-only changes still notify the host when the selection is
+      // current; the callback itself can start another relation update.
       if (focus) this.send('update', focus);
-      // Host callbacks may destroy/rebuild the chart synchronously.
-      if (visualsChanged && this.scene === activeScene &&
-          this.sceneRevision === revision) this.requestRender();
+      if (visualsChanged && isCurrent()) this.requestRender();
     }
   }
 

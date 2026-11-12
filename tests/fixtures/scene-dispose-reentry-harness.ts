@@ -89,5 +89,72 @@ window.runSceneDisposeReentryProbe = () => {
       canvas.remove();
     }
   }
+
+  // The material/geometry reentry checks above cover setScene(). The
+  // same Three.js disposal callback can deliver a NEW relations snapshot
+  // while the OLD setRelations() has not finished its paint/send/render.
+  // In both paths only the newest snapshot may request another frame.
+  for(const mode of ['dispose','send'] as const){
+    const canvas=document.createElement('canvas');
+    canvas.width=canvas.height=160;
+    document.body.appendChild(canvas);
+    const scene=new THREE.Scene();
+    const root=new THREE.Group();
+    root.userData['chartAspectRadius']=0.35;
+    scene.add(root);
+    const glyph=(layer:'natal'|'transit',name:string,x:number,angle:number)=>{
+      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(0.12,0.12),
+        new THREE.MeshBasicMaterial({color:'#171717'}));
+      mesh.position.x=x;
+      mesh.userData['chartPlanet']={layer,name};
+      mesh.userData['chartAspectAngle']=angle;
+      root.add(mesh);
+      return mesh;
+    };
+    const sun=glyph('natal','Sun',-0.4,0);
+    const saturn=glyph('transit','Saturn',0.4,Math.PI/2);
+    const relation=(type:string)=>[{
+      from:ref,to:{layer:'transit' as const,name:'Saturn'},type,orb:1
+    }];
+    let emittedTypes:string[]=[];
+    let renderRequests=0,reentryCount=0;
+    let controller:PlanetInteractionController;
+    controller=new PlanetInteractionController(canvas,camera,event=>{
+      if(event.type!=='update')return;
+      emittedTypes.push(event.aspects[0]?.type ?? 'none');
+      if(mode==='send' && reentryCount++===0)
+        controller.setRelations(relation('sestile'));
+    },()=>{renderRequests++;});
+    try{
+      controller.setRelations(relation('quadrato'));
+      controller.setScene(scene);
+      controller.highlight(ref);
+      const oldLine=scene.getObjectByName('chart-interaction-aspect') as THREE.Line;
+      if(mode==='dispose') oldLine.geometry.addEventListener('dispose',()=>{
+        if(reentryCount++===0) controller.setRelations(relation('sestile'));
+      });
+      const initialRenders=renderRequests;
+      controller.setRelations(relation('trigono'));
+      const remaining=scene.getObjectByName('chart-interaction-aspect') as THREE.Line;
+      results[mode+'LatestRelationsOnly']=
+        (mode==='dispose'
+          ? emittedTypes.join(',')==='sestile'
+          : emittedTypes.join(',')==='trigono,sestile')
+        && !!remaining && remaining!==oldLine
+        && renderRequests-initialRenders===1
+        && oldLine.parent===null;
+      const beforeRepeat=renderRequests;
+      controller.setRelations(relation('sestile'));
+      results[mode+'LatestRelationsIdempotent']=renderRequests===beforeRepeat;
+    } finally {
+      controller.destroy();
+      sun.geometry.dispose();
+      saturn.geometry.dispose();
+      (sun.material as THREE.Material).dispose();
+      (saturn.material as THREE.Material).dispose();
+      canvas.remove();
+    }
+  }
+
   return results;
 };

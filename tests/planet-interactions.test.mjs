@@ -957,3 +957,100 @@ test('nested repaint or scene replacement makes the older paint a no-op',()=>{
   assert.equal(nested.paints,1,
     'the nested repaint wins; the older paint must not run afterward');
 });
+
+
+test('reentrant relation updates cannot emit stale selection details or duplicate renders',()=>{
+  const ast=ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts',import.meta.url),'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const cls=ast.statements.find(item=>
+    ts.isClassDeclaration(item)&&item.name?.text==='PlanetInteractionController');
+  const method=cls?.members.find(item=>
+    ts.isMethodDeclaration(item)&&item.name.getText(ast)==='setRelations');
+  assert.ok(method?.body);
+  const js=ts.transpileModule(`class RelationsProbe {
+    disposed=false;
+    relations:any[]=[];
+    hovered:any=null;
+    pinned:any={layer:'natal',name:'Sun'};
+    scene:any={};
+    sceneRevision=1;
+    events:any[]=[];
+    renders=0;
+    paints=0;
+    onPaint:any=null;
+    onSend:any=null;
+    updateVisuals(){this.paints++;this.onPaint?.();}
+    recolorTransitGuides(){return false;}
+    send(type:any,focus:any){
+      this.events.push({type,focus:focus.name,
+        relation:this.relations[0]?.type});
+      this.onSend?.();
+    }
+    requestRender(){this.renders++;}
+    ${method.getText(ast)}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe=new Function('snapshotChartAspects','sameChartAspects',
+    'sameChartAspectVisuals','relatedChartAspects','sameChartAspectStructure',
+    'sameChartPlanet',js+'\nreturn RelationsProbe;')(
+      api.snapshotChartAspects,api.sameChartAspects,api.sameChartAspectVisuals,
+      api.relatedChartAspects,api.sameChartAspectStructure,api.sameChartPlanet);
+  const ref={layer:'natal',name:'Sun'};
+  const relation=type=>[{from:ref,to:{layer:'transit',name:'Saturn'},
+    type,orb:1}];
+  const make=()=>{
+    const p=new Probe();
+    p.relations=api.snapshotChartAspects(relation('quadrato'));
+    return p;
+  };
+  const standard=make();
+  standard.setRelations(relation('trigono'));
+  assert.deepEqual(standard.events.map(e=>e.relation),['trigono']);
+  assert.equal(standard.renders,1);
+
+  const nested=make();
+  let repainted=false;
+  nested.onPaint=()=>{
+    if(repainted)return;
+    repainted=true;
+    nested.setRelations(relation('sestile'));
+  };
+  nested.setRelations(relation('trigono'));
+  assert.equal(nested.relations[0].type,'sestile');
+  assert.deepEqual(nested.events.map(e=>e.relation),['sestile'],
+    'obsolete outer update must not notify a second time');
+  assert.equal(nested.renders,1,'only newer relation repaints');
+  assert.equal(nested.paints,2);
+
+  const moved=make();
+  moved.onPaint=()=>{moved.scene={};moved.sceneRevision++;};
+  moved.setRelations(relation('trigono'));
+  assert.deepEqual(moved.events,[]);
+  assert.equal(moved.renders,0,'retired chart cannot request a render');
+
+  const refocused=make();
+  refocused.onPaint=()=>{refocused.pinned={layer:'natal',name:'Moon'};};
+  refocused.setRelations(relation('trigono'));
+  assert.deepEqual(refocused.events,[],
+    'a new selection must not receive previous Sun details');
+  assert.equal(refocused.renders,0);
+
+  const nestedFromEmit=make();
+  let emitted=false;
+  nestedFromEmit.onSend=()=>{
+    if(emitted)return;
+    emitted=true;
+    nestedFromEmit.setRelations(relation('sestile'));
+  };
+  nestedFromEmit.setRelations(relation('trigono'));
+  assert.deepEqual(nestedFromEmit.events.map(e=>e.relation),
+    ['trigono','sestile']);
+  assert.equal(nestedFromEmit.renders,1,
+    'reentrant host update makes the outer render request obsolete');
+
+  const destroyed=make();
+  destroyed.onPaint=()=>{destroyed.disposed=true;};
+  destroyed.setRelations(relation('trigono'));
+  assert.deepEqual(destroyed.events,[]);
+  assert.equal(destroyed.renders,0);
+});
