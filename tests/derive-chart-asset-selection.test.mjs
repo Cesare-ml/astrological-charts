@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { assetPath, extractStaticReferences, deriveSelection } from '../scripts/derive-chart-asset-selection.mjs';
 
@@ -74,4 +76,66 @@ test('rejects URI-encoded or ambiguous static asset references before selection'
     'img/textures/a\n.png',
   ]) assert.throws(() => assetPath(ref), /Invalid asset path/);
   assert.equal(assetPath('img/simboli/mean Apogee.png'), 'img/simboli/mean Apogee.png');
+});
+
+test('reports nonliteral skin expressions but ignores intentionally absent null textures', () => {
+  const skins = source(`const skins = {
+    dark: { texture: null, imgRisuonatoreSolare: 'known.png' },
+    dynamic: { texture: chooseTexture(), imgRisuonatoreSolare: root + '/art.png' }
+  };`);
+  const images = source(`class GI {
+    static preloadArraySimboli = ['/assets/img/ok.png', ...extraImages, chooseSymbol()];
+  }`);
+  const refs = extractStaticReferences(skins, images);
+  assert.equal(refs.filter(ref => !ref.problem).length, 2);
+  const unsafe = refs.filter(ref => ref.problem);
+  assert.equal(unsafe.length, 4);
+  assert.equal(unsafe.filter(ref => ref.origin === 'skin').length, 2);
+  assert.equal(unsafe.filter(ref => ref.origin === 'preload').length, 2);
+  assert.ok(unsafe.every(ref => /Non-literal asset reference at .*:[0-9]+:[0-9]+;/.test(ref.problem)));
+  assert.ok(unsafe.every(ref => !ref.problem.includes('chooseTexture')));
+});
+
+test('reports a non-array preload initializer instead of treating selection as complete', () => {
+  const skins = source('const skins = {dark:{texture:null}};');
+  const images = source('class GI { static preloadArraySimboli = buildImageList(); }');
+  const refs = extractStaticReferences(skins, images);
+  assert.equal(refs.length, 1);
+  assert.equal(refs[0].origin, 'preload');
+  assert.match(refs[0].problem, /Non-literal asset reference/);
+  assert.match(refs[0].reference, /preloadArraySimboli/);
+});
+
+test('dynamic asset references block selection with a diagnostic report and no output file', () => {
+  fixture(({ assets, src }) => {
+    writeFileSync(join(assets, 'img', 'risuonatore-solare-bianco.png'), 'image');
+    const sourceDir = join(src, 'lib', 'renderers');
+    writeFileSync(join(sourceDir, '@skin-manager.ts'),
+      "const skins={dark:{texture:'assets/img/textures/texture-oro-1.jpg', imgRisuonatoreSolare:dynamicArtwork()}};");
+    writeFileSync(join(sourceDir, 'gestore-immagini.ts'),
+      "class GI {static preloadArraySimboli=['/assets/img/simboli-bianchi/segni/01.png', ...extraImages];}");
+
+    const { files, report } = deriveSelection(assets, src);
+    assert.equal(report.totalLiteralReferences, 2);
+    assert.equal(report.nonLiteralExpressions, 2);
+    assert.equal(report.unresolved.length, 2);
+    assert.ok(report.unresolved.every(issue => /Non-literal asset reference/.test(issue.problem)));
+    assert.deepEqual(files, [
+      'img/risuonatore-solare-bianco.png',
+      'img/simboli-bianchi/segni/01.png', 'img/textures/texture-oro-1.jpg',
+    ].filter(path => path !== 'img/risuonatore-solare-bianco.png'));
+
+    const out = join(assets, 'selection.json');
+    const reportFile = join(assets, 'selection.report.json');
+    const program = fileURLToPath(new URL('../scripts/derive-chart-asset-selection.mjs', import.meta.url));
+    const completed = spawnSync(process.execPath, [program,
+      '--root', assets, '--source', src, '--out', out, '--report', reportFile,
+    ], { encoding: 'utf8' });
+    assert.equal(completed.status, 2, completed.stderr);
+    assert.equal(existsSync(out), false, 'No incomplete selection file may be written');
+    const diagnostics = JSON.parse(readFileSync(reportFile, 'utf8'));
+    assert.equal(diagnostics.unresolved.length, 2);
+    assert.equal(diagnostics.nonLiteralExpressions, 2);
+    assert.match(completed.stderr, /unresolved or non-literal/);
+  });
 });
