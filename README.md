@@ -12,7 +12,7 @@ Invite known contributors to develop the astrological renderer using Codex, Clau
 
 The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
 
-**Important:** The renderer loads images from a host asset root; the library does not bundle them. A private owner-authorized image pack is available separately in `astrological-assets`, without the unknown-license font. Building TypeScript does not by itself prove visual correctness.
+**Important:** The renderer loads images from a host asset root; the library does not bundle them. An owner-authorized image pack is available in the separate, publicly readable [`astrological-assets`](https://github.com/Cesare-ml/astrological-assets) repository, without the original font. Public access and SHA-256 integrity verification do not grant artwork redistribution rights. Building TypeScript does not by itself prove visual correctness.
 
 ## Start developing
 
@@ -27,13 +27,12 @@ For invited contributors on Windows:
 
 ```bash
 npm ci
-npm run check:extraction
-npm run check:assets
-npm run check:types
-npm run build
+npm run verify:angular
 ```
 
-These commands and `npm run preflight` passed on Windows with Node 22.18.0. The localhost tests require loopback access. They verify the build and asset tooling; separate synthetic browser tests exercise rendering without validating original artwork. No CI or GitHub Actions is used.
+`verify:angular` runs preflight, the Angular library build, and the Angular demo build in order. A previous Windows validation used Node 22.18.0; that historical result does not validate a new commit. The localhost browser tests require loopback access and must be run separately for Chromium and Firefox. A successful build does not establish visual parity with approved artwork, and no CI or GitHub Actions is used.
+
+For real artwork, clone `Cesare-ml/astrological-assets` as a **sibling** checkout, run `npm run verify:pack` **inside that repository**, and use `npm run demo:assets:repo` here to serve only manifest-approved local files. The manifest includes per-file SHA-256 values; check actual bytes before relying on them. Do not copy images or fonts into this renderer or hotlink the production site.
 
 ## Documentation
 
@@ -44,7 +43,7 @@ These commands and `npm run preflight` passed on Windows with Node 22.18.0. The 
 - [Shared host-owned assets and canonical URLs](docs/SHARED_ASSET_ARCHITECTURE.md)
 - [Deterministic asset manifest and offline version comparison](docs/ASSET_MANIFEST.md)
 - [Derive the chart-only asset inventory from active TypeScript](docs/ASSET_SELECTION_AUTOMATION.md)
-- [Independent contributor asset access and proposed private asset repository](docs/INDEPENDENT_ASSETS_REPOSITORY.md)
+- [Independent contributor asset access and separate asset repository](docs/INDEPENDENT_ASSETS_REPOSITORY.md)
 - [Three-repository integration checkpoint, release gates and open blockers](docs/MULTIREPO_INTEGRATION_CHECKPOINT.md)
 - [Asset-only local preview: 78 synthetic PNGs or an approved independent pack](docs/LOCAL_ASSET_PREVIEW.md)
 - [Angular renderer demo and browser tests](docs/ANGULAR_DEMO.md)
