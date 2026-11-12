@@ -1134,3 +1134,105 @@ test('reentrant pointermove/leave callbacks keep the newest same-scene hit',()=>
   assert.equal(leavePaintNested.hovered?.name,'Venus');
   assert.equal(leavePaintNested.renders,1);
 });
+
+
+test('programmatic focus and aspect mode never render after nested disposal updates',()=>{
+  const ast=ts.createSourceFile('planet-interaction.controller.ts',
+    readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts',import.meta.url),'utf8'),
+    ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const cls=ast.statements.find(item=>
+    ts.isClassDeclaration(item)&&item.name?.text==='PlanetInteractionController');
+  assert.ok(cls);
+  const methods=['highlight','setNatalAspectPresentation'].map(name=>{
+    const member=cls.members.find(item=>
+      ts.isMethodDeclaration(item)&&item.name.getText(ast)===name);
+    assert.ok(member?.body,name);
+    return member.getText(ast);
+  });
+  const js=ts.transpileModule(`class FocusReentryProbe {
+    disposed=false;scene:any={};sceneRevision=0;visualRevision=0;
+    pinned:any=null;hovered:any=null;natalAspectPresentation='all';
+    renders=0;paints=0;onPaint:any=null;
+    updateVisuals(){this.visualRevision++;this.paints++;this.onPaint?.();}
+    requestRender(){this.renders++;}
+    ${methods.join('\n')}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe=new Function('isChartPlanetRef','sameChartPlanet',
+    js+'\nreturn FocusReentryProbe;')(api.isChartPlanetRef,api.sameChartPlanet);
+  const sun={layer:'natal',name:'Sun'},moon={layer:'natal',name:'Moon'};
+  const regular=new Probe();
+  regular.highlight(sun);
+  assert.deepEqual([regular.renders,regular.paints],[1,1]);
+  regular.highlight({...sun});
+  assert.deepEqual([regular.renders,regular.paints],[1,1],
+    'identical pinned focus never repaints');
+
+  const nestedPin=new Probe();
+  let triggered=false;
+  nestedPin.onPaint=()=>{
+    if(triggered)return;
+    triggered=true;
+    nestedPin.highlight(moon);
+  };
+  nestedPin.highlight(sun);
+  assert.equal(nestedPin.pinned.name,'Moon');
+  assert.equal(nestedPin.paints,2);
+  assert.equal(nestedPin.renders,1,'only newer pin requests a frame');
+
+  const changedChart=new Probe();
+  changedChart.onPaint=()=>{changedChart.scene={};changedChart.sceneRevision++;};
+  changedChart.highlight(sun);
+  assert.equal(changedChart.renders,0,'retired scene cannot request a frame');
+
+  const destroyed=new Probe();
+  destroyed.onPaint=()=>{destroyed.disposed=true;};
+  destroyed.highlight(sun);
+  assert.equal(destroyed.renders,0,'destroyed controller cannot render');
+
+  const hovered=new Probe();
+  hovered.hovered=moon;
+  hovered.highlight(sun);
+  assert.equal(hovered.pinned.name,'Sun');
+  assert.deepEqual([hovered.renders,hovered.paints],[0,0],
+    'pinning behind active hover must not redraw');
+
+  const standardMode=new Probe();
+  standardMode.setNatalAspectPresentation('focused');
+  assert.deepEqual([standardMode.renders,standardMode.paints],[1,1]);
+  standardMode.setNatalAspectPresentation('focused');
+  assert.deepEqual([standardMode.renders,standardMode.paints],[1,1]);
+
+  const nestedMode=new Probe();
+  triggered=false;
+  nestedMode.onPaint=()=>{
+    if(triggered)return;
+    triggered=true;
+    nestedMode.setNatalAspectPresentation('muted');
+  };
+  nestedMode.setNatalAspectPresentation('focused');
+  assert.equal(nestedMode.natalAspectPresentation,'muted');
+  assert.equal(nestedMode.paints,2);
+  assert.equal(nestedMode.renders,1,'only newest mode renders');
+
+  const modeAfterScene=new Probe();
+  modeAfterScene.onPaint=()=>{modeAfterScene.scene={};modeAfterScene.sceneRevision++;};
+  modeAfterScene.setNatalAspectPresentation('focused');
+  assert.equal(modeAfterScene.renders,0);
+
+  const modeAfterDestroy=new Probe();
+  modeAfterDestroy.onPaint=()=>{modeAfterDestroy.disposed=true;};
+  modeAfterDestroy.setNatalAspectPresentation('focused');
+  assert.equal(modeAfterDestroy.renders,0);
+
+  const newerFocusDuringMode=new Probe();
+  triggered=false;
+  newerFocusDuringMode.onPaint=()=>{
+    if(triggered)return;
+    triggered=true;
+    newerFocusDuringMode.highlight(moon);
+  };
+  newerFocusDuringMode.setNatalAspectPresentation('focused');
+  assert.equal(newerFocusDuringMode.pinned.name,'Moon');
+  assert.equal(newerFocusDuringMode.renders,1,
+    'mode refresh must not duplicate the newer focus frame');
+});

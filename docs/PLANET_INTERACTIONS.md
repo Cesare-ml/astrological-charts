@@ -1237,3 +1237,36 @@ PointerEvents against three synthetic Three.js glyphs with real
 raycasting, checking newest focus, event order, cursor, single
 render and no zoom. Full installed Node/Angular and Chrome/Firefox
 tests remain acceptance gates; PR #22 stays draft.
+
+
+### Programmatic selection and mode changes during focus disposal
+
+`highlight()` and `setNatalAspectPresentation()` previously called
+`requestRender()` after `updateVisuals()` whenever a scene happened
+to exist. But a Three.js geometry/material `dispose` callback can
+synchronously install a new pinned planet, aspect-presentation mode,
+scene or destroy the controller while the old paint is clearing its
+overlays. An obsolete caller would then request an *extra* frame for
+the newly installed state. This differs from the already guarded
+`setRelations()` and pointer paths.
+
+Both programmatic methods now capture the active scene,
+`sceneRevision` and `visualRevision` before repainting. Only a
+still-live caller with the same scene and precisely one owned visual
+revision may request a frame; `highlight()` additionally verifies
+the current pinned planet and absence of a newer hovered focus,
+while the mode setter requires its requested mode to remain active.
+These are render-ownership guards, **not** a change to selected
+planet colors, the user's no-zoom policy, native natal lines or
+astronomical calculations.
+
+The Node regression extracts and executes the actual TypeScript
+methods and tests normal/idempotent selection, nested pin/mode
+callbacks, disposal/scene replacement, destroyed controllers, active
+hover priority, and a newer focus during a mode change. An
+asset-free browser fixture registers synchronous disposal handlers
+on genuine Three.js focus-line geometry and verifies exactly one
+winning frame (or none after scene replacement), unchanged native
+resource ownership and no stale callback repaint. Actual installed
+Angular, Node/Three.js and Chromium/Firefox acceptance still gates
+the existing draft PR #22.

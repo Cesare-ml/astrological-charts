@@ -195,8 +195,17 @@ export class PlanetInteractionController {
     // Defer painting until the pointer moves/leaves: move() repaints
     // after its enter callback; leave() restores the newly pinned body.
     if (this.hovered) return;
+    const activeScene = this.scene;
+    const sceneRevision = this.sceneRevision;
+    const previousVisualRevision = this.visualRevision;
     this.updateVisuals();
-    if (this.scene) this.requestRender();
+    // Releasing old focus lines may synchronously trigger a NEW pin,
+    // scene or paint. Only the surviving update owns a render request.
+    if (!this.disposed && this.scene && this.scene === activeScene &&
+        this.sceneRevision === sceneRevision &&
+        this.visualRevision === previousVisualRevision + 1 &&
+        !this.hovered && sameChartPlanet(this.pinned, next))
+      this.requestRender();
   }
 
   setNatalAspectPresentation(presentation: 'all' | 'focused' | 'muted'): void {
@@ -204,8 +213,17 @@ export class PlanetInteractionController {
     // Focus-mode buttons may resend the same state during live correction.
     if (this.natalAspectPresentation === presentation) return;
     this.natalAspectPresentation = presentation;
+    const activeScene = this.scene;
+    const sceneRevision = this.sceneRevision;
+    const previousVisualRevision = this.visualRevision;
     this.updateVisuals();
-    if (this.scene) this.requestRender();
+    // A disposal callback can replace the mode, chart or focus. An older
+    // mode paint must never request a second frame for the newer state.
+    if (!this.disposed && this.scene && this.scene === activeScene &&
+        this.sceneRevision === sceneRevision &&
+        this.visualRevision === previousVisualRevision + 1 &&
+        this.natalAspectPresentation === presentation)
+      this.requestRender();
   }
 
   destroy(): void {
