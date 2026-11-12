@@ -78,7 +78,7 @@ window.runTransitSpokeGeometryProbe = () => {
       return near(actual.x,expected.x) && near(actual.y,expected.y)
         && near(actual.z,expected.z)
         && owner.position.lengthSq() === 0
-        && owner.rotation.lengthSq() === 0
+        && owner.rotation.x === 0 && owner.rotation.y === 0 && owner.rotation.z === 0
         && owner.scale.x === 1 && owner.scale.y === 1 && owner.scale.z === 1;
     });
     const controller = new PlanetInteractionController(canvas,camera,()=>{},()=>{});
