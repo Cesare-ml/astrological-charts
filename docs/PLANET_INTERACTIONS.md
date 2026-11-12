@@ -802,8 +802,20 @@ aspect calculations, canvas export, asset resolver or visual skin changes.
 
 The synthetic `planet-picking-harness.ts` checks hidden front meshes,
 hidden ancestors, toggling the ancestor back on, invisible materials,
-and clicks through hidden layers. The existing outside-canvas, zoom,
-depth and stale-scene checks remain. Run `npm run test:demo-interactions`
+and clicks through hidden layers. **Transparent materials with a finite
+`opacity <= 0` are also non-pickable**: their glyph meshes remain in
+Three.js raycast results but no longer steal hover or click from a drawn
+planet behind them. A positive finite opacity remains selectable; an
+invalid transparent opacity (NaN/Infinity) is ignored conservatively.
+Opaque (`transparent: false`) materials retain normal picking even if
+their `opacity` property is zero, since blending is disabled.
+
+This is deliberately **material-level**, not pixel-perfect texture-alpha
+hit testing. Transparent holes within a partially visible PNG still need
+a future texture-aware policy if consumers request it. The browser fixture
+checks hover pass-through, click pass-through and restored positive opacity
+using real Three.js meshes; the existing outside-canvas, zoom, depth and
+stale-scene checks remain. Run `npm run test:demo-interactions`
 in a real browser before approving; GitHub source inspection alone does
 not constitute a passed WebGL regression.
 
