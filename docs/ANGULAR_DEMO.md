@@ -530,3 +530,24 @@ Run `npm run test:demo-interactions` after starting the
 demo and approved asset server. Browser/Windows execution
 is pending; passing static checks does not certify this
 new stress scenario.
+
+## Native aspect metadata duplicated on a line group and its segments
+
+Some host renderers may annotate both a native natal aspect
+`THREE.Group` and each child `Line2` with the **same**
+`chartNatalAspect`. The interaction index now represents the
+group exactly once. A highlighted natal planet must draw one
+colored foreground per distinct native aspect on top of its
+gray original, with no duplicate strokes or material leaks.
+
+The browser suite uses
+`tests/fixtures/native-natal-line-harness.ts` to test
+solid/dashed/dotted segments with duplicated child tags and
+40 rapid Sun/Venus focus switches. The real GPU fixture
+`tests/fixtures/natal-focus-gpu-harness.ts` injects the
+same duplicate metadata during 120 redraws and checks
+bounded WebGL geometries and original color restoration.
+The Node interaction suite covers identical parent/child tags
+and separate nested relation tags through the controller's
+real `setScene` method. Run all Node and browser gates;
+they remain to be verified on Windows after this commit.
