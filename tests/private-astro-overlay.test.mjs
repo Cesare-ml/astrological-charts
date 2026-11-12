@@ -112,11 +112,43 @@ test('rejects nonwhite pixels and incorrect alpha counts even if SHA-256 was ref
     writeFileSync(target,bad);
     const altered=structuredClone(manifest);
     altered.assets[0].maskSha256=SHA(bad);
-    assert.throws(()=>verifyPrivateAstroOverlay(root,altered,approval),/nonwhite visible RGB/);
+    assert.throws(()=>verifyPrivateAstroOverlay(root,altered,approval),/nonwhite RGB/);
     writeFileSync(target,original);
     const coverage=structuredClone(manifest);
     coverage.assets[0].coveragePixels=512 * 512 - 1;
     assert.throws(()=>verifyPrivateAstroOverlay(root,coverage,approval),/alpha coverage differs/);
+  });
+});
+
+test('rejects hidden black pixels and CRC corruption despite updated SHA-256',async()=>{
+  await withPrivatePack(async({root,manifest,approval})=>{
+    const target=join(root,'img/virgostars-astro/masks/aries.png');
+    const original=readFileSync(target);
+    const changed=structuredClone(manifest);
+
+    // A black pixel with alpha=0 can still produce a dark filtering halo.
+    // Keep one white visible pixel so coverage remains a valid nonzero count.
+    const pixels=Buffer.alloc(512*512*4);
+    for(let i=0;i<pixels.length;i+=4) pixels.fill(255,i,i+3);
+    pixels[3]=255; // one white opaque pixel
+    pixels[4]=0;pixels[5]=0;pixels[6]=0; // RGB black, alpha remains zero
+    const hiddenBlack=await sharp(pixels,{
+      raw:{width:512,height:512,channels:4}
+    }).png().toBuffer();
+    writeFileSync(target,hiddenBlack);
+    changed.assets[0].maskSha256=SHA(hiddenBlack);
+    changed.assets[0].coveragePixels=1;
+    assert.throws(()=>verifyPrivateAstroOverlay(root,changed,approval),
+      /nonwhite RGB.*transparent/);
+
+    // A CRC error must not pass just because a manifest hash was regenerated.
+    const corrupted=Buffer.from(original);
+    corrupted[29]^=1; // IHDR CRC (8-byte signature + 4 length + 4 type + 13 payload)
+    writeFileSync(target,corrupted);
+    changed.assets[0].maskSha256=SHA(corrupted);
+    changed.assets[0].coveragePixels=512*512;
+    assert.throws(()=>verifyPrivateAstroOverlay(root,changed,approval),
+      /invalid chunk CRC/);
   });
 });
 
