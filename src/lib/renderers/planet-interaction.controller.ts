@@ -26,6 +26,10 @@ export class PlanetInteractionController {
   private sceneRevision = 0;
   /** Prevent nested pointer callbacks from reviving a stale hit. */
   private pointerRevision = 0;
+  /** A synchronous leave callback can receive another pointer event before
+   * the first move has installed its next hover. Preserve the retired visual
+   * focus until the winning event restores/paints it. */
+  private pendingHoverExit: ChartPlanetRef | null = null;
   /** Teardown is terminal; no stale host call may resurrect this canvas. */
   private disposed = false;
   /** Tracks painting work performed by synchronous host callbacks. */
@@ -85,6 +89,7 @@ export class PlanetInteractionController {
     // those must not re-create visuals on a scene that is being disposed.
     const leaving = this.hovered;
     this.hovered = null;
+    this.pendingHoverExit = null;
     this.canvas.style.cursor = this.cursor;
     this.scene = null;
     this.glyphs.clear();
@@ -245,6 +250,7 @@ export class PlanetInteractionController {
     this.canvas.style.cursor = this.cursor;
     this.scene = null;
     this.hovered = null;
+    this.pendingHoverExit = null;
     // Destruction is terminal (unlike setScene(null) during a redraw).
     // Do not retain host-supplied aspect snapshots or a pinned selection
     // if a stale Angular closure still references the retired controller.
@@ -340,18 +346,22 @@ export class PlanetInteractionController {
     const hitScene = this.scene;
     const hitRevision = this.sceneRevision;
     const next = this.pick(event);
-    if (sameChartPlanet(next, this.hovered)) return;
+    // A nested pointermove can arrive while an older move has already
+    // dispatched leave but not painted its replacement. Remember that
+    // retired *visual* focus so it is not mistaken for an idle canvas.
+    const interruptedExit = this.pendingHoverExit;
+    this.pendingHoverExit = null;
+    if (sameChartPlanet(next, this.hovered) && !interruptedExit) return;
     const previous = this.hovered;
-    // Pointer movement within the canvas can leave a glyph without
-    // firing pointerleave. Compare visible focus, not just hover state:
-    // pinned A -> hover A -> empty canvas still displays A throughout.
-    const visibleBeforeMove = previous ?? this.pinned;
+    const visibleBeforeMove = previous ?? interruptedExit ?? this.pinned;
     this.hovered = null;
+    this.pendingHoverExit = previous;
     if (previous) this.send('leave', previous);
     // A newer event from the host may have chosen another planet within
     // this same scene. A scene-only revision check is not sufficient.
     if (this.disposed || this.pointerRevision !== pointerRevision ||
         this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
+    this.pendingHoverExit = null;
     this.hovered = next ? { ...next } : null;
     const beforeEnterVisuals = this.visualRevision;
     if (this.hovered) this.send('enter', this.hovered);
@@ -378,17 +388,23 @@ export class PlanetInteractionController {
   };
   private leave = (): void => {
     if (this.disposed) return;
-    const leaving = this.hovered;
-    if (!leaving) return;
+    // Even with hovered=null, an in-flight pointermove may be in its
+    // synchronous 'leave' callback. Invalidate that older event before
+    // it can resurrect a hit after the pointer has left the canvas.
     const pointerRevision = ++this.pointerRevision;
-    // Clear before the callback so synchronous setRelations() cannot emit
-    // a stale hover-update after leave has already been delivered.
-    this.hovered = null;
+    const leaving = this.hovered;
+    const interruptedExit = this.pendingHoverExit;
+    this.pendingHoverExit = null;
     this.canvas.style.cursor = this.cursor;
+    if (!leaving && !interruptedExit) return;
+    const previousVisible = leaving ?? interruptedExit;
+    this.hovered = null;
     const activeScene = this.scene;
     const revision = this.sceneRevision;
     const beforeLeaveVisuals = this.visualRevision;
-    this.send('leave', leaving);
+    // The interrupted move has already emitted leave for its old glyph.
+    // Never emit a duplicate when exiting during that callback.
+    if (leaving) this.send('leave', leaving);
     if (this.disposed || this.pointerRevision !== pointerRevision ||
         this.scene !== activeScene || this.sceneRevision !== revision) return;
     // Leaving the same pinned planet restores the *identical* focused
@@ -396,7 +412,7 @@ export class PlanetInteractionController {
     // Keep emitting leave to the host; a callback changing selection or
     // relationships has its own visualRevision and is handled above.
     if (this.visualRevision === beforeLeaveVisuals &&
-        !sameChartPlanet(leaving, this.pinned)) {
+        !sameChartPlanet(previousVisible, this.pinned)) {
       this.updateVisuals();
       if (!this.disposed && this.pointerRevision === pointerRevision &&
           this.scene === activeScene && this.sceneRevision === revision)
