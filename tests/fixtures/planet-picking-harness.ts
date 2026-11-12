@@ -20,6 +20,12 @@ interface PickingProbe {
   cameraLayerSwitchSelected: boolean;
   cameraLayerSwitchClick: boolean;
   cameraLayerResetRestoresSelection: boolean;
+  attachedNewGlyphSelected: boolean;
+  detachedGlyphFallsThrough: boolean;
+  detachedGlyphClickFallsThrough: boolean;
+  reparentedGlyphClickFallsThrough: boolean;
+  reattachedGlyphRestoresPick: boolean;
+  dynamicSceneMembershipKeepsCache: boolean;
   pickTargetCacheStable: boolean;
   pickTargetCacheReindexed: boolean;
   pickTargetCacheReleased: boolean;
@@ -175,6 +181,41 @@ window.runPlanetPickingProbe = (): PickingProbe => {
     pointer(0.08);
     const cameraLayerResetRestoresSelection = events.at(-1)?.type === 'enter'
       && events.at(-1)?.planet.name === 'Moon';
+
+    // A host can detach/reparent a glyph while keeping the same scene and
+    // without calling setScene(). Cached raycaster targets must follow
+    // current scene ancestry, not an obsolete mesh reference.
+    const dynamic = glyph('Uranus', 0.08, 0.40);
+    controller.setScene(scene);
+    const cachedWithDynamic =
+      (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets;
+    pointer(0.08);
+    const attachedNewGlyphSelected = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Uranus';
+    scene.remove(dynamic);
+    pointer(0.08);
+    const detachedGlyphFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    pointer(0.08, 'click');
+    const detachedGlyphClickFallsThrough = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Moon';
+
+    const differentScene = new THREE.Scene();
+    differentScene.add(dynamic);
+    pointer(0.08, 'click');
+    const reparentedGlyphClickFallsThrough = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Moon';
+
+    scene.add(dynamic);
+    pointer(0.08);
+    const reattachedGlyphRestoresPick = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Uranus';
+    const dynamicSceneMembershipKeepsCache =
+      cachedWithDynamic ===
+      (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets;
+    scene.remove(dynamic);
+    dynamic.geometry.dispose();
+    (dynamic.material as THREE.Material).dispose();
     controller.destroy();
     const pickTargetCacheReleased =
       (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets.length === 0;
@@ -189,6 +230,9 @@ window.runPlanetPickingProbe = (): PickingProbe => {
       hiddenMaterialClickFallsThrough, cameraExcludedLayerIgnored,
       cameraEnabledLayerSelected, cameraLayerSwitchSelected,
       cameraLayerSwitchClick, cameraLayerResetRestoresSelection,
+      attachedNewGlyphSelected, detachedGlyphFallsThrough,
+      detachedGlyphClickFallsThrough, reparentedGlyphClickFallsThrough,
+      reattachedGlyphRestoresPick, dynamicSceneMembershipKeepsCache,
       pickTargetCacheStable, pickTargetCacheReindexed,
       pickTargetCacheReleased, resourcesRestored
     };
