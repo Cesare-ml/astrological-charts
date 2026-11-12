@@ -43,7 +43,8 @@
     "verify:angular": "npm run preflight && npm run build:library && npm run build:demo",
     "test:aspect-identity": "node --test tests/planet-aspect-identity.test.mjs",
     "test:camera-invariants": "node --test tests/chart-camera-invariants.test.mjs",
-    "test:demo-axis-contract": "node --test tests/demo-axis-fixture-contract.test.mjs"
+    "test:demo-axis-contract": "node --test tests/demo-axis-fixture-contract.test.mjs",
+    "test:demo-axis-pixels": "node --test tests/axis-focus-canvas.browser.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
