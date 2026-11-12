@@ -101,3 +101,17 @@ test('rejects explicit null optional planet numbers in all chart layers without 
     }
   }
 });
+
+test('rejects malformed optional secondary charts even when natal mode is selected', () => {
+  for (const location of ['transits', 'synastry']) {
+    for (const malformed of [null, [], { ...chart(), houseCusps: [20] }]) {
+      const invalid = { ...payload(), mode: 'natal', [location]: malformed };
+      assert.throws(
+        () => validateChartPayloadV1(invalid),
+        new RegExp(location + '(?: must be a JSON object|\\\\.houseCusps must contain exactly 12)'),
+        location + ' / ' + JSON.stringify(malformed),
+      );
+      assert.equal(invalid[location], malformed, 'validation must preserve caller-owned secondary data');
+    }
+  }
+});
