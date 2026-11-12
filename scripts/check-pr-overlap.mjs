@@ -4,7 +4,7 @@
  * It detects shared changed paths, not Git merge conflicts or test success.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs';
+import { lstatSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -106,15 +106,20 @@ export function resolveReportOutputPath(outPath, cwd = process.cwd()) {
   }
   const folder = resolve(cwd, '.local');
   const destination = resolve(cwd, outPath);
-  if (existsSync(folder) && lstatSync(folder).isSymbolicLink()) {
+  // lstat also sees dangling links, unlike existsSync (which follows them).
+  const statIfPresent = path => {
+    try { return lstatSync(path); }
+    catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  };
+  const folderStat = statIfPresent(folder);
+  const destinationStat = statIfPresent(destination);
+  if (folderStat && folderStat.isSymbolicLink()) {
     throw new Error('Report directory .local must not be a symlink');
   }
-  if (existsSync(destination) && !lstatSync(destination).isFile()) {
-    throw new Error('Report destination must be a regular file');
-  }
-  if (existsSync(destination) && lstatSync(destination).isSymbolicLink()) {
+  if (destinationStat && destinationStat.isSymbolicLink()) {
     throw new Error('Report destination must not be a symlink');
   }
+  if (destinationStat) throw new Error('Report destination already exists; choose a new filename');
   return destination;
 }
 
@@ -136,7 +141,8 @@ function main(args) {
     mkdirSync(dirname(safeOutput), { recursive: true });
     // Re-check after creating the folder to refuse a preexisting symlink.
     resolveReportOutputPath(outPath);
-    writeFileSync(safeOutput, text, { flag: 'w' });
+    // Exclusive creation refuses links, hard links and files created after validation.
+    writeFileSync(safeOutput, text, { flag: 'wx' });
     console.log('Report: ' + safeOutput);
   } else process.stdout.write(text);
   if (report.overlaps.length) process.exitCode = 2;

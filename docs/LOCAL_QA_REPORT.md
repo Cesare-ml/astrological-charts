@@ -26,6 +26,10 @@ against an existing and already installed checkout is possible with
 `-SkipInstall`; the report makes the skipped dependency step visible. Do not
 use `-SkipInstall` as evidence of a reproducible *clean* checkout.
 
+Version probes capture all native output before examining `$LASTEXITCODE`;
+this avoids early pipeline termination changing the reported exit code in
+Windows PowerShell. The first output line is selected only afterward.
+
 ## Report format
 
 The ignored file `.local/verify-local-report.json` is written on both success
@@ -86,7 +90,7 @@ node --test tests/verify-local-runner.test.mjs
   Windows, Linux and macOS. They check that the runner uses the canonical gate
   and includes the required report fields.
 - `tests/verify-local-windows.integration.test.mjs`: executes **real Windows
-  PowerShell** from five disposable directories, with a temporary `npm.cmd`
+  PowerShell** from disposable directories, with a temporary `npm.cmd`
   stub placed first in the child process PATH. The stub logs commands and
   simulates successful npm, failed `npm ci`, failed `verify:angular`, absent
   lockfile, and `-SkipInstall` with and without `node_modules`. The suite
@@ -94,9 +98,9 @@ node --test tests/verify-local-runner.test.mjs
   It is **SKIPPED automatically on non-Windows** hosts.
   The fake `npm.cmd` implements `--version` (returning a synthetic version)
   separately from the logged `ci` and `run verify:angular` calls, so
-  version detection does not alter the expected command sequence. Disposable
-  directories deliberately have no `.git`; the runner does not attempt a
-  Git revision lookup there and records `revision: "not available"`.
+  version detection does not alter the expected command sequence. A real
+  synthetic Git repository checks revision reporting; other disposable
+  directories have no `.git` and record `revision: "not available"`.
 
 The Windows integration suite never invokes real npm; its fake executable
 tests only the **control flow and report writing** of PowerShell. The normal

@@ -45,10 +45,12 @@ try {
     Get-Command node.exe -ErrorAction Stop | Out-Null
     Get-Command npm.cmd -ErrorAction Stop | Out-Null
 
-    $report.nodeVersion = (& node.exe --version | Select-Object -First 1)
+    $nodeOutput = @(& node.exe --version)
     if ($LASTEXITCODE -ne 0) { throw 'node --version failed' }
-    $report.npmVersion = (& npm.cmd --version | Select-Object -First 1)
+    $report.nodeVersion = $nodeOutput | Select-Object -First 1
+    $npmOutput = @(& npm.cmd --version)
     if ($LASTEXITCODE -ne 0) { throw 'npm --version failed' }
+    $report.npmVersion = $npmOutput | Select-Object -First 1
     $gitCommand = Get-Command git.exe -ErrorAction SilentlyContinue
     # A disposable Windows test sandbox is deliberately NOT a Git checkout.
     # Skip rev-parse there: under ErrorActionPreference=Stop, Git's stderr

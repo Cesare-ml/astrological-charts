@@ -45,8 +45,8 @@ test('offline runner does not deploy, publish or invoke GitHub Actions', () => {
 test('Windows sandbox reaches npm execution without a Git checkout or fake-version failure', () => {
   const integration = readFileSync(new URL('./verify-local-windows.integration.test.mjs', import.meta.url), 'utf8');
   assert.match(runner, /if \(\$gitCommand -and \(Test-Path -LiteralPath '\.git'\)\) \{/);
-  assert.match(integration, /'if \/I "%1"=="--version" \('/);
-  assert.match(integration, /'  echo 10\.9\.2'/);
+  assert.match(integration, /'if \/I "%1"=="--version" goto version'/);
+  assert.match(integration, /'echo 10\.9\.2'/);
   assert.match(integration, /assert\.equal\(result\.report\.npmVersion, '10\.9\.2'/);
   assert.match(integration, /assert\.equal\(result\.report\.revision, 'not available'/);
   assert.match(integration, /if \(skipInstall\) args\.push\('-SkipInstall'\)/);

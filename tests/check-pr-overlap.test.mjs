@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync, symlinkSync, linkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -162,4 +162,29 @@ test('reports stay under .local and never overwrite a source file', () => fixtur
   assert.match(result.stderr,/Report output must/);
   assert.equal(readFileSync(join(root,'README.md'),'utf8'),original);
   assert.equal(existsSync(join(root,'.local','review-2026.json')),false);
+}));
+
+test('report output refuses existing files, hard links and dangling symlinks', t => fixture(({root}) => {
+  const folder = join(root, '.local');
+  mkdirSync(folder);
+  const target = join(root, 'outside.txt');
+  writeFileSync(target, 'sentinel');
+  linkSync(target, join(folder, 'hardlink.json'));
+  for (const name of ['hardlink.json']) {
+    const result = spawnSync(process.execPath, [cli, '--out', '.local/' + name,
+      'main:feature/a', 'main:feature/b'], { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stderr);
+    assert.equal(readFileSync(target, 'utf8'), 'sentinel');
+  }
+  const absent = join(root, 'absent.txt');
+  try { symlinkSync(absent, join(folder, 'dangling.json'), 'file'); }
+  catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) { t.diagnostic('Symlink creation unavailable: ' + error.code); return; }
+    throw error;
+  }
+  const result = spawnSync(process.execPath, [cli, '--out', '.local/dangling.json',
+    'main:feature/a', 'main:feature/b'], { cwd: root, encoding: 'utf8' });
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /must not be a symlink/);
+  assert.equal(existsSync(absent), false);
 }));
