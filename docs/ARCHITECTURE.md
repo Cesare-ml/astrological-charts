@@ -388,3 +388,36 @@ metadata. No glyph transform, native aspect geometry, asset, house
 calculation, production component or live incremental patch changes.
 The usual `npm run test:coordinate-plan`, typecheck, Angular build
 and Chromium/Firefox visual gates remain mandatory before merge.
+
+
+### Synthetic-only atomic glyph/leader coordinate transform experiment
+
+`src/lib/renderers/chart-coordinate-isolated-preview.ts` contains the
+**internal** experimental `applyIsolatedCoordinatePreview()`: unlike the
+read-only dependency planner, it can actually rotate a symbol and its
+inner/outer leader lines in place, update the true aspect angle and
+replace the ring layout metadata **as one prevalidated transaction**.
+The entire scene must be marked `chartSyntheticIsolatedWheel=true`
+and contain *only* the indexed per-body wrappers, glyphs and leader
+lines. This marker is an explicit test harness opt-in, **not** an
+authorization to update a real chart.
+
+It uses the existing `planChartCoordinateEffects()` and owner inspector,
+rejects any unknown visual, native aspect annotation, aspect-radius
+ring, missing origin marker, out-of-date symbol center or leader angle,
+extra Moon/dodecatemore parts, or changed *collision displacement*
+(which would require rewriting leader line geometry). It stages and
+validates **all** bodies before any mutation, retaining existing
+geometry/material identities; on a failed application it restores
+transforms and metadata. Normal and mirrored groups use local polar
+angles so they remain consistent with their parent transforms.
+
+New `npm run test:coordinate-isolated` executes real Three.js/TypeScript
+logic in headless Node using only the existing esbuild dependency. Tests
+cover two real synthetic bodies with inner and optional outer leaders,
+normal/mirrored wheel, idempotence, unchanged geometry/material,
+unmarked/native/stray visual rejection, collision-neighbor rejection,
+stale leader/symbol safety and preflight atomicity. This code is **not
+wired** into `GraficoRenderService` or public APIs. In real charts,
+native aspects, houses, styling, decorations and interaction controllers
+still require a complete `disegnaScena()` rebuild when positions change.
