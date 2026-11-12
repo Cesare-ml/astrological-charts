@@ -76,3 +76,24 @@ test('reject symlinks (or skip where Windows requires elevation)',async t=>{
     await assert.rejects(()=>generate(root),/Symlink forbidden/);
   });
 });
+
+test('reject URI delimiters, encoded segments and control characters before asset hashing', async () => {
+  await fixture(async root => {
+    for (const path of [
+      'img/zodiac/%2e%2e/Sun.png',
+      'img/zodiac/Sun%20.png',
+      'img/zodiac/Sun?.png',
+      'img/zodiac/Sun#.png',
+      'img/zodiac/Sun:alt.png',
+      'img/zodiac/Sun\n.png',
+      'img/zodiac/Sun\u007f.png',
+    ]) {
+      await assert.rejects(() => generate(root, [path]), /Invalid asset path/);
+    }
+    const safe = await generate(root, ['img/zodiac/Sun.png']);
+    assert.doesNotThrow(() => validateManifest(safe));
+    const tampered = structuredClone(safe);
+    tampered.files[0].path = 'img/zodiac/Sun%2e.png';
+    assert.throws(() => validateManifest(tampered), /Invalid asset path/);
+  });
+});
