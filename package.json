@@ -2,7 +2,7 @@
   "name": "grafici-astrologici",
   "version": "0.0.1",
   "private": true,
-  "description": "Private collaborative Angular/Three.js astrological chart renderer extracted from VirgoStars",
+  "description": "Angular/Three.js astrological chart renderer extracted from VirgoStars; public source pending rights audit",
   "scripts": {
     "build": "ng build grafici-astrologici",
     "build:library": "ng build grafici-astrologici",
