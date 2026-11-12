@@ -91,20 +91,22 @@ window.runMultiChartGpuFocusProbe = () => {
   let first: ReturnType<typeof make> | null = null;
   let second: ReturnType<typeof make> | null = null;
   try {
-    first = make(2);
-    second = make(140);
-    result.twoSeparateWebGLContexts = first.renderer.getContext() !== second.renderer.getContext();
-    first.render();
-    second.render();
+    const activeFirst = make(2);
+    const activeSecond = make(140);
+    first = activeFirst;
+    second = activeSecond;
+    result.twoSeparateWebGLContexts = activeFirst.renderer.getContext() !== activeSecond.renderer.getContext();
+    activeFirst.render();
+    activeSecond.render();
     const startA = {
-      geometries:first.renderer.info.memory.geometries,
-      textures:first.renderer.info.memory.textures,
-      programs:first.renderer.info.programs?.length ?? 0
+      geometries:activeFirst.renderer.info.memory.geometries,
+      textures:activeFirst.renderer.info.memory.textures,
+      programs:activeFirst.renderer.info.programs?.length ?? 0
     };
     const startB = {
-      geometries:second.renderer.info.memory.geometries,
-      textures:second.renderer.info.memory.textures,
-      programs:second.renderer.info.programs?.length ?? 0
+      geometries:activeSecond.renderer.info.memory.geometries,
+      textures:activeSecond.renderer.info.memory.textures,
+      programs:activeSecond.renderer.info.programs?.length ?? 0
     };
     result.initialScenesRendered = startA.geometries===3 &&
       startB.geometries===3 &&
@@ -123,18 +125,18 @@ window.runMultiChartGpuFocusProbe = () => {
     for (let i=0;i<cycles;i++) {
       const aFocus=focusChoices[i%focusChoices.length];
       const bFocus=focusChoices[(i+1)%focusChoices.length];
-      first.controller.highlight(aFocus);
-      second.controller.highlight(bFocus);
-      first.watchFocusedClones();
-      second.watchFocusedClones();
-      first.render();
-      second.render();
-      const aMem=first.renderer.info.memory;
-      const bMem=second.renderer.info.memory;
+      activeFirst.controller.highlight(aFocus);
+      activeSecond.controller.highlight(bFocus);
+      activeFirst.watchFocusedClones();
+      activeSecond.watchFocusedClones();
+      activeFirst.render();
+      activeSecond.render();
+      const aMem=activeFirst.renderer.info.memory;
+      const bMem=activeSecond.renderer.info.memory;
       maxGeometriesA=Math.max(maxGeometriesA,aMem.geometries);
       maxGeometriesB=Math.max(maxGeometriesB,bMem.geometries);
-      maxProgramsA=Math.max(maxProgramsA,first.renderer.info.programs?.length ?? 0);
-      maxProgramsB=Math.max(maxProgramsB,second.renderer.info.programs?.length ?? 0);
+      maxProgramsA=Math.max(maxProgramsA,activeFirst.renderer.info.programs?.length ?? 0);
+      maxProgramsB=Math.max(maxProgramsB,activeSecond.renderer.info.programs?.length ?? 0);
       // One central colored aspect and one dashed outer transit guide
       // per selected natal planet. No highlighted body creates neither.
       geometryCountStable &&=
@@ -144,8 +146,8 @@ window.runMultiChartGpuFocusProbe = () => {
         aMem.textures===startA.textures &&
         bMem.textures===startB.textures;
       shaderProgramsBounded &&=
-        (first.renderer.info.programs?.length ?? 0)<=startA.programs+3 &&
-        (second.renderer.info.programs?.length ?? 0)<=startB.programs+3;
+        (activeFirst.renderer.info.programs?.length ?? 0)<=startA.programs+3 &&
+        (activeSecond.renderer.info.programs?.length ?? 0)<=startB.programs+3;
       baseMaterialsUnchanged &&=
         (base.color.getHexString()==='171717') &&
         baseDisposals===0 && textureDisposals===0;
@@ -155,9 +157,9 @@ window.runMultiChartGpuFocusProbe = () => {
             ? ({Sun:'ff0000',Moon:'c0c0c0',Saturn:'9e02ff'} as Record<string,string>)[name]
             : '171717');
       independentFocusColors &&=
-        first.meshes.every(mesh => expected(mesh,
+        activeFirst.meshes.every(mesh => expected(mesh,
           (mesh.userData['chartPlanet'] as {name:string}).name,aFocus?.name ?? null)) &&
-        second.meshes.every(mesh => expected(mesh,
+        activeSecond.meshes.every(mesh => expected(mesh,
           (mesh.userData['chartPlanet'] as {name:string}).name,bFocus?.name ?? null));
     }
     result.cycles = cycles;
@@ -173,34 +175,34 @@ window.runMultiChartGpuFocusProbe = () => {
 
     // Destroying only chart A must release its 2 focused overlays and
     // temporary glyph materials, without disturbing B's live scene.
-    first.controller.highlight(focusSun);
-    first.watchFocusedClones();
-    first.render();
-    second.controller.highlight(focusMoon);
-    second.watchFocusedClones();
-    second.render();
-    const bLine=second.scene.getObjectByName('chart-interaction-aspect');
-    const bGeometries=second.renderer.info.memory.geometries;
-    first.controller.destroy();
-    first.render();
-    second.render();
+    activeFirst.controller.highlight(focusSun);
+    activeFirst.watchFocusedClones();
+    activeFirst.render();
+    activeSecond.controller.highlight(focusMoon);
+    activeSecond.watchFocusedClones();
+    activeSecond.render();
+    const bLine=activeSecond.scene.getObjectByName('chart-interaction-aspect');
+    const bGeometries=activeSecond.renderer.info.memory.geometries;
+    activeFirst.controller.destroy();
+    activeFirst.render();
+    activeSecond.render();
     result.destroyOneChartDoesNotTouchOther =
-      first.renderer.info.memory.geometries===startA.geometries &&
-      second.renderer.info.memory.geometries===bGeometries &&
-      second.scene.getObjectByName('chart-interaction-aspect')===bLine &&
-      (second.meshes[1].material as THREE.MeshBasicMaterial).color.getHexString()==='c0c0c0';
+      activeFirst.renderer.info.memory.geometries===startA.geometries &&
+      activeSecond.renderer.info.memory.geometries===bGeometries &&
+      activeSecond.scene.getObjectByName('chart-interaction-aspect')===bLine &&
+      (activeSecond.meshes[1].material as THREE.MeshBasicMaterial).color.getHexString()==='c0c0c0';
 
-    second.controller.destroy();
-    second.render();
+    activeSecond.controller.destroy();
+    activeSecond.render();
     result.bothOverlaySetsReleased =
-      first.renderer.info.memory.geometries===startA.geometries &&
-      second.renderer.info.memory.geometries===startB.geometries;
+      activeFirst.renderer.info.memory.geometries===startA.geometries &&
+      activeSecond.renderer.info.memory.geometries===startB.geometries;
     result.allObservedFocusClonesDisposedOnce = tracked.size>=100 &&
       [...tracked.values()].every(disposals=>disposals===1);
     result.sharedBaseTextureNeverDisposed = baseDisposals===0 &&
       textureDisposals===0 &&
-      first.meshes.every(mesh=>mesh.material===base) &&
-      second.meshes.every(mesh=>mesh.material===base);
+      activeFirst.meshes.every(mesh=>mesh.material===base) &&
+      activeSecond.meshes.every(mesh=>mesh.material===base);
     result.observedFocusCloneCount = tracked.size;
   } finally {
     first?.controller.destroy();
