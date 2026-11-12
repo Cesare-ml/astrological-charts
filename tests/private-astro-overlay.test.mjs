@@ -140,13 +140,21 @@ test('server refuses partial overlays and unauthorised or overlapping masks',asy
       ...settings,astroOverlayRoot:root,astroOverlayManifest:manifest,
       astroOverlayApproval:{...approval,scope:'public-release'},
     }),/authorization/);
+    // A truly approved base entry with an overlapping path must be rejected.
+    const collidingPath='img/virgostars-astro/masks/aries.png';
+    const collidingFile=join(base.root,...collidingPath.split('/'));
+    mkdirSync(dirname(collidingFile),{recursive:true});
+    const bytes=readFileSync(join(root,...collidingPath.split('/')));
+    writeFileSync(collidingFile,bytes);
     const collision=structuredClone(base.manifest);
     collision.assets.push({
-      ...collision.assets[0],path:'img/virgostars-astro/masks/aries.png',
+      path:collidingPath,bytes:bytes.length,sha256:SHA(bytes),
+      status:'approved',rightsHolder:'Fixture author',
+      permissionBasis:'synthetic test',approvalEvidence:'test-generated fixture',
     });
     assert.throws(()=>createAssetServer({
       root:base.root,manifest:collision,astroOverlayRoot:root,
       astroOverlayManifest:manifest,astroOverlayApproval:approval,
-    }),/Pack asset missing|collides/);
+    }),/Private Astro overlay collides/);
   });
 });
