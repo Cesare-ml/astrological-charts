@@ -181,6 +181,15 @@ export class ElementiCelestiRender {
         elementiCelestiRenderPos[nome][parametroDiRender],
         ascendente,degOffs
       );
+      // Render-only provenance for the grouped visual parts. No scene
+      // transforms or astronomical values are changed by this snapshot.
+      elGroup.userData['chartBodyLayout'] = {
+        coordinate: parametroDiRender,
+        original: elementiCelesti[nome][parametroDiRender],
+        adjusted: elementiCelestiRenderPos[nome][parametroDiRender],
+        tickDegrees: bodyAngles.tickDegrees,
+        glyphDisplacementDegrees: bodyAngles.glyphDisplacementDegrees
+      };
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
       el.scale.set(0.22*simboliScale,0.22*simboliScale,1);
       el.rotateZ(THREE.MathUtils.degToRad(bodyAngles.glyphDisplacementDegrees));

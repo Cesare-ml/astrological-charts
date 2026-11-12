@@ -98,3 +98,38 @@ dependencies still require a full scene reconstruction.
 The synthetic transit-spoke Playwright fixture now wraps bodies
 the same way and checks world-space parity for normal and
 mirrored views, alongside existing radius/guide regressions.
+
+
+## Fail-closed chart body ownership inspection (draft PR #22)
+
+The wheel now records `chartBodyLayout` on each identity-transform
+`chart-planet-body` group, alongside the existing layer-qualified owner
+and per-part role tags. The immutable-by-convention metadata includes
+the upstream coordinate name/value, collision-adjusted display value,
+true tick angle and glyph displacement. It does not affect any existing
+position, geometry, artwork, aspect orb or style.
+
+`inspectChartBodyOwners(scene)` is a **read-only internal structural
+gate** for future coordinated position updates. It indexes natal,
+transit and synastry groups by `layer:name`; verifies identity
+transforms, unique body IDs, one glyph and one true-angle inner leader,
+exact matching glyph identity/true aspect angle, supported part roles,
+and optional Moon ring/dodecatemore pairing. It fails closed (returns
+an empty index with diagnostic issues) for any incomplete or ambiguous
+group. Outer leader and extra decorations are optional because their
+presence depends on the selected rendering options.
+
+The synthetic Playwright fixture checks group completeness, normal
+and mirrored world-transform preservation, different layers sharing
+a planet name, duplicate owners, detached leaders, altered owner
+transforms, mismatched glyph layers, stale angle metadata, unexpected
+parts and non-mutating inspection. No real chart data or artwork is
+needed. Run `npm run test:demo-interactions` with the existing browser
+server before approving the PR.
+
+**This inspection is not a live coordinate update API.** Even a
+complete owner index does not establish that native aspect strokes,
+houses, Arabic parts, aspects and extra chart dependencies can be
+recomputed incrementally. Until they are coordinated and proven
+equivalent, changed upstream coordinates must continue through the
+full `disegnaScena()` rebuild.
