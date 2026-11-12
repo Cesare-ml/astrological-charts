@@ -141,3 +141,11 @@ On a fresh local checkout of `a421969`, `npm ci`, preflight, both builds, synthe
 After fast-forwarding that checkout to `3fd073f`, `npm run test:offline` passed with Firefox 142.0.1: four nonblank 400×400 PNGs from verified synthetic local files, browser context offline and no HTTP(S) requests observed. The installed Astrolabio adapter and hardware were not exercised.
 
 After fast-forwarding to `a2e3e98`, preflight, both builds, the four-case browser suite in Chromium and Firefox, and the offline test passed. The new failure-path test covers cleanup of repeating timelines when body, house or nested synastry construction is interrupted. This does not prove disposal of every resource in all failed partial scenes.
+
+## Opt-in owner-approved VirgoStars Astro glyph image preview
+
+The demo now has a **Preview VirgoStars Astro glyph images** checkbox. It defaults to **off** and never loads proprietary assets unless explicitly enabled. A host-maintained private, SHA-verified staging pack with the 22 **white-alpha** masks is required. A public or synthetic-only pack **does not** contain these images; enabling the preview without correctly staged masks will cause a visible load error instead of silently replacing the artwork.
+
+The private masks, source/rights controls, canonical paths, test command and fallback behavior are documented in [VirgoStars Astro private image preview](VIRGOSTARS_ASTRO_PRIVATE_IMAGE_PREVIEW.md). You can start the checkbox selected using `?astroGlyphs=1` only for a development run whose verified asset server has those files.
+
+Changes to the glyph imagery are **purely visual**: natal/transit object IDs, focus events, aspects and chart calculations are unchanged; however, their end-to-end behavior **has not yet been browser-regression-tested** with this private asset pack. Test Chromium/Firefox visual parity, PNG export and disable/re-enable rollback before client integration.
