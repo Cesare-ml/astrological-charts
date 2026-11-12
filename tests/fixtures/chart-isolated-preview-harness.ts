@@ -391,8 +391,6 @@ window.runIsolatedCoordinatePreviewProbe = () => {
     // Exercise TWO independent synthetic charts over many alternating
     // renders in ONE WebGL renderer. This catches hidden resource
     // allocations and cross-chart mutations that one-off probes miss.
-    const firstLayouts=[sun.glyph.parent!.userData['chartBodyLayout'],
-      moon.glyph.parent!.userData['chartBodyLayout']];
     const initialGeometries=renderer.info.memory.geometries;
     const initialTextures=renderer.info.memory.textures;
     const initialPrograms=renderer.info.programs?.length ?? 0;
