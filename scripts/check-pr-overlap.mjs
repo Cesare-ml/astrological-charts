@@ -51,10 +51,15 @@ export function inspectBranchScopes(inputPairs, cwd = process.cwd(), runGit = ex
   });
   const currentHead = git(['rev-parse', '--verify', 'HEAD']).trim();
   const branches = pairs.map(({ base, head }) => {
+    // Resolve BOTH refs before diffing. Moving base/head branch tips during
+    // parallel development must not silently change the audited snapshot.
+    const baseRevision = git(['rev-parse', '--verify', base + '^{commit}']).trim();
     const revision = git(['rev-parse', '--verify', head + '^{commit}']).trim();
-    const raw = git(['diff', '--name-only', '-z', base + '...' + head, '--']);
+    const mergeBase = git(['merge-base', baseRevision, revision]).trim();
+    if (!mergeBase) throw new Error('No shared merge-base: ' + base + ':' + head);
+    const raw = git(['diff', '--name-only', '-z', mergeBase, revision, '--']);
     const files = [...new Set(raw.split('\0').filter(Boolean))].sort();
-    return { base, head, revision, files };
+    return { base, head, baseRevision, revision, mergeBase, files };
   });
   const overlaps = [];
   let clearPairs = 0;
@@ -82,6 +87,7 @@ export function inspectBranchScopes(inputPairs, cwd = process.cwd(), runGit = ex
       'File-level overlap is not a Git merge-conflict check.',
       'Unshared file paths do not imply semantic compatibility or passing tests.',
       'Only locally fetched refs are evaluated; this tool does not fetch GitHub data.',
+      'Report SHAs freeze each comparison; refresh the audit if a base or head branch advances.',
       'A stacked PR must be passed as its actual base:head, not main:head.'
     ]
   };
