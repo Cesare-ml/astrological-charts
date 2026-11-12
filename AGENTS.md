@@ -223,6 +223,21 @@ be made without the owner-run browser suite and GPU
 review. Keep source/texture ownership intact; do not
 copy production artwork or modify astronomy.
 
+## Nested natal aspect tags are indexed once
+
+When collecting existing `chartNatalAspect` annotations in
+`PlanetInteractionController.setScene`, a native dashed/dotted
+`Line2` may carry the same annotation as its parent `Group`.
+Register only the **outermost identical** parent relation: cloning
+the parent and child separately doubles foreground rendering and
+allocates extra temporary geometry. Do not globally deduplicate
+different roots or different relations; these represent real
+distinct strokes. Index once during `setScene`, not on every
+pointer event. Maintain the headless Node scene-indexing test,
+`native-natal-line-harness.ts` and 120-selection
+`natal-focus-gpu-harness.ts` with intentionally redundant child
+metadata. Verify with actual Chrome/Firefox before merging.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
