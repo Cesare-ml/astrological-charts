@@ -58,6 +58,23 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       await action();
       await readyAfter(before);
     }
+    async function exportPixels() {
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('button', { name: 'Export PNG' }).click(),
+      ]);
+      // Keep all exported private chart bytes in memory; never write to Git.
+      const chunks = [];
+      const stream = await download.createReadStream();
+      for await (const chunk of stream) chunks.push(chunk);
+      const image = Buffer.concat(chunks);
+      const { data, info } = await sharp(image).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      assert.equal(info.format, 'raw');
+      assert.equal(info.width, 1600);
+      assert.equal(info.height, 1600);
+      assert.equal(info.channels, 3);
+      return data;
+    }
     try {
       await page.goto('http://127.0.0.1:4200/', { waitUntil: 'domcontentloaded' });
       await readyAfter(0);
@@ -67,11 +84,15 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       const preview = page.locator('#astro-preview');
       assert.ok(await preview.isVisible(), 'Missing opt-in checkbox');
       assert.equal(await preview.isChecked(), false, 'Preview MUST be disabled by default');
+      const originalExport = await exportPixels();
 
       await redraw(() => preview.check());
       const after = await canvas.screenshot();
       assert.notEqual(screenshotHash(before), screenshotHash(after),
         'Enabling approved glyphs must change chart pixels');
+      const previewExport = await exportPixels();
+      assert.notEqual(screenshotHash(originalExport), screenshotHash(previewExport),
+        'PNG export must contain the preview glyphs, not silently export legacy artwork');
 
       const names = new Set(maskResponses.map(r => r.url.split('/').at(-1)));
       for (const name of [
@@ -94,18 +115,6 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
           mode + ' chart should not be blank');
       }
 
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        page.getByRole('button', { name: 'Export PNG' }).click(),
-      ]);
-      // Export stays in memory: no private chart is written into a public checkout.
-      const chunks = [];
-      for await (const chunk of await download.createReadStream()) chunks.push(chunk);
-      const meta = await sharp(Buffer.concat(chunks)).metadata();
-      assert.equal(meta.format,'png');
-      assert.equal(meta.width,1600);
-      assert.equal(meta.height,1600);
-
       // Verify rollback on the SAME mode and skin as the first screenshot.
       await redraw(() => page.selectOption('#mode','natal'));
       await redraw(() => page.selectOption('#skin','light'));
@@ -120,6 +129,14 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       }
       assert.ok(different / oldImage.length < 0.01,
         'Disabling preview must closely restore the original chart pixels; changed channels: ' + different);
+      const restoredExport = await exportPixels();
+      assert.equal(restoredExport.length, originalExport.length);
+      let changedExportChannels = 0;
+      for (let i = 0; i < originalExport.length; i++) {
+        if (Math.abs(originalExport[i] - restoredExport[i]) > 4) changedExportChannels++;
+      }
+      assert.ok(changedExportChannels / originalExport.length < 0.01,
+        'Turning preview off must restore the original exported glyphs; changed channels: ' + changedExportChannels);
       assert.deepEqual(errors,[]);
     } finally {
       await browser.close();
