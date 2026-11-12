@@ -441,6 +441,29 @@ test('real WebGL memory stays bounded across 90 aspect updates and 20 scene redr
   } finally { await page.close(); await browser.close(); }
 });
 
+test('native natal aspect focus keeps bounded GPU resources across 120 selections', {timeout:90000}, async () => {
+  const browser = await launch();
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await ready(page);
+    const bundled = await build({
+      entryPoints:['tests/fixtures/natal-focus-gpu-harness.ts'],
+      bundle:true,write:false,platform:'browser',format:'iife',
+      target:'es2022',tsconfig:'tsconfig.json'
+    });
+    await page.addScriptTag({content:bundled.outputFiles[0].text});
+    const result = await page.evaluate(() => window.runNatalFocusGpuProbe());
+    assert.equal(result.cycles,120);
+    for (const name of [
+      'copiesBounded','gpuGeometriesBounded','texturesStable','programsStable',
+      'clonesDisposedExactlyOnce','nativeResourcesUntouched',
+      'originalColorsMutedDuringFocus','originalsRestored',
+      'clearedToBaseline','noGpuLeaksAfterTeardown'
+    ]) assert.equal(result[name],true,name+': '+JSON.stringify(result));
+  } finally { await page.close(); await browser.close(); }
+});
+
 test('Angular service batches bursty planet/zoom state into one WebGL frame', {timeout:60000}, async () => {
   const browser = await launch();
   const page = await browser.newPage();
