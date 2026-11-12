@@ -14,6 +14,10 @@ export function observedAssetPath(requestUrl) {
   const url = new URL(requestUrl);
   if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1'
       || url.port !== '4177' || !url.pathname.startsWith('/assets/')) return null;
+  // A percent-encoded separator or dot segment changes the effective path
+  // after a decoder normalizes it; artwork URLs must spell these literally.
+  if (/%(?:2e|2f|5c)/i.test(url.pathname))
+    throw new Error('Ambiguous encoded chart asset URL delimiter');
   let path;
   try { path = decodeURIComponent(url.pathname.slice('/assets/'.length)); }
   catch { throw new Error('Malformed encoding in observed chart asset URL'); }
