@@ -117,16 +117,35 @@ function pixelDifference(before, after) {
   return { changed, centralChanged };
 }
 
+/** Browser snapshots must expose the actual Angular development camera.
+ * A missing camera or scene identifier is a failed zoom check, not a reason
+ * to silently skip one comparison after the first successful screenshot.
+ */
+function assertCameraAvailable(state, context) {
+  const camera = state.camera;
+  assert.ok(camera && typeof camera.uuid === 'string' && camera.uuid.length,
+    context + ': Angular dev camera unavailable');
+  assert.ok(typeof state.sceneId === 'string' && state.sceneId.length,
+    context + ': Angular dev scene identity unavailable');
+  assert.ok(Number.isFinite(camera.zoom) && camera.zoom > 0,
+    context + ': invalid camera zoom');
+  for (const [field, length] of [['position', 3], ['quaternion', 4], ['projection', 16]]) {
+    assert.ok(Array.isArray(camera[field]) && camera[field].length === length &&
+      camera[field].every(Number.isFinite),
+    context + ': invalid camera ' + field);
+  }
+}
+
 function assertViewInvariants(before, after, context) {
   const a = before.state, b = after.state;
+  assertCameraAvailable(a, context + ' before');
+  assertCameraAvailable(b, context + ' after');
   for (const key of ['canvasWidth', 'canvasHeight', 'clientWidth', 'clientHeight',
     'drawingBuffer', 'hasWebGL', 'renderRevision']) {
     assert.deepEqual(b[key], a[key], context + ': unexpected ' + key + ' change');
   }
-  if (a.camera && b.camera && a.sceneId && b.sceneId) {
-    assert.deepEqual(b.camera, a.camera, context + ': focus changed camera/zoom');
-    assert.equal(b.sceneId, a.sceneId, context + ': focus rebuilt the scene');
-  }
+  assert.deepEqual(b.camera, a.camera, context + ': focus changed camera/zoom');
+  assert.equal(b.sceneId, a.sceneId, context + ': focus rebuilt the scene');
 }
 
 test('natal AS/DS/MC/IC focus changes real WebGL pixels without camera zoom',
@@ -160,8 +179,7 @@ test('natal AS/DS/MC/IC focus changes real WebGL pixels without camera zoom',
       // In the supported ng serve DEV acceptance environment, the Angular
       // debug API must expose the actual camera. A pixel-only fallback could
       // pass even if an unintended camera zoom changed the whole chart.
-      assert.ok(idle.state.camera && idle.state.sceneId,
-        'Angular dev camera/scene inspection unavailable; no-zoom verification would be inconclusive');
+      assertCameraAvailable(idle.state, 'initial transits chart');
       await page.selectOption('#planet-layer', 'transit');
       await page.waitForTimeout(140);
       const sidebarOnly = await chartSnapshot(page);
