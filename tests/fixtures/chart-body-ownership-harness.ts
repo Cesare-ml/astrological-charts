@@ -62,6 +62,9 @@ window.runChartBodyOwnershipProbe = () => {
     const natal=make('natal','Sun',0,true);
     const transit=make('transit','Sun',1);
     const synastry=make('synastry','Moon',2);
+    // Unrelated host fields must never escape the typed read-only snapshot.
+    const hostPayload={source:'synthetic host-only marker'};
+    transit.owner.userData['chartBodyLayout'].hostPayload=hostPayload;
     const indexed=inspectChartBodyOwners(scene);
     result['layerQualified'+suffix]=indexed.complete && indexed.owners.size===3
       && indexed.owners.get('natal:Sun')?.glyph===natal.glyph
@@ -85,10 +88,12 @@ window.runChartBodyOwnershipProbe = () => {
     result['immutableLayoutSnapshot'+suffix]=!!inspectedLayout
       && inspectedLayout!==sourceLayout && Object.isFrozen(inspectedLayout)
       && inspectedLayout.degreesOffset===previousOffset
+      && !Object.prototype.hasOwnProperty.call(inspectedLayout,'hostPayload')
       && !invalidFreshInspection.complete
       && invalidFreshInspection.owners.size===0
       && invalidFreshInspection.issues.includes('invalid-layout:transit:Sun');
     sourceLayout.degreesOffset=previousOffset;
+    delete sourceLayout.hostPayload;
 
     natal.owner.remove(natal.inner);
     const missing=inspectChartBodyOwners(scene);

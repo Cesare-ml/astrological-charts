@@ -148,7 +148,17 @@ export function inspectChartBodyOwners(root: THREE.Object3D): ChartBodyOwnerInsp
         outerLeader:parts.get('outer-leader'),extras,
         // userData is mutable across host redraws. A report must not
         // silently change after inspection if the host edits its layout.
-        layout:Object.freeze({...rawLayout})
+        layout:Object.freeze({
+          coordinate:rawLayout.coordinate,
+          original:rawLayout.original,
+          adjusted:rawLayout.adjusted,
+          ascendant:rawLayout.ascendant,
+          degreesOffset:rawLayout.degreesOffset,
+          tickDegrees:rawLayout.tickDegrees,
+          glyphDisplacementDegrees:rawLayout.glyphDisplacementDegrees,
+          outerLeaderEnabled:rawLayout.outerLeaderEnabled,
+          moonMarkerEnabled:rawLayout.moonMarkerEnabled
+        })
       });
     }
   });
