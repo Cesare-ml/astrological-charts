@@ -26,7 +26,8 @@ window.runChartBodyOwnershipProbe = () => {
       const tickDegrees=75-22+15+original;
       owner.userData['chartBodyLayout'] = {
         coordinate:'longitude',original,adjusted,tickDegrees,
-        glyphDisplacementDegrees:adjusted-original
+        glyphDisplacementDegrees:adjusted-original,
+        outerLeaderEnabled: optional,moonMarkerEnabled:optional
       };
       const glyph=new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.1),
         new THREE.MeshBasicMaterial({color:'#171717',side:THREE.DoubleSide}));
@@ -79,6 +80,34 @@ window.runChartBodyOwnershipProbe = () => {
       && missing.issues.includes('missing-inner-leader:natal:Sun');
     natal.owner.add(natal.inner);
 
+    const outer=natal.owner.children.find(child=>
+      child.userData['chartBodyVisualRole']==='outer-leader');
+    if (outer) {
+      natal.owner.remove(outer);
+      const missingOuter=inspectChartBodyOwners(scene);
+      result['missingEnabledOuterRejected'+suffix]=!missingOuter.complete
+        && missingOuter.issues.includes('outer-leader-option-mismatch:natal:Sun');
+      natal.owner.add(outer);
+    } else {
+      result['missingEnabledOuterRejected'+suffix]=false;
+    }
+
+    const originalRing=natal.owner.children.find(child=>
+      child.userData['chartBodyVisualRole']==='moon-ring');
+    const originalRingLeader=natal.owner.children.find(child=>
+      child.userData['chartBodyVisualRole']==='moon-ring-leader');
+    if (originalRing && originalRingLeader) {
+      natal.owner.remove(originalRing);
+      natal.owner.remove(originalRingLeader);
+      const withoutBoth=inspectChartBodyOwners(scene);
+      result['missingEnabledMoonPairRejected'+suffix]=!withoutBoth.complete
+        && withoutBoth.issues.includes('moon-marker-option-mismatch:natal:Sun');
+      natal.owner.add(originalRing);
+      natal.owner.add(originalRingLeader);
+    } else {
+      result['missingEnabledMoonPairRejected'+suffix]=false;
+    }
+
     const duplicate=natal.owner.clone(true);
     wheel.add(duplicate);
     const doubled=inspectChartBodyOwners(scene);
@@ -104,6 +133,15 @@ window.runChartBodyOwnershipProbe = () => {
     result['staleAspectRejected'+suffix]=!stale.complete
       && stale.issues.includes('mismatched-aspect-angle:transit:Sun');
     transit.glyph.userData['chartAspectAngle']=oldAngle;
+
+    const priorLayout=synastry.owner.userData['chartBodyLayout'];
+    synastry.owner.userData['chartBodyLayout']={
+      ...priorLayout, glyphDisplacementDegrees:0
+    };
+    const wrongDisplacement=inspectChartBodyOwners(scene);
+    result['inconsistentDisplacementRejected'+suffix]=!wrongDisplacement.complete
+      && wrongDisplacement.issues.includes('invalid-layout:synastry:Moon');
+    synastry.owner.userData['chartBodyLayout']=priorLayout;
 
     const stranger=new THREE.Object3D();
     stranger.userData['chartBodyVisualRole']='unknown-arc';

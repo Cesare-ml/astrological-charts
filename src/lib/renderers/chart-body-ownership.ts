@@ -9,6 +9,9 @@ export interface ChartBodyLayoutSnapshot {
   readonly adjusted: number;
   readonly tickDegrees: number;
   readonly glyphDisplacementDegrees: number;
+  /** Optional parts are required only when enabled for this chart. */
+  readonly outerLeaderEnabled: boolean;
+  readonly moonMarkerEnabled: boolean;
 }
 
 export type ChartBodyVisualRole =
@@ -46,7 +49,10 @@ function isLayout(value: unknown): value is ChartBodyLayoutSnapshot {
     && typeof v.adjusted === 'number' && Number.isFinite(v.adjusted)
     && typeof v.tickDegrees === 'number' && Number.isFinite(v.tickDegrees)
     && typeof v.glyphDisplacementDegrees === 'number'
-    && Number.isFinite(v.glyphDisplacementDegrees);
+    && Number.isFinite(v.glyphDisplacementDegrees)
+    && v.glyphDisplacementDegrees === v.adjusted - v.original
+    && typeof v.outerLeaderEnabled === 'boolean'
+    && typeof v.moonMarkerEnabled === 'boolean';
 }
 
 /**
@@ -105,8 +111,15 @@ export function inspectChartBodyOwners(root: THREE.Object3D): ChartBodyOwnerInsp
       issues.push('invalid-glyph:'+key);
     }
     if (!leader) issues.push('missing-inner-leader:'+key);
-    if (parts.has('moon-ring') !== parts.has('moon-ring-leader'))
+    if (isLayout(rawLayout)) {
+      if (parts.has('outer-leader') !== rawLayout.outerLeaderEnabled)
+        issues.push('outer-leader-option-mismatch:'+key);
+      if (parts.has('moon-ring') !== rawLayout.moonMarkerEnabled ||
+          parts.has('moon-ring-leader') !== rawLayout.moonMarkerEnabled)
+        issues.push('moon-marker-option-mismatch:'+key);
+    } else if (parts.has('moon-ring') !== parts.has('moon-ring-leader')) {
       issues.push('incomplete-moon-marker:'+key);
+    }
     if (parts.has('dodecatemore-arc') && !parts.has('dodecatemore'))
       issues.push('incomplete-dodecatemore:'+key);
     if (isLayout(rawLayout) && rawLayout.coordinate === 'longitude'

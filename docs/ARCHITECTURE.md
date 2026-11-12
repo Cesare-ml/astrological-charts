@@ -133,3 +133,11 @@ houses, Arabic parts, aspects and extra chart dependencies can be
 recomputed incrementally. Until they are coordinated and proven
 equivalent, changed upstream coordinates must continue through the
 full `disegnaScena()` rebuild.
+
+
+The ownership metadata also stores whether the outer leader and Moon
+marker were enabled by chart options, and the validator rejects
+missing **or unrequested** optional parts. It checks that the
+collision displacement matches the original/adjusted coordinates,
+so a future updater cannot mistake stale or inconsistent metadata
+for a complete visual group.

@@ -188,7 +188,9 @@ export class ElementiCelestiRender {
         original: elementiCelesti[nome][parametroDiRender],
         adjusted: elementiCelestiRenderPos[nome][parametroDiRender],
         tickDegrees: bodyAngles.tickDegrees,
-        glyphDisplacementDegrees: bodyAngles.glyphDisplacementDegrees
+        glyphDisplacementDegrees: bodyAngles.glyphDisplacementDegrees,
+        outerLeaderEnabled: !!lineaSuCerchioEsterno,
+        moonMarkerEnabled: !!isCerchiaLaLuna && nome === 'Moon'
       };
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
       el.scale.set(0.22*simboliScale,0.22*simboliScale,1);
