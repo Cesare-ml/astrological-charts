@@ -97,7 +97,24 @@ export class PlanetInteractionController {
         const tag = natal as { from?: unknown; to?: unknown; type?: unknown };
         if (typeof tag.from === 'string' && typeof tag.to === 'string' &&
             typeof tag.type === 'string') {
-          this.natalAspectTags.push({ root: obj, from: tag.from, to: tag.to, type: tag.type });
+          // Some native dashed/punctuated strokes may tag both a parent
+          // group and its renderable children. Only the outermost SAME
+          // relation owns a foreground; cloning both would overdraw and
+          // allocate duplicate WebGL geometry on every focused redraw.
+          let duplicateInAncestor = false;
+          for (let parent = obj.parent; parent && parent !== scene; parent = parent.parent) {
+            const parentTag: unknown = parent.userData['chartNatalAspect'];
+            if (!parentTag || typeof parentTag !== 'object') continue;
+            const ancestor = parentTag as {from?:unknown;to?:unknown;type?:unknown};
+            if (ancestor.from === tag.from && ancestor.to === tag.to &&
+                ancestor.type === tag.type) {
+              duplicateInAncestor = true;
+              break;
+            }
+          }
+          if (!duplicateInAncestor) {
+            this.natalAspectTags.push({root:obj, from:tag.from,to:tag.to,type:tag.type});
+          }
         }
       }
       const radius: unknown = obj.userData['chartAspectRadius'];
