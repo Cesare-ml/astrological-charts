@@ -68,6 +68,8 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       const stream = await download.createReadStream();
       for await (const chunk of stream) chunks.push(chunk);
       const image = Buffer.concat(chunks);
+      assert.equal((await sharp(image).metadata()).format, 'png',
+        'The browser download must actually be a PNG');
       const { data, info } = await sharp(image).removeAlpha().raw().toBuffer({ resolveWithObject: true });
       assert.equal(info.format, 'raw');
       assert.equal(info.width, 1600);
