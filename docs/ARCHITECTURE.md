@@ -520,3 +520,14 @@ identities, stale endpoint and shared geometry refusal, repeated no-op,
 and rollback after the second planet fails. This does not remove the
 need to regenerate **actual** native aspect/house geometries; the
 Angular `GraficoRenderService` remains on full-scene redraw.
+
+
+The real-WebGL browser probe also renders a second, synthetic close
+Sun/Moon pair with source longitudes 10°/11° and moves only the Sun to
+5°. This changes the *stationary* Moon's anticollision offset from 6°
+to 1°. It asserts that both Moon leader endpoint buffers change without
+replacing the THREE.BufferGeometry objects, that the Moon's true
+longitude and aspect direction are retained, and that WebGL geometry
+counts do not grow. New-position raycasting and repeated no-op checks
+run for both normal and mirrored wheel roots. Browser execution is
+still an owner-run gate, not a claimed successful test.

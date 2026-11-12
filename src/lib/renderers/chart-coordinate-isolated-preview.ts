@@ -169,7 +169,8 @@ export function applyIsolatedCoordinatePreview(
       // A role tag alone does not guarantee a drawable radial line.
       // Never rotate arbitrary host Object3Ds as if they were leaders.
       if (!(line instanceof THREE.Line) ||
-          !line.geometry.getAttribute('position') ||
+          !(line.geometry instanceof THREE.BufferGeometry) ||
+          !(line.geometry.getAttribute('position') instanceof THREE.BufferAttribute) ||
           line.geometry.getAttribute('position').count < 2 ||
           !nearAngle(line.rotation.z,oldTick) ||
           line.rotation.x !== 0 || line.rotation.y !== 0 ||

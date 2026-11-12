@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { applyIsolatedCoordinatePreview } from '../../src/lib/renderers/chart-coordinate-isolated-preview';
+import { applyIsolatedCoordinatePreview, isolatedSyntheticLeaderEndpoint } from '../../src/lib/renderers/chart-coordinate-isolated-preview';
 import { layoutChartGlyphLongitudes, chartBodyRenderAngles } from '../../src/lib/renderers/planet-layout';
 
 declare global {
@@ -145,6 +145,115 @@ window.runIsolatedCoordinatePreviewProbe = () => {
       && rejected.issues.includes('untracked-scene-visuals')
       && sun.glyph.getWorldPosition(new THREE.Vector3()).distanceTo(sunAfter)<1e-12;
     scene.remove(untracked);
+
+    // A second ring forces the legacy collision layout to move the Moon
+    // glyph without altering its true longitude (Sun 10 -> 5, Moon 11).
+    // Both the inner and outer leader geometry must follow the new
+    // collision offset in place, without allocating any GPU geometries.
+    const collisionScene=new THREE.Scene();
+    collisionScene.userData['chartSyntheticIsolatedWheel']=true;
+    const collisionWheel=new THREE.Group();
+    collisionWheel.rotation.z=0.13;
+    if (mirrored) collisionWheel.rotation.y=Math.PI;
+    collisionScene.add(collisionWheel);
+    const collisionRing=new THREE.Group();
+    collisionWheel.add(collisionRing);
+    const source={Sun:10,Moon:11};
+    collisionRing.userData['chartBodySourceOrder']=Object.freeze(Object.keys(source));
+    const sourceLayout=layoutChartGlyphLongitudes(
+      Object.fromEntries(Object.entries(source).map(([name,longitude])=>
+        [name,{longitude}])),'longitude'
+    );
+    const collisionBodies=new Map<string,{
+      glyph:THREE.Mesh;inner:THREE.Line;outer:THREE.Line;owner:THREE.Group
+    }>();
+    const collisionGeometries=new Set<THREE.BufferGeometry>();
+    const collisionMaterials=new Set<THREE.Material>();
+    for (const [name,longitude] of Object.entries(source)) {
+      const angles=chartBodyRenderAngles(longitude,sourceLayout[name].longitude,38,0);
+      const owner=new THREE.Group();
+      owner.userData['chartPlanetBody']={layer:'natal',name};
+      owner.userData['chartBodyLayout']={
+        ringId:collisionRing.uuid,coordinate:'longitude',original:longitude,
+        adjusted:sourceLayout[name].longitude,ascendant:38,degreesOffset:0,
+        tickDegrees:angles.tickDegrees,
+        glyphDisplacementDegrees:angles.glyphDisplacementDegrees,
+        outerLeaderEnabled:true,moonMarkerEnabled:false
+      };
+      collisionRing.add(owner);
+      const polar=THREE.MathUtils.degToRad(angles.glyphDegrees);
+      const glyph=new THREE.Mesh(new THREE.PlaneGeometry(0.12,0.12),
+        new THREE.MeshBasicMaterial({color:'#171717',side:THREE.DoubleSide}));
+      glyph.position.set(-0.65*Math.sin(polar),0.65*Math.cos(polar),0);
+      glyph.userData['chartBodyVisualRole']='glyph';
+      glyph.userData['chartPlanet']={layer:'natal',name};
+      glyph.userData['chartAspectAngle']=THREE.MathUtils.degToRad(angles.tickDegrees);
+      owner.add(glyph);
+      collisionGeometries.add(glyph.geometry);
+      collisionMaterials.add(glyph.material as THREE.Material);
+      const makeLeader=(role:'inner-leader'|'outer-leader',anchorY:number)=>{
+        const endpoint=isolatedSyntheticLeaderEndpoint(
+          0.65,angles.glyphDisplacementDegrees,anchorY,0.09
+        )!;
+        const line=new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([
+            endpoint,new THREE.Vector3(0,anchorY,0)
+          ]),
+          new THREE.LineBasicMaterial({color:'#555555'})
+        );
+        line.rotation.z=THREE.MathUtils.degToRad(angles.tickDegrees);
+        line.userData['chartBodyVisualRole']=role;
+        line.userData['chartIsolatedLeaderSpec']={anchorY,trim:0.09};
+        owner.add(line);
+        collisionGeometries.add(line.geometry);
+        collisionMaterials.add(line.material as THREE.Material);
+        return line;
+      };
+      const inner=makeLeader('inner-leader',0.3);
+      const outer=makeLeader('outer-leader',0.75);
+      collisionBodies.set(name,{glyph,inner,outer,owner});
+    }
+    renderer.render(collisionScene,camera);
+    const closeSun=collisionBodies.get('Sun')!;
+    const closeMoon=collisionBodies.get('Moon')!;
+    const oldMoonWorld=closeMoon.glyph.getWorldPosition(new THREE.Vector3());
+    const oldInnerX=closeMoon.inner.geometry.getAttribute('position').getX(0);
+    const oldOuterX=closeMoon.outer.geometry.getAttribute('position').getX(0);
+    const originalInner=closeMoon.inner.geometry;
+    const originalOuter=closeMoon.outer.geometry;
+    const beforeCollisionAllocations=renderer.info.memory.geometries;
+    const newCollisionTargets=[
+      {ref:{layer:'natal' as const,name:'Sun'},longitude:5},
+      {ref:{layer:'natal' as const,name:'Moon'},longitude:11}
+    ];
+    const collisionUpdate=applyIsolatedCoordinatePreview(
+      collisionScene,newCollisionTargets
+    );
+    renderer.render(collisionScene,camera);
+    const newMoonWorld=closeMoon.glyph.getWorldPosition(new THREE.Vector3());
+    results['collisionLeaderVertices'+suffix]=collisionUpdate.status==='applied'
+      && collisionUpdate.updated>=1
+      && newMoonWorld.distanceTo(oldMoonWorld)>0.01
+      && closeMoon.inner.geometry===originalInner
+      && closeMoon.outer.geometry===originalOuter
+      && Math.abs(closeMoon.inner.geometry.getAttribute('position').getX(0)-oldInnerX)>1e-4
+      && Math.abs(closeMoon.outer.geometry.getAttribute('position').getX(0)-oldOuterX)>1e-4
+      && closeMoon.owner.userData['chartBodyLayout'].original===11
+      && renderer.info.memory.geometries===beforeCollisionAllocations;
+    results['collisionRepeatNoOp'+suffix]=
+      applyIsolatedCoordinatePreview(collisionScene,newCollisionTargets).status==='unchanged';
+    const moonProjected=newMoonWorld.clone().project(camera);
+    const raycasterCollision=new THREE.Raycaster();
+    raycasterCollision.setFromCamera(
+      new THREE.Vector2(moonProjected.x,moonProjected.y),camera
+    );
+    results['collisionGlyphRaycast'+suffix]=
+      raycasterCollision.intersectObjects(
+        [closeSun.glyph,closeMoon.glyph],false
+      )[0]?.object===closeMoon.glyph;
+    collisionGeometries.forEach(item=>item.dispose());
+    collisionMaterials.forEach(item=>item.dispose());
+
     geometrySet.forEach(item=>item.dispose());
     materialSet.forEach(item=>item.dispose());
     renderer.dispose();
