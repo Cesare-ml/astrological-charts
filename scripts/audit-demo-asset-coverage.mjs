@@ -6,13 +6,25 @@ import { lstatSync, mkdirSync, readdirSync, writeFileSync, existsSync, realpathS
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
+import { validatePath } from './asset-manifest.mjs';
+
+/** Convert observed localhost URL paths into the same literal filenames the
+ * manifest/approved-pack validators accept. Other requests are out of scope. */
+export function observedAssetPath(requestUrl) {
+  const url = new URL(requestUrl);
+  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1'
+      || url.port !== '4177' || !url.pathname.startsWith('/assets/')) return null;
+  let path;
+  try { path = decodeURIComponent(url.pathname.slice('/assets/'.length)); }
+  catch { throw new Error('Malformed encoding in observed chart asset URL'); }
+  try { return validatePath(path); }
+  catch { throw new Error('Noncanonical observed chart asset URL path'); }
+}
 
 export function assetExistsWithExactCase(root, relativePath) {
+  try { validatePath(relativePath); }
+  catch { throw new Error(`Unsafe asset path: ${relativePath}`); }
   const parts = relativePath.split('/');
-  if (parts.length < 2 || !['img', 'fonts'].includes(parts[0]) ||
-      parts.some(part => !part || part === '.' || part === '..' || part.includes('\\') || part.includes(':'))) {
-    throw new Error(`Unsafe asset path: ${relativePath}`);
-  }
   let current = resolve(root);
   const rootStat = lstatSync(current);
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error('Reference root must be a regular directory');
@@ -57,11 +69,16 @@ async function main(args) {
       page.on('pageerror', error => errors.push(error.message));
       page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
       page.on('request', request => {
-        const url = new URL(request.url());
-        if (url.hostname !== '127.0.0.1' || url.port !== '4177' || !url.pathname.startsWith('/assets/')) return;
-        const path = decodeURIComponent(url.pathname.slice('/assets/'.length));
-        if (!requests.has(path)) requests.set(path, new Set());
-        requests.get(path).add(phase === 'target' ? `${mode}/${skin}` : phase);
+        try {
+          const path = observedAssetPath(request.url());
+          if (path === null) return;
+          if (!requests.has(path)) requests.set(path, new Set());
+          requests.get(path).add(phase === 'target' ? `${mode}/${skin}` : phase);
+        } catch (error) {
+          // A malformed observed URL is a failed audit, not an uncaught
+          // event-handler exception or a silently omitted asset.
+          errors.push('Invalid observed asset request (' + phase + '): ' + error.message);
+        }
       });
       const ready = async () => {
         await page.waitForFunction(() => {
