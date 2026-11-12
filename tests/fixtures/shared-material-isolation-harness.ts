@@ -110,6 +110,10 @@ window.runSharedMaterialIsolationProbe = () => {
       moonCopy!==sharedMaterial && (moonCopy as THREE.MeshBasicMaterial).map===sharedTexture;
     checks.originalStillNeverMutated = color(sharedMaterial)==='171717' &&
       originalMaterialDisposed===0 && originalTextureDisposed===0;
+    // Release B's first selection before retargeting its active relation.
+    // Otherwise setScene() would legitimately paint the new Saturn before
+    // we can inspect the material supplied by the transferring A canvas.
+    b.highlight(null);
 
     // Move the already focused Saturn from A to B. B then uses the
     // transferred symbol as its relation partner while the A clone still
