@@ -20,6 +20,8 @@ Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/sr
 10. Do not treat a successful build as proof of visual correctness. Test browser, mobile PNG and headless/e-ink paths when relevant.
 11. Update docs for every meaningful feature or behavioral change. Report test commands executed and distinguish untested work.
 
+12. Before requesting merge, run `npm ci && npm run verify:angular` on a complete checkout; validate real assets with `npm run verify:pack` in the sibling `astrological-assets` checkout, then exercise Chromium and Firefox canvas interactions, keyboard access and PNG export. Record each gate as PASS, FAIL or NOT RUN with the tested commit; never infer browser correctness from static assertions. Keep VirgoStars attribution visible and linked in the demo.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
