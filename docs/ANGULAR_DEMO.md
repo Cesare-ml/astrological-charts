@@ -446,3 +446,20 @@ inner-canvas blank-space cycles** and checks that WebGL objects
 retain identity and the scene has not requested redundant frames.
 The Node interaction suite also exercises the blank-space edge
 cases. Visual and browser acceptance of this new change is pending.
+
+## Detached glyphs and two-chart pointer ownership
+
+A host can remove an outer-planet symbol or move it into another
+Three.js scene without reconstructing the chart controller. The
+mouse must **never** select a planet whose mesh is no longer part
+of the active chart, even if the target remains in the internal
+raycasting cache. The live test fixture detaches a foreground
+Uranus and verifies the pointer and click reach the still-visible
+Moon underneath; reparenting Uranus into an unrelated scene must
+also leave it unselectable on this canvas. Reattaching Uranus to the
+original scene restores hover with no cache rebuild.
+
+This is covered by the existing
+`raycasting chooses the closest overlapping glyph` Playwright
+case and a smaller Node regression in `test:planet-interactions`.
+The change has not yet been browser-tested by the owner.
