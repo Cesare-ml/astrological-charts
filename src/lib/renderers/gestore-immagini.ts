@@ -1,6 +1,7 @@
 import { SkinManager } from './@skin-manager';
 import * as THREE from 'three';
 import { resolveChartAssetUrl } from './chart-asset-urls';
+import { getVirgoStarsAstroImageOverride } from './virgostars-astro-image-preview';
 
 export class GestoreImmagini {
   /** @deprecated Historical raw prefix. Prefer configurePublicAssetsBase(). */
@@ -8,6 +9,24 @@ export class GestoreImmagini {
   private static pool = new Map<string, THREE.Texture>();
   private static pendingTextures = new WeakMap<THREE.Texture, Promise<void>>();
   private static publicAssetsBase = '/assets/';
+
+  // Explicitly disabled by default. The host must stage privately licensed
+  // white-alpha masks at /assets/img/virgostars-astro/masks/ before opting in.
+  private static virgoStarsAstroPreviewEnabled = false;
+
+  /** Preview owner-approved glyph images without altering other chart assets. */
+  public static configureVirgoStarsAstroPreview(enabled: boolean): void {
+    if (typeof enabled !== 'boolean') {
+      throw new TypeError('VirgoStars Astro preview must be enabled with a boolean.');
+    }
+    this.virgoStarsAstroPreviewEnabled = enabled;
+  }
+
+  /** Used by the plane geometry builder to preserve square mask proportions. */
+  public static isVirgoStarsAstroPreviewAsset(reference: string): boolean {
+    return this.virgoStarsAstroPreviewEnabled &&
+      getVirgoStarsAstroImageOverride(reference) !== null;
+  }
 
   /** The host owns these files; this only changes how URLs are resolved. */
   public static configurePublicAssetsBase(base: string): void {
@@ -17,8 +36,13 @@ export class GestoreImmagini {
   }
 
   public static resolveAssetUrl(ref: string): string {
+    const preview = this.virgoStarsAstroPreviewEnabled
+      ? getVirgoStarsAstroImageOverride(ref) : null;
+    const effective = preview ?? ref;
     // Preserve the historical override for older consumers while migrating.
-    return this.assetsBase ? this.assetsBase + ref : resolveChartAssetUrl(ref, this.publicAssetsBase);
+    return this.assetsBase
+      ? this.assetsBase + effective
+      : resolveChartAssetUrl(effective, this.publicAssetsBase);
   }
 
   public static getImg(ref: string): THREE.Texture {
