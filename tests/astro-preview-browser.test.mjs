@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { test } from 'node:test';
 import { chromium } from 'playwright-core';
 import sharp from 'sharp';
@@ -40,7 +39,7 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
         const text = document.querySelector('[data-testid=status]')?.textContent ?? '';
         return (/Rendered|Rendering failed/.test(text)) &&
           !document.querySelector('#mode')?.disabled;
-      }, { timeout: 45000 });
+      }, undefined, { timeout: 45000 });
       assert.match(await status.textContent(), /Rendered/, 'Angular chart must render');
     }
     try {
@@ -88,10 +87,10 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
         page.waitForEvent('download'),
         page.getByRole('button', { name: 'Export PNG' }).click(),
       ]);
-      const exportPath = join(process.cwd(), '.local-astro-preview-export.png');
-      // Keep output private; callers may remove this file after reviewing.
-      await download.saveAs(exportPath);
-      const meta = await sharp(exportPath).metadata();
+      // Export stays in memory: no private chart is written into a public checkout.
+      const chunks = [];
+      for await (const chunk of await download.createReadStream()) chunks.push(chunk);
+      const meta = await sharp(Buffer.concat(chunks)).metadata();
       assert.equal(meta.format,'png');
       assert.equal(meta.width,1600);
       assert.equal(meta.height,1600);
