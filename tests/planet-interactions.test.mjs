@@ -403,6 +403,72 @@ test('active aspect endpoints skip glyphs transferred outside the source chart',
     'destination controller can select its own transferred glyph');
 });
 
+test('nested identical native natal aspect tags index one foreground root', () => {
+  const text = readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts',import.meta.url),'utf8');
+  const parsed = ts.createSourceFile('planet-interaction.controller.ts',
+    text,ts.ScriptTarget.ES2022,true,ts.ScriptKind.TS);
+  const klass = parsed.statements.find(item => ts.isClassDeclaration(item) &&
+    item.name?.text==='PlanetInteractionController');
+  assert.ok(klass);
+  const setScene = klass.members.find(item => ts.isMethodDeclaration(item) &&
+    item.name.getText(parsed)==='setScene');
+  assert.ok(setScene?.body);
+  const js = ts.transpileModule(`class AspectTagProbe {
+    disposed=false;
+    sceneRevision=0;
+    hovered=null;
+    canvas={style:{cursor:''}};
+    cursor='';
+    scene=null;
+    glyphs=new Map();
+    pickTargets=[];
+    natalAspectTags=[];
+    aspectRing=null;
+    paints=0;
+    clearVisuals(){}
+    updateVisuals(){this.paints++;}
+    send(){}
+    ${setScene.getText(parsed)}
+  }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
+  const Probe = new Function('THREE','isChartPlanetRef','chartPlanetKey',
+    js+'\nreturn AspectTagProbe;')({Mesh:class Mesh{}},()=>false,()=>'');
+
+  class Node {
+    constructor(tag=null) {
+      this.userData=tag?{chartNatalAspect:tag}:{};
+      this.parent=null;
+      this.children=[];
+    }
+    add(node) {node.parent=this;this.children.push(node);return node;}
+    traverse(callback){callback(this);for(const node of this.children)node.traverse(callback);}
+  }
+  const tag=(from,to,type='quadrato')=>({from,to,type});
+  const scene = new Node();
+  const wheel = scene.add(new Node());
+  wheel.userData.chartAspectRadius=0.5;
+  const sunMoon=wheel.add(new Node(tag('Sun','Moon')));
+  const sunMC=wheel.add(new Node(tag('Sun','MC')));
+  const venusMars=wheel.add(new Node(tag('Venus','Mars')));
+  sunMoon.add(new Node(tag('Sun','Moon')));
+  sunMC.add(new Node(tag('Sun','MC'))).add(new Node(tag('Sun','MC')));
+  venusMars.add(new Node(tag('Venus','Mars')));
+  const different=wheel.add(new Node(tag('Moon','Venus')));
+  const distinctChild=different.add(new Node(tag('Moon','Mars')));
+  wheel.add(new Node({from:12,to:'Moon',type:'quadrato'}));
+
+  const controller=new Probe();
+  controller.setScene(scene);
+  assert.deepEqual(controller.natalAspectTags.map(entry=>entry.root),
+    [sunMoon,sunMC,venusMars,different,distinctChild],
+    'only redundant nested tags are removed; independent aspects stay indexed');
+  assert.equal(controller.aspectRing.root,wheel);
+  assert.equal(controller.aspectRing.radius,0.5);
+  assert.equal(controller.paints,1);
+  controller.setScene(null);
+  assert.equal(controller.natalAspectTags.length,0,
+    'scene teardown cannot retain a stale native aspect tag');
+});
+
 test('cached picking respects current scene ancestry when glyphs are moved', () => {
   const controllerSource = ts.createSourceFile('planet-interaction.controller.ts',
     readFileSync(new URL('../src/lib/renderers/planet-interaction.controller.ts', import.meta.url), 'utf8'),
