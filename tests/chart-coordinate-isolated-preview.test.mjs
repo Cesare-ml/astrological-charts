@@ -30,6 +30,9 @@ function fixture({mirrored=false,outer=false,close=false}={}) {
   const ring=new THREE.Group();
   wheel.add(ring);
   const original={Sun:10,Moon:close?11:100};
+  // The legacy collision algorithm is stable only in original source order.
+  // Mirror the real renderer's per-wheel provenance for the planner gate.
+  ring.userData.chartBodySourceOrder=Object.freeze(Object.keys(original));
   const layout=layoutChartGlyphLongitudes(
     Object.fromEntries(Object.entries(original).map(([name,longitude])=>
       [name,{longitude}])),'longitude'
