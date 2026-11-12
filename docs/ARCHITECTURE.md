@@ -555,3 +555,30 @@ Moon endpoint during a no-op and checks rejection and restoration.
 No production geometry, lunar decoration, natal aspect, house,
 export or public API contract changes. Full Node/browser execution
 remains required before approval.
+
+
+### Synthetic collision geometry: independent BufferAttribute ownership
+
+Two `THREE.BufferGeometry` instances can reference the **same**
+`THREE.BufferAttribute` for vertex positions. Merely checking that a
+leader's geometry object is referenced once does not prevent an atomic
+vertex write from changing a different line's (or glyph's) positions.
+
+The synthetic-only collision transaction now counts both geometry
+owners **and actual position attribute owners** across the isolated
+scene before changing a collision-offset-dependent endpoint. It
+rejects a shared position attribute with
+`shared-leader-attribute:layer:name` and zero modifications. A
+profiled but unchanged leader still undergoes endpoint validation,
+while a legitimate unchanged shared attribute is never rewritten.
+This is an explicit ownership gate, not a new geometry-sharing policy
+for the ordinary Angular renderer.
+
+Node tests use independent inner/outer leader geometries intentionally
+pointing at one common position attribute; both normal and mirrored
+scenes reject the write, preserve all original coordinates, and
+recover after restoring separate attributes. The registered WebGL
+fixture verifies rejection and subsequent successful collision patch
+under the same conditions. No changes to actual chart artwork,
+production scenes or chart public APIs; real local/browser test
+execution remains required before merging PR #22.

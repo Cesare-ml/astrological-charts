@@ -226,6 +226,25 @@ window.runIsolatedCoordinatePreviewProbe = () => {
       {ref:{layer:'natal' as const,name:'Sun'},longitude:5},
       {ref:{layer:'natal' as const,name:'Moon'},longitude:11}
     ];
+    // Geometry identity alone is insufficient to establish writable
+    // ownership: two separate leader geometries may alias one attribute.
+    const moonInnerAttribute=closeMoon.inner.geometry.getAttribute('position');
+    const moonOuterAttribute=closeMoon.outer.geometry.getAttribute('position');
+    const previousOuterSpec=closeMoon.outer.userData['chartIsolatedLeaderSpec'];
+    closeMoon.outer.geometry.setAttribute('position',moonInnerAttribute);
+    closeMoon.outer.userData['chartIsolatedLeaderSpec']={
+      ...closeMoon.inner.userData['chartIsolatedLeaderSpec']
+    };
+    const sharedAttribute=applyIsolatedCoordinatePreview(
+      collisionScene,newCollisionTargets
+    );
+    results['collisionSharedBufferRefused'+suffix]=
+      closeMoon.inner.geometry!==closeMoon.outer.geometry
+      && sharedAttribute.status==='rejected'
+      && sharedAttribute.updated===0
+      && sharedAttribute.issues.includes('shared-leader-attribute:natal:Moon');
+    closeMoon.outer.geometry.setAttribute('position',moonOuterAttribute);
+    closeMoon.outer.userData['chartIsolatedLeaderSpec']=previousOuterSpec;
     const collisionUpdate=applyIsolatedCoordinatePreview(
       collisionScene,newCollisionTargets
     );

@@ -443,3 +443,44 @@ test('profiled leader endpoints are validated on stationary and unchanged bodies
     assert.equal(applyIsolatedCoordinatePreview(f.scene,next).status,'unchanged');
   }
 });
+
+
+test('distinct line geometries cannot mutate a shared position buffer',()=>{
+  for(const mirrored of [false,true]){
+    const f=fixture({mirrored,close:true,profile:true,outer:true});
+    const moon=f.parts.get('Moon');
+    const sun=f.parts.get('Sun');
+    const innerPosition=moon.inner.geometry.getAttribute('position');
+    const originalOuterPosition=moon.outerLeader.geometry.getAttribute('position');
+    const originalOuterSpec=moon.outerLeader.userData.chartIsolatedLeaderSpec;
+    const sunBefore=sun.glyph.position.clone();
+    const moonBefore=moon.glyph.position.clone();
+    const innerX=innerPosition.getX(0);
+    const next=targetsWith(f.targets,'Sun',5);
+    assert.notEqual(moon.inner.geometry,moon.outerLeader.geometry,
+      'this regression uses distinct BufferGeometry objects');
+    // Make both leaders' independent geometries share a live position
+    // attribute with the same original anchor/profile. An in-place write
+    // must never modify that aliased backing buffer.
+    moon.outerLeader.geometry.setAttribute('position',innerPosition);
+    moon.outerLeader.userData.chartIsolatedLeaderSpec={
+      ...moon.inner.userData.chartIsolatedLeaderSpec
+    };
+    try{
+      const rejected=applyIsolatedCoordinatePreview(f.scene,next);
+      assert.equal(rejected.status,'rejected');
+      assert.equal(rejected.updated,0);
+      assert.ok(rejected.issues.includes('shared-leader-attribute:natal:Moon'),
+        rejected.issues.join(','));
+      assert.ok(sun.glyph.position.equals(sunBefore));
+      assert.ok(moon.glyph.position.equals(moonBefore));
+      assert.equal(innerPosition.getX(0),innerX);
+      assert.equal(planChartCoordinateEffects(f.scene,f.targets).decision,'unchanged');
+    }finally{
+      moon.outerLeader.geometry.setAttribute('position',originalOuterPosition);
+      moon.outerLeader.userData.chartIsolatedLeaderSpec=originalOuterSpec;
+    }
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,next).status,'applied');
+    assert.equal(applyIsolatedCoordinatePreview(f.scene,next).status,'unchanged');
+  }
+});

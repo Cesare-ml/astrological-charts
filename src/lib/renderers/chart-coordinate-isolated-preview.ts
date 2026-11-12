@@ -122,11 +122,18 @@ export function applyIsolatedCoordinatePreview(
   // Capture real geometry ownership first. A shared BufferGeometry could
   // mutate a *different* line when one body's collision offset changes.
   const geometryRefs = new Map<THREE.BufferGeometry,number>();
+  const attributeRefs = new Map<THREE.BufferAttribute,number>();
   root.traverse(node => {
     if (!(node instanceof THREE.Mesh || node instanceof THREE.Line)) return;
     const geometry = node.geometry;
-    if (geometry instanceof THREE.BufferGeometry)
-      geometryRefs.set(geometry,(geometryRefs.get(geometry) ?? 0)+1);
+    if (!(geometry instanceof THREE.BufferGeometry)) return;
+    geometryRefs.set(geometry,(geometryRefs.get(geometry) ?? 0)+1);
+    // Different THREE.BufferGeometry objects can reference the SAME
+    // position attribute. Writing one endpoint would also modify another
+    // line (or glyph) even though geometry object identities differ.
+    const position = geometry.getAttribute('position');
+    if (position instanceof THREE.BufferAttribute)
+      attributeRefs.set(position,(attributeRefs.get(position) ?? 0)+1);
   });
 
   // Validate EVERY body in this isolated wheel before touching the scene,
@@ -204,6 +211,8 @@ export function applyIsolatedCoordinatePreview(
         }
         if (shiftChanged && geometryRefs.get(geometry) !== 1)
           return result('rejected',0,['shared-leader-geometry:'+key]);
+        if (shiftChanged && attributeRefs.get(attr) !== 1)
+          return result('rejected',0,['shared-leader-attribute:'+key]);
         const oldEnd = isolatedSyntheticLeaderEndpoint(radius,oldShift,anchorY,trim);
         const nextEnd = shiftChanged
           ? isolatedSyntheticLeaderEndpoint(radius,newShift,anchorY,trim)
