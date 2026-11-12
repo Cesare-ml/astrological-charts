@@ -11,6 +11,10 @@ const windows = process.platform === 'win32';
 const runner = readFileSync(new URL('../scripts/verify-local.ps1', import.meta.url), 'utf8');
 const cmdStub = [
   '@echo off',
+  'if /I "%1"=="--version" (',
+  '  echo 10.9.2',
+  '  exit /b 0',
+  ')',
   'echo %*>>"%QA_CALL_LOG%"',
   'if /I "%1"=="ci" (',
   '  if /I "%QA_FAIL_STEP%"=="ci" exit /b 17',
@@ -72,6 +76,10 @@ test('real PowerShell runner records two successful mocked npm steps', { skip: !
   for (const field of ['browserChecks', 'originalArtworkParity', 'astrolabioIntegration'])
     assert.equal(result.report[field], 'NOT RUN');
   assert.match(result.report.nodeVersion, /^v\d+/);
+  assert.equal(result.report.npmVersion, '10.9.2',
+    'The fake npm --version must succeed without logging an npm step');
+  assert.equal(result.report.revision, 'not available',
+    'Synthetic sandbox has no Git repository');
   assert.equal(result.report.installSkipped, false);
 });
 
