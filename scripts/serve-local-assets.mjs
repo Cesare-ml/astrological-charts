@@ -96,6 +96,15 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
       if(!requested||!pack.paths.has(requested.path)){
         res.writeHead(404);res.end();return;
       }
+      // A successful preflight must not advertise a file that GET will reject.
+      try {
+        const body=readSafeAsset(absolute,requested.path);
+        if(!verifyRequestBytes(body,pack.paths.get(requested.path))){
+          res.writeHead(409);res.end();return;
+        }
+      } catch {
+        res.writeHead(409);res.end();return;
+      }
       res.writeHead(204,{'Access-Control-Allow-Methods':'GET, HEAD, OPTIONS'});res.end();return;
     }
     let pathname;
