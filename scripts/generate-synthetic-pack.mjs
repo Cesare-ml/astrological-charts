@@ -98,12 +98,8 @@ export function sourcePreloadPaths(text) {
     }
     if (cursor>=text.length) throw new Error('Unterminated preload path');
     const value=text.slice(begin,cursor++);
-    if (!/^\/assets\/img\/[A-Za-z0-9 _./-]+\.png$/.test(value) ||
-        value.split('/').some(segment=>segment==='' && value.indexOf(segment)!==0)) {
-      // Double slashes and nonliteral URL characters are not asset paths.
-      // The first slash is expected, so check the body separately below.
+    if (!/^\/assets\/img\/[A-Za-z0-9 _./-]+\.png$/.test(value))
       throw new Error('Invalid preload PNG path: '+value);
-    }
     const relative=value.slice('/assets/'.length);
     if (relative.split('/').some(segment=>!segment || segment==='.' || segment==='..'))
       throw new Error('Unsafe preload path segment: '+value);
