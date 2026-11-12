@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -156,5 +156,18 @@ test('server refuses partial overlays and unauthorised or overlapping masks',asy
       root:base.root,manifest:collision,astroOverlayRoot:root,
       astroOverlayManifest:manifest,astroOverlayApproval:approval,
     }),/Private Astro overlay collides/);
+
+    // The private pack may not be staged inside the public asset checkout,
+    // even when its 22 paths are not listed by the base manifest.
+    const nested=join(base.root,'private-astro-staging');
+    for(const entry of manifest.assets) {
+      const dest=join(nested,...entry.maskPath.split('/'));
+      mkdirSync(dirname(dest),{recursive:true});
+      copyFileSync(join(root,...entry.maskPath.split('/')),dest);
+    }
+    assert.throws(()=>createAssetServer({
+      ...settings,astroOverlayRoot:nested,
+      astroOverlayManifest:manifest,astroOverlayApproval:approval,
+    }),/outside public asset and renderer checkouts/);
   });
 });
