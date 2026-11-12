@@ -30,9 +30,12 @@ artwork or modifying the production VirgoStars/Astrolabio application.
   screenshot.
 
 The **Angular development debug API is required** for the no-zoom check.
-The test fails closed if it cannot inspect the demo camera/scene. A
-production-optimized build that omits `ng.getComponent` is not a valid
-environment for this specific acceptance test.
+The gate checks camera/scene metadata **on every compared screenshot**, not
+only the first one. If either snapshot lacks Angular debug metadata, if
+the camera zoom is zero/nonfinite, or if its position, quaternion or projection
+contains an invalid value, the gate fails rather than silently skipping
+the no-zoom check. A production-optimized build that omits
+`ng.getComponent` is not a valid environment for this specific test.
 
 ## Run locally
 
@@ -74,8 +77,14 @@ Remove-Item Env:FIREFOX_PATH
 ```
 
 `npm run test:demo-axis-contract` is the separate, fast source/fixture
-validation. This browser test is deliberately **not** in `npm run preflight`
-because it requires both local development servers, browser executables,
+validation. `npm run test:demo-axis-invariants` is a separate **fast Node
+regression** that executes the browser gate's actual camera/scene comparator
+using synthetic snapshots: missing debug data, changed zoom, changed
+projection, invalid matrices and scene rebuilds must fail. Both of these
+fast tests are registered in `npm run preflight`.
+
+The full browser test is deliberately **not** in `npm run preflight`
+because it requires local development servers, browser executables,
 GPU/WebGL availability, and visual acceptance.
 
 ## Boundaries
