@@ -82,3 +82,34 @@ test('the texture and mesh pipeline require explicit opt-in; no global overrides
   assert.match(objects, /getMaterial\(assetsImgRef, flipY, color, allowAstroPreview\)/);
   assert.match(objects, /loadAsync\('\.\.\/\.\.\/\.\.\/assets\/img\/' \+ assetsImgRef, allowAstroPreview\)/);
 });
+
+test('private browser QA must await a fresh successful render, not stale status text', () => {
+  const demo = readFileSync(new URL('../demo/main.ts', import.meta.url), 'utf8');
+  const browser = readFileSync(new URL('./astro-preview-browser.test.mjs', import.meta.url), 'utf8');
+  const file = ts.createSourceFile('demo/main.ts', demo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const chartDemo = file.statements.find(node =>
+    ts.isClassDeclaration(node) && node.name?.text === 'DemoComponent'
+  );
+  assert.ok(chartDemo, 'Angular demo component must exist');
+  const counter = chartDemo.members.find(node =>
+    ts.isPropertyDeclaration(node) && node.name.getText(file) === 'renderRevision'
+  );
+  assert.ok(counter, 'Demo must expose the completed-render sequence');
+  assert.equal(counter.initializer?.getText(file), '0');
+  const draw = chartDemo.members.find(node =>
+    ts.isMethodDeclaration(node) && node.name.getText(file) === 'draw'
+  );
+  assert.ok(draw);
+  const drawText = draw.getText(file);
+  const awaitedRender = drawText.indexOf('await this.renderer.disegnaScena(');
+  const successIncrement = drawText.indexOf('this.renderRevision += 1;');
+  assert.ok(awaitedRender >= 0 && successIncrement > awaitedRender,
+    'The revision must advance after a successful asynchronous draw');
+  assert.match(demo, /\[attr\.data-render-revision\]="renderRevision"/);
+  assert.match(browser, /revision > before/);
+  assert.match(browser, /await readyAfter\(before\)/);
+  assert.match(browser, /await redraw\(\(\) => preview\.check\(\)\)/);
+  assert.match(browser, /await redraw\(\(\) => preview\.uncheck\(\)\)/);
+  assert.doesNotMatch(browser, /await ready\(\)/,
+    'The former stale-state waiter must not be used in the browser test');
+});
