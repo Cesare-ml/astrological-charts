@@ -165,7 +165,7 @@ export class ElementiCelestiRender {
       } else {
         elRef = 'simboli-bianchi/elementi-celesti/'+nome+'.png';
       }
-      var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
+      var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli,true);
       el.scale.set(0.22*simboliScale,0.22*simboliScale,1);
       el.rotateZ(THREE.MathUtils.degToRad(
         elementiCelestiRenderPos[nome][parametroDiRender] - elementiCelesti[nome][parametroDiRender]
