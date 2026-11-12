@@ -154,7 +154,10 @@ export function planChartCoordinateEffects(
     }
     const oldLayout = layoutChartGlyphLongitudes(orderedBaseline,'longitude');
     const newLayout = layoutChartGlyphLongitudes(orderedNext,'longitude');
-    for (const owner of members) {
+    // Reports must also have a stable order, not just stable values.
+    // A host may reorder wheel.children after the original render.
+    for (const name of sourceOrder) {
+      const owner = members.find(member => member.ref.name === name)!;
       const key = chartPlanetKey(owner.ref);
       const old = owner.layout;
       const previousAdjusted = oldLayout[owner.ref.name]?.longitude;
