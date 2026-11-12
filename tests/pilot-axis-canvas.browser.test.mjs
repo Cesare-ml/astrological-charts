@@ -177,6 +177,38 @@ test('natal AS/DS/MC/IC focus changes central canvas pixels, not only sidebar te
           axis + ': no change within central aspect area: '
             + JSON.stringify(visual));
 
+        // An axis glyph can be tinted even when no aspect line is painted.
+        // The demo's hard-only filter removes all supplied semisquare links,
+        // but deliberately retains the same selected natal axis. The central
+        // chart MUST change for the link itself, not just the sidebar label.
+        await page.selectOption('#aspect-filter', 'hard');
+        await page.waitForFunction(() =>
+          document.querySelectorAll('[data-testid=aspect-match]').length === 0,
+          null, { timeout: 10000 });
+        await selected(page, 'natal:' + axis);
+        await page.waitForTimeout(160);
+        const filtered = await chartSnapshot(page);
+        assertViewInvariants(focused, filtered, axis + ' filtered focus');
+        const removedAspect = pixelDifference(focused, filtered);
+        assert.ok(removedAspect.centralChanged > Math.max(12, ambient.centralChanged * 3),
+          axis + ': hard-only aspect filter changed text but not the central canvas: '
+            + JSON.stringify(removedAspect));
+
+        // Re-adding precisely the same supplied link should restore the
+        // previous focus image without a resize or an unexpected zoom.
+        await page.selectOption('#aspect-filter', 'all');
+        await page.waitForFunction(() =>
+          document.querySelectorAll('[data-testid=aspect-match]').length === 1,
+          null, { timeout: 10000 });
+        await selected(page, 'natal:' + axis);
+        await page.waitForTimeout(160);
+        const restoredAspect = await chartSnapshot(page);
+        assertViewInvariants(focused, restoredAspect, axis + ' restored aspect');
+        const filterRemainder = pixelDifference(focused, restoredAspect);
+        assert.ok(filterRemainder.changed <= Math.max(200, ambient.changed * 4),
+          axis + ': restoring the aspect filter did not restore the canvas: '
+            + JSON.stringify(filterRemainder));
+
         await page.locator('#clear-focus').click();
         await selected(page, 'None');
         await page.waitForTimeout(160);
