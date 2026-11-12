@@ -167,6 +167,21 @@ callbacks. The Node interaction test and the augmented
 `pinned-pointer-idempotence-harness.ts` Playwright regression cover
 this. No focus zoom, new calculations or production changes.
 
+## Dynamic chart mesh ownership during picking
+
+`pickTargets` is indexed per `setScene()` to avoid hot-path
+`scene.traverse()`. If a host detaches a cached mesh or reparents
+it into another chart, its hit must be rejected without rebuilding
+the cache. In `visiblePlanetHit`, ensure all ancestors are visible
+AND the chain reaches **this controller's exact active scene**,
+before checking material visibility. Preserve the existing camera
+layer mask and closest-visible-depth behavior; a valid planet
+behind a removed glyph must become pickable immediately.
+Reattaching restores picking without setScene. Keep both the
+headless Node method extraction and
+`tests/fixtures/planet-picking-harness.ts` regression in sync.
+No separate chart's meshes may steal pointer events.
+
 ## Known technical risks
 
 - global singleton renderer and global dimension/line state;
