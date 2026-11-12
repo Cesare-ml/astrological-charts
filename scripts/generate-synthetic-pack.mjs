@@ -58,6 +58,11 @@ export function makeSyntheticPng(seed) {
  */
 export function sourcePreloadPaths(text) {
   const declarations=[...text.matchAll(/^[ \t]*public\s+static\s+preloadArraySimboli\s*(?::\s*string\s*\[\s*\])?\s*=\s*\[/gm)];
+  // Preserve the original public diagnostic: the existing local asset
+  // server test asserts "Preload list missing" when the source has no list.
+  // A second declaration is a different ambiguity and must also fail closed.
+  if (declarations.length===0)
+    throw new Error('Preload list missing: expected static preloadArraySimboli declaration');
   if (declarations.length!==1)
     throw new Error('Expected exactly one static preloadArraySimboli declaration');
   let cursor=declarations[0].index+declarations[0][0].length;
