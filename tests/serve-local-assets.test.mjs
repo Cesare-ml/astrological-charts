@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { once } from 'node:events';
+import { request as httpRequest } from 'node:http';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAssetServer, resolveAssetRequest } from '../scripts/serve-local-assets.mjs';
+import { createAssetServer, resolveAssetRequest, isAllowedLocalHostHeader } from '../scripts/serve-local-assets.mjs';
 import { validatePackPath } from '../scripts/verified-asset-pack.mjs';
 import { generateSyntheticPack, sourcePreloadPaths, makeSyntheticPng } from '../scripts/generate-synthetic-pack.mjs';
 
@@ -130,4 +131,46 @@ test('approved-pack path validation rejects control bytes and ambiguous URLs', (
     'img/planet\u007f.png',
   ]) assert.throws(() => validatePackPath(path), /Unsafe asset path/);
   assert.equal(validatePackPath('img/mean Apogee.png'), 'img/mean Apogee.png');
+});
+
+async function statusWithHost(address, host) {
+  // The connection remains on 127.0.0.1 while the HTTP Host header is
+  // deliberately changed, simulating a DNS-rebinding request.
+  return await new Promise((resolve, reject) => {
+    const req = httpRequest(address, { headers: { Host: host } }, response => {
+      response.resume();
+      response.on('end', () => resolve(response.statusCode));
+      response.on('error', reject);
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+test('local asset Host validator requires exact loopback hostname and socket port', () => {
+  for (const host of ['localhost:4177', 'LOCALHOST:4177', '127.0.0.1:4177'])
+    assert.equal(isAllowedLocalHostHeader(host, 4177), true, host);
+  for (const host of [
+    undefined, '', 'evil.example:4177', '127.0.0.1.evil.example:4177',
+    'localhost.evil.example:4177', 'localhost', 'localhost:4178',
+    'localhost:04177', '127.0.0.2:4177', '[::1]:4177',
+    'localhost:99999', 'localhost:4177.evil.example',
+  ]) assert.equal(isAllowedLocalHostHeader(host, 4177), false, String(host));
+});
+
+test('asset server blocks DNS-rebinding and mismatched HTTP Host headers', async () => {
+  await withAssetServer(async ({ url, file }) => {
+    const port = Number(new URL(url).port);
+    const assetUrl = url + '/assets/' + file;
+    assert.equal(await statusWithHost(assetUrl, '127.0.0.1:' + port), 200);
+    assert.equal(await statusWithHost(url + '/__preview', 'localhost:' + port), 200);
+    for (const hostileHost of [
+      'evil.example:' + port,
+      '127.0.0.1.evil.example:' + port,
+      'localhost:' + (port === 65535 ? 65534 : port + 1),
+    ]) {
+      assert.equal(await statusWithHost(assetUrl, hostileHost), 403, hostileHost);
+      assert.equal(await statusWithHost(url + '/__preview', hostileHost), 403, hostileHost);
+    }
+  });
 });
