@@ -45,7 +45,7 @@ node scripts/serve-local-assets.mjs \
   --astro-overlay-approval ../private-astro-masks/private-astro-approval.json
 ```
 
-The `private-astro-masks` folder name is illustrative. Use the actual private location. The server rejects incomplete overlays, non-local origins, unauthorized uses, wrong hashes, missing/duplicate/incorrectly named masks, wrong PNG dimensions, symlinks and any filename overlap with the original approved assets.
+The `private-astro-masks` folder name is illustrative. Use the actual private location. The server rejects incomplete overlays, non-local origins, unauthorized uses, wrong hashes, missing/duplicate/incorrectly named masks, wrong PNG dimensions, symlinks and any filename overlap with the original approved assets. **It also decodes the actual RGBA pixels** and rejects any visible RGB that is not white or any alpha coverage count that differs from the private manifest, even if someone refreshes the PNG's hash. This prevents black/colored images from silently defeating the light/dark tint in Three.js.
 
 5. Run the Angular demo (if installed): `npm run demo`. Enable **“Preview VirgoStars Astro glyph images”** or append `?astroGlyphs=1` to the demo URL. The preview starts **off** by default and requires the verified mask overlay when enabled.
 6. Test natal/transit/synastry, light/dark and exported PNG. Include pointer/aspect focus checks after merging the separate interaction feature branch. Turn the preview off to restore original image references without changing production.
