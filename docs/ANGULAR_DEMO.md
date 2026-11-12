@@ -4,7 +4,7 @@ The Angular workspace contains an application that imports the library's actual 
 
 ## Start with synthetic assets
 
-Requirements: Node 22.18 or another version supported by the package, npm and access to this private repository. From the repository root:
+Requirements: Node 22.18 or another version supported by the package, npm and a checkout of this publicly readable repository (public visibility does not grant redistribution rights). From the repository root:
 
 ```sh
 npm ci
@@ -41,6 +41,27 @@ node scripts/serve-local-assets.mjs --root <assets-repo>/public/assets --manifes
 ```
 
 The default base is `http://127.0.0.1:4177/assets/`; change it in the UI or use the `assets` query parameter. The displayed manifest label is informational: the actual manifest is selected at server startup, not verified by the browser label. No public website is used as a fallback.
+
+## Documentation status regression check
+
+Run `npm run test:demo-docs` to check that demo onboarding distinguishes publicly readable renderer source from restricted artwork and does not imply redistribution permission. The same check is included in `npm run preflight`. It reads documentation only; it does not validate Angular builds, WebGL rendering, asset hashes or licensing rights.
+
+## Release-candidate validation gate (manual, no CI)
+
+The `preflight` command checks extraction, types, asset tooling and documentation; **it does not run the interactive browser suite or build either Angular target**. Before requesting review or merging a renderer change, record the exact branch commit SHA, Node/npm versions, asset-pack manifest version and browser versions, then run on a clean checkout:
+
+```sh
+npm ci
+npm run preflight
+npm run build:library
+npm run build:demo
+```
+
+Alternatively, run `npm run verify:angular` after `npm ci` to execute the preflight and both Angular builds sequentially. This is a local convenience command, **not** a browser/WebGL test or a substitute for the manual Chromium/Firefox and asset-manifest checks below. It does not publish or deploy anything.
+
+For actual Three.js rendering, generate the synthetic pack (`npm run demo:pack`) and run `npm run demo:assets` and `npm run demo` in separate terminals. In a third terminal run `npm run test:demo` in Chromium, then install the Playwright-compatible Firefox and run `CHART_TEST_BROWSER=firefox npm run test:demo` in a POSIX shell (or set `$env:CHART_TEST_BROWSER = 'firefox'` in PowerShell). Inspect the saved PNGs for all four modes and seven skins, plus keyboard focus and PNG export. Run `npm run test:offline` separately for the synthetic offline smoke test. For approved original artwork, use only the separate manifest-verified `astrological-assets` checkout; verify its hashes with the local asset server and do not commit or redistribute its files. A successful synthetic run does not establish real-artwork visual parity, scientific correctness or Astrolabio device compatibility.
+
+Record each command as **PASS**, **FAIL** or **NOT RUN**, with its exit code and environment. Do not infer success from static inspection, a GitHub commit, or the PR mergeability indicator. Leave the PR in Draft if any required validation is unavailable or fails; no GitHub Actions, npm publishing or production deployment is implied.
 
 ## Local verification
 
