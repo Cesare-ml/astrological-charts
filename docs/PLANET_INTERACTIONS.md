@@ -1062,3 +1062,41 @@ the Angular demo on 4200 and the approved asset server on
 4177. **The new fixture is committed but not yet executed
 in the owner's browser**, so no performance or leak-free
 claim is certified until the full test passes.
+
+### Nested natal aspect tags without duplicated WebGL overlays (2026-11-12)
+
+A grouped native aspect may annotate both its parent `THREE.Group`
+and its individual `Line2` segments with identical
+`chartNatalAspect: {from,to,type}` metadata. The previous
+`setScene()` traversal indexed *every* tagged object, so the
+`focused` palette could clone the **whole grouped aspect** and
+then clone its children again: visually overlapping colored strokes,
+redundant materials, WebGL buffers and more teardown work.
+
+The indexer now walks the short parent chain **once at
+`setScene()` time** and skips child tags only when an ancestor
+declares the **exact same from/to/type**. Independent strokes,
+different aspects and their original geometry/width/dash patterns
+remain unchanged. It does not calculate or merge astrology
+relations, and it adds no work to the pointermove/render hot path.
+
+**Regression coverage:** the existing native fat-line fixture
+tags the dashes/dots on both group and segment, asserts the
+three distinct native groups remain indexed exactly once, and
+switches focused natal Sun/Venus **40 times**, requiring two
+overlays (four line segments) or one overlay (four segments)
+respectively, with all gray native backgrounds intact. The
+real-WebGL `natal-focus-gpu-harness.ts` now also tags every
+native `Line2` child with its parent's relation, requires only
+three indexed roots, and retains the existing **120 focus-switch**
+GPU geometry, program, disposal and no-orphan checks. A new
+`test:planet-interactions` Node case exercises the actual
+`setScene` TypeScript implementation against a synthetic nested
+scene and checks that differently tagged nested relations remain
+visible and teardown clears old tags.
+
+**Status:** this is source-committed on draft PR #22. The
+extracted `setScene` implementation was executed in a V8
+scene-graph probe with **7/7 behavioral assertions passing**,
+but full Angular/Chrome/Firefox GPU execution is still needed.
+No private imagery, production integration or main merge.
