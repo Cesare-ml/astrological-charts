@@ -105,11 +105,21 @@ test('private browser QA must await a fresh successful render, not stale status 
   const successIncrement = drawText.indexOf('this.renderRevision += 1;');
   assert.ok(awaitedRender >= 0 && successIncrement > awaitedRender,
     'The revision must advance after a successful asynchronous draw');
+  assert.match(drawText, /const request = \+\+this\.drawRequest/);
+  assert.match(drawText, /if \(request !== this\.drawRequest\) return;/,
+    'Canceled draws must not falsely advance the render revision');
+  assert.match(drawText, /if \(request === this\.drawRequest\) \{/,
+    'An older draw must not unlock controls while the latest one is running');
   assert.match(demo, /\[attr\.data-render-revision\]="renderRevision"/);
   assert.match(browser, /revision > before/);
   assert.match(browser, /await readyAfter\(before\)/);
   assert.match(browser, /await redraw\(\(\) => preview\.check\(\)\)/);
   assert.match(browser, /await redraw\(\(\) => preview\.uncheck\(\)\)/);
+  assert.match(browser, /const originalExport = await exportPixels\(\)/);
+  assert.match(browser, /const previewExport = await exportPixels\(\)/);
+  assert.match(browser, /const restoredExport = await exportPixels\(\)/);
+  assert.match(browser, /PNG export must contain the preview glyphs/);
+  assert.match(browser, /Turning preview off must restore the original exported glyphs/);
   assert.doesNotMatch(browser, /await ready\(\)/,
     'The former stale-state waiter must not be used in the browser test');
 });
