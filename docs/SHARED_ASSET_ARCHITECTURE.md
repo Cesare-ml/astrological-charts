@@ -35,6 +35,8 @@ The renderer package **must not ship a second copy** of the same assets.
 | `/assets/img/simboli-bianchi/segni/01.png` | same |
 | `assets/fonts/font.json` | `/assets/fonts/font.json` |
 
+Host-owned relative references must use **literal asset filenames** (including spaces where present), not percent-encoded path segments such as `%2e%2e`. The URL resolver now rejects `%` escapes and control characters in such references: browsers may normalize encoded dot segments into directory traversal **after** application-side checks. Explicit absolute URLs (`https:`, `file:`, `data:` or `blob:`) remain caller-controlled and are passed through unchanged, so consumers must not feed untrusted absolute URLs into the renderer.
+
 `GestoreImmagini` now normalizes references inside its texture loader and browser preload methods. It exposes:
 
 ```ts
