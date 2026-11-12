@@ -5,7 +5,8 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
-import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
+import { registerSceneAnimation } from '../scene-animations';
+import { disposeSceneResources } from '../scene-resources';
 import { chartBodyRenderAngles, layoutChartGlyphLongitudes, relaxChartGlyphCycle } from '../planet-layout';
 
 
@@ -140,7 +141,14 @@ export class ElementiCelestiRender {
     }
 
     for(let nome in elementiCelesti) {
+      // A neutral parent makes a body's symbol, true-angle leader ticks and
+      // optional decorations discoverable as one layer-qualified unit.
+      // Do NOT rotate this group to move its glyph: collision displacement
+      // and original zodiac direction remain independent.
       var elGroup = new THREE.Group();
+      elGroup.name = 'chart-planet-body';
+      elGroup.userData['chartPlanetBody'] = {layer:interactionLayer,name:nome};
+      group.add(elGroup);
 
       var elRef = null;
 
@@ -186,7 +194,7 @@ export class ElementiCelestiRender {
         if(nome == partiArabeNomePianetaHighlight) {
           //animazione
           var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
-          registerSceneAnimation(group, tl);
+          registerSceneAnimation(elGroup, tl);
           tl.to(el.material, {opacity: 0});
         } else {
           el.material.opacity = 0.3;
@@ -214,8 +222,10 @@ export class ElementiCelestiRender {
         lineaCerchietto.rotateZ(THREE.MathUtils.degToRad(
           bodyAngles.tickDegrees
         ));
-        group.add(cerchietto);
-        group.add(lineaCerchietto);
+        cerchietto.userData['chartBodyVisualRole'] = 'moon-ring';
+        elGroup.add(cerchietto);
+        lineaCerchietto.userData['chartBodyVisualRole'] = 'moon-ring-leader';
+        elGroup.add(lineaCerchietto);
       }
 
       if(
@@ -275,7 +285,8 @@ export class ElementiCelestiRender {
         lineaB.rotateZ(THREE.MathUtils.degToRad(
           bodyAngles.tickDegrees
         ));
-        group.add(lineaB);
+        lineaB.userData['chartBodyVisualRole'] = 'outer-leader';
+        elGroup.add(lineaB);
       }
 
       const p2 = {x:0,y:diametroCerchioInterno/2};
@@ -285,7 +296,8 @@ export class ElementiCelestiRender {
       lineaA.rotateZ(THREE.MathUtils.degToRad(
         bodyAngles.tickDegrees
       ));
-      group.add(lineaA);
+      lineaA.userData['chartBodyVisualRole'] = 'inner-leader';
+        elGroup.add(lineaA);
 
       el.translateY(-raggioEclittica);
       var elDegDiRender = bodyAngles.tickDegrees;
@@ -304,7 +316,8 @@ export class ElementiCelestiRender {
           el.userData['chartTransitRingRadius'] = raggioEclittica;
         }
       }
-      group.add( el );
+      el.userData['chartBodyVisualRole'] = 'glyph';
+        elGroup.add(el);
 
       /*
       if(eventiMouse) {
@@ -327,7 +340,8 @@ export class ElementiCelestiRender {
         eld.translateY(raggioEclitticaDodecatemore);
         eld.rotation.z = 0;
 
-        group.add(eld);
+        eld.userData['chartBodyVisualRole'] = 'dodecatemore';
+        elGroup.add(eld);
 /*
         if(eventiMouseDodecatemori) {
           GestoreEventiMouse.gem.aggiungiOggetto(
@@ -350,7 +364,8 @@ export class ElementiCelestiRender {
         eld.translateY(raggioEclittica);
         eld.rotation.z = 0;
 
-        group.add(eld);
+        eld.userData['chartBodyVisualRole'] = 'dodecatemore';
+        elGroup.add(eld);
 /*
         if(eventiMouseDodecatemori) {
           GestoreEventiMouse.gem.aggiungiOggetto(
@@ -362,7 +377,7 @@ export class ElementiCelestiRender {
 
         //animazione
         var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
-        registerSceneAnimation(group, tl);
+        registerSceneAnimation(elGroup, tl);
         tl.to(eld.material, {opacity: 0});
 
         var frecciaAdArco = OggettiSempliciRender.lanciaFrecciaAdArco(
@@ -370,7 +385,8 @@ export class ElementiCelestiRender {
           Colori.elementiCelesti[nome],"#aaa",
           diametroCerchioInterno,diametroCerchioEsterno
         );
-        group.add(frecciaAdArco);
+        frecciaAdArco.userData['chartBodyVisualRole'] = 'dodecatemore-arc';
+        elGroup.add(frecciaAdArco);
       }
     };
 /*
@@ -383,9 +399,9 @@ export class ElementiCelestiRender {
 
     return group;
     } catch (error) {
-      // The group is not returned to the service when construction fails, so
-      // its animations must be stopped here rather than during scene disposal.
-      stopSceneAnimations(group);
+      // The partially built group is never returned to the caller. It
+      // already owns all completed per-body meshes/animations; dispose it.
+      disposeSceneResources(group);
       throw error;
     }
   }

@@ -69,3 +69,32 @@ The helper does not calculate ephemerides/aspects, change the
 source longitude, alter scene hierarchy or glyph sizing, or enable
 a partial coordinate patch yet. Run `npm run test:planet-layout`
 and visual parity in Chromium/Firefox before approval.
+
+
+### Per-body visual ownership without changing transforms (draft PR #22)
+
+`ElementiCelestiRender.getAnelloElementiCelesti()` now uses its
+previously unused `elGroup` as an **identity-transform owner** for
+each rendered body. `elGroup.userData.chartPlanetBody` identifies
+`{layer,name}` for natal/transit/synastry and the body owns its
+glyph, original-longitude inner/outer leader ticks, Moon marker,
+optional dodecatemore glyph and arc, plus per-body GSAP animations.
+Its children have `chartBodyVisualRole` tags when applicable.
+
+The wrapper has zero position/rotation and unit scale: the existing
+visual transform operations remain on each child, including
+anti-collision glyph displacement and true-angle radial leaders.
+The `chartPlanet` pointer tag remains on the glyph mesh, so the
+interaction controller still traverses/picks the original target.
+The original transit-ring radius and aspect-angle metadata remain
+unchanged. Nested per-body animations and partial geometry now get
+cleaned up if `getAnelloElementiCelesti()` itself rejects.
+
+This makes linked parts discoverable for a future coordinated
+incremental coordinate update. **No live position updating** is
+enabled: complex house, native-aspect and derived decoration
+dependencies still require a full scene reconstruction.
+`npm run test:planet-body-groups` performs source AST checks.
+The synthetic transit-spoke Playwright fixture now wraps bodies
+the same way and checks world-space parity for normal and
+mirrored views, alongside existing radius/guide regressions.

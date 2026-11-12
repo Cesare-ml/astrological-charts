@@ -899,3 +899,18 @@ dynamic chart visibility and multiple independent chart canvases.
 `npm run test:demo-interactions` after pulling the draft branch
 and restarting the demo on Windows. These newly added regressions
 have not yet been run in the owner's browser.
+
+
+### Layer-qualified group ownership of each planet's visual components
+
+The wheel now places every body's glyph, inner/outer radial ticks,
+Moon marker and optional dodecatemore graphics under a neutral
+`THREE.Group` annotated with `chartPlanetBody: {layer,name}`.
+Each child still has its existing world transform; the mesh keeps
+the `chartPlanet` pointer tag. The wrappers make related objects
+discoverable for later atomic updates without changing zodiac
+longitudes, house graphics, transit guide radii or visual scale.
+Coordinates from upstream still use the existing complete
+`disegnaScena()` refresh. Run `npm run test:planet-body-groups`
+and Playwright's normal/mirrored transit guide tests, and manually
+check visual parity before merging.

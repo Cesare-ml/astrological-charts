@@ -38,7 +38,12 @@ window.runTransitSpokeGeometryProbe = () => {
         new THREE.MeshBasicMaterial({color: '#171717',side:THREE.DoubleSide})
       );
       mesh.userData['chartPlanet'] = {layer,name};
-      wheel.add(mesh);
+      const bodyGroup = new THREE.Group();
+      bodyGroup.name = 'chart-planet-body';
+      bodyGroup.userData['chartPlanetBody'] = {layer,name};
+      wheel.add(bodyGroup);
+      mesh.userData['chartBodyVisualRole'] = 'glyph';
+      bodyGroup.add(mesh);
       return mesh;
     };
     const sun = body('natal', 'Sun');
@@ -57,6 +62,25 @@ window.runTransitSpokeGeometryProbe = () => {
     neptune.position.set(-0.76, 0.22, 0);
     neptune.userData['chartAspectAngle'] = Math.PI * 1.5;
     neptune.userData['chartTransitRingRadius'] = 1.15;
+    // An identity body wrapper must preserve all world coordinates even
+    // under the wheel's rotation and southern-hemisphere mirror.
+    scene.updateMatrixWorld(true);
+    results['bodyGroupWorldParity' + suffix] = [sun,moon,transit,neptune].every(mesh => {
+      const owner = mesh.parent;
+      const ref = mesh.userData['chartPlanet'] as {layer:string;name:string};
+      const descriptor = owner?.userData['chartPlanetBody'] as
+        {layer:string;name:string} | undefined;
+      if (!owner || owner.parent !== wheel || !descriptor ||
+          descriptor.layer !== ref.layer || descriptor.name !== ref.name ||
+          mesh.userData['chartBodyVisualRole'] !== 'glyph') return false;
+      const expected = wheel.localToWorld(mesh.position.clone());
+      const actual = mesh.getWorldPosition(new THREE.Vector3());
+      return near(actual.x,expected.x) && near(actual.y,expected.y)
+        && near(actual.z,expected.z)
+        && owner.position.lengthSq() === 0
+        && owner.rotation.lengthSq() === 0
+        && owner.scale.x === 1 && owner.scale.y === 1 && owner.scale.z === 1;
+    });
     const controller = new PlanetInteractionController(canvas,camera,()=>{},()=>{});
     controller.setRelations([{
       from:{layer:'natal',name:'Sun'},to:{layer:'transit',name:'Saturn'},
