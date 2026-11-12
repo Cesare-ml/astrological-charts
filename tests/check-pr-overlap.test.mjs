@@ -126,6 +126,7 @@ test('fails closed for unknown refs and never calls fetch, checkout, or merge', 
   assert.match(source,/\['merge-base', baseRevision, revision\]/);
 }));
 
+
 test('records a moving base tip separately from the historical merge-base', () => fixture(({root,git,base}) => {
   // The head branches were created from the original main, then main advanced.
   // The audit must use the shared ancestor for its diff, but also record the
