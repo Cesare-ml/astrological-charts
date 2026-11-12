@@ -52,3 +52,27 @@ test('refuses unknown traversal and malformed asset references', () => {
     assert.throws(() => resolve(ref));
   }
 });
+
+test('host-owned asset references reject percent-encoded traversal and control bytes', () => {
+  // URL parsers may turn encoded dot segments into real ".." after resolution.
+  for (const ref of [
+    'assets/img/%2e%2e/secret.png',
+    'img/.%2e/private.png',
+    'img/%2fetc/passwd.png',
+    'img/a%5cb.png',
+    'fonts/%00font.json',
+    'img/%25%32e%25%32e/secret.png',
+    'img/a\u0000.png',
+  ]) assert.throws(() => resolve(ref), /Invalid chart asset path/);
+});
+
+test('literal spaces and caller-controlled absolute URLs remain compatible', () => {
+  assert.equal(
+    resolve('img/simboli-bianchi/elementi-celesti/mean Apogee.png'),
+    '/assets/img/simboli-bianchi/elementi-celesti/mean Apogee.png',
+  );
+  assert.equal(
+    resolve('https://static.example.org/asset%20pack/Sun.png'),
+    'https://static.example.org/asset%20pack/Sun.png',
+  );
+});
