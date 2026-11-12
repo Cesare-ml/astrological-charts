@@ -34,6 +34,9 @@ node scripts/serve-local-assets.mjs \
 Il generatore si rifiuta di sovrascrivere una directory già esistente. Il wrapper PowerShell usa i file già generati, oppure interrompe se la directory è incompleta. Cancella manualmente la cartella `.local/synthetic-pack` solo se vuoi rigenerarla.
 
 - Crea 78 PNG di test 48×48, con nomi e directory esattamente corrispondenti ai 78 percorsi statici di `GestoreImmagini.preloadArraySimboli`.
+- Il generatore legge l'array di preload con un controllo **fail-closed**: accetta solo stringhe letterali PNG con percorsi locali `/assets/img/...`. Rifiuta valori calcolati, spread, template string, concatenazioni, URL esterni, segmenti `..`, sequenze escape e duplicati, anche se i 78 percorsi letterali sono ancora presenti. Il pacchetto sintetico non deve mai attestare una copertura incompleta.
+- La regressione è inclusa nel test esistente `npm run test:demo-pack` (già previsto dal `preflight`), che verifica anche la corrispondenza con l'elenco reale dei 78 simboli. Non legge o copia alcun asset autentico.
+
 - Genera `manifests/approved-assets.json` con SHA-256 e marcatura esplicita **synthetic**; non include nessuna immagine di VirgoStars, nessuna texture stock e nessun dato personale.
 - Il server verifica l'intero manifest **all'avvio**; a ogni richiesta ricontrolla i byte del file richiesto.
 - La galleria locale è `/__preview`; gli URL sono `/assets/img/...`. Il server serve solamente i percorsi contenuti nel manifest, niente directory listing, metodi di scrittura o condivisione pubblica.
