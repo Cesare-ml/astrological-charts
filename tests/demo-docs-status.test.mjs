@@ -14,7 +14,10 @@ test('demo onboarding does not describe the publicly readable source as private'
 
 test('demo distinguishes public renderer source from restricted real artwork', () => {
   const demo = readFileSync(new URL('../docs/ANGULAR_DEMO.md', import.meta.url), 'utf8');
-  assert.match(demo, /private `astrological-assets` repository/i);
+  assert.match(demo, /publicly readable.*`Cesare-ml\/astrological-assets`/i);
+  assert.match(demo, /Public visibility does not clear individual artwork for redistribution/i);
+  assert.match(demo, /npm run verify:pack/);
+  assert.match(demo, /integrity check does not grant redistribution rights/i);
   assert.match(demo, /manifest-verified server/i);
   assert.match(demo, /no font files are included/i);
   assert.match(demo, /not a comparison with an approved production baseline/i);
