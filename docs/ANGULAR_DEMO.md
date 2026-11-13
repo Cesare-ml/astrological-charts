@@ -151,3 +151,7 @@ The manifest-gated loopback server responds to `OPTIONS` only for existing, appr
 ### Integrity-aware CORS preflight
 
 The approved local asset server responds `204` to `OPTIONS` only for paths in the manifest whose current bytes still match the recorded SHA-256. Unlisted paths return `404`, modified approved files return `409`, and foreign origins return `403`. This is a local development safety check, not proof of artwork redistribution rights or WebGL correctness. Run `node --test tests/asset-preflight.test.mjs` to exercise these responses with generated synthetic assets; browser rendering must still be tested separately.
+
+### CORS method safety
+
+The local approved-asset server rejects an `OPTIONS` preflight requesting a method other than `GET` or `HEAD` with HTTP `405` (`Allow: GET, HEAD, OPTIONS`). Approved `GET` and `HEAD` requests retain manifest and SHA-256 integrity checks. The regression is in `tests/serve-local-assets.test.mjs`; run `node --test tests/serve-local-assets.test.mjs` in a complete checkout. This does not validate browser WebGL rendering or real-artwork licensing.
