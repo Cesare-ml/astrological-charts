@@ -61,6 +61,23 @@ test('independent localhost server serves verified PNG files without VirgoStars 
   });
 });
 
+test('approved HEAD responses match GET metadata without returning image bytes',async()=>{
+  await withAssetServer(async({url,file})=>{
+    const path='/assets/'+file;
+    const headers={Origin:'http://localhost:4200'};
+    const get=await fetch(url+path,{headers});
+    assert.equal(get.status,200);
+    const bytes=Buffer.from(await get.arrayBuffer());
+    const head=await fetch(url+path,{method:'HEAD',headers});
+    assert.equal(head.status,200);
+    assert.equal(head.headers.get('content-type'),get.headers.get('content-type'));
+    assert.equal(Number(head.headers.get('content-length')),bytes.length);
+    assert.equal(head.headers.get('access-control-allow-origin'),headers.Origin);
+    assert.equal(head.headers.get('cache-control'),'no-store');
+    assert.equal((await head.arrayBuffer()).byteLength,0);
+  });
+});
+
 test('refuses unapproved assets, outside origins, traversal and writing',async()=>{
   await withAssetServer(async({url,root})=>{
     writeFileSync(join(root,'img','unapproved.png'),makeSyntheticPng('unapproved'));
