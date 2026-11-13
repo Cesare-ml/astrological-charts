@@ -135,3 +135,30 @@ test('CORS preflight only authorizes configured local origins', async () => {
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('asset server rejects non-loopback and non-canonical CORS allowlists', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'charts-cors-config-'));
+  try {
+    const { root, manifest } = generateSyntheticPack(join(directory, 'pack'));
+    for (const origin of [
+      'https://untrusted.example',
+      'http://localhost.evil.example:4200',
+      'http://localhost:4200/path',
+      'http://localhost:4200/',
+      'http://user@localhost:4200',
+      'null',
+    ]) {
+      assert.throws(
+        () => createAssetServer({ root, manifest, origins: [origin] }),
+        /Only local development origins may be allowed|Invalid URL/,
+        origin,
+      );
+    }
+    const server = createAssetServer({
+      root, manifest, origins: ['http://localhost:4200'],
+    });
+    server.close();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
