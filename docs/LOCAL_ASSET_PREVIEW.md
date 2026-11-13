@@ -107,3 +107,7 @@ Sono stati eseguiti su Windows test con fixture sintetiche per il generatore PNG
 ## Successivo gate
 
 Confrontare la demo con baseline visive approvate e verificare le opzioni avanzate e l'Astrolabio. Non considerare questa galleria o i test browser come sostitutivi delle prove hardware.
+
+### Regressione CORS per richieste HEAD
+
+`node --test tests/local-asset-cors-preflight.test.mjs` usa esclusivamente un pacchetto sintetico temporaneo e controlla anche che `HEAD` su un asset restituisca gli stessi `Content-Type` e `Content-Length` di `GET`, senza corpo, autorizzando solo le origini locali configurate. Il test non legge immagini originali, non verifica la demo Three.js e non sostituisce `npm run verify:pack` nel checkout separato di `astrological-assets`. Il suo risultato deve essere registrato come **NOT RUN** finché non viene eseguito in un ambiente Node.js completo.
