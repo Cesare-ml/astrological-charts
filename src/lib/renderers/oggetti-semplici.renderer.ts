@@ -443,11 +443,12 @@ export class OggettiSempliciRender {
   }
 
   public static async getImg(assetsImgRef: string, w: number, h: number, scale: number, flipY = false, color?:string, allowAstroPreview = false) {
-    const material = await OggettiSempliciRender.getMaterial(assetsImgRef, flipY, color, allowAstroPreview);
-    // The private VirgoStars Astro mask files are square, unlike the legacy
-    // 100x69 zodiac and 875x605 planet rasters. Preserve the approved shape
-    // without changing geometry when the preview is disabled.
+    // Snapshot the preview choice BEFORE awaiting material/texture loading.
+    // Otherwise a fast toggle could fetch a legacy image but create a square
+    // mesh (or fetch the new mask and stretch it into legacy dimensions).
     const previewSquare = GestoreImmagini.isVirgoStarsAstroPreviewAsset(assetsImgRef, allowAstroPreview);
+    const material = await OggettiSempliciRender.getMaterial(assetsImgRef, flipY, color, allowAstroPreview);
+    // The approved masks are square; legacy PNGs use historical dimensions.
     const width = (previewSquare ? Math.min(w, h) : w) * scale;
     const height = (previewSquare ? Math.min(w, h) : h) * scale;
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
