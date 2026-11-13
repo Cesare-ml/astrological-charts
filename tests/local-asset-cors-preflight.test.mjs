@@ -75,6 +75,19 @@ test('CORS preflight only authorizes configured local origins', async () => {
       assert.equal(response.headers.get('access-control-allow-methods'), null, spoofedOrigin);
     }
 
+    // A missing Origin is a same-origin/non-CORS request and must remain usable.
+    // In contrast, an untrusted Origin must not bypass checks on the preview route.
+    const sameOriginGet = await fetch(url);
+    assert.equal(sameOriginGet.status, 200);
+    assert.equal(sameOriginGet.headers.get('access-control-allow-origin'), null);
+    assert.equal(sameOriginGet.headers.get('cache-control'), 'no-store');
+
+    const previewDenied = await fetch(new URL('/__preview', url), {
+      headers: { Origin: 'https://untrusted.example' },
+    });
+    assert.equal(previewDenied.status, 403);
+    assert.equal(previewDenied.headers.get('access-control-allow-origin'), null);
+
     const allowedGet = await fetch(url, {
       headers: { Origin: 'http://127.0.0.1:4200' },
     });
