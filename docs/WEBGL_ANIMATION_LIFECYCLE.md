@@ -17,9 +17,10 @@ The change does not alter animation timing, chart geometry, rendering order, pub
 ```bash
 npm ci
 npm run test:scene-animations
+npm run test:scene-resources
 npm run verify:angular
 ```
 
 For WebGL validation, run the synthetic Angular demo and repeat natal/transit/synastry/latitude render and PNG export in real Chromium and Firefox. Review the JS console and GPU texture/object counts after many redraws. See `docs/ANGULAR_DEMO.md` and issue #5.
 
-A Node test exercises the actual TypeScript module (via transpilation) with synthetic timeline objects; it verifies successful kills, exception isolation, reentrant stop and no-op cleanup. It does **not** run GSAP, real Three.js scenes, browsers, Astrolabio or production images. The repository's unresolved licensing gate still applies; no release, deploy or automated Actions are implied.
+A Node test exercises the actual TypeScript animation module (via transpilation) with synthetic timeline objects; it verifies successful kills, exception isolation, reentrant stop and no-op cleanup. A second test extracts the **actual private** `disposeSceneResources` function from the Angular service with the TypeScript AST, transpiles it and injects synthetic Three.js resource objects. That regression checks shared-resource deduplication, error-tolerant animation cleanup, nested scene graphs, empty scenes, and independence between two scene roots (modeling an active chart plus a PNG export). The synthetic objects do not allocate real GPU resources. It does **not** run GSAP, real Three.js scenes, browsers, Astrolabio or production images. The repository's unresolved licensing gate still applies; no release, deploy or automated Actions are implied.
