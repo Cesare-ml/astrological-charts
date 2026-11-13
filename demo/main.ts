@@ -167,9 +167,10 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     const drawRequest = this.drawRequest;
     const mode = this.mode;
     const skin = this.skin;
-    const options = this.options();
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
     try {
+      // Option-building failures must share the normal export error/cleanup path.
+      const options = this.options();
       const png = await this.renderer.generaImmagine(this.radix, mode === 'transits' ? this.transit : null,
         mode === 'synastry' ? this.synastry : null, mode === 'latitude' ? 'latitudini' : 'carta-astrale', options, {x: 800, y: 800}, 2);
       // An older export must never download a chart or overwrite the status
