@@ -86,6 +86,7 @@ test('validates incomplete or corrupt reports before producing a comparison', ()
     r => { r.viewport = null; },
     r => { r.browser = ''; },
     r => { r.chart = ''; },
+    r => { r.browserVersion = ''; },
     r => { r.final.live += 5; },
     r => { r.checkpoints[1].perContext[0].deleted = 999; },
   ]) {
@@ -116,4 +117,39 @@ test('missing environment metadata remains an explicit limitation', () => {
   const comparison = compareWebGLBufferReports(report('chromium'), firefox);
   assert.ok(comparison.warnings.some(w => w.includes('platform metadata missing')));
   assert.ok(comparison.warnings.some(w => w.includes('asset packs')));
+});
+
+test('valid nearby UTC timestamps avoid a session-proximity warning', () => {
+  const chrome = report('chromium');
+  const firefox = report('firefox');
+  chrome.recordedAt = '2026-11-13T12:00:00.000Z';
+  firefox.recordedAt = '2026-11-13T13:00:00.000Z';
+  const result = compareWebGLBufferReports(chrome, firefox);
+  assert.ok(!result.warnings.some(w => w.includes('Recorded-at UTC timestamp')));
+  assert.ok(!result.warnings.some(w => w.includes('more than 24 hours apart')));
+});
+
+test('missing or malformed timestamps explicitly warn instead of being silently comparable', () => {
+  for (const recordedAt of [
+    undefined, '', 'yesterday', '2026-13-40T12:00:00.000Z',
+    '2026-11-13T12:00:00Z', 1470000000,
+  ]) {
+    const chrome = report('chromium');
+    const firefox = report('firefox');
+    chrome.recordedAt = '2026-11-13T12:00:00.000Z';
+    firefox.recordedAt = recordedAt;
+    const result = compareWebGLBufferReports(chrome, firefox);
+    assert.ok(result.warnings.some(w => w.includes('Recorded-at UTC timestamp')), String(recordedAt));
+  }
+});
+
+test('reports over 24 hours apart warn without asserting a resource leak', () => {
+  const chrome = report('chromium');
+  const firefox = report('firefox');
+  chrome.recordedAt = '2026-11-10T10:00:00.000Z';
+  firefox.recordedAt = '2026-11-13T12:00:00.000Z';
+  const result = compareWebGLBufferReports(chrome, firefox);
+  assert.ok(result.warnings.some(w => w.includes('more than 24 hours apart')));
+  assert.equal(result.comparison, 'descriptive-only');
+  assert.ok(!result.warnings.some(w => /is a leak|proves a leak/.test(w)));
 });
