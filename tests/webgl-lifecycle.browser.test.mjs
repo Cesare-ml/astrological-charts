@@ -54,18 +54,35 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
       const stats = {created: 0, deleted: 0, contextLost: 0};
       globalThis.__webglLife = stats;
       document.addEventListener('webglcontextlost', () => stats.contextLost++, true);
+      const wrapped = new WeakMap();
+      const active = {created: 0, deleted: 0};
       for (const type of [globalThis.WebGLRenderingContext, globalThis.WebGL2RenderingContext]) {
         if (!type) continue;
         for (const [method, field] of [['createTexture', 'created'], ['deleteTexture', 'deleted']]) {
-          const proto = type.prototype;
-          if (!Object.prototype.hasOwnProperty.call(proto, method)) continue;
-          const original = proto[method];
-          if (typeof original !== 'function') continue;
-          proto[method] = function(...args) {
-            const value = original.apply(this, args);
-            if ((field === 'created' && value) || (field === 'deleted' && args[0])) stats[field]++;
-            return value;
-          };
+          let proto = type.prototype;
+          // WebGL1/WebGL2 may inherit both methods from a shared WebGL base prototype.
+          while (proto && proto !== Object.prototype &&
+                 !Object.prototype.hasOwnProperty.call(proto, method)) {
+            proto = Object.getPrototypeOf(proto);
+          }
+          if (!proto || proto === Object.prototype) continue;
+          const descriptor = Object.getOwnPropertyDescriptor(proto, method);
+          if (!descriptor || typeof descriptor.value !== 'function') continue;
+          let patched = wrapped.get(proto);
+          if (!patched) { patched = new Set(); wrapped.set(proto, patched); }
+          if (patched.has(method)) continue;
+          const original = descriptor.value;
+          Object.defineProperty(proto, method, {...descriptor, value: function(...args) {
+            // Avoid counting an override and a super call as two texture operations.
+            const outermost = active[field]++ === 0;
+            try {
+              const result = original.apply(this, args);
+              if (outermost && ((field === 'created' && result) ||
+                  (field === 'deleted' && args[0]))) stats[field]++;
+              return result;
+            } finally { active[field]--; }
+          }});
+          patched.add(method);
         }
       }
     });
