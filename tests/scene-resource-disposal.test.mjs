@@ -281,3 +281,48 @@ test('animation kill detaching a sibling cannot skip its resource disposal', () 
     'material first', 'material second', 'geometry first', 'geometry second',
   ]);
 });
+
+test('throwing geometry getter reports error but releases materials and other nodes', () => {
+  const events = [];
+  const failure = new Error('geometry read failed');
+  const broken = {get geometry() {throw failure;}, material: resource('material broken', events)};
+  const normal = {geometry: resource('geometry normal', events), material: resource('material normal', events)};
+  const dispose = makeDispose(object => events.push(object === broken ? 'stop broken' : 'stop normal'));
+  assert.throws(() => dispose(root(broken, normal)), error => error === failure);
+  assert.deepEqual(events, [
+    'stop broken', 'stop normal', 'material broken', 'material normal', 'geometry normal',
+  ]);
+});
+
+test('throwing material getter reports error but releases geometries and siblings', () => {
+  const events = [];
+  const failure = new Error('material read failed');
+  const broken = {geometry: resource('geometry broken', events), get material() {throw failure;}};
+  const normal = {geometry: resource('geometry normal', events), material: resource('material normal', events)};
+  const dispose = makeDispose(object => events.push(object === broken ? 'stop broken' : 'stop normal'));
+  assert.throws(() => dispose(root(broken, normal)), error => error === failure);
+  assert.deepEqual(events, [
+    'stop broken', 'stop normal', 'material normal', 'geometry broken', 'geometry normal',
+  ]);
+});
+
+test('throwing texture property getter retains material cleanup and other texture scans', () => {
+  const events = [];
+  const failure = new Error('material texture read failed');
+  const broken = {...resource('material broken', events), get map() {throw failure;}};
+  const good = {...resource('material good', events), map: new FakeTexture(() => events.push('texture good'))};
+  const node = {geometry: resource('geometry', events), material: [broken, good]};
+  const dispose = makeDispose(() => events.push('stop'));
+  assert.throws(() => dispose(root(node)), error => error === failure);
+  assert.deepEqual(events, ['stop', 'texture good', 'material broken', 'material good', 'geometry']);
+});
+
+test('traversal failure still stops captured animations and disposes known resources', () => {
+  const events = [];
+  const failure = new Error('traverse failed');
+  const node = {geometry: resource('geometry', events), material: resource('material', events)};
+  const scene = {traverse(visitor) {visitor(node); throw failure;}};
+  const dispose = makeDispose(() => events.push('stop'));
+  assert.throws(() => dispose(scene), error => error === failure);
+  assert.deepEqual(events, ['stop', 'material', 'geometry']);
+});
