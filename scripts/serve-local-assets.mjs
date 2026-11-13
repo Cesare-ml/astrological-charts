@@ -119,12 +119,20 @@ export function createAssetServer({
         'Content-Length':Buffer.byteLength(html)});
       res.end(req.method==='HEAD'?'':html);return;
     }
-    const privateRequest=overlay ? resolveAssetRequest(overlay.root,pathname) : null;
-    const usePrivate=Boolean(privateRequest && overlay.paths.has(privateRequest.path));
-    const requested=usePrivate?privateRequest:resolveAssetRequest(absolute,pathname);
-    const expected=requested
-      ? (usePrivate ? overlay.paths.get(requested.path) : pack.paths.get(requested.path))
-      : null;
+    // Select the authorized private manifest entry BEFORE checking filesystem
+    // existence. Otherwise a mask deleted/replaced by a symlink after startup
+    // falls through to a misleading 404 instead of a fail-closed 409.
+    // Manifest keys are strict ASCII paths; encoded aliases are not accepted.
+    const manifestPath=pathname.startsWith('/assets/')
+      ? pathname.slice('/assets/'.length) : null;
+    const privateExpected=manifestPath ? overlay?.paths.get(manifestPath) : null;
+    const usePrivate=Boolean(privateExpected);
+    const requested=resolveAssetRequest(usePrivate?overlay.root:absolute,pathname);
+    const expected=usePrivate ? privateExpected :
+      (requested ? pack.paths.get(requested.path) : null);
+    if(usePrivate && !requested){
+      res.writeHead(409);res.end('Approved private asset unavailable or changed');return;
+    }
     if(!requested||!expected){
       res.writeHead(404);res.end('Not in approved manifest');return;
     }
