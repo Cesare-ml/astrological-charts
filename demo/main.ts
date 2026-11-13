@@ -133,11 +133,15 @@ class DemoComponent implements AfterViewInit, OnDestroy {
 
     this.astroPreviewEnabled = false;
     GestoreImmagini.configureVirgoStarsAstroPreview(false);
+    const fallbackRequest = this.drawRequest + 1;
+    const previousRenderRevision = this.renderRevision;
     await this.draw();
-    if (!this.error) {
-      this.previewNotice = 'VirgoStars Astro masks were unavailable; the original symbols have been restored.';
-      this.changes.markForCheck();
-    }
+    // A newer request can supersede/cancel this fallback without throwing.
+    // Claim restoration only if THIS fallback rendered successfully.
+    if (fallbackRequest !== this.drawRequest || this.astroPreviewEnabled ||
+        this.error || this.renderRevision <= previousRenderRevision) return;
+    this.previewNotice = 'VirgoStars Astro masks were unavailable; the original symbols have been restored.';
+    this.changes.markForCheck();
   }
   async exportPng(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
