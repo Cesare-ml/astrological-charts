@@ -96,7 +96,15 @@ test('rejects trailing bytes and truncated PNG',()=>{
   assert.throws(()=>verifyWhiteAlphaPng(valid.subarray(0,valid.length-3),COVERAGE),
     /Truncated Astro PNG/);
 });
-test('rejects decompression beyond the declared RGBA payload length',()=>{
+test('rejects decompression beyond the expected 512x512 RGBA raster size',()=>{
+  const valid=png();
+  const oversized=Buffer.alloc(HEIGHT*(STRIDE+1)+1);
+  const forged=Buffer.concat([valid.subarray(0,33),
+    chunk('IDAT',deflateSync(oversized)),chunk('IEND')]);
+  assert.throws(()=>verifyWhiteAlphaPng(forged,COVERAGE),
+    /Invalid or oversized compressed Astro PNG raster/);
+});
+test('rejects a PNG file larger than the 2 MiB bound',()=>{
   const valid=png();
   const extras=Buffer.concat([valid,Buffer.alloc(2*1024*1024)]);
   assert.throws(()=>verifyWhiteAlphaPng(extras,COVERAGE),/safe 2 MiB size limit/);
