@@ -233,3 +233,51 @@ test('cancel, cleanup, and renderer failures are all reported in order', () => {
   assert.equal(instance.frameId, null);
   assert.equal(instance.renderer, null);
 });
+
+test('animation kill cannot hide material and geometry from disposal', () => {
+  const events = [];
+  const texture = new FakeTexture(() => events.push('texture'));
+  const node = {
+    geometry: resource('geometry', events),
+    material: {...resource('material', events), map: texture},
+  };
+  const dispose = makeDispose(object => {
+    if (object === node) {
+      events.push('kill');
+      node.geometry = null;
+      node.material = null;
+    }
+  });
+  dispose(root(node));
+  assert.deepEqual(events, ['kill', 'texture', 'material', 'geometry']);
+});
+
+test('animation kill detaching a sibling cannot skip its resource disposal', () => {
+  const events = [];
+  const first = {
+    geometry: resource('geometry first', events),
+    material: resource('material first', events),
+  };
+  const second = {
+    geometry: resource('geometry second', events),
+    material: resource('material second', events),
+  };
+  const scene = {
+    children: [first, second],
+    traverse(visitor) {
+      visitor(this);
+      for (let i = 0; i < this.children.length; i++) visitor(this.children[i]);
+    },
+  };
+  const dispose = makeDispose(object => {
+    if (object === first) {
+      events.push('kill first');
+      scene.children.splice(1, 1);
+    } else if (object === second) events.push('kill second');
+  });
+  dispose(scene);
+  assert.deepEqual(events, [
+    'kill first', 'kill second',
+    'material first', 'material second', 'geometry first', 'geometry second',
+  ]);
+});
