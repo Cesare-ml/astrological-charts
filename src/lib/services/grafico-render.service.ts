@@ -50,6 +50,16 @@ function disposeSceneResources(root: THREE.Object3D): void {
   if (errors.length > 1) throw new AggregateError(errors, 'Failed to dispose scene resources.');
 }
 
+
+/** Release resources and detach children even if a cleanup hook throws. */
+function disposeAndClearScene(scene: THREE.Scene): void {
+  const errors: unknown[] = [];
+  try { disposeSceneResources(scene); } catch (error) { errors.push(error); }
+  try { scene.clear(); } catch (error) { errors.push(error); }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'Failed to clear chart scene.');
+}
+
 async function waitForSceneTextures(root: THREE.Object3D): Promise<void> {
   const textures = new Set<THREE.Texture>();
   root.traverse((object: any) => {
@@ -265,33 +275,45 @@ export class GraficoRenderService implements OnDestroy {
       if (generation !== this.drawGeneration) return;
       if (this.dimensioni) OggettiSempliciRender.setDimensioniCanvas(this.dimensioni);
       let disegno = null;
-      switch (grafico) {
-        case 'latitudini':
-          disegno = await LatitudiniRender.creaScena(temaRender,temaRenderTransiti,temaRenderSinastria,opzioni);
-          break;
-        case 'carta-astrale':
-        default:
-          disegno = await CartaAstraleCreaScena(opzioni,temaRender,temaRenderTransiti,temaRenderSinastria);
-          break;
-      }
+      let adopted = false;
+      let operationFailed = false;
+      let operationError: unknown;
       try {
+        switch (grafico) {
+          case 'latitudini':
+            disegno = await LatitudiniRender.creaScena(temaRender,temaRenderTransiti,temaRenderSinastria,opzioni);
+            break;
+          case 'carta-astrale':
+          default:
+            disegno = await CartaAstraleCreaScena(opzioni,temaRender,temaRenderTransiti,temaRenderSinastria);
+            break;
+        }
         if (disegno) await waitForSceneTextures(disegno);
+        if (generation !== this.drawGeneration) return;
+        if (!this.scene) this.scene = new THREE.Scene();
+        // A failed old-scene disposal must not strand the newly built scene.
+        disposeAndClearScene(this.scene);
+        const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
+        this.scene.background = new THREE.Color(bgColor);
+        if (this.camera) this.scene.add(this.camera);
+        if (disegno) this.scene.add(disegno);
+        adopted = true;
+        this.render();
       } catch (error) {
-        if (disegno) disposeSceneResources(disegno);
+        operationFailed = true;
+        operationError = error;
         throw error;
+      } finally {
+        if (disegno && !adopted) {
+          try { disposeSceneResources(disegno); }
+          catch (cleanupError) {
+            if (operationFailed) {
+              throw new AggregateError([operationError, cleanupError], 'Failed to draw and discard chart scene.');
+            }
+            throw cleanupError;
+          }
+        }
       }
-      if (generation !== this.drawGeneration) {
-        if (disegno) disposeSceneResources(disegno);
-        return;
-      }
-      if (!this.scene) this.scene = new THREE.Scene();
-      disposeSceneResources(this.scene);
-      this.scene.clear();
-      const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
-      this.scene.background = new THREE.Color(bgColor);
-      if (this.camera) this.scene.add(this.camera);
-      if (disegno) this.scene.add(disegno);
-      this.render();
     });
   }
 
@@ -334,6 +356,8 @@ export class GraficoRenderService implements OnDestroy {
     });
 
     const scene = new THREE.Scene();
+    let exportFailed = false;
+    let exportError: unknown;
     try {
       OggettiSempliciRender.setDimensioniCanvas(dimensioni);
       offRenderer.setPixelRatio(scala);
@@ -359,10 +383,19 @@ export class GraficoRenderService implements OnDestroy {
       if (disegno) await waitForSceneTextures(disegno);
       offRenderer.render(scene, camera);
       return offRenderer.domElement.toDataURL('image/png');
+    } catch (error) {
+      exportFailed = true;
+      exportError = error;
+      throw error;
     } finally {
-      disposeSceneResources(scene);
-      scene.clear();
-      offRenderer.dispose();
+      const cleanupErrors: unknown[] = [];
+      try { disposeAndClearScene(scene); } catch (error) { cleanupErrors.push(error); }
+      try { offRenderer.dispose(); } catch (error) { cleanupErrors.push(error); }
+      if (cleanupErrors.length) {
+        const errors = exportFailed ? [exportError, ...cleanupErrors] : cleanupErrors;
+        if (errors.length === 1) throw errors[0];
+        throw new AggregateError(errors, 'Failed to export PNG or release offscreen renderer.');
+      }
     }
   }
 
