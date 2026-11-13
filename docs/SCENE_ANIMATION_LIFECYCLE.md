@@ -9,8 +9,9 @@ Scene-local GSAP timelines are registered through `registerSceneAnimation(object
 - `stopSceneAnimations(object)` is idempotent until another timeline is registered for that object.
 - The registry entry is removed **before** external `kill()` methods run. If a callback registers a replacement during cleanup, that new timeline stays registered for the next cleanup; a nested `stopSceneAnimations(object)` does not recursively kill the previous timelines.
 - Timelines registered against **different** objects remain independently owned. Callers should register a timeline against its actual owning object rather than intentionally sharing timelines between unrelated objects.
+- If a timeline's `kill()` throws, cleanup continues to attempt `kill()` on all remaining timelines registered for that object. One failure is rethrown unchanged; multiple failures are reported as an `AggregateError` in registration order. The stopped batch remains unregistered even when errors occur. A replacement registered from inside a failing `kill()` is retained for a later stop.
 
-This change does not alter rendered geometry, animation speed, renderer disposal of Three.js materials, or public chart inputs. `kill()` exceptions still propagate: this update does not attempt to recover from failing third-party GSAP hooks. The full WebGL memory/visual lifecycle gate remains open under [issue #5](https://github.com/Cesare-ml/astrological-charts/issues/5).
+This change does not alter rendered geometry, animation speed, renderer disposal of Three.js materials, or public chart inputs. Errors from `kill()` still propagate after all registered timelines have been attempted. This does **not** guarantee full Three.js geometry/material disposal if the renderer's caller aborts on an exception; such recovery is outside this focused change. The full WebGL memory/visual lifecycle gate remains open under [issue #5](https://github.com/Cesare-ml/astrological-charts/issues/5).
 
 ## Regression check
 
