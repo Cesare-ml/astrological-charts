@@ -34,10 +34,14 @@ const makeClass = new Function(
   }`) + '\nreturn GraficoRenderService;',
 );
 
-function fixture({create, wait, dispose, clear, render, rendererDispose, png} = {}) {
+function fixture({create, wait, dispose, clear, render, rendererDispose, png, sceneCreateError} = {}) {
   const events = [];
   const renderers = [];
+  let constructedScenes = 0;
   class Scene {
+    constructor() {
+      if (sceneCreateError && ++constructedScenes > 1) throw sceneCreateError;
+    }
     kind = 'scene';
     children = [];
     add(child) { events.push(`add:${child.kind}`); this.children.push(child); }
@@ -195,4 +199,18 @@ test('dispose-and-clear helper attempts clear even if resource disposal fails', 
     return true;
   });
   assert.deepEqual(f.events, ['dispose:scene', 'clear']);
+});
+
+test('PNG renderer is released when offscreen scene constructor throws', async () => {
+  const failure = new Error('scene constructor failed');
+  const f = fixture({sceneCreateError: failure});
+  const service = f.makeService();
+  await assert.rejects(
+    service.generaImmagineInterna(
+      {}, null, null, 'carta-astrale', f.options, {x: 20, y: 20}, 1,
+    ),
+    error => error === failure,
+  );
+  assert.deepEqual(f.events, ['renderer-dispose']);
+  assert.equal(f.renderers.length, 1);
 });
