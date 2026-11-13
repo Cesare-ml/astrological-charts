@@ -23,7 +23,7 @@
     "test:extraction": "node --test tests/extraction-imports.test.mjs",
     "test:asset-urls": "node --test tests/chart-asset-urls.test.mjs",
     "test:asset-manifest": "node --test tests/asset-manifest.test.mjs",
-    "test:assets": "npm run test:asset-urls && npm run test:asset-manifest && npm run test:asset-selection && npm run test:local-assets && npm run test:astro-preview && npm run test:astro-overlay && npm run test:astro-preview-scope && npm run test:astro-render-guard && npm run test:astro-url-integration && npm run test:astro-png && npm run test:astro-geometry-race && npm run test:astro-http-routing",
+    "test:assets": "npm run test:asset-urls && npm run test:asset-manifest && npm run test:asset-selection && npm run test:local-assets && npm run test:astro-preview && npm run test:astro-overlay && npm run test:astro-preview-scope && npm run test:astro-render-guard && npm run test:astro-url-integration && npm run test:astro-png && npm run test:astro-geometry-race && npm run test:astro-http-routing && npm run test:astro-http",
     "test:asset-selection": "node --test tests/derive-chart-asset-selection.test.mjs",
     "derive:asset-selection": "node scripts/derive-chart-asset-selection.mjs",
     "dev:assets": "node scripts/serve-local-assets.mjs",
