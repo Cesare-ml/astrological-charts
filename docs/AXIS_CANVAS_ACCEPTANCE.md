@@ -95,3 +95,33 @@ or VirgoStars/Astrolabio compatibility. Complete the full
 `npm run verify:angular` and browser/asset/license checks before merging
 PR #22 into `main`. No GitHub Actions, production deploy, license changes,
 or redistribution of original assets are part of this gate.
+
+## Real pointer hit-testing
+
+A second, deliberately opt-in browser test now exercises the *actual* AS,
+DS, MC and IC glyphs with mouse events on the WebGL canvas:
+
+```bash
+npm run test:demo-axis-pointer
+```
+
+This command uses the same running Angular development demo, synthetic assets
+and optional `CHART_TEST_BROWSER` / browser-path variables as
+`test:demo-axis-pixels`. It inspects the live Three.js chart via Angular's
+**development-only** debug API, finds each natal axis mesh by its
+`userData.chartPlanet` identity, projects its world position through the
+actual camera and moves/clicks the browser mouse at that point.
+
+The test verifies real `data-testid=planet-hover`, latched selection and
+`click natal:AS/DS/MC/IC` events; clearing hover must not clear the
+user-selected axis, and explicitly clearing selection must work. Scene UUID,
+camera UUID, zoom, position, quaternion, projection, WebGL drawing buffer,
+canvas dimensions and render revision must not change during these actions.
+If the camera, mesh, projected position or live WebGL context is unavailable,
+the test fails instead of substituting a simulated pointer location.
+
+This is an **additional** acceptance gate, not an assertion that hover and
+click already work in Chromium and Firefox. The test is not part of
+`preflight` because it requires live local servers and an installed
+browser. Run both browser commands separately and collect real results
+before requesting merge of the parent draft PR #22 to `main`.
