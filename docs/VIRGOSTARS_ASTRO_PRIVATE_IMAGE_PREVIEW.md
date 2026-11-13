@@ -82,6 +82,10 @@ The new glyph masks have a square 512x512 canvas. The renderer uses a **square m
 
 **Asynchronous preview safety:** A preview switch may change while Three.js is still fetching a texture. `OggettiSempliciRender.getImg` now snapshots the image-format decision **before** awaiting the material/texture load. The geometry therefore remains consistent with the URL selected at the beginning of that request; it cannot suddenly become square for a pending legacy image (or stretched for a pending private mask). `tests/astro-preview-geometry-race.test.mjs` exercises the actual renderer method with deferred texture promises for both toggle directions and for a non-opted-in drawing slot. The corresponding source-level asynchronous harness was **executed directly against the committed method, 3/3 PASS**. The full Node unit file and Angular browser runs have **not** yet been executed in an installed repository checkout.
 
+**Missing-mask recovery in the development demo:** if an authorized preview is requested but a VirgoStars Astro mask URL fails to load, the demo now **automatically unchecks the preview**, disables the private substitution and redraws the original chart. It displays the visible message `VirgoStars Astro masks were unavailable; the original symbols have been restored.` (not a silent fallback). The same behavior applies to an initial `?astroGlyphs=1` visit, toggling the checkbox, switching chart modes/skins or changing the asset base. The recovery is intentionally **restricted to errors containing `virgostars-astro/masks/`**: unrelated asset failures are never hidden. If the legacy redraw also fails, its actual error remains visible rather than falsely claiming a successful recovery. A newer draw request suppresses a stale recovery attempt.
+
+`npm run test:astro-preview-recovery` executes the actual TypeScript demo recovery method with a fake renderer, covering five outcomes and the UI wiring. The method itself was **executed in an isolated harness against the current GitHub source: 5/5 scenarios PASS**; the complete Node test file and real browser path are not yet reported as executed. The optional Playwright test now contains a second, separate case that intentionally aborts one mask at startup and checks that the original chart returns with preview OFF and a visible notice.
+
 The preview toggle is **global/static** because `GestoreImmagini` is already static; it should not be mutated during an active render. Future per-renderer configuration must avoid the broader global-state concurrency limitation.
 
 ## Local verification — HTTP verified, Angular/browser pending
@@ -93,6 +97,7 @@ npm run test:astro-preview-scope
 npm run test:astro-png
 npm run test:astro-http-routing
 npm run test:astro-http
+npm run test:astro-preview-recovery
 npm run test:astro-geometry-race
 npm run test:astro-url-integration
 npm run test:astro-render-guard
