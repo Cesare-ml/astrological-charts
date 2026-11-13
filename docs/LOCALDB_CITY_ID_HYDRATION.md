@@ -66,3 +66,37 @@ No personal chart/location records, external assets, fonts, database
 access, migrations, build workflows, GitHub Actions, npm publication
 or production deployment are included. Review whether the `-1`
 sentinel matches every downstream persisted-ID consumer before merge.
+
+## TemaLocalDB consumer regression (added 2026-11-14)
+
+The new standalone `tests/localdb-theme-hydration.test.mjs` also
+transpiles and executes the **real** `TemaLocalDB` and
+`PosizioneLocalDB` constructors and `TemaLocalDB.getDataoraUtc()`
+method. The test injects a tightly scoped `moment-timezone` spy,
+allowing it to verify the supplied local date/time, active IANA
+timezone, `.utc().format('YYYY-MM-DD HH:mm:ss')` call sequence and
+absence of **any serialized theme mutation**, without needing an
+Angular application or a browser.
+
+It covers nested `_ObjId` preservation, both city/manual location
+sources, switching the active source, and restoring a full synthetic
+theme through JSON. It intentionally **does not** validate real
+UTC arithmetic, daylight saving transitions, timezone database
+accuracy, or real Astrolabio persistence.
+
+```sh
+node --test tests/localdb-city-id.test.mjs tests/localdb-theme-hydration.test.mjs
+```
+
+The new test was executed with **Node 22.16.0 and TypeScript 5.8.3**
+against exact GitHub file contents: `TemaLocalDB`
+`f9490b5f2c20da6bf8fb16f7cdcf2a18fd46495e`,
+`PosizioneLocalDB` `4c59d55f38a1399e34c6d96bd6294dee29f802fd`,
+and test `1c4dddd27d5c14f586b59c48a2925b71e6ad12b4`.
+Result: **4/4 PASS, exit 0**. Replacing the position model with
+the unmodified parent PR #70 version
+`7ac8bae02a324eb19a135d3f7086e02d66693bc5`
+gave **0/4 PASS, exit 1** on the same test, confirming the identity
+regression is detected. This remains isolated-source validation,
+not a full project build or actual Moment integration test.
+
