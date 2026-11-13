@@ -165,3 +165,7 @@ The local approved-asset server rejects an `OPTIONS` preflight requesting a meth
 ### HEAD response parity regression
 
 The synthetic HTTP suite also checks that an approved asset's `HEAD` response has the same `Content-Type` and `Content-Length` as `GET`, echoes an authorized local CORS origin, sends `Cache-Control: no-store`, and returns no image bytes. This guards metadata-only consumers without duplicating any artwork. Run `node --test tests/serve-local-assets.test.mjs` on a full checkout; adding the regression does **not** establish that it has passed until executed.
+
+## Asset preview attribution
+
+The local approved-asset gallery displays a visible [VirgoStars](https://virgostars.it/) credit. This gallery is a file-integrity preview only, not a rendered Three.js chart. The link is external; no remote images or scripts are loaded.
