@@ -355,10 +355,11 @@ export class GraficoRenderService implements OnDestroy {
       alpha: true,
     });
 
-    const scene = new THREE.Scene();
+    let scene: THREE.Scene | null = null;
     let exportFailed = false;
     let exportError: unknown;
     try {
+      scene = new THREE.Scene();
       OggettiSempliciRender.setDimensioniCanvas(dimensioni);
       offRenderer.setPixelRatio(scala);
       offRenderer.setSize(dimensioni.x, dimensioni.y, false);
@@ -389,7 +390,9 @@ export class GraficoRenderService implements OnDestroy {
       throw error;
     } finally {
       const cleanupErrors: unknown[] = [];
-      try { disposeAndClearScene(scene); } catch (error) { cleanupErrors.push(error); }
+      if (scene) {
+        try { disposeAndClearScene(scene); } catch (error) { cleanupErrors.push(error); }
+      }
       try { offRenderer.dispose(); } catch (error) { cleanupErrors.push(error); }
       if (cleanupErrors.length) {
         const errors = exportFailed ? [exportError, ...cleanupErrors] : cleanupErrors;
