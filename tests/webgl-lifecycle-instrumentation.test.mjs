@@ -124,3 +124,61 @@ test('WebGL2 override delegating to super does not double-count texture calls', 
     {created: 1, deleted: 1},
   );
 });
+
+test('tracks unique created handles and ignores duplicate delete without underflow', () => {
+  const {WebGL1, stats} = instrumentation();
+  const gl = new WebGL1();
+  const first = gl.createTexture();
+  const second = gl.createTexture();
+  assert.equal(stats.trackedLive, 2);
+  gl.deleteTexture(first);
+  gl.deleteTexture(first);
+  gl.deleteTexture(null);
+  assert.equal(stats.trackedLive, 1);
+  assert.equal(stats.deleted, 2);
+  assert.equal(stats.repeatedDeletes, 1);
+  gl.deleteTexture(second);
+  assert.equal(stats.trackedLive, 0);
+  assert.equal(stats.untrackedDeletes, 0);
+});
+
+test('unknown delete and null create do not corrupt live texture balance', () => {
+  class WebGL1 {
+    createTexture() { return null; }
+    deleteTexture() {}
+  }
+  const sandbox = {
+    WebGLRenderingContext: WebGL1,
+    document: {addEventListener() {}},
+  };
+  runInNewContext('(' + callbacks[0] + ')', sandbox)();
+  const gl = new WebGL1();
+  assert.equal(gl.createTexture(), null);
+  gl.deleteTexture({untracked: true});
+  assert.equal(sandbox.__webglLife.created, 0);
+  assert.equal(sandbox.__webglLife.deleted, 1);
+  assert.equal(sandbox.__webglLife.trackedLive, 0);
+  assert.equal(sandbox.__webglLife.untrackedDeletes, 1);
+});
+
+test('failed texture deletion keeps handle tracked until a successful retry', () => {
+  class WebGL1 {
+    createTexture() { return {}; }
+    deleteTexture() { if (this.fail) throw new Error('driver failed'); }
+  }
+  const sandbox = {
+    WebGLRenderingContext: WebGL1,
+    document: {addEventListener() {}},
+  };
+  runInNewContext('(' + callbacks[0] + ')', sandbox)();
+  const gl = new WebGL1();
+  const handle = gl.createTexture();
+  gl.fail = true;
+  assert.throws(() => gl.deleteTexture(handle), /driver failed/);
+  assert.equal(sandbox.__webglLife.trackedLive, 1);
+  assert.equal(sandbox.__webglLife.deleted, 0);
+  gl.fail = false;
+  gl.deleteTexture(handle);
+  assert.equal(sandbox.__webglLife.trackedLive, 0);
+  assert.equal(sandbox.__webglLife.deleted, 1);
+});
