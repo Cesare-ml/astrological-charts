@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { existsSync } from 'node:fs';
 import { chromium, firefox } from 'playwright-core';
+import { inspectSyntheticChartPng } from '../scripts/inspect-synthetic-chart-png.mjs';
 
 // Explicitly opt-in: real dev-mode Angular + manifest-verified local assets + WebGL.
 function integerEnv(name, fallback, low, high) {
@@ -112,6 +113,7 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
     const afterRedraw = await page.evaluate(memorySnapshot);
     const modes = ['natal', 'transits', 'synastry', 'latitude'];
     const exportSamples = [];
+    const exportVisualSamples = [];
     // This measures API call balance across all WebGL contexts, including PNG's
     // temporary renderer. Three.js memory counters on the active scene miss it.
     const exportCallBaseline = await page.evaluate(() => ({...globalThis.__webglLife}));
@@ -119,7 +121,7 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
     let peakExportHandleGrowth = 0;
     for (let i = 0; i < exportsCount; i++) {
       const mode = modes[i % modes.length];
-      const result = await page.evaluate(async target => {
+      const result = await page.evaluate(async ({target, samplePixels}) => {
         const c = globalThis.ng.getComponent(document.querySelector('chart-demo'));
         const before = {...c.renderer.renderer.info.memory};
         const beforeCalls = {...globalThis.__webglLife};
@@ -139,6 +141,7 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
         const after = c.renderer.renderer.info.memory;
         const afterCalls = {...globalThis.__webglLife};
         return {width: view.getUint32(16), height: view.getUint32(20), length: png.length,
+          samplePng: samplePixels ? png : null,
           webglCreatedDelta: afterCalls.created - beforeCalls.created,
           webglDeletedDelta: afterCalls.deleted - beforeCalls.deleted,
           outstandingHandles: afterCalls.created - afterCalls.deleted,
@@ -147,7 +150,14 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
           sameRenderer: c.renderer.renderer === globalThis.__webglLifeMain.renderer,
           sameScene: c.renderer.scene === globalThis.__webglLifeMain.scene,
           sameCamera: c.renderer.camera === globalThis.__webglLifeMain.camera};
-      }, mode);
+      }, {target: mode, samplePixels: i < modes.length});
+      // Decode the first export of each chart mode with sharp. PNG dimensions
+      // and base64 length alone can accept a completely blank output.
+      if (result.samplePng) {
+        const visible = await inspectSyntheticChartPng(result.samplePng, {width: 1600, height: 1600});
+        exportVisualSamples.push({mode, ...visible});
+      }
+      delete result.samplePng;
       assert.equal(result.width, 1600, mode + ' PNG width');
       assert.equal(result.height, 1600, mode + ' PNG height');
       assert.ok(result.length > 1000, mode + ' PNG is blank or truncated');
@@ -209,8 +219,8 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
       redraws, exports: exportsCount, modes, baseline, afterRedraw, final,
       textureGrowth, geometryGrowth, textureLimit, geometryLimit,
       exportHandleLimit, exportCallBaseline, baselineHandleBalance, peakExportHandleGrowth,
-      redrawSamples, exportSamples, twoCanvases,
-      limitations: 'Three.js memory counters are not physical GPU memory. Texture create/delete call balance includes temporary offscreen contexts but is NOT actual retained handles, GPU bytes, or leak proof. Synthetic headless rendering does not prove artwork parity, production, or Astrolabio.'}, null, 2));
+      redrawSamples, exportSamples, exportVisualSamples, twoCanvases,
+      limitations: 'Pixel-color checks prove only visible non-uniform synthetic output, not chart/astrology correctness. Three.js memory counters are not physical GPU memory. Texture create/delete call balance includes temporary offscreen contexts but is NOT actual retained handles, GPU bytes, or leak proof. Synthetic headless rendering does not prove artwork parity, production, or Astrolabio.'}, null, 2));
   } finally {
     await page?.close();
     await browser.close();
