@@ -33,11 +33,3 @@ The library does not independently calculate the full astronomical ephemeris or 
 ## Source of truth
 
 The new repository is a collaboration workspace only until a versioned integration is approved. The live site and sold Astrolabio devices continue to depend on the original `virgo-stars` code. Never silently switch imports, publish npm releases, or ship hardware updates.
-
-## Aspect stroke subdivision safety (proposed)
-
-`OggettiSempliciRender.getLineaGrossaTratteggiata` and `getLineaGrossaPuntoLinea` construct line geometries synchronously. A zero or non-finite `passo` previously allowed an unbounded loop (and could stall a browser). The renderer now rejects non-positive/non-finite step values and non-finite distances, and limits requested stroke primitives to **20,000 per call**. This is a safety bound, not a visual quality setting.
-
-Existing non-negative integer line/point counts and non-negative finite spacing remain supported. An empty line/point pattern produces an empty group. A dot-only pattern (`nLinee: 0, nPunti: 2, rateoLineaSpazio: 1`) no longer divides by zero. For normal configured aspect patterns (quinconce, quintiles, semiquadrate, parallels), subdivision and line positions should remain unchanged; rendering parity still requires browser comparison.
-
-Focused source-method tests: `node --test tests/line-stroke-safety.test.mjs` (requires installed `typescript`). These use a minimal Three.js test double, not a WebGL renderer or approved artwork. Before integration, run the complete Angular verification and Chromium/Firefox natal/transit/synastry/latitude tests with approved fixtures. This does not modify live VirgoStars or Astrolabio.
