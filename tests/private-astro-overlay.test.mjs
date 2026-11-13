@@ -174,8 +174,21 @@ test('local server serves only verified private overlay and approved base pack',
         headers:{Origin:'https://not-local.example'},
       });
       assert.equal(forbidden.status,403);
-      writeFileSync(join(root,'img/virgostars-astro/masks/aries.png'),Buffer.from('bad'));
-      assert.equal((await fetch(url+'/assets/img/virgostars-astro/masks/aries.png')).status,409);
+      const approvedMaskPath='img/virgostars-astro/masks/aries.png';
+      const approvedUrl=url+'/assets/'+approvedMaskPath;
+      const approvedFile=join(root,...approvedMaskPath.split('/'));
+      writeFileSync(approvedFile,Buffer.from('bad'));
+      assert.equal((await fetch(approvedUrl)).status,409,
+        'An altered approved mask must be a conflict');
+      // Post-start deletion must not turn a manifest-listed private asset into
+      // a misleading 404 (which is reserved for never-approved paths).
+      rmSync(approvedFile);
+      assert.equal((await fetch(approvedUrl)).status,409,
+        'A missing formerly approved private mask must be a conflict');
+      assert.equal((await fetch(approvedUrl,{method:'HEAD'})).status,409,
+        'HEAD must report the same integrity status as GET');
+      assert.equal((await fetch(url+'/assets/img/virgostars-astro/masks/unapproved.png')).status,404,
+        'Never-approved masks must still be 404');
     } finally {
       await new Promise(resolve=>server.close(resolve));
     }
