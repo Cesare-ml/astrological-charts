@@ -167,3 +167,69 @@ test('ngOnDestroy resets state even if resize unsubscribe and scene clear throw'
   assert.equal(instance.scene, null);
   assert.equal(instance.renderer, null);
 });
+
+test('animation-frame cancellation error does not skip scene and renderer teardown', () => {
+  const events = [];
+  const failure = new Error('cancel failed');
+  const Harness = destroyFactory(() => events.push('resources'), () => {
+    events.push('cancel');
+    throw failure;
+  });
+  const instance = Object.assign(new Harness(), {
+    drawGeneration: 1, frameId: 7,
+    resizeSub: {unsubscribe() {events.push('unsubscribe');}},
+    scene: {clear() {events.push('clear');}},
+    renderer: {dispose() {events.push('renderer');}},
+    camera: {}, isInizializzato: true,
+  });
+  assert.throws(() => instance.ngOnDestroy(), error => error === failure);
+  assert.deepEqual(events, ['cancel', 'unsubscribe', 'resources', 'clear', 'renderer']);
+  assert.equal(instance.frameId, null);
+  assert.equal(instance.resizeSub, null);
+  assert.equal(instance.renderer, null);
+  assert.equal(instance.scene, null);
+  assert.equal(instance.camera, null);
+  assert.equal(instance.isInizializzato, false);
+});
+
+test('repeated ngOnDestroy does not cancel the same frame or unsubscribe twice', () => {
+  const events = [];
+  const Harness = destroyFactory(() => events.push('resources'), () => events.push('cancel'));
+  const instance = Object.assign(new Harness(), {
+    drawGeneration: 0, frameId: 11,
+    resizeSub: {unsubscribe() {events.push('unsubscribe');}},
+    scene: {clear() {events.push('clear');}},
+    renderer: {dispose() {events.push('renderer');}},
+    camera: {}, isInizializzato: true,
+  });
+  instance.ngOnDestroy();
+  instance.ngOnDestroy();
+  assert.deepEqual(events, ['cancel', 'unsubscribe', 'resources', 'clear', 'renderer']);
+  assert.equal(instance.frameId, null);
+  assert.equal(instance.resizeSub, null);
+  assert.equal(instance.isInizializzato, false);
+});
+
+test('cancel, cleanup, and renderer failures are all reported in order', () => {
+  const events = [];
+  const cancelError = new Error('cancel');
+  const cleanupError = new Error('cleanup');
+  const rendererError = new Error('renderer');
+  const Harness = destroyFactory(() => {events.push('resources'); throw cleanupError;}, () => {
+    events.push('cancel'); throw cancelError;
+  });
+  const instance = Object.assign(new Harness(), {
+    drawGeneration: 0, frameId: 1,
+    scene: {clear() {events.push('clear');}},
+    renderer: {dispose() {events.push('renderer'); throw rendererError;}},
+    isInizializzato: true,
+  });
+  assert.throws(() => instance.ngOnDestroy(), error => {
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, [cancelError, cleanupError, rendererError]);
+    return true;
+  });
+  assert.deepEqual(events, ['cancel', 'resources', 'clear', 'renderer']);
+  assert.equal(instance.frameId, null);
+  assert.equal(instance.renderer, null);
+});
