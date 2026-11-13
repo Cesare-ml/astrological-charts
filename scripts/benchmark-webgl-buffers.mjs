@@ -62,7 +62,7 @@ try {
         const status = document.querySelector('[data-testid=status]')?.textContent || '';
         return /Rendered|Rendering failed/.test(status)
           && !document.querySelector('#skin')?.disabled;
-      }, {timeout: 30000});
+      }, undefined, {timeout: 30000});
       assert.match(await page.locator('[data-testid=status]').textContent(),
         /Rendered/, 'chart rendering failed');
     };
@@ -97,7 +97,7 @@ try {
       assert.match(download.suggestedFilename(), /\.png$/i);
       await page.waitForFunction(() =>
         (document.querySelector('[data-testid=status]')?.textContent || '')
-          .includes('PNG exported.'), {timeout: 30000});
+          .includes('PNG exported.'), undefined, {timeout: 30000});
       checkpoints.push({phase: 'export', index: i, ...(await snapshot())});
     }
 
