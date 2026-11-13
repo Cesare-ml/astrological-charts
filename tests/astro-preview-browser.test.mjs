@@ -151,3 +151,46 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
       await browser.close();
     }
   });
+
+test('recovers to original glyphs when a private mask is unavailable at startup',
+  { timeout: 90000 }, async () => {
+    assert.equal(process.env.CHART_ASTRO_TEST_PRIVATE_ASSETS, '1',
+      'Real authorized local masks are required for this optional browser test');
+    const executable = [
+      process.env.CHROME_PATH, '/usr/bin/chromium', '/usr/bin/chromium-browser',
+      'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    ].filter(Boolean).find(existsSync);
+    assert.ok(executable, 'Install Chrome/Chromium or set CHROME_PATH');
+
+    const browser = await chromium.launch({
+      executablePath: executable, headless: true,
+      args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    });
+    const page = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
+    try {
+      // Force exactly one private glyph to fail, leaving all legacy chart
+      // assets and the other approved private masks accessible.
+      await page.route('**/assets/img/virgostars-astro/masks/aries.png',
+        async route => route.abort('failed'));
+      await page.goto('http://127.0.0.1:4200/?astroGlyphs=1',
+        { waitUntil: 'domcontentloaded' });
+
+      await page.waitForFunction(() => {
+        const status = document.querySelector('[data-testid=status]');
+        const completed = Number(status?.getAttribute('data-render-revision') ?? 0);
+        return completed > 0 &&
+          /original symbols have been restored/.test(status?.textContent ?? '');
+      }, undefined, { timeout: 60000 });
+
+      assert.equal(await page.locator('#astro-preview').isChecked(), false,
+        'The unavailable private mask must force preview OFF');
+      assert.match(await page.locator('[data-testid=status]').textContent(),
+        /VirgoStars Astro masks were unavailable/);
+      const screenshot = await page.locator('canvas[data-testid=chart]').screenshot();
+      const stats = await sharp(screenshot).stats();
+      assert.ok(stats.channels.some(channel => channel.stdev > 5),
+        'Restored legacy chart must not be empty');
+    } finally {
+      await browser.close();
+    }
+  });
