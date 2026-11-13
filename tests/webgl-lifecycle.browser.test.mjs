@@ -51,7 +51,10 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
   try {
     page = await browser.newPage({viewport: {width: 1200, height: 1000}});
     await page.addInitScript(() => {
-      const stats = {created: 0, deleted: 0, contextLost: 0};
+      const stats = {created: 0, deleted: 0, contextLost: 0, trackedLive: 0,
+        repeatedDeletes: 0, untrackedDeletes: 0};
+      // Weak keys prevent the benchmark from retaining texture handles for QA.
+      const liveTextures = new WeakMap();
       globalThis.__webglLife = stats;
       document.addEventListener('webglcontextlost', () => stats.contextLost++, true);
       const wrapped = new WeakMap();
@@ -77,8 +80,24 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
             const outermost = active[field]++ === 0;
             try {
               const result = original.apply(this, args);
-              if (outermost && ((field === 'created' && result) ||
-                  (field === 'deleted' && args[0]))) stats[field]++;
+              if (outermost && field === 'created' && result) {
+                stats.created++;
+                if (!liveTextures.has(result)) {
+                  liveTextures.set(result, true);
+                  stats.trackedLive++;
+                }
+              } else if (outermost && field === 'deleted' && args[0]) {
+                stats.deleted++;
+                const texture = args[0];
+                if (liveTextures.get(texture) === true) {
+                  liveTextures.set(texture, false);
+                  stats.trackedLive--;
+                } else if (liveTextures.has(texture)) {
+                  stats.repeatedDeletes++;
+                } else {
+                  stats.untrackedDeletes++;
+                }
+              }
               return result;
             } finally { active[field]--; }
           }});
@@ -136,6 +155,7 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
     const exportCallBaseline = await page.evaluate(() => ({...globalThis.__webglLife}));
     const baselineHandleBalance = exportCallBaseline.created - exportCallBaseline.deleted;
     let peakExportHandleGrowth = 0;
+    let peakTrackedLiveGrowth = 0;
     for (let i = 0; i < exportsCount; i++) {
       const mode = modes[i % modes.length];
       const result = await page.evaluate(async ({target, samplePixels}) => {
@@ -162,6 +182,8 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
           webglCreatedDelta: afterCalls.created - beforeCalls.created,
           webglDeletedDelta: afterCalls.deleted - beforeCalls.deleted,
           outstandingHandles: afterCalls.created - afterCalls.deleted,
+          trackedLiveBefore: beforeCalls.trackedLive,
+          trackedLiveAfter: afterCalls.trackedLive,
           beforeTextures: before.textures, afterTextures: after.textures,
           beforeGeometries: before.geometries, afterGeometries: after.geometries,
           sameRenderer: c.renderer.renderer === globalThis.__webglLifeMain.renderer,
@@ -189,6 +211,11 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
       assert.ok(Number.isSafeInteger(result.outstandingHandles), mode + ' invalid WebGL call balance');
       const exportHandleGrowth = result.outstandingHandles - baselineHandleBalance;
       peakExportHandleGrowth = Math.max(peakExportHandleGrowth, exportHandleGrowth);
+      // Unlike create-minus-delete calls, trackedLive ignores duplicate deletes
+      // and unknown handles; it remains API-derived, not a GPU memory metric.
+      const trackedLiveGrowth = result.trackedLiveAfter - exportCallBaseline.trackedLive;
+      peakTrackedLiveGrowth = Math.max(peakTrackedLiveGrowth, trackedLiveGrowth);
+      assert.ok(result.trackedLiveAfter >= 0, mode + ' invalid tracked-live count');
       if (exportHandleLimit !== null)
         assert.ok(exportHandleGrowth <= exportHandleLimit,
           mode + ' export WebGL call-balance growth ' + exportHandleGrowth +
@@ -236,8 +263,9 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
       redraws, exports: exportsCount, modes, baseline, afterRedraw, final,
       textureGrowth, geometryGrowth, textureLimit, geometryLimit,
       exportHandleLimit, exportCallBaseline, baselineHandleBalance, peakExportHandleGrowth,
+      peakTrackedLiveGrowth,
       redrawSamples, exportSamples, exportVisualSamples, twoCanvases,
-      limitations: 'Pixel-color checks prove only visible non-uniform synthetic output, not chart/astrology correctness. Three.js memory counters are not physical GPU memory. Texture create/delete call balance includes temporary offscreen contexts but is NOT actual retained handles, GPU bytes, or leak proof. Synthetic headless rendering does not prove artwork parity, production, or Astrolabio.'}, null, 2));
+      limitations: 'Pixel-color checks prove only visible non-uniform synthetic output, not chart/astrology correctness. Three.js memory counters are not physical GPU memory. WeakMap-tracked texture handles are API-level observations only: context loss and browser internals are not accounted for. Texture create/delete call balance includes temporary offscreen contexts but is NOT GPU bytes or leak proof. Synthetic headless rendering does not prove artwork parity, production, or Astrolabio.'}, null, 2));
   } finally {
     await page?.close();
     await browser.close();
