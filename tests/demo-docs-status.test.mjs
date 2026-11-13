@@ -128,3 +128,14 @@ test('extraction status keeps asset visibility separate from redistribution and 
   assert.match(status, /do not authorize artwork redistribution/i);
   assert.doesNotMatch(status, /private original images|owner authorized private sharing/i);
 });
+
+
+test('local asset preview documents public checkout without granting artwork rights', () => {
+  const guide = readFileSync(new URL('../docs/LOCAL_ASSET_PREVIEW.md', import.meta.url), 'utf8');
+  assert.match(guide, /repository pubblicamente leggibile/i);
+  assert.match(guide, /npm run verify:pack/);
+  assert.match(guide, /SHA-256/);
+  assert.match(guide, /font originale.*escluso/i);
+  assert.match(guide, /non autorizza automaticamente la redistribuzione/i);
+  assert.doesNotMatch(guide, /repository privato `astrological-assets`|secondo repository privato/i);
+});
