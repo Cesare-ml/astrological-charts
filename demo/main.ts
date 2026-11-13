@@ -58,6 +58,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   renderRevision = 0;
   /** Prevent an obsolete asynchronous draw from claiming the latest frame. */
   private drawRequest = 0;
+  /** Independently invalidate obsolete offscreen PNG exports. */
+  private exportRequest = 0;
   /** Prevent asynchronous callbacks from reviving a destroyed chart. */
   private destroyed = false;
   error = '';
@@ -82,6 +84,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     if (this.destroyed) return;
     this.destroyed = true;
     ++this.drawRequest;
+    ++this.exportRequest;
     // The preview switch is currently global. Do not leak opt-in to a later chart.
     GestoreImmagini.configureVirgoStarsAstroPreview(false);
     this.renderer.ngOnDestroy();
@@ -110,6 +113,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   async draw(): Promise<void> {
     if (this.destroyed) return;
     const request = ++this.drawRequest;
+    // An export of the previous chart must not download after a new draw.
+    ++this.exportRequest;
     this.busy = true; this.error = ''; this.previewNotice = '';
     this.status = 'Rendering…'; this.changes.markForCheck();
     try {
@@ -155,16 +160,31 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     this.changes.markForCheck();
   }
   async exportPng(): Promise<void> {
-    if (this.destroyed) return;
+    // The UI disables export while drawing; enforce the same rule even if
+    // this method is called twice from code or a rapid user interaction.
+    if (this.destroyed || this.busy) return;
+    const request = ++this.exportRequest;
+    const drawRequest = this.drawRequest;
+    const mode = this.mode;
+    const skin = this.skin;
+    const options = this.options();
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
     try {
-      const png = await this.renderer.generaImmagine(this.radix, this.mode === 'transits' ? this.transit : null,
-        this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options(), {x: 800, y: 800}, 2);
-      if (this.destroyed) return;
-      const link = document.createElement('a'); link.href = png; link.download = `chart-${this.mode}-${this.skin}.png`; link.click();
+      const png = await this.renderer.generaImmagine(this.radix, mode === 'transits' ? this.transit : null,
+        mode === 'synastry' ? this.synastry : null, mode === 'latitude' ? 'latitudini' : 'carta-astrale', options, {x: 800, y: 800}, 2);
+      // An older export must never download a chart or overwrite the status
+      // after a new render starts, even if the offscreen renderer returns.
+      if (this.destroyed || request !== this.exportRequest || drawRequest !== this.drawRequest) return;
+      const link = document.createElement('a'); link.href = png; link.download = `chart-${mode}-${skin}.png`; link.click();
       this.status = 'PNG exported.';
-    } catch (error) { if (!this.destroyed) this.showError(error); }
-    finally { if (!this.destroyed) { this.busy = false; this.changes.markForCheck(); } }
+    } catch (error) {
+      if (!this.destroyed && request === this.exportRequest && drawRequest === this.drawRequest) this.showError(error);
+    } finally {
+      if (!this.destroyed && request === this.exportRequest && drawRequest === this.drawRequest) {
+        this.busy = false;
+        this.changes.markForCheck();
+      }
+    }
   }
   private showError(error: unknown): void {
     if (this.destroyed) return;
