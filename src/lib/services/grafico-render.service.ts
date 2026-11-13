@@ -44,8 +44,12 @@ function disposeSceneResources(root: THREE.Object3D): void {
         if (!material) continue;
         materials.add(material);
         try {
-          for (const value of Object.values(material)) {
-            if (value instanceof THREE.Texture) textures.add(value);
+          for (const key of Object.keys(material)) {
+            // A broken getter must not hide other textures on this material.
+            try {
+              const value = material[key];
+              if (value instanceof THREE.Texture) textures.add(value);
+            } catch (error) { errors.push(error); }
           }
         } catch (error) { errors.push(error); }
       }
