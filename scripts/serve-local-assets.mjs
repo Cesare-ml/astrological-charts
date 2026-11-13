@@ -41,6 +41,13 @@ export function resolveAssetRequest(root,requestPath) {
   return {path:parts.join('/'),file:current,type:MIME[extension]};
 }
 
+function safeResolveAssetRequest(root, pathname) {
+  // The approved checkout may disappear while the local server is running.
+  // A filesystem race must fail closed instead of crashing the HTTP process.
+  try { return resolveAssetRequest(root, pathname); }
+  catch { return null; }
+}
+
 function previewHtml(pack) {
   const items=[...pack.paths].slice(0,150).map(([path,meta])=>{
     const src='/assets/'+path.split('/').map(encodeURIComponent).join('/');
@@ -96,7 +103,7 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
       let pathname;
       try{pathname=new URL(req.url,'http://127.0.0.1').pathname;}
       catch{res.writeHead(400);res.end();return;}
-      const requested=resolveAssetRequest(absolute,pathname);
+      const requested=safeResolveAssetRequest(absolute,pathname);
       if(!requested||!pack.paths.has(requested.path)){
         res.writeHead(404);res.end();return;
       }
@@ -121,7 +128,7 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
         'Content-Length':Buffer.byteLength(html)});
       res.end(req.method==='HEAD'?'':html);return;
     }
-    const requested=resolveAssetRequest(absolute,pathname);
+    const requested=safeResolveAssetRequest(absolute,pathname);
     if(!requested||!pack.paths.has(requested.path)){
       res.writeHead(404);res.end('Not in approved manifest');return;
     }
