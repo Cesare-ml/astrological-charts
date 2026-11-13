@@ -133,6 +133,29 @@ test('preflight rejects unsupported requested methods without exposing assets',a
   });
 });
 
+test('preflight responses remain origin-specific and non-cacheable',async()=>{
+  await withAssetServer(async({url,file})=>{
+    const path='/assets/'+file;
+    for(const origin of ['http://localhost:4200','http://127.0.0.1:4200']){
+      const response=await fetch(url+path,{
+        method:'OPTIONS',
+        headers:{Origin:origin,'Access-Control-Request-Method':'GET'}
+      });
+      assert.equal(response.status,204);
+      assert.equal(response.headers.get('access-control-allow-origin'),origin);
+      assert.match(response.headers.get('vary')??'',/(^|,\\s*)Origin(,|$)/i);
+      assert.equal(response.headers.get('cache-control'),'no-store');
+      assert.equal((await response.arrayBuffer()).byteLength,0);
+    }
+    const denied=await fetch(url+path,{
+      method:'OPTIONS',headers:{Origin:'https://outside.example','Access-Control-Request-Method':'GET'}
+    });
+    assert.equal(denied.status,403);
+    assert.equal(denied.headers.get('access-control-allow-origin'),null);
+    assert.equal(denied.headers.get('cache-control'),'no-store');
+  });
+});
+
 test('requires an approved manifest with valid SHA-256 and safe local origins',async()=>{
   const dir=mkdtempSync(join(tmpdir(),'chart-verified-'));
   try {
