@@ -86,6 +86,7 @@ The preview toggle is **global/static** because `GestoreImmagini` is already sta
 npm ci
 npm run test:astro-preview
 npm run test:astro-preview-scope
+npm run test:astro-url-integration
 npm run test:astro-render-guard
 npm run test:astro-overlay
 npm run check:types
@@ -116,6 +117,10 @@ npm run test:astro-preview-browser
 This uses local Chromium/Chrome, verifies **preview OFF by default**, observes all 12 zodiac mask requests plus at least one planet, checks light/dark and natal/transit/synastry rendering, tests PNG download **in memory**, then disables the preview and checks that the original chart appearance is restored. The Angular demo exposes a **monotonic `data-render-revision` counter** on its status element, incremented **only after a successful latest-request draw**. Canceled/stale asynchronous draws cannot claim completion, report obsolete errors or re-enable controls prematurely. The Playwright test waits for the counter to advance for every skin, chart-mode and preview-toggle operation, preventing a stale `Rendered` message from the preceding frame from producing a false positive. It also downloads three 1600×1600 PNGs **entirely in memory** for the same natal/light chart: original symbols, approved-image preview, and original symbols again after rollback. It must observe an exported pixel change when the preview is on and restoration within a 1% per-channel tolerance when the preview is switched off. This contract is regression-tested by `npm run test:astro-preview-scope`. No screenshots or private data are uploaded. Install the browser or set `CHROME_PATH` if needed.
 
 **Focused dynamic verification:** the current `DemoComponent.draw()` method from the GitHub branch was extracted (TypeScript return annotation removed for execution), executed in an isolated fake-renderer harness, and passed **3/3 asynchronous scenarios**: stale success, stale failure, current failure. The committed `tests/astro-demo-render-revision.test.mjs` formalizes these same scenarios using TypeScript transpilation and is included in the normal asset preflight. The full repository Node suite was **not** run. Separately, 13 static source checks on the updated demo, browser test and scope regression passed; the browser test source passed a JavaScript syntax check.
+
+**Image-manager integration regression:** `npm run test:astro-url-integration` compiles the committed TypeScript URL resolver, glyph allowlist and `GestoreImmagini` class into an isolated Node test without Angular or Three.js runtime. It verifies that all **22** permitted main-ring image paths require **both** the explicit drawing-slot flag and the global preview switch, that retrogrades/axes/secondary assets retain legacy URLs, and that toggling the preview off restores legacy paths without a fresh renderer instance. This test is added to `test:assets`. It does **not** load private images or verify a live WebGL drawing.
+
+**Browser revision parser correction:** the `renderedRevision()` regular expression now matches decimal digits instead of a literal backslash-`d`. A separate numeric/nonnumeric regression case in `test:astro-preview-scope` checks the actual literal used by the browser test. **10/10 focused parser inputs passed** in an isolated check against the GitHub source; full browser execution remains pending.
 
 **This browser test is written but has NOT yet been executed against an Angular demo with the owner's real private asset pack.** Its result must not be reported as PASS until run.
 
