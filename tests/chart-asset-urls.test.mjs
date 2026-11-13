@@ -69,6 +69,26 @@ test('host-owned asset references reject percent-encoded traversal and control b
   ]) assert.throws(() => resolve(ref), /Invalid chart asset path/);
 });
 
+test('asset bases reject query, fragment, backslash and control bytes', () => {
+  for (const base of [
+    'https://static.example.org/assets?version=1',
+    '/preview/assets/#symbols',
+    'C:\\assets',
+    '/assets/\nother',
+    '/assets/\u0000',
+  ]) {
+    assert.throws(() => resolve('img/Sun.png', base), /Invalid public assets base/);
+  }
+  assert.throws(() => resolve('img/Sun.png', ' \t '), /non-empty string/);
+});
+
+test('directory-style asset bases preserve local, CDN and offline paths', () => {
+  assert.equal(resolve('Sun.png', 'https://cdn.example.org/asset%20pack/'), 'https://cdn.example.org/asset%20pack/img/Sun.png');
+  assert.equal(resolve('img/Sun.png', '//cdn.example.org/assets/'), '//cdn.example.org/assets/img/Sun.png');
+  assert.equal(resolve('img/Sun.png', 'file:///opt/astrolabio/assets/'), 'file:///opt/astrolabio/assets/img/Sun.png');
+  assert.equal(resolve('img/Sun.png', '/assets///'), '/assets/img/Sun.png');
+});
+
 test('literal spaces and caller-controlled absolute URLs remain compatible', () => {
   assert.equal(
     resolve('img/simboli-bianchi/elementi-celesti/mean Apogee.png'),
