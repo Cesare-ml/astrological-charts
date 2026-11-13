@@ -72,7 +72,7 @@ function previewHtml(pack) {
     '<p>'+pack.count+' approved files, '+pack.totalBytes+' bytes verified by SHA-256.</p>'+
     '<p>This is an <b>asset smoke preview</b>, not yet a full natal-chart renderer. '+
     'Only approved-manifest files are served. No access to VirgoStars is needed.</p></header>'+
-    '<main id="asset-gallery" aria-label="Approved asset gallery"><div class="grid">'+items+'</div></main>'+ 
+    '<main id="asset-gallery" tabindex="-1" aria-label="Approved asset gallery"><div class="grid">'+items+'</div></main>'+ 
     '<footer><p>Chart rendering project: <a href="https://virgostars.it/" rel="noopener noreferrer">VirgoStars</a></p></footer></body></html>';
 }
 
