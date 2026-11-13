@@ -88,6 +88,10 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
       res.writeHead(405,{Allow:'GET, HEAD, OPTIONS'});res.end();return;
     }
     if(req.method==='OPTIONS'){
+      const requestedMethod=req.headers['access-control-request-method'];
+      if(requestedMethod&&!['GET','HEAD','OPTIONS'].includes(requestedMethod)){
+        res.writeHead(405,{Allow:'GET, HEAD, OPTIONS'});res.end();return;
+      }
       res.writeHead(204,{'Access-Control-Allow-Methods':'GET, HEAD, OPTIONS'});res.end();return;
     }
     let pathname;
