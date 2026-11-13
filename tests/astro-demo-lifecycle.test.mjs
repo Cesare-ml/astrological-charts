@@ -32,13 +32,18 @@ function deferred(){
 function harness(){
   const pendingDraws=[],pendingExports=[],flags=[];
   let destroyed=0,marks=0,clicked=0;
+  const downloads=[];
   const manager={
     configureVirgoStarsAstroPreview:enabled=>flags.push(enabled),
   };
   const document={
     createElement:tag=>{
       assert.equal(tag,'a');
-      return {click:()=>clicked++};
+      const anchor={href:'',download:'',click:()=>{
+        clicked++;
+        downloads.push(anchor.download);
+      }};
+      return anchor;
     },
   };
   const Constructor=new Function('GestoreImmagini','document',
@@ -47,6 +52,7 @@ function harness(){
   const instance=new Constructor();
   instance.destroyed=false;
   instance.drawRequest=0;
+  instance.exportRequest=0;
   instance.renderRevision=0;
   instance.astroPreviewEnabled=true;
   instance.previewNotice='';
@@ -66,7 +72,8 @@ function harness(){
     ngOnDestroy:()=>{destroyed++;},
   };
   return {instance,pendingDraws,pendingExports,flags,
-    destroyCount:()=>destroyed,markCount:()=>marks,clickCount:()=>clicked};
+    destroyCount:()=>destroyed,markCount:()=>marks,
+    clickCount:()=>clicked,downloadNames:()=>downloads};
 }
 
 test('destroy cancels pending draw and does not report stale completion',async()=>{
@@ -147,4 +154,67 @@ test('component destruction is idempotent and clears static preview once',()=>{
   assert.equal(h.instance.drawRequest,request);
   assert.equal(h.destroyCount(),1);
   assert.deepEqual(h.flags,[false]);
+});
+
+test('rapid second export is ignored while the first is pending',async()=>{
+  const h=harness();
+  const first=h.instance.exportPng();
+  await h.instance.exportPng();
+  assert.equal(h.pendingExports.length,1,'Only one export may run');
+  h.pendingExports[0].resolve('data:image/png;base64,AAA');
+  await first;
+  assert.equal(h.clickCount(),1);
+  assert.equal(h.instance.busy,false);
+  assert.equal(h.instance.status,'PNG exported.');
+});
+
+test('new drawing invalidates a pending export without overwriting the chart status',async()=>{
+  const h=harness();
+  const exportWork=h.instance.exportPng();
+  const drawing=h.instance.draw();
+  h.pendingDraws[0].resolve();
+  await drawing;
+  h.pendingExports[0].resolve('data:image/png;base64,AAA');
+  await exportWork;
+  assert.equal(h.clickCount(),0,'Obsolete chart cannot be downloaded');
+  assert.equal(h.instance.status,'Rendered with the configured asset server.');
+  assert.equal(h.instance.renderRevision,1);
+  assert.equal(h.instance.busy,false);
+});
+
+test('obsolete export failure cannot overwrite a newer chart success',async()=>{
+  const h=harness();
+  const exportWork=h.instance.exportPng();
+  const drawing=h.instance.draw();
+  h.pendingDraws[0].resolve();
+  await drawing;
+  h.pendingExports[0].reject(new Error('old PNG texture failed'));
+  await exportWork;
+  assert.equal(h.clickCount(),0);
+  assert.equal(h.instance.error,'');
+  assert.equal(h.instance.renderRevision,1);
+  assert.equal(h.instance.busy,false);
+});
+
+test('PNG filename uses the initial mode/skin snapshot',async()=>{
+  const h=harness();
+  const exportWork=h.instance.exportPng();
+  h.instance.mode='transits';
+  h.instance.skin='dark';
+  h.pendingExports[0].resolve('data:image/png;base64,AAA');
+  await exportWork;
+  assert.deepEqual(h.downloadNames(),['chart-natal-light.png']);
+  assert.equal(h.instance.status,'PNG exported.');
+});
+
+test('PNG export is rejected while a chart draw is pending',async()=>{
+  const h=harness();
+  const drawing=h.instance.draw();
+  await h.instance.exportPng();
+  assert.equal(h.pendingExports.length,0);
+  assert.equal(h.instance.busy,true);
+  h.pendingDraws[0].resolve();
+  await drawing;
+  assert.equal(h.instance.busy,false);
+  assert.equal(h.instance.renderRevision,1);
 });
