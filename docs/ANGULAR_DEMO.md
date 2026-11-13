@@ -30,7 +30,9 @@ Clone the publicly readable [`Cesare-ml/astrological-assets`](https://github.com
 npm run demo:assets:repo
 ```
 
-Then start `npm run demo` in a separate terminal. The server verifies the supplied manifest and allows only its listed, hash-matching files. The separate pack contains 1,013 images listed in its SHA-256 manifest; no font files are included. Verify the checked-out pack with `npm run verify:pack` from `astrological-assets` before starting the chart demo. This integrity check does not grant redistribution rights. On 2026-11-10 the four demo modes and seven skins passed locally with this pack in Chromium and Firefox. This is not a comparison with an approved production baseline and does not prove all advanced options have complete assets.
+Then start `npm run demo` in a separate terminal. The server verifies the supplied manifest and allows only its listed, hash-matching files. The local server also rejects foreign CORS origins on preflight requests and rechecks approved bytes for HEAD requests; these behaviors are covered by `npm run test:local-assets`. The separate pack contains 1,013 images listed in its SHA-256 manifest; no font files are included. Verify the checked-out pack with `npm run verify:pack` from `astrological-assets` before starting the chart demo. This integrity check does not grant redistribution rights. On 2026-11-10 the four demo modes and seven skins passed locally with this pack in Chromium and Firefox. This is not a comparison with an approved production baseline and does not prove all advanced options have complete assets.
+
+The local approved-asset preview at `/__preview` includes a keyboard-visible **Skip to approved assets** link targeting the named main gallery landmark. Press Tab from the top of the page and Enter to jump past the introductory header. This is a preview accessibility aid, not a substitute for auditing the Angular/Three.js canvas with keyboard and screen-reader users. The synthetic HTTP regression in `tests/serve-local-assets.test.mjs` checks the link and its focus styling; a real keyboard check remains necessary.
 
 The owner selected the existing `risuonatore-solare-bn.png` for the two monochrome skins. Latitude house symbols use the same white source images as the base chart, tinted by the chosen skin. Natal latitude planet markers use `_circle` images; transit markers keep their outlined-ring images. Skin-specific settings and colors remain separate from the shared artwork family.
 
@@ -41,6 +43,10 @@ node scripts/serve-local-assets.mjs --root <assets-repo>/public/assets --manifes
 ```
 
 The default base is `http://127.0.0.1:4177/assets/`; change it in the UI or use the `assets` query parameter. The displayed manifest label is informational: the actual manifest is selected at server startup, not verified by the browser label. No public website is used as a fallback.
+
+For successful CORS preflight, `Access-Control-Allow-Methods` advertises only `GET, HEAD` (not `OPTIONS`, which is the preflight transport method). The HTTP regression asserts this exact allowlist. The local asset server also checks the approved manifest and file SHA-256 for CORS `OPTIONS` preflight requests: unknown paths return HTTP 404 and files modified after startup return HTTP 409, rather than advertising availability. Run `node --test tests/serve-local-assets.test.mjs` to exercise these cases with synthetic fixtures; a passing preflight is not a substitute for browser rendering tests.
+
+If the separate approved asset checkout is removed while the local server is running, subsequent asset GET and OPTIONS requests fail closed with HTTP 404 rather than terminating the server. This is a development-server resilience guard, not a substitute for re-running `npm run verify:pack` or for browser validation. The synthetic HTTP regression is in `tests/serve-local-assets.test.mjs` (`npm run test:local-assets`).
 
 ## Documentation status regression check
 
@@ -141,3 +147,35 @@ On a fresh local checkout of `a421969`, `npm ci`, preflight, both builds, synthe
 After fast-forwarding that checkout to `3fd073f`, `npm run test:offline` passed with Firefox 142.0.1: four nonblank 400×400 PNGs from verified synthetic local files, browser context offline and no HTTP(S) requests observed. The installed Astrolabio adapter and hardware were not exercised.
 
 After fast-forwarding to `a2e3e98`, preflight, both builds, the four-case browser suite in Chromium and Firefox, and the offline test passed. The new failure-path test covers cleanup of repeating timelines when body, house or nested synastry construction is interrupted. This does not prove disposal of every resource in all failed partial scenes.
+
+### Local asset CORS preflight
+
+The manifest-gated loopback server responds to `OPTIONS` only for existing, approved asset paths; unknown paths return HTTP 404 and non-local origins return HTTP 403. This prevents an unapproved URL from receiving a successful preflight response. Run `node --test tests/asset-preflight.test.mjs` to exercise these cases with generated synthetic assets. This is an HTTP regression check, **not** proof of Angular build success, real-artwork integrity, or WebGL visual correctness.
+
+### Integrity-aware CORS preflight
+
+The approved local asset server responds `204` to `OPTIONS` only for paths in the manifest whose current bytes still match the recorded SHA-256. Unlisted paths return `404`, modified approved files return `409`, and foreign origins return `403`. This is a local development safety check, not proof of artwork redistribution rights or WebGL correctness. Run `node --test tests/asset-preflight.test.mjs` to exercise these responses with generated synthetic assets; browser rendering must still be tested separately.
+
+### CORS method safety
+
+The local approved-asset server rejects an `OPTIONS` preflight requesting a method other than `GET` or `HEAD` with HTTP `405` (`Allow: GET, HEAD, OPTIONS`). Approved `GET` and `HEAD` requests retain manifest and SHA-256 integrity checks. The regression is in `tests/serve-local-assets.test.mjs`; run `node --test tests/serve-local-assets.test.mjs` in a complete checkout. This does not validate browser WebGL rendering or real-artwork licensing.
+
+### CORS preflight regression coverage
+
+`node --test tests/serve-local-assets.test.mjs` includes a regression for both allowed local demo origins. It asserts that successful OPTIONS responses are origin-specific (`Access-Control-Allow-Origin` and `Vary: Origin`), non-cacheable (`Cache-Control: no-store`) and bodyless. External origins must receive HTTP 403 without an allow-origin header. This is a synthetic-pack HTTP test, **not** a browser/WebGL or real-artwork checksum validation.
+
+### HEAD response parity regression
+
+The synthetic HTTP suite also checks that an approved asset's `HEAD` response has the same `Content-Type` and `Content-Length` as `GET`, echoes an authorized local CORS origin, sends `Cache-Control: no-store`, and returns no image bytes. This guards metadata-only consumers without duplicating any artwork. Run `node --test tests/serve-local-assets.test.mjs` on a full checkout; adding the regression does **not** establish that it has passed until executed.
+
+## Asset preview attribution
+
+The local approved-asset gallery displays a visible [VirgoStars](https://virgostars.it/) credit. This gallery is a file-integrity preview only, not a rendered Three.js chart. The link is external; no remote images or scripts are loaded.
+
+## Asset preview landmark accessibility
+
+The local `__preview` gallery wraps approved asset cards in one named HTML `<main>` landmark (`Approved asset gallery`) so screen-reader landmark navigation can reach the inventory independently of the heading and VirgoStars footer. This changes only the local integrity preview, not the Angular/Three.js canvas or asset URL contract. `node --test tests/serve-local-assets.test.mjs` checks the generated markup with synthetic assets; a keyboard/screen-reader check remains necessary before accessibility signoff.
+
+### Preview HEAD metadata regression
+
+The synthetic local-server suite checks that `HEAD /__preview` returns the same content type, byte length and content-security policy as `GET /__preview`, without transferring HTML. Run `node --test tests/serve-local-assets.test.mjs` to execute this regression. It does not validate the Angular canvas, browser keyboard behavior or approved artwork hashes.

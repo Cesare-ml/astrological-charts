@@ -58,6 +58,46 @@ test('independent localhost server serves verified PNG files without VirgoStars 
     const html=await preview.text();
     assert.ok(html.includes('78 approved files'));
     assert.ok(html.includes('img/simboli-bianchi/segni/01.png'));
+    assert.match(html, /href="https:\/\/virgostars\.it\/"/);
+    assert.match(html, /rel="noopener noreferrer"/);
+    assert.match(html, /<a class="skip-link" href="#asset-gallery">Skip to approved assets<\/a>/);
+    assert.match(html, /\.skip-link:focus\{top:12px;z-index:1\}/);
+    assert.equal((html.match(/class="skip-link"/g)??[]).length,1);
+    assert.match(html, /<main id="asset-gallery" tabindex="-1" aria-label="Approved asset gallery">/);
+    assert.match(html, /<\/main>/);
+    assert.equal((html.match(/<main\b/g)??[]).length,1);
+  });
+});
+
+test('preview HEAD preserves GET metadata without sending HTML',async()=>{
+  await withAssetServer(async({url})=>{
+    const get=await fetch(url+'/__preview');
+    assert.equal(get.status,200);
+    const html=await get.text();
+    const head=await fetch(url+'/__preview',{method:'HEAD'});
+    assert.equal(head.status,200);
+    assert.equal(head.headers.get('content-type'),get.headers.get('content-type'));
+    assert.equal(Number(head.headers.get('content-length')),Buffer.byteLength(html));
+    assert.equal(head.headers.get('content-security-policy'),get.headers.get('content-security-policy'));
+    assert.equal(head.headers.get('cache-control'),'no-store');
+    assert.equal((await head.arrayBuffer()).byteLength,0);
+  });
+});
+
+test('approved HEAD responses match GET metadata without returning image bytes',async()=>{
+  await withAssetServer(async({url,file})=>{
+    const path='/assets/'+file;
+    const headers={Origin:'http://localhost:4200'};
+    const get=await fetch(url+path,{headers});
+    assert.equal(get.status,200);
+    const bytes=Buffer.from(await get.arrayBuffer());
+    const head=await fetch(url+path,{method:'HEAD',headers});
+    assert.equal(head.status,200);
+    assert.equal(head.headers.get('content-type'),get.headers.get('content-type'));
+    assert.equal(Number(head.headers.get('content-length')),bytes.length);
+    assert.equal(head.headers.get('access-control-allow-origin'),headers.Origin);
+    assert.equal(head.headers.get('cache-control'),'no-store');
+    assert.equal((await head.arrayBuffer()).byteLength,0);
   });
 });
 
@@ -81,6 +121,93 @@ test('rejects an altered approved file even after the server has started',async(
     writeFileSync(join(root,...file.split('/')),'changed');
     const r=await fetch(url+'/assets/'+file);
     assert.equal(r.status,409);
+  });
+});
+
+test('CORS preflight and HEAD never bypass local origin or asset integrity checks',async()=>{
+  await withAssetServer(async({url,root,file})=>{
+    const path='/assets/'+file;
+    const options=await fetch(url+path,{
+      method:'OPTIONS',headers:{Origin:'http://127.0.0.1:4200'}
+    });
+    assert.equal(options.status,204);
+    assert.equal(options.headers.get('access-control-allow-origin'),'http://127.0.0.1:4200');
+    assert.match(options.headers.get('access-control-allow-methods'),/HEAD/);
+    assert.equal(options.headers.get('access-control-allow-methods'),'GET, HEAD');
+    const rejected=await fetch(url+path,{
+      method:'OPTIONS',headers:{Origin:'https://evil.example'}
+    });
+    assert.equal(rejected.status,403);
+    writeFileSync(join(root,...file.split('/')),'tampered after startup');
+    const head=await fetch(url+path,{method:'HEAD'});
+    assert.equal(head.status,409);
+    assert.equal((await head.arrayBuffer()).byteLength,0);
+  });
+});
+
+test('OPTIONS rejects unknown paths and files modified after startup',async()=>{
+  await withAssetServer(async({url,root,file})=>{
+    const headers={Origin:'http://localhost:4200','Access-Control-Request-Method':'GET'};
+    const unknown=await fetch(url+'/assets/img/not-approved.png',{method:'OPTIONS',headers});
+    assert.equal(unknown.status,404);
+    const valid=await fetch(url+'/assets/'+file,{method:'OPTIONS',headers});
+    assert.equal(valid.status,204);
+    writeFileSync(join(root,...file.split('/')),'tampered after preflight');
+    const changed=await fetch(url+'/assets/'+file,{method:'OPTIONS',headers});
+    assert.equal(changed.status,409);
+    assert.equal(changed.headers.get('cache-control'),'no-store');
+  });
+});
+
+test('preflight rejects unsupported requested methods without exposing assets',async()=>{
+  await withAssetServer(async({url,file})=>{
+    const path='/assets/'+file;
+    const headers={Origin:'http://localhost:4200','Access-Control-Request-Method':'POST'};
+    const denied=await fetch(url+path,{method:'OPTIONS',headers});
+    assert.equal(denied.status,405);
+    assert.equal(denied.headers.get('allow'),'GET, HEAD, OPTIONS');
+    assert.equal(denied.headers.get('cache-control'),'no-store');
+    const allowed=await fetch(url+path,{method:'OPTIONS',headers:{...headers,'Access-Control-Request-Method':'HEAD'}});
+    assert.equal(allowed.status,204);
+    const get=await fetch(url+path,{method:'GET'});
+    assert.equal(get.status,200);
+  });
+});
+
+test('preflight responses remain origin-specific and non-cacheable',async()=>{
+  await withAssetServer(async({url,file})=>{
+    const path='/assets/'+file;
+    for(const origin of ['http://localhost:4200','http://127.0.0.1:4200']){
+      const response=await fetch(url+path,{
+        method:'OPTIONS',
+        headers:{Origin:origin,'Access-Control-Request-Method':'GET'}
+      });
+      assert.equal(response.status,204);
+      assert.equal(response.headers.get('access-control-allow-origin'),origin);
+      assert.match(response.headers.get('vary')??'',/(^|,\\s*)Origin(,|$)/i);
+      assert.equal(response.headers.get('cache-control'),'no-store');
+      assert.equal((await response.arrayBuffer()).byteLength,0);
+    }
+    const denied=await fetch(url+path,{
+      method:'OPTIONS',headers:{Origin:'https://outside.example','Access-Control-Request-Method':'GET'}
+    });
+    assert.equal(denied.status,403);
+    assert.equal(denied.headers.get('access-control-allow-origin'),null);
+    assert.equal(denied.headers.get('cache-control'),'no-store');
+  });
+});
+
+test('asset checkout removal fails closed for GET and OPTIONS without crashing server',async()=>{
+  await withAssetServer(async({url,root,file})=>{
+    rmSync(root,{recursive:true,force:true});
+    const path='/assets/'+file;
+    const headers={Origin:'http://localhost:4200'};
+    const preflight=await fetch(url+path,{method:'OPTIONS',headers});
+    assert.equal(preflight.status,404);
+    const get=await fetch(url+path,{headers});
+    assert.equal(get.status,404);
+    const preview=await fetch(url+'/__preview');
+    assert.equal(preview.status,200);
   });
 });
 

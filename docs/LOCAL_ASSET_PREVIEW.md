@@ -1,6 +1,6 @@
 # Preview indipendente degli asset astrologici — codice eseguibile senza VirgoStars
 
-**Stato:** la galleria e la demo sono integrate in `main`; la demo è stata provata con immagini sintetiche e con il pacchetto privato autorizzato, senza confronto con baseline di produzione. Questa pagina descrive la galleria **degli asset**; la distinta [demo Angular](ANGULAR_DEMO.md) usa il renderer completo con dati sintetici.
+**Stato:** la galleria e la demo sono integrate in `main`; la demo è stata provata con immagini sintetiche e con il pacchetto di immagini autorizzato, senza confronto con baseline di produzione. Questa pagina descrive la galleria **degli asset**; la distinta [demo Angular](ANGULAR_DEMO.md) usa il renderer completo con dati sintetici.
 
 Il server rifiuta record con uno `status` esplicito diverso da `approved`. I manifest generati dall'importatore senza campo `status` restano supportati; metadati e checksum non dimostrano da soli l'autorizzazione legale.
 
@@ -8,7 +8,7 @@ Il server rifiuta record con uno `status` esplicito diverso da `approved`. I man
 
 Un collaboratore può clonare `astrological-charts` ma non `virgo-stars`. Il renderer ha bisogno di texture e immagini per mostrare fedelmente i grafici, quindi il codice da solo non basta.
 
-La soluzione finale è un secondo repository privato, `Cesare-ml/astrological-assets`, contenente solamente gli asset originali **approvati**, senza accesso a backend, database, account o AWS. Il nuovo server locale accetta l'archivio approvato come input e serve solo i file presenti in un manifest verificato via SHA-256.
+La soluzione adottata è un secondo repository pubblicamente leggibile, `Cesare-ml/astrological-assets`, contenente solamente gli asset originali **approvati**, senza accesso a backend, database, account o AWS. Il nuovo server locale accetta l'archivio approvato come input e serve solo i file presenti in un manifest verificato via SHA-256.
 
 Per sbloccare lo sviluppo **prima** dell'importazione originale, è disponibile un pacchetto **sintetico**, generato in locale, che contiene 78 PNG a scacchiera originali con gli stessi percorsi dei simboli bianchi di preload. Sono solo segnaposto: non rappresentano i simboli né ne attestano la correttezza visiva.
 
@@ -36,6 +36,7 @@ Il generatore si rifiuta di sovrascrivere una directory già esistente. Il wrapp
 - Crea 78 PNG di test 48×48, con nomi e directory esattamente corrispondenti ai 78 percorsi statici di `GestoreImmagini.preloadArraySimboli`.
 - Genera `manifests/approved-assets.json` con SHA-256 e marcatura esplicita **synthetic**; non include nessuna immagine di VirgoStars, nessuna texture stock e nessun dato personale.
 - Il server verifica l'intero manifest **all'avvio**; a ogni richiesta ricontrolla i byte del file richiesto.
+- La galleria locale è `/__preview`; include un collegamento iniziale per saltare direttamente al contenuto principale, il cui `tabindex="-1"` consente il focus programmatico senza aggiungerlo alla sequenza Tab. Il comportamento effettivo con tastiera e lettori di schermo richiede ancora verifica browser.
 - La galleria locale è `/__preview`; gli URL sono `/assets/img/...`. Il server serve solamente i percorsi contenuti nel manifest, niente directory listing, metodi di scrittura o condivisione pubblica.
 - Bind soltanto su `127.0.0.1:4177`, con CORS limitato a `http://localhost:4200` e `http://127.0.0.1:4200`. Non è un servizio esponibile a Internet.
 
@@ -43,7 +44,7 @@ Questo test è utile per verificare struttura dei nomi, disponibilità degli ass
 
 ## Modalità B — immagini autentiche del repository asset
 
-Con accesso al repository privato `astrological-assets` e al relativo pacchetto autorizzato:
+Con il repository pubblicamente leggibile `astrological-assets` e il relativo pacchetto autorizzato (la visibilità non concede diritti di redistribuzione):
 
 ```powershell
 git clone https://github.com/Cesare-ml/astrological-assets.git
@@ -60,7 +61,7 @@ La libreria Angular può configurare il server locale così:
 GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
 ```
 
-Il sito VirgoStars continuerà a usare `/assets/` e una sola copia dei file, mentre la demo utilizza questo server di sviluppo. Nessun accesso a `virgo-stars` è necessario al collaboratore. Il pacchetto contiene immagini autorizzate per la condivisione privata, ma non il font originale dalla licenza sconosciuta.
+Il sito VirgoStars continuerà a usare `/assets/` e una sola copia dei file, mentre la demo utilizza questo server di sviluppo. Nessun accesso a `virgo-stars` è necessario al collaboratore. Il pacchetto contiene immagini con autorizzazione dichiarata per la condivisione privata; la disponibilità pubblica del repository non autorizza automaticamente la redistribuzione. Il font originale dalla licenza sconosciuta è escluso. Prima di usare immagini autentiche esegui `npm run verify:pack` nel checkout separato `astrological-assets` per verificare i byte reali contro gli SHA-256 del manifest.
 
 ## Contratto del manifest
 
@@ -91,7 +92,7 @@ Si rifiuta di avviarsi con manifest mancante, vuoto, alterato, con file non appr
 1. **La galleria non è la demo Angular interattiva**: non esegue `GraficoRenderService`, animazioni o calcoli astrologici. La [demo separata](ANGULAR_DEMO.md) esegue il renderer con dati sintetici, senza calcolare le effemeridi.
 2. I 78 PNG di test non hanno i contenuti visivi reali; nessun confronto affidabile tra skin è possibile prima del pacchetto approvato.
 3. La fonte degli asset di produzione è ancora `virgo-stars/public/assets/`; non modificare le sue regole di copia o i dispositivi fisici.
-4. Permessi collaboratore: i repository privati sotto account GitHub personali possono concedere scrittura; usare un'organizzazione per ruoli di sola lettura quando necessario.
+4. Permessi collaboratore: l'accesso pubblico in lettura al repository degli asset non implica autorizzazione a redistribuire le immagini; controllare separatamente provenienza e licenze.
 5. Nessuna GitHub Action, release, npm publish, CDN, deploy AWS o aggiornamento hardware.
 
 ## Test locali

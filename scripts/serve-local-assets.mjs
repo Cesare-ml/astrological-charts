@@ -41,6 +41,13 @@ export function resolveAssetRequest(root,requestPath) {
   return {path:parts.join('/'),file:current,type:MIME[extension]};
 }
 
+function safeResolveAssetRequest(root, pathname) {
+  // The approved checkout may disappear while the local server is running.
+  // A filesystem race must fail closed instead of crashing the HTTP process.
+  try { return resolveAssetRequest(root, pathname); }
+  catch { return null; }
+}
+
 function previewHtml(pack) {
   const items=[...pack.paths].slice(0,150).map(([path,meta])=>{
     const src='/assets/'+path.split('/').map(encodeURIComponent).join('/');
@@ -57,12 +64,16 @@ function previewHtml(pack) {
     '.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(154px,1fr));gap:12px;max-width:1150px;margin:auto}'+
     'article{background:#202d3e;border:1px solid #3d4b5f;border-radius:10px;padding:12px;overflow-wrap:anywhere}'+
     'img,.font{height:110px;max-width:100%;object-fit:contain;display:block;margin:0 auto 8px}'+
-    'p{min-height:42px}small{color:#afbdce}a{color:#b8d7ff}</style></head><body>'+
+    'p{min-height:42px}small{color:#afbdce}a{color:#b8d7ff}'+
+    '.skip-link{position:absolute;left:12px;top:-100px;padding:10px;background:#fff;color:#101826}'+
+    '.skip-link:focus{top:12px;z-index:1}</style></head><body>'+
+    '<a class="skip-link" href="#asset-gallery">Skip to approved assets</a>'+ 
     '<header><h1>Approved astrology assets — local preview</h1>'+
     '<p>'+pack.count+' approved files, '+pack.totalBytes+' bytes verified by SHA-256.</p>'+
     '<p>This is an <b>asset smoke preview</b>, not yet a full natal-chart renderer. '+
     'Only approved-manifest files are served. No access to VirgoStars is needed.</p></header>'+
-    '<div class="grid">'+items+'</div></body></html>';
+    '<main id="asset-gallery" tabindex="-1" aria-label="Approved asset gallery"><div class="grid">'+items+'</div></main>'+ 
+    '<footer><p>Chart rendering project: <a href="https://virgostars.it/" rel="noopener noreferrer">VirgoStars</a></p></footer></body></html>';
 }
 
 export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
@@ -87,8 +98,29 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
     if(!['GET','HEAD','OPTIONS'].includes(req.method)){
       res.writeHead(405,{Allow:'GET, HEAD, OPTIONS'});res.end();return;
     }
+    // Preflight must not advertise unapproved methods or resources as available.
     if(req.method==='OPTIONS'){
-      res.writeHead(204,{'Access-Control-Allow-Methods':'GET, HEAD, OPTIONS'});res.end();return;
+      const requestedMethod=req.headers['access-control-request-method'];
+      if(requestedMethod&&!['GET','HEAD'].includes(requestedMethod)){
+        res.writeHead(405,{Allow:'GET, HEAD, OPTIONS'});res.end();return;
+      }
+      let pathname;
+      try{pathname=new URL(req.url,'http://127.0.0.1').pathname;}
+      catch{res.writeHead(400);res.end();return;}
+      const requested=safeResolveAssetRequest(absolute,pathname);
+      if(!requested||!pack.paths.has(requested.path)){
+        res.writeHead(404);res.end();return;
+      }
+      // A successful preflight must not advertise a file that GET will reject.
+      try {
+        const body=readSafeAsset(absolute,requested.path);
+        if(!verifyRequestBytes(body,pack.paths.get(requested.path))){
+          res.writeHead(409);res.end();return;
+        }
+      } catch {
+        res.writeHead(409);res.end();return;
+      }
+      res.writeHead(204,{'Access-Control-Allow-Methods':'GET, HEAD'});res.end();return;
     }
     let pathname;
     try{pathname=new URL(req.url,'http://127.0.0.1').pathname;}
@@ -100,7 +132,7 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
         'Content-Length':Buffer.byteLength(html)});
       res.end(req.method==='HEAD'?'':html);return;
     }
-    const requested=resolveAssetRequest(absolute,pathname);
+    const requested=safeResolveAssetRequest(absolute,pathname);
     if(!requested||!pack.paths.has(requested.path)){
       res.writeHead(404);res.end('Not in approved manifest');return;
     }
