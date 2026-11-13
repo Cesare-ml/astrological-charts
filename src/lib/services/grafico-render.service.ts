@@ -134,11 +134,17 @@ export class GraficoRenderService implements OnDestroy {
 
   public ngOnDestroy(): void {
     ++this.drawGeneration;
-    if (this.frameId != null) cancelAnimationFrame(this.frameId);
-
     const errors: unknown[] = [];
-    if (this.resizeSub) {
-      try { this.resizeSub.unsubscribe(); } catch (error) { errors.push(error); }
+    // Release handles first so repeated teardown cannot cancel/unsubscribe twice.
+    const frameId = this.frameId;
+    const resizeSub = this.resizeSub;
+    this.frameId = null;
+    this.resizeSub = null;
+    if (frameId != null) {
+      try { cancelAnimationFrame(frameId); } catch (error) { errors.push(error); }
+    }
+    if (resizeSub) {
+      try { resizeSub.unsubscribe(); } catch (error) { errors.push(error); }
     }
     if (this.scene) {
       try { disposeSceneResources(this.scene); } catch (error) { errors.push(error); }
