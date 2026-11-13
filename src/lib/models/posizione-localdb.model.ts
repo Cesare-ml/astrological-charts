@@ -13,6 +13,8 @@ export class CittaLocalDB {
   stato: string;
 
   constructor(obj?: Partial<CittaLocalDB>) {
+    // Retain the LocalDB identifier when reconstructing saved locations.
+    this._ObjId = obj?._ObjId ?? -1;
     this.citta = obj?.citta ?? '';
     this.iso2 = obj?.iso2 ?? '';
     this.label = obj?.label ?? '';
