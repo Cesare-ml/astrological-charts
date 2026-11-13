@@ -38,7 +38,8 @@
     "test:demo-docs": "node --test tests/demo-docs-status.test.mjs",
     "verify:angular": "npm run preflight && npm run build:library && npm run build:demo",
     "test:scene-animations": "node --test tests/scene-animations.test.mjs",
-    "test:scene-resources": "node --test tests/scene-resource-disposal.test.mjs"
+    "test:scene-resources": "node --test tests/scene-resource-disposal.test.mjs",
+    "test:demo-webgl-lifecycle": "node --test tests/webgl-lifecycle.browser.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
