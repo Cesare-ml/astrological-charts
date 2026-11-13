@@ -36,6 +36,7 @@ Il generatore si rifiuta di sovrascrivere una directory già esistente. Il wrapp
 - Crea 78 PNG di test 48×48, con nomi e directory esattamente corrispondenti ai 78 percorsi statici di `GestoreImmagini.preloadArraySimboli`.
 - Genera `manifests/approved-assets.json` con SHA-256 e marcatura esplicita **synthetic**; non include nessuna immagine di VirgoStars, nessuna texture stock e nessun dato personale.
 - Il server verifica l'intero manifest **all'avvio**; a ogni richiesta ricontrolla i byte del file richiesto.
+- La galleria locale è `/__preview`; include un collegamento iniziale per saltare direttamente al contenuto principale, il cui `tabindex="-1"` consente il focus programmatico senza aggiungerlo alla sequenza Tab. Il comportamento effettivo con tastiera e lettori di schermo richiede ancora verifica browser.
 - La galleria locale è `/__preview`; gli URL sono `/assets/img/...`. Il server serve solamente i percorsi contenuti nel manifest, niente directory listing, metodi di scrittura o condivisione pubblica.
 - Bind soltanto su `127.0.0.1:4177`, con CORS limitato a `http://localhost:4200` e `http://127.0.0.1:4200`. Non è un servizio esponibile a Internet.
 
