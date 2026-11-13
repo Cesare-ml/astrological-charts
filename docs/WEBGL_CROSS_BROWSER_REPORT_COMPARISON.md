@@ -75,6 +75,54 @@ Run standalone regression tests without Angular, a GPU or the local servers:
 node --test tests/compare-webgl-buffer-reports.test.mjs tests/compare-webgl-buffer-reports-cli.test.mjs tests/webgl-benchmark-provenance.test.mjs
 ```
 
+## Repeatability across independent runs (same browser)
+
+One browser benchmark measures one workload, not stability over time. The
+optional `summarize-webgl-repeatability-cli.mjs` reads **2 to 20** saved runs
+of the **same browser and version**, matching natal chart, viewport and
+redraw/export counts. It reuses the #67 strict per-context accounting checks.
+When both reports provide Git revision or manifest SHA-256, mismatches are
+rejected; unknown provenance, modified tracked source or mixed runtime
+metadata become warnings, never silent assertions of identical conditions.
+
+For example, after starting the same local synthetic demo and asset servers
+described above, run three independent 100-redraw / 5-PNG workloads in
+PowerShell:
+
+```powershell
+$env:CHART_BUFFER_REDRAWS = '100'
+$env:CHART_BUFFER_EXPORTS = '5'
+$env:CHART_TEST_BROWSER = 'chromium'
+1..3 | ForEach-Object { node scripts/benchmark-webgl-buffers.mjs > ".local/webgl-chromium-run$_.json" }
+node scripts/summarize-webgl-repeatability-cli.mjs .local/webgl-chromium-run1.json .local/webgl-chromium-run2.json .local/webgl-chromium-run3.json
+```
+
+Repeat separately with `CHART_TEST_BROWSER=firefox` and Firefox-specific file
+names. Do not mix browser runs in the same repeatability summary. The
+read-only CLI accepts 2–20 paths, each at most 5 MB, and outputs JSON:
+
+- `persistentRedrawLiveDelta`: difference of explicitly API-live buffers
+  in pre-existing contexts between initial and final redraw snapshots.
+- `exportContextLive`: explicitly API-live handles in contexts first
+  observed during PNG exports.
+- `newExportContexts`: number of newly observed contexts during exports.
+- `finalLive`: total API-live handles at the end of the full workload.
+
+Each metric reports `min`, `max`, `span = max − min`, and `values`
+in command-line file order. **The span is variation across runs, not a memory
+allocation, trend, leak verdict or a pass/fail threshold.** Resource cleanup by
+WebGL context destruction may not emit a matching `deleteBuffer` call.
+
+The separate unit and CLI tests use synthetic reports only:
+
+```sh
+node --test tests/summarize-webgl-repeatability.test.mjs tests/summarize-webgl-repeatability-cli.test.mjs
+```
+
+Compare the observed ranges within each browser before looking at the
+Chromium/Firefox descriptive differences. Run actual browser tests and
+platform GPU memory profiling before proposing a resource cleanup fix.
+
 ## Comparison rules
 
 The tool first uses the #67 analyzer to validate every snapshot, context
