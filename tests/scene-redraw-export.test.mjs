@@ -27,11 +27,11 @@ const makeClass = new Function(
   'THREE', 'OggettiSempliciRender', 'LatitudiniRender', 'CartaAstraleCreaScena',
   'waitForSceneTextures', 'disposeSceneResources', 'disposeAndClearScene',
   'SkinManager', 'document',
-  transpile(`class Harness {
+  transpile(`class GraficoRenderService {
     static runExclusive(operation) { return Promise.resolve().then(operation); }
     ${method('disegnaScena')}
     ${method('generaImmagineInterna')}
-  }`) + '\nreturn Harness;',
+  }`) + '\nreturn GraficoRenderService;',
 );
 
 function fixture({create, wait, dispose, clear, render, rendererDispose, png} = {}) {
