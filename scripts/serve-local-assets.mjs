@@ -87,8 +87,12 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
     if(!['GET','HEAD','OPTIONS'].includes(req.method)){
       res.writeHead(405,{Allow:'GET, HEAD, OPTIONS'});res.end();return;
     }
-    // Preflight must not advertise unapproved or missing resources as available.
+    // Preflight must not advertise unapproved methods or resources as available.
     if(req.method==='OPTIONS'){
+      const requestedMethod=req.headers['access-control-request-method'];
+      if(requestedMethod&&!['GET','HEAD'].includes(requestedMethod)){
+        res.writeHead(405,{Allow:'GET, HEAD, OPTIONS'});res.end();return;
+      }
       let pathname;
       try{pathname=new URL(req.url,'http://127.0.0.1').pathname;}
       catch{res.writeHead(400);res.end();return;}
