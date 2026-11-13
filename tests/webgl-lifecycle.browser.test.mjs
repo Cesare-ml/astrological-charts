@@ -17,6 +17,9 @@ const textureLimit = process.env.CHART_LIFECYCLE_MAX_TEXTURE_GROWTH === undefine
   ? null : integerEnv('CHART_LIFECYCLE_MAX_TEXTURE_GROWTH', 0, 0, 10000);
 const geometryLimit = process.env.CHART_LIFECYCLE_MAX_GEOMETRY_GROWTH === undefined
   ? null : integerEnv('CHART_LIFECYCLE_MAX_GEOMETRY_GROWTH', 0, 0, 10000);
+// Optional export-specific WebGL call-balance guard, independent of the active scene.
+const exportHandleLimit = process.env.CHART_LIFECYCLE_MAX_EXPORT_HANDLE_GROWTH === undefined
+  ? null : integerEnv('CHART_LIFECYCLE_MAX_EXPORT_HANDLE_GROWTH', 0, 0, 10000);
 const browserName = process.env.CHART_TEST_BROWSER ?? 'chromium';
 assert.ok(['chromium', 'firefox'].includes(browserName), 'Invalid CHART_TEST_BROWSER');
 const browserType = browserName === 'firefox' ? firefox : chromium;
@@ -109,11 +112,17 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
     const afterRedraw = await page.evaluate(memorySnapshot);
     const modes = ['natal', 'transits', 'synastry', 'latitude'];
     const exportSamples = [];
+    // This measures API call balance across all WebGL contexts, including PNG's
+    // temporary renderer. Three.js memory counters on the active scene miss it.
+    const exportCallBaseline = await page.evaluate(() => ({...globalThis.__webglLife}));
+    const baselineHandleBalance = exportCallBaseline.created - exportCallBaseline.deleted;
+    let peakExportHandleGrowth = 0;
     for (let i = 0; i < exportsCount; i++) {
       const mode = modes[i % modes.length];
       const result = await page.evaluate(async target => {
         const c = globalThis.ng.getComponent(document.querySelector('chart-demo'));
         const before = {...c.renderer.renderer.info.memory};
+        const beforeCalls = {...globalThis.__webglLife};
         const opts = c.options();
         opts.mostraTransiti = target === 'transits';
         opts.mostraSinastria = target === 'synastry';
@@ -128,7 +137,11 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
           ch => ch.charCodeAt(0));
         const view = new DataView(header.buffer);
         const after = c.renderer.renderer.info.memory;
+        const afterCalls = {...globalThis.__webglLife};
         return {width: view.getUint32(16), height: view.getUint32(20), length: png.length,
+          webglCreatedDelta: afterCalls.created - beforeCalls.created,
+          webglDeletedDelta: afterCalls.deleted - beforeCalls.deleted,
+          outstandingHandles: afterCalls.created - afterCalls.deleted,
           beforeTextures: before.textures, afterTextures: after.textures,
           beforeGeometries: before.geometries, afterGeometries: after.geometries,
           sameRenderer: c.renderer.renderer === globalThis.__webglLifeMain.renderer,
@@ -142,6 +155,17 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
         mode + ' export replaced active renderer/scene/camera');
       assert.equal(result.afterTextures, result.beforeTextures, mode + ' altered active textures');
       assert.equal(result.afterGeometries, result.beforeGeometries, mode + ' altered active geometries');
+      // An offscreen PNG must create and release some WebGL textures even though
+      // the primary renderer remains stable. Other GL resource classes are not tracked here.
+      assert.ok(result.webglCreatedDelta > 0, mode + ' did not create any WebGL texture');
+      assert.ok(result.webglDeletedDelta > 0, mode + ' did not delete any WebGL texture');
+      assert.ok(Number.isSafeInteger(result.outstandingHandles), mode + ' invalid WebGL call balance');
+      const exportHandleGrowth = result.outstandingHandles - baselineHandleBalance;
+      peakExportHandleGrowth = Math.max(peakExportHandleGrowth, exportHandleGrowth);
+      if (exportHandleLimit !== null)
+        assert.ok(exportHandleGrowth <= exportHandleLimit,
+          mode + ' export WebGL call-balance growth ' + exportHandleGrowth +
+          ' exceeded CHART_LIFECYCLE_MAX_EXPORT_HANDLE_GROWTH ' + exportHandleLimit);
       if ((i + 1) % 5 === 0 || i + 1 === exportsCount)
         exportSamples.push({cycle: i + 1, mode, ...result});
     }
@@ -184,8 +208,9 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
     console.log(JSON.stringify({browser: browserName, version: browser.version(),
       redraws, exports: exportsCount, modes, baseline, afterRedraw, final,
       textureGrowth, geometryGrowth, textureLimit, geometryLimit,
+      exportHandleLimit, exportCallBaseline, baselineHandleBalance, peakExportHandleGrowth,
       redrawSamples, exportSamples, twoCanvases,
-      limitations: 'Three.js memory counters are not physical GPU memory. WebGL calls are not retained handles. Synthetic headless rendering does not prove artwork parity, production, or Astrolabio.'}, null, 2));
+      limitations: 'Three.js memory counters are not physical GPU memory. Texture create/delete call balance includes temporary offscreen contexts but is NOT actual retained handles, GPU bytes, or leak proof. Synthetic headless rendering does not prove artwork parity, production, or Astrolabio.'}, null, 2));
   } finally {
     await page?.close();
     await browser.close();
