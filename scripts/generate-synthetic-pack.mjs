@@ -121,6 +121,18 @@ export function sourcePreloadPaths(text) {
     throw new Error('Preload list must be a standalone literal array');
   if(paths.length!==78 || new Set(paths).size!==78)
     throw new Error('Expected exactly 78 unique source preload paths, got '+paths.length);
+
+  // The literal list is only a reliable runtime inventory if the source does
+  // not subsequently mutate or alias this array. Our approved source has one
+  // additional *read-only* use in getPreloadArray() via concat(). Any further
+  // occurrence requires a deliberate inventory review; a regex-based reader
+  // cannot prove that arbitrary TypeScript code is mutation-free.
+  const outsideDeclaration =
+    text.slice(0,declarations[0].index) + text.slice(cursor);
+  const reviewedRead = /\.concat\s*\(\s*this\.preloadArraySimboli\s*\)/g;
+  const unreviewed = outsideDeclaration.replace(reviewedRead,'');
+  if (/\bpreloadArraySimboli\b/.test(unreviewed))
+    throw new Error('Unreviewed dynamic preloadArraySimboli reference: synthetic coverage not provable');
   return paths.sort();
 }
 
