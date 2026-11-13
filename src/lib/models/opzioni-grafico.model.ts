@@ -135,7 +135,11 @@ export interface OpzioniGrafico {
   direzioni2ndTemaRender?: any;
 }
 
-export const defaultOpzioniGrafico: OpzioniGrafico = {
+/**
+ * Create independent chart options, including fresh nested objects and Settaggi
+ * instances. Use this for multiple charts instead of sharing the legacy default.
+ */
+export const createDefaultOpzioniGrafico = (): OpzioniGrafico => ({
   settaggi: new Settaggi(),
   temaGrafico: 'light',
 
@@ -239,4 +243,7 @@ export const defaultOpzioniGrafico: OpzioniGrafico = {
   direzioniModalita: undefined,
   direzioniDegOffs: 0,
   direzioni2ndTemaRender: undefined,
-};
+});
+
+/** Legacy shared object retained for existing consumers. */
+export const defaultOpzioniGrafico: OpzioniGrafico = createDefaultOpzioniGrafico();
