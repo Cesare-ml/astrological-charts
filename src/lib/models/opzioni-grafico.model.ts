@@ -135,7 +135,13 @@ export interface OpzioniGrafico {
   direzioni2ndTemaRender?: any;
 }
 
-export const defaultOpzioniGrafico: OpzioniGrafico = {
+/**
+ * Create independent, mutable chart options for a new rendering context.
+ * Unlike reusing defaultOpzioniGrafico, each call gives every nested options
+ * object and Settaggi class graph its own identity.
+ */
+export function createDefaultOpzioniGrafico(): OpzioniGrafico {
+  return {
   settaggi: new Settaggi(),
   temaGrafico: 'light',
 
@@ -239,4 +245,8 @@ export const defaultOpzioniGrafico: OpzioniGrafico = {
   direzioniModalita: undefined,
   direzioniDegOffs: 0,
   direzioni2ndTemaRender: undefined,
-};
+  };
+}
+
+/** Legacy shared default retained for existing consumers. Prefer the factory for new charts. */
+export const defaultOpzioniGrafico: OpzioniGrafico = createDefaultOpzioniGrafico();
