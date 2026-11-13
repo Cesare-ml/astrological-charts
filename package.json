@@ -45,7 +45,8 @@
     "test:camera-invariants": "node --test tests/chart-camera-invariants.test.mjs",
     "test:demo-axis-contract": "node --test tests/demo-axis-fixture-contract.test.mjs",
     "test:demo-axis-pixels": "node --test tests/axis-focus-canvas.browser.test.mjs",
-    "test:demo-axis-invariants": "node --test tests/axis-canvas-invariants.test.mjs"
+    "test:demo-axis-invariants": "node --test tests/axis-canvas-invariants.test.mjs",
+    "test:demo-axis-pointer": "node --test tests/axis-pointer-hit.browser.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
