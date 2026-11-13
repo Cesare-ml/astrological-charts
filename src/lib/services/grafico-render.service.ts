@@ -24,9 +24,11 @@ function disposeSceneResources(root: THREE.Object3D): void {
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
   const errors: unknown[] = [];
+  const objects: THREE.Object3D[] = [];
+  // Snapshot scene ownership before kill() callbacks can detach children or
+  // change material/geometry references during teardown.
   root.traverse((object: any) => {
-    try { stopSceneAnimations(object); }
-    catch (error) { errors.push(error); }
+    objects.push(object);
     if (object.geometry) geometries.add(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       if (!material) continue;
@@ -36,6 +38,10 @@ function disposeSceneResources(root: THREE.Object3D): void {
       }
     }
   });
+  for (const object of objects) {
+    try { stopSceneAnimations(object); }
+    catch (error) { errors.push(error); }
+  }
   // Disposing one faulty resource must not strand the other GPU allocations.
   for (const texture of textures) {
     try { texture.dispose(); } catch (error) { errors.push(error); }
