@@ -86,12 +86,15 @@ The preview toggle is **global/static** because `GestoreImmagini` is already sta
 npm ci
 npm run test:astro-preview
 npm run test:astro-preview-scope
+npm run test:astro-png
 npm run test:astro-url-integration
 npm run test:astro-render-guard
 npm run test:astro-overlay
 npm run check:types
 npm run build:demo
 ```
+
+**Dependency-free Node PNG decoder regression (2026-11-13):** `npm run test:astro-png` runs `tests/astro-png-decoder.test.mjs` using only built-in Node libraries. It constructs generated 512×512 RGBA PNG fixtures and covers **all five PNG row filters (0–4)**, hidden black RGB under zero alpha, CRC tampering, alpha coverage mismatch, invalid filter bytes, interlacing, excessive PNG chunks, truncated/trailing data, true bounded-DEFLATE output overflow, and the 2 MiB file cap. **ACTUALLY EXECUTED with Node 22.16.0: 13/13 PASS.** The local test file Git blob was verified to match the committed file exactly (`d4bae9053589e84114df06d8f1088af8580c2282`); the verified validator file also matches its Git blob (`bd1d419570ea48a44f67d5c0bf641c156954c2ee`). Using the same validator, the 22 owner-approved private v0.3.1 mask images were rechecked in memory: **22/22 SHA-256 and decoded-alpha checks PASS**. The private binary assets remain outside Git. These are genuine standalone Node tests, **not** a full Angular test or real browser rendering pass.
 
 **Focused local verification (2026-11-12):** the exact newly committed `scripts/png-mask-pixels.mjs` (Git blob `bd1d419570ea48a44f67d5c0bf641c156954c2ee`) was executed with Node 22 against all **22 approved private v0.3.1 PNG masks** and **eight negative cases** (CRC, mismatched coverage, truncated file, trailing bytes, oversize input, invalid coverage and invisible black RGB). **30/30 checks passed**. This is a standalone pixel-validator run, not the complete Node/Angular or browser suite.
 
