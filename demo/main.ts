@@ -38,7 +38,7 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         </label>
         <p class="muted">Requires the 22 owner-approved private white-alpha masks
           staged by the asset host. Disabled by default; older glyphs remain the fallback.</p>
-        <p class="status" [class.error]="error" role="status" data-testid="status" [attr.data-render-revision]="renderRevision">{{error || status}}</p>
+        <p class="status" [class.error]="error || previewNotice" role="status" data-testid="status" [attr.data-render-revision]="renderRevision">{{error || previewNotice || status}}</p>
       </aside>
       <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart"></canvas></section>
     </section>
@@ -59,6 +59,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   /** Prevent an obsolete asynchronous draw from claiming the latest frame. */
   private drawRequest = 0;
   error = '';
+  /** Explicit notice after restoring legacy glyphs from a failed private preview. */
+  previewNotice = '';
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
   astroPreviewEnabled = new URLSearchParams(location.search).get('astroGlyphs') === '1';
@@ -71,20 +73,20 @@ class DemoComponent implements AfterViewInit, OnDestroy {
       GestoreImmagini.configurePublicAssetsBase(this.assetBase);
       GestoreImmagini.configureVirgoStarsAstroPreview(this.astroPreviewEnabled);
       this.renderer.inizializzaGraficoRender(this.canvas, {x: 800, y: 800});
-      void this.draw();
+      void this.drawWithPreviewRecovery();
     } catch (error) { this.showError(error); }
   }
   ngOnDestroy(): void { this.renderer.ngOnDestroy(); }
-  changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.draw(); }
-  changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.draw(); }
+  changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.drawWithPreviewRecovery(); }
+  changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.drawWithPreviewRecovery(); }
   changeBase(event: Event): void {
-    try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.draw(); }
+    try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.drawWithPreviewRecovery(); }
     catch (error) { this.showError(error); }
   }
   toggleAstroPreview(event: Event): void {
     this.astroPreviewEnabled = (event.target as HTMLInputElement).checked;
     GestoreImmagini.configureVirgoStarsAstroPreview(this.astroPreviewEnabled);
-    void this.draw();
+    void this.drawWithPreviewRecovery();
   }
   zoom(direction: number): void { direction > 0 ? this.renderer.zoomIn(0.15) : this.renderer.zoomOut(0.15); }
   private options(): any {
@@ -98,7 +100,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   }
   async draw(): Promise<void> {
     const request = ++this.drawRequest;
-    this.busy = true; this.error = ''; this.status = 'Rendering…'; this.changes.markForCheck();
+    this.busy = true; this.error = ''; this.previewNotice = '';
+    this.status = 'Rendering…'; this.changes.markForCheck();
     try {
       await this.renderer.disegnaScena(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
@@ -115,6 +118,25 @@ class DemoComponent implements AfterViewInit, OnDestroy {
         this.busy = false;
         this.changes.markForCheck();
       }
+    }
+  }
+  /**
+   * A missing or invalid private mask should never strand the preview toggle
+   * in its ON state. Recover only when the error names an Astro mask, not when
+   * unrelated approved assets or the renderer fail.
+   */
+  private async drawWithPreviewRecovery(): Promise<void> {
+    const request = this.drawRequest + 1;
+    await this.draw();
+    if (request !== this.drawRequest || !this.astroPreviewEnabled ||
+        !this.error.includes('virgostars-astro/masks/')) return;
+
+    this.astroPreviewEnabled = false;
+    GestoreImmagini.configureVirgoStarsAstroPreview(false);
+    await this.draw();
+    if (!this.error) {
+      this.previewNotice = 'VirgoStars Astro masks were unavailable; the original symbols have been restored.';
+      this.changes.markForCheck();
     }
   }
   async exportPng(): Promise<void> {
