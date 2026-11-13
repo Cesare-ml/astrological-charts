@@ -155,3 +155,7 @@ The approved local asset server responds `204` to `OPTIONS` only for paths in th
 ### CORS method safety
 
 The local approved-asset server rejects an `OPTIONS` preflight requesting a method other than `GET` or `HEAD` with HTTP `405` (`Allow: GET, HEAD, OPTIONS`). Approved `GET` and `HEAD` requests retain manifest and SHA-256 integrity checks. The regression is in `tests/serve-local-assets.test.mjs`; run `node --test tests/serve-local-assets.test.mjs` in a complete checkout. This does not validate browser WebGL rendering or real-artwork licensing.
+
+### CORS preflight regression coverage
+
+`node --test tests/serve-local-assets.test.mjs` includes a regression for both allowed local demo origins. It asserts that successful OPTIONS responses are origin-specific (`Access-Control-Allow-Origin` and `Vary: Origin`), non-cacheable (`Cache-Control: no-store`) and bodyless. External origins must receive HTTP 403 without an allow-origin header. This is a synthetic-pack HTTP test, **not** a browser/WebGL or real-artwork checksum validation.
