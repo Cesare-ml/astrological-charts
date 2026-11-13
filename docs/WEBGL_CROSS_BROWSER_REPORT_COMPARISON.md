@@ -30,6 +30,40 @@ node scripts/benchmark-webgl-buffers.mjs > .local/webgl-firefox.json
 node scripts/compare-webgl-buffer-reports-cli.mjs .local/webgl-chromium.json .local/webgl-firefox.json
 ```
 
+## Benchmark provenance and exact-match checks
+
+The browser benchmark now includes three additional local-only metadata values:
+
+- `sourceRevision`: the 40-character Git HEAD commit when `git` is available.
+- `sourceDirty`: whether **tracked files** have local modifications; `null`
+  means Git status was unavailable (not that the checkout was clean).
+- `assetManifestSha256`: SHA-256 of the local synthetic pack manifest's
+  **actual bytes**, defaulting to
+  `.local/demo-pack/manifests/approved-assets.json`. The digest is `null`
+  if the default manifest does not exist. A custom manifest path is accepted
+  via `CHART_BUFFER_ASSET_MANIFEST`; an explicitly specified missing, empty
+  or oversized manifest fails the benchmark.
+
+The analyzer rejects malformed SHA values. When both reports provide a
+source revision, **different commits are rejected**. When both provide a
+manifest digest, **different manifests are rejected**. Missing metadata
+produces a warning instead of a false guarantee of comparability; a dirty
+working tree or unavailable Git status also produces a warning. The
+comparison JSON retains the provenance for both browsers.
+
+The manifest digest identifies the metadata file, **not the actual image
+bytes served or loaded by the browser**. Git HEAD alone cannot identify
+untracked files or guarantee that the Angular development server is running
+a build from that revision. The manifest-verified asset server and a clean,
+controlled environment are still mandatory. The report records no local
+filesystem paths, credentials, image contents or diffs.
+
+Run the provenance unit suite independently:
+
+```sh
+node --test tests/webgl-benchmark-provenance.test.mjs
+```
+
 The CLI accepts two JSON paths in **either order**, reads at most 5 MB from
 each, performs no network requests or file modifications, and writes a single
 JSON summary to standard output. It exits with code 2 for wrong CLI usage and
@@ -38,7 +72,7 @@ code 1 for unreadable, corrupt or noncomparable reports.
 Run standalone regression tests without Angular, a GPU or the local servers:
 
 ```sh
-node --test tests/compare-webgl-buffer-reports.test.mjs tests/compare-webgl-buffer-reports-cli.test.mjs
+node --test tests/compare-webgl-buffer-reports.test.mjs tests/compare-webgl-buffer-reports-cli.test.mjs tests/webgl-benchmark-provenance.test.mjs
 ```
 
 ## Comparison rules
@@ -66,10 +100,10 @@ The summary always uses the same browser order and includes:
   context-loss events.
 
 **Limitations:** Both probes use a locally fixed natal chart and alternating
-dark/light skins, but saved reports do not carry cryptographic fingerprints
-of the code revision, synthetic asset pack or graphics driver. Even reports
-with matching viewport and counts are not sufficient to establish identical
-hardware, fixtures or asset provenance. WebGL buffer handles count explicit
+dark/light skins. Git and manifest fingerprints strengthen report comparison
+but do not attest actual Angular bundles, loaded asset bytes, graphics driver
+or hardware. Even reports with matching viewport, counts and provenance
+cannot prove identical physical test conditions. WebGL buffer handles count explicit
 `createBuffer` and `deleteBuffer` API calls, not physical GPU memory
 or bytes, allocation sizes, context GC or a proven resource leak.
 
