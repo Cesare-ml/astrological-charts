@@ -95,7 +95,12 @@ test('keyboard Enter/Space selects all four natal axes without camera or zoom ch
         [2, 'MC', 'Neptune'], [3, 'IC', 'Mercury']
       ]) {
         const button = page.getByRole('button', { name: `Highlight natal ${axis}` });
-        await button.focus();
+        // Verify real Tab navigation between the four consecutive native
+        // axis buttons, not merely scripted button.focus() for every axis.
+        if (index === 0) await button.focus();
+        else await page.keyboard.press('Tab');
+        assert.equal(await button.evaluate(element => document.activeElement === element), true,
+          `${axis}: keyboard Tab order did not reach the next axis button`);
         assert.equal(await button.getAttribute('aria-pressed'), 'false',
           `${axis}: old selection was not cleared`);
         await page.keyboard.press(index % 2 === 0 ? 'Enter' : 'Space');
@@ -119,6 +124,40 @@ test('keyboard Enter/Space selects all four natal axes without camera or zoom ch
       assert.equal(await page.locator('[aria-pressed="true"]').count(), 0);
       assert.deepEqual(await viewState(page), baseline,
         'Keyboard clear changed camera, scene, zoom or canvas');
+
+      // Same axis name in a different chart layer must never inherit the
+      // natal aspect, even when the user switches layers from the keyboard.
+      const layer = page.locator('#planet-layer');
+      await layer.focus();
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() =>
+        document.querySelector('#planet-layer')?.value === 'transit' &&
+        !!document.querySelector('[aria-label="Highlight transit AS"]'));
+      const transitAxis = page.getByRole('button', { name: 'Highlight transit AS' });
+      await transitAxis.focus();
+      await page.keyboard.press('Space');
+      await selected(page, 'transit:AS');
+      assert.equal(await transitAxis.getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.locator('[data-testid=aspect-match]').count(), 0,
+        'Transit AS incorrectly inherited natal AS illustrative relations');
+      assert.deepEqual(await viewState(page), baseline,
+        'Switching keyboard selection to transit AS changed camera or zoom');
+
+      await layer.focus();
+      await page.keyboard.press('ArrowUp');
+      await page.waitForFunction(() =>
+        document.querySelector('#planet-layer')?.value === 'natal' &&
+        !!document.querySelector('[aria-label="Highlight natal AS"]'));
+      const natalAxis = page.getByRole('button', { name: 'Highlight natal AS' });
+      assert.equal(await natalAxis.getAttribute('aria-pressed'), 'false',
+        'Transit AS selection must not mark natal AS pressed');
+      await natalAxis.focus();
+      await page.keyboard.press('Enter');
+      await selected(page, 'natal:AS');
+      assert.equal(await page.locator('[data-testid=aspect-match]').count(), 1,
+        'Returning to natal AS must recover its supplied aspect');
+      assert.deepEqual(await viewState(page), baseline,
+        'Switching keyboard selection back to natal AS changed camera or zoom');
       assert.deepEqual(errors, [], 'Unexpected browser exceptions');
     } finally {
       await page.close();
