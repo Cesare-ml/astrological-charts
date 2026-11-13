@@ -35,6 +35,7 @@ function normalized(report, label) {
     throw new TypeError(`${label}.browser must be chromium or firefox`);
   }
   nonEmpty(report.chart, `${label}.chart`);
+  nonEmpty(report.browserVersion, `${label}.browserVersion`);
   const viewport = object(report.viewport, `${label}.viewport`);
   positiveInteger(viewport.width, `${label}.viewport.width`);
   positiveInteger(viewport.height, `${label}.viewport.height`);
@@ -109,6 +110,21 @@ export function compareWebGLBufferReports(first, second) {
     'WebGL API buffer handles are not GPU bytes, proof of a leak, or a performance ranking.',
     'The reports do not cryptographically establish matching asset packs, code revisions, graphics drivers, or hardware.',
   ];
+  // The probe emits an ISO UTC timestamp. Do not silently treat reports from
+  // widely separated sessions as equivalent controlled measurements.
+  const timestamp = (value) => {
+    if (typeof value !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return null;
+    const time = Date.parse(value);
+    return Number.isFinite(time) && new Date(time).toISOString() === value ? time : null;
+  };
+  const chromiumTime = timestamp(chromium.report.recordedAt);
+  const firefoxTime = timestamp(firefox.report.recordedAt);
+  if (chromiumTime === null || firefoxTime === null) {
+    warnings.push('Recorded-at UTC timestamp missing or invalid in at least one report; session proximity cannot be checked');
+  } else if (Math.abs(chromiumTime - firefoxTime) > 24 * 60 * 60 * 1000) {
+    warnings.push('Reports were recorded more than 24 hours apart; confirm matching assets, source revision and host environment');
+  }
   for (const label of ['node', 'platform', 'architecture']) {
     const left = chromium.report[label];
     const right = firefox.report[label];
