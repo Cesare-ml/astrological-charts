@@ -4,8 +4,9 @@ import {mkdtempSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 
-const script = new URL('../scripts/summarize-webgl-buffer-report.mjs', import.meta.url);
+const script = fileURLToPath(new URL('../scripts/summarize-webgl-buffer-report.mjs', import.meta.url));
 const ctx = (id, created, deleted) => ({id, created, deleted, live: created - deleted});
 const point = (phase, index, ...perContext) => ({
   phase, index,
@@ -21,7 +22,7 @@ const fixture = () => {
   return {redraws: 1, exports: 1, checkpoints: [initial, redraw, exported], final: exported};
 };
 const dir = mkdtempSync(join(tmpdir(), 'chart-webgl-report-'));
-const run = (...args) => spawnSync(process.execPath, [script.pathname, ...args], {encoding: 'utf8'});
+const run = (...args) => spawnSync(process.execPath, [script, ...args], {encoding: 'utf8'});
 test('CLI reads an exported benchmark report without browser or network', () => {
   const file = join(dir, 'valid.json');
   writeFileSync(file, JSON.stringify(fixture()), 'utf8');
