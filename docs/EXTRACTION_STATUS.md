@@ -8,7 +8,7 @@
 - Angular 20 / Three.js / TypeScript library workspace and initial package metadata.
 - Minimal fixes for three imports from the package into itself (converted to relative imports).
 - Contributor instructions, PR template and upstream technical reference snapshots.
-- Extraction source-integrity script (`npm run check:extraction`); this **does not** test the renderer.
+- Extraction source-integrity script (`npm run check:extraction`); it rejects non-literal `import()` expressions that cannot be statically resolved, as well as broken local and undeclared package imports. Static literal `import()` remains supported. This **does not** test the renderer.
 - An independent Angular demo renders natal, transit, synastry and latitude fixtures with seven selectable skins and PNG export using locally generated placeholder assets.
 - Browser smoke tests exercise Chromium and Firefox with both synthetic and private original images; the separate Firefox offline test uses local synthetic files and does not exercise the shipped Astrolabio adapter.
 - The extraction and downstream PRs were integrated in order after their local preflight and build checks. The extracted #1 renderer also passed a synthetic browser smoke test; those checks do not establish original-artwork fidelity.
