@@ -125,3 +125,16 @@ click already work in Chromium and Firefox. The test is not part of
 `preflight` because it requires live local servers and an installed
 browser. Run both browser commands separately and collect real results
 before requesting merge of the parent draft PR #22 to `main`.
+
+The projected mesh must also be visible on the **currently active camera
+layer**, mirroring the raycaster's camera-mask behavior. Otherwise an
+out-of-view/hidden-layer duplicate natal axis could produce an artificial
+pointer coordinate even when another visible glyph exists.
+
+A new fast regression, `npm run test:demo-axis-projection`, extracts the
+**actual browser test's `page.evaluate` callback** (not a duplicate
+projection algorithm) and exercises it with synthetic Three.js-like meshes.
+Six source-level cases verify canvas CSS coordinates, active camera layers,
+hidden ancestors/materials, transparency, out-of-view glyphs and absent
+Angular debug metadata. It is registered in `preflight`, but does not
+replace the required real Chromium/Firefox pointer test.
