@@ -47,6 +47,13 @@ The tool first uses the #67 analyzer to validate every snapshot, context
 counter, and checkpoint. It then requires one `chromium` report and one
 `firefox` report with identical chart type, viewport dimensions, redraw
 count and PNG export count. It refuses to compare different workloads.
+Each input must identify a non-empty browser version. Where both reports
+contain valid ISO-8601 UTC `recordedAt` timestamps, the tool warns when
+they were collected more than 24 hours apart; missing or malformed timestamps
+also produce an explicit warning. The output includes each browser's reported
+version and UTC session timestamp (or `null` when missing). Neither proximity
+nor a matching browser version proves identical binaries, source commits
+or asset packs.
 The summary always uses the same browser order and includes:
 
 - Per-browser initial, after-redraw and final API-live buffer counts.
