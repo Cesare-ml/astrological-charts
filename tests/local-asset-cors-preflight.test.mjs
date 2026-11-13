@@ -58,6 +58,23 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.equal(denied.status, 403);
     assert.equal(denied.headers.get('access-control-allow-origin'), null);
 
+    // Origin matching must be exact: neither host suffixes nor alternate ports
+    // may inherit the demo's cross-origin permission.
+    for (const spoofedOrigin of [
+      'http://localhost.evil.example:4200',
+      'http://localhost:4201',
+      'http://127.0.0.1:4201',
+      'null',
+    ]) {
+      const response = await fetch(url, {
+        method: 'OPTIONS',
+        headers: { Origin: spoofedOrigin, 'Access-Control-Request-Method': 'GET' },
+      });
+      assert.equal(response.status, 403, spoofedOrigin);
+      assert.equal(response.headers.get('access-control-allow-origin'), null, spoofedOrigin);
+      assert.equal(response.headers.get('access-control-allow-methods'), null, spoofedOrigin);
+    }
+
     const allowedGet = await fetch(url, {
       headers: { Origin: 'http://127.0.0.1:4200' },
     });
