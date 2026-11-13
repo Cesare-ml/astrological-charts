@@ -27,17 +27,33 @@ function disposeSceneResources(root: THREE.Object3D): void {
   const objects: THREE.Object3D[] = [];
   // Snapshot scene ownership before kill() callbacks can detach children or
   // change material/geometry references during teardown.
-  root.traverse((object: any) => {
-    objects.push(object);
-    if (object.geometry) geometries.add(object.geometry);
-    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-      if (!material) continue;
-      materials.add(material);
-      for (const value of Object.values(material)) {
-        if (value instanceof THREE.Texture) textures.add(value);
+  try {
+    root.traverse((object: any) => {
+      objects.push(object);
+      // Legacy scene objects may expose throwing getters. Capture failures
+      // without aborting sibling ownership discovery or resource disposal.
+      try {
+        const geometry = object.geometry;
+        if (geometry) geometries.add(geometry);
+      } catch (error) { errors.push(error); }
+
+      let ownedMaterials: any;
+      try { ownedMaterials = object.material; }
+      catch (error) { errors.push(error); return; }
+      for (const material of Array.isArray(ownedMaterials) ? ownedMaterials : [ownedMaterials]) {
+        if (!material) continue;
+        materials.add(material);
+        try {
+          for (const value of Object.values(material)) {
+            if (value instanceof THREE.Texture) textures.add(value);
+          }
+        } catch (error) { errors.push(error); }
       }
-    }
-  });
+    });
+  } catch (error) {
+    // Traversal itself may fail. Release everything captured before failure.
+    errors.push(error);
+  }
   for (const object of objects) {
     try { stopSceneAnimations(object); }
     catch (error) { errors.push(error); }
