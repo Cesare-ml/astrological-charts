@@ -326,3 +326,36 @@ test('traversal failure still stops captured animations and disposes known resou
   assert.throws(() => dispose(scene), error => error === failure);
   assert.deepEqual(events, ['stop', 'material', 'geometry']);
 });
+
+test('throwing texture getter does not hide later texture on the same material', () => {
+  const events = [];
+  const failure = new Error('diffuse map unavailable');
+  const material = {
+    ...resource('material', events),
+    get map() { throw failure; },
+    normalMap: new FakeTexture(() => events.push('normal texture')),
+  };
+  const node = {geometry: resource('geometry', events), material};
+  const dispose = makeDispose(() => events.push('stop'));
+  assert.throws(() => dispose(root(node)), error => error === failure);
+  assert.deepEqual(events, ['stop', 'normal texture', 'material', 'geometry']);
+});
+
+test('independent throwing texture getters preserve all errors and release valid texture', () => {
+  const events = [];
+  const first = new Error('map unavailable');
+  const second = new TypeError('normal map unavailable');
+  const material = {
+    ...resource('material', events),
+    get map() { throw first; },
+    roughnessMap: new FakeTexture(() => events.push('roughness texture')),
+    get normalMap() { throw second; },
+  };
+  const dispose = makeDispose(() => events.push('stop'));
+  assert.throws(() => dispose(root({material})), error => {
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, [first, second]);
+    return true;
+  });
+  assert.deepEqual(events, ['stop', 'roughness texture', 'material']);
+});
