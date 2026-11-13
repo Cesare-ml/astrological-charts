@@ -218,3 +218,13 @@ test('PNG export is rejected while a chart draw is pending',async()=>{
   assert.equal(h.instance.busy,false);
   assert.equal(h.instance.renderRevision,1);
 });
+
+test('export option-building failure reports an error and unlocks controls',async()=>{
+  const h=harness();
+  h.instance.options=()=>{throw new Error('invalid export settings');};
+  await h.instance.exportPng();
+  assert.equal(h.pendingExports.length,0);
+  assert.equal(h.instance.busy,false);
+  assert.match(h.instance.error,/invalid export settings/);
+  assert.equal(h.clickCount(),0);
+});
