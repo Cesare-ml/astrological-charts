@@ -60,6 +60,9 @@ test('independent localhost server serves verified PNG files without VirgoStars 
     assert.ok(html.includes('img/simboli-bianchi/segni/01.png'));
     assert.match(html, /href="https:\/\/virgostars\.it\/"/);
     assert.match(html, /rel="noopener noreferrer"/);
+    assert.match(html, /<main id="asset-gallery" aria-label="Approved asset gallery">/);
+    assert.match(html, /<\/main>/);
+    assert.equal((html.match(/<main\b/g)??[]).length,1);
   });
 });
 
