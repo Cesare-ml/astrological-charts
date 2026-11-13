@@ -44,6 +44,8 @@ The default base is `http://127.0.0.1:4177/assets/`; change it in the UI or use 
 
 The local asset server also checks the approved manifest and file SHA-256 for CORS `OPTIONS` preflight requests: unknown paths return HTTP 404 and files modified after startup return HTTP 409, rather than advertising availability. Run `node --test tests/serve-local-assets.test.mjs` to exercise these cases with synthetic fixtures; a passing preflight is not a substitute for browser rendering tests.
 
+If the separate approved asset checkout is removed while the local server is running, subsequent asset GET and OPTIONS requests fail closed with HTTP 404 rather than terminating the server. This is a development-server resilience guard, not a substitute for re-running `npm run verify:pack` or for browser validation. The synthetic HTTP regression is in `tests/serve-local-assets.test.mjs` (`npm run test:local-assets`).
+
 ## Documentation status regression check
 
 Run `npm run test:demo-docs` to check that demo onboarding distinguishes publicly readable renderer source from restricted artwork and does not imply redistribution permission. The same check is included in `npm run preflight`. It reads documentation only; it does not validate Angular builds, WebGL rendering, asset hashes or licensing rights.
