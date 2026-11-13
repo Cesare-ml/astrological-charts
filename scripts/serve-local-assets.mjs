@@ -75,7 +75,7 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
   const allowed=new Set(origins);
   for(const origin of allowed) {
     const url=new URL(origin);
-    if(url.origin!==origin||!['localhost','127.0.0.1'].includes(url.hostname))
+    if(url.protocol!=='http:'||url.origin!==origin||!['localhost','127.0.0.1'].includes(url.hostname))
       throw new Error('Only local development origins may be allowed: '+origin);
   }
   return createServer((req,res)=>{
