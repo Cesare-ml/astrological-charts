@@ -65,6 +65,7 @@ function previewHtml(pack) {
     'article{background:#202d3e;border:1px solid #3d4b5f;border-radius:10px;padding:12px;overflow-wrap:anywhere}'+
     'img,.font{height:110px;max-width:100%;object-fit:contain;display:block;margin:0 auto 8px}'+
     'p{min-height:42px}small{color:#afbdce}a{color:#b8d7ff}'+
+    'main:focus{outline:3px solid #b8d7ff;outline-offset:4px}' +
     '.skip-link{position:absolute;left:12px;top:-100px;padding:10px;background:#fff;color:#101826}'+
     '.skip-link:focus{top:12px;z-index:1}</style></head><body>'+
     '<a class="skip-link" href="#asset-gallery">Skip to approved assets</a>'+ 
