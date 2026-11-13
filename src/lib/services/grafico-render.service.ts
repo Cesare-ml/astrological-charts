@@ -23,8 +23,10 @@ function disposeSceneResources(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
+  const errors: unknown[] = [];
   root.traverse((object: any) => {
-    stopSceneAnimations(object);
+    try { stopSceneAnimations(object); }
+    catch (error) { errors.push(error); }
     if (object.geometry) geometries.add(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       if (!material) continue;
@@ -34,9 +36,18 @@ function disposeSceneResources(root: THREE.Object3D): void {
       }
     }
   });
-  textures.forEach(texture => texture.dispose());
-  materials.forEach(material => material.dispose());
-  geometries.forEach(geometry => geometry.dispose());
+  // Disposing one faulty resource must not strand the other GPU allocations.
+  for (const texture of textures) {
+    try { texture.dispose(); } catch (error) { errors.push(error); }
+  }
+  for (const material of materials) {
+    try { material.dispose(); } catch (error) { errors.push(error); }
+  }
+  for (const geometry of geometries) {
+    try { geometry.dispose(); } catch (error) { errors.push(error); }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'Failed to dispose scene resources.');
 }
 
 async function waitForSceneTextures(root: THREE.Object3D): Promise<void> {
@@ -114,19 +125,22 @@ export class GraficoRenderService implements OnDestroy {
   public ngOnDestroy(): void {
     ++this.drawGeneration;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
-    
-    if(this.resizeSub) {
-      this.resizeSub.unsubscribe();
+
+    const errors: unknown[] = [];
+    if (this.resizeSub) {
+      try { this.resizeSub.unsubscribe(); } catch (error) { errors.push(error); }
     }
     if (this.scene) {
-      disposeSceneResources(this.scene);
-      this.scene.clear();
+      try { disposeSceneResources(this.scene); } catch (error) { errors.push(error); }
+      try { this.scene.clear(); } catch (error) { errors.push(error); }
     }
-    this.renderer?.dispose();
+    try { this.renderer?.dispose(); } catch (error) { errors.push(error); }
     this.renderer = null;
     this.scene = null;
     this.camera = null;
     this.isInizializzato = false;
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, 'Failed to destroy chart renderer.');
   }
 
   // -------------------- INIT --------------------
