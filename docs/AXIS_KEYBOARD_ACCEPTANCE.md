@@ -19,11 +19,12 @@ relationships:
 | MC | Neptune | Enter |
 | IC | Mercury | Space |
 
-After increasing zoom to a **non-default** value, the test uses Playwright
-`button.focus()` plus physical keyboard events, never `button.click()`
-for axis selection. It asserts the selection label, exactly one
-illustrative aspect, the partner name, `aria-pressed`, and retention of
-keyboard focus. It checks unchanged **live Angular development
+After increasing zoom to a **non-default** value, the test focuses the
+first AS button and then uses **real Tab navigation** through DS, MC and IC,
+alternating Enter and Space activation (never `button.click()` for axis
+selection). It asserts the selection label, exactly one illustrative
+aspect, the partner name, `aria-pressed`, correct tab order and retention
+of keyboard focus. It checks unchanged **live Angular development
 camera UUID, scene UUID, zoom, position, quaternion, 16-value
 projection matrix, canvas dimensions, drawing-buffer dimensions and
 render revision** after each focus and after keyboard Clear selection.
@@ -31,6 +32,16 @@ render revision** after each focus and after keyboard Clear selection.
 Missing WebGL, browser, Angular development debug service, camera or
 scene metadata **fails** the test rather than silently weakening
 its no-zoom assertion.
+
+The test also switches the layer selector **using ArrowDown/ArrowUp**,
+selects `transit:AS` with Space and verifies it has **no** relationship
+borrowed from `natal:AS`. Switching back to the natal layer and pressing
+Enter must restore the one supplied illustrative relationship. Camera
+invariants remain enforced across these layer switches.
+
+A source-level V8 syntax parse and inspection of actual demo bindings and
+fixtures succeeded for this extension; these checks do not establish
+that the Angular application or either browser has passed.
 
 ## Local run (no Actions)
 
