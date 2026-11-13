@@ -158,10 +158,12 @@ export function compareWebGLBufferReports(first, second) {
     browsers: {
       chromium: {
         browserVersion: chromium.analysis.source.browserVersion,
+        recordedAt: chromium.analysis.source.recordedAt,
         metrics: chromium.result,
       },
       firefox: {
         browserVersion: firefox.analysis.source.browserVersion,
+        recordedAt: firefox.analysis.source.recordedAt,
         metrics: firefox.result,
       },
     },
