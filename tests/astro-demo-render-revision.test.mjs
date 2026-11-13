@@ -37,6 +37,8 @@ function createHarness() {
   }};
   instance.changes = { markForCheck: () => { markCount++; }};
   instance.drawRequest = 0;
+  instance.exportRequest = 0;
+  instance.destroyed = false;
   instance.renderRevision = 0;
   instance.busy = false;
   instance.error = '';
