@@ -43,6 +43,37 @@ A source-level V8 syntax parse and inspection of actual demo bindings and
 fixtures succeeded for this extension; these checks do not establish
 that the Angular application or either browser has passed.
 
+## Fast regression without browser or WebGL
+
+`tests/axis-keyboard-contract.test.mjs` reads the **real**
+`demo/main.ts` using the project's TypeScript dev dependency. It checks
+that the Angular template still offers native buttons with live ARIA state,
+a keyboard-operable layer selector, four ordered house axes and a Clear
+control. It then executes the actual TypeScript bodies of
+`changePlanetLayer`, `selectPlanet` and `clearPlanet` in a small
+in-memory probe, covering natal/transit identities, null clearing,
+busy-state selection blocking and absence of zoom calls.
+
+```sh
+npm ci
+node --test tests/axis-keyboard-contract.test.mjs
+```
+
+This test is standalone and **not yet added to the preflight script**
+because several draft branches already edit `package.json`.
+It deliberately avoids duplicating the existing
+`tests/demo-axis-fixture-contract.test.mjs` fixture/aspect calculations.
+The browser-based `tests/axis-keyboard-focus.browser.test.mjs` below
+remains mandatory to verify native Tab/Enter/Space behavior, live WebGL
+camera and actual Angular rendering.
+
+At the GitHub-connector review stage, isolated V8 execution of the actual
+demo `selectPlanet` / `changePlanetLayer` / `clearPlanet` method bodies
+succeeded: natal AS/DS/MC/IC, switching AS to transit and back, clear,
+and busy-blocked selection all behaved as expected; there were **zero**
+zoom calls. This is **not** a complete `node --test` run against
+the full repository or a browser result.
+
 ## Local run (no Actions)
 
 Install dependencies from the checked-out PR #22 + this stacked branch:
