@@ -388,6 +388,7 @@ export class GraficoRenderService implements OnDestroy {
     });
 
     let scene: THREE.Scene | null = null;
+    let disegno: THREE.Object3D | null = null;
     let exportFailed = false;
     let exportError: unknown;
     try {
@@ -401,7 +402,6 @@ export class GraficoRenderService implements OnDestroy {
       scene.background = new THREE.Color(bgColor);
       scene.add(camera);
       // Genera il contenuto grafico come nella scena interattiva.
-      let disegno = null;
       switch (grafico) {
         case 'latitudini':
           disegno = await LatitudiniRender.creaScena(temaRender, temaRenderTransiti, temaRenderSinastria, opzioni);
@@ -422,6 +422,13 @@ export class GraficoRenderService implements OnDestroy {
       throw error;
     } finally {
       const cleanupErrors: unknown[] = [];
+      // An add() failure can leave a newly built drawing outside the scene.
+      // Only the owning scene should dispose a drawing already attached to it.
+      if (disegno) {
+        try {
+          if (!scene || !scene.children.includes(disegno)) disposeSceneResources(disegno);
+        } catch (error) { cleanupErrors.push(error); }
+      }
       if (scene) {
         try { disposeAndClearScene(scene); } catch (error) { cleanupErrors.push(error); }
       }
