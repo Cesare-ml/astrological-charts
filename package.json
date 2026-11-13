@@ -19,7 +19,7 @@
     "check:types": "tsc -p tsconfig.lib.json --noEmit",
     "check:extraction": "node scripts/check-extraction.mjs",
     "check:assets": "node scripts/inventory-assets.mjs",
-    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:assets && npm run test:demo-pack && npm run test:demo-asset-coverage && npm run test:latitude-assets && npm run test:scene-animations && npm run test:verify-local && npm run test:pr-overlap && npm run test:demo-docs",
+    "preflight": "npm run check:extraction && npm run test:extraction && npm run check:assets && npm run check:types && npm run test:assets && npm run test:demo-pack && npm run test:demo-asset-coverage && npm run test:latitude-assets && npm run test:scene-animations && npm run test:scene-resources && npm run test:verify-local && npm run test:pr-overlap && npm run test:demo-docs",
     "test:extraction": "node --test tests/extraction-imports.test.mjs",
     "test:asset-urls": "node --test tests/chart-asset-urls.test.mjs",
     "test:asset-manifest": "node --test tests/asset-manifest.test.mjs",
@@ -37,7 +37,8 @@
     "test:pr-overlap": "node --test tests/check-pr-overlap.test.mjs",
     "test:demo-docs": "node --test tests/demo-docs-status.test.mjs",
     "verify:angular": "npm run preflight && npm run build:library && npm run build:demo",
-    "test:scene-animations": "node --test tests/scene-animations.test.mjs"
+    "test:scene-animations": "node --test tests/scene-animations.test.mjs",
+    "test:scene-resources": "node --test tests/scene-resource-disposal.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
