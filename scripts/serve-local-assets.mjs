@@ -116,7 +116,7 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
       } catch {
         res.writeHead(409);res.end();return;
       }
-      res.writeHead(204,{'Access-Control-Allow-Methods':'GET, HEAD, OPTIONS'});res.end();return;
+      res.writeHead(204,{'Access-Control-Allow-Methods':'GET, HEAD'});res.end();return;
     }
     let pathname;
     try{pathname=new URL(req.url,'http://127.0.0.1').pathname;}
