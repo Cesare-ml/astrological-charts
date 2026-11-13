@@ -127,6 +127,8 @@ test('valid nearby UTC timestamps avoid a session-proximity warning', () => {
   const result = compareWebGLBufferReports(chrome, firefox);
   assert.ok(!result.warnings.some(w => w.includes('Recorded-at UTC timestamp')));
   assert.ok(!result.warnings.some(w => w.includes('more than 24 hours apart')));
+  assert.equal(result.browsers.chromium.recordedAt, chrome.recordedAt);
+  assert.equal(result.browsers.firefox.recordedAt, firefox.recordedAt);
 });
 
 test('missing or malformed timestamps explicitly warn instead of being silently comparable', () => {
