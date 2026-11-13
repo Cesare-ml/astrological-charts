@@ -161,3 +161,7 @@ The local approved-asset server rejects an `OPTIONS` preflight requesting a meth
 ### CORS preflight regression coverage
 
 `node --test tests/serve-local-assets.test.mjs` includes a regression for both allowed local demo origins. It asserts that successful OPTIONS responses are origin-specific (`Access-Control-Allow-Origin` and `Vary: Origin`), non-cacheable (`Cache-Control: no-store`) and bodyless. External origins must receive HTTP 403 without an allow-origin header. This is a synthetic-pack HTTP test, **not** a browser/WebGL or real-artwork checksum validation.
+
+### HEAD response parity regression
+
+The synthetic HTTP suite also checks that an approved asset's `HEAD` response has the same `Content-Type` and `Content-Length` as `GET`, echoes an authorized local CORS origin, sends `Cache-Control: no-store`, and returns no image bytes. This guards metadata-only consumers without duplicating any artwork. Run `node --test tests/serve-local-assets.test.mjs` on a full checkout; adding the regression does **not** establish that it has passed until executed.
