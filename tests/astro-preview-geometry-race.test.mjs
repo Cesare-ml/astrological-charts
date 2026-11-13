@@ -77,8 +77,10 @@ const ref = 'simboli-bianchi/elementi-celesti/Sun.png';
 const width = 875;
 const height = 605;
 const scale = 1 / width;
-const legacy = { width: 1, height: height / width };
-const square = { width: height / width, height: height / width };
+// Keep the identical multiplication order used by getImg(). Dividing the
+// integers first differs by one floating-point ULP from height * (1 / width).
+const legacy = { width: width * scale, height: height * scale };
+const square = { width: height * scale, height: height * scale };
 function assertGeometry(mesh, expected) {
   assert.equal(mesh.geometry.width, expected.width);
   assert.equal(mesh.geometry.height, expected.height);
