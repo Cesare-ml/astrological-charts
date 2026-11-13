@@ -118,6 +118,21 @@ test('OPTIONS rejects unknown paths and files modified after startup',async()=>{
   });
 });
 
+test('preflight rejects unsupported requested methods without exposing assets',async()=>{
+  await withAssetServer(async({url,file})=>{
+    const path='/assets/'+file;
+    const headers={Origin:'http://localhost:4200','Access-Control-Request-Method':'POST'};
+    const denied=await fetch(url+path,{method:'OPTIONS',headers});
+    assert.equal(denied.status,405);
+    assert.equal(denied.headers.get('allow'),'GET, HEAD, OPTIONS');
+    assert.equal(denied.headers.get('cache-control'),'no-store');
+    const allowed=await fetch(url+path,{method:'OPTIONS',headers:{...headers,'Access-Control-Request-Method':'HEAD'}});
+    assert.equal(allowed.status,204);
+    const get=await fetch(url+path,{method:'GET'});
+    assert.equal(get.status,200);
+  });
+});
+
 test('requires an approved manifest with valid SHA-256 and safe local origins',async()=>{
   const dir=mkdtempSync(join(tmpdir(),'chart-verified-'));
   try {
