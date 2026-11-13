@@ -31,6 +31,7 @@ The Angular **development** server is required so `ng.getComponent` can find the
 
 - Four natal warmups, then **50** natal redraws alternating the light/dark skins. Compare the same natal/light skin before and after via `renderer.info.memory` (tracked geometries and textures).
 - **20** PNG exports across natal, transits, synastry and latitude modes, validating PNG dimensions (1600×1600) and preserving the active renderer, scene, camera and resource counters.
+- Decode the first exported PNG of each mode with `sharp`, validate decoded pixel dimensions and count visible RGB colors after flattening alpha. Reject blank/uniform images, including fully transparent images with hidden RGB data. This is a synthetic **visibility smoke test**, not visual-baseline parity.
 - Measure WebGL1/WebGL2 `createTexture`/`deleteTexture` *call deltas* across each temporary offscreen PNG context, distinct from the primary renderer accounting.
 - Create a temporary second canvas and `GraficoRenderService`, render it, redraw the first, and check that the second's resource counters remain unchanged; release the temporary chart afterward.
 - Fail on page errors, failed HTTP responses, WebGL context losses and missing resource instrumentation. Export checkpoints are printed as JSON to the terminal, not submitted to a server.
@@ -48,11 +49,13 @@ npm run test:demo-webgl-lifecycle
 
 Cycle counts accept 1–100. Growth thresholds are optional (default: just report deltas); zero may be overly strict on some browser/driver combinations and must be calibrated against real results. `CHART_TEST_BROWSER`, `CHROME_PATH` and `FIREFOX_PATH` follow the existing demo browser convention.
 
-Run `npm run test:webgl-lifecycle-instrumentation` for the fast Node unit test. It extracts the **same** browser-side WebGL counter callback from source and exercises synthetic WebGL1, WebGL2 inherited methods, WebGL2 overrides and context-loss events. This fast test is included in `preflight`. The full browser test is deliberately **not** included because it requires an actual local browser, both dev servers and WebGL.
+Run `npm run test:webgl-lifecycle-instrumentation` and `npm run test:synthetic-png` for the fast Node regressions. The latter uses generated in-memory colorful, white, transparent and invalid PNG fixtures; no original artwork is required.
+
+Run `npm run test:webgl-lifecycle-instrumentation` for the WebGL counter unit test. It extracts the **same** browser-side WebGL counter callback from source and exercises synthetic WebGL1, WebGL2 inherited methods, WebGL2 overrides and context-loss events. This fast test is included in `preflight`. The full browser test is deliberately **not** included because it requires an actual local browser, both dev servers and WebGL.
 
 ## Interpretation and limits
 
-Three.js `renderer.info.memory` is **not physical GPU memory**. WebGL texture API *call balances* are **not a live-handle count**, and a stable count does not prove absence of leaks. Synthetic checkerboards are **not licensed production artwork** or an approved visual baseline. A successful browser run is not an Astrolabio/e-ink compatibility sign-off; separate original-artwork, mobile PNG and device testing remains required.
+Three.js `renderer.info.memory` is **not physical GPU memory**. WebGL texture API *call balances* are **not a live-handle count**, and a stable count does not prove absence of leaks. Synthetic checkerboards are **not licensed production artwork** or an approved visual baseline. Non-uniform sampled colors do **not** establish correct symbols, visual positioning or astronomical calculations. A successful browser run is not an Astrolabio/e-ink compatibility sign-off; separate original-artwork, mobile PNG and device testing remains required.
 
 The inherited PR #57 lifecycle helpers preserve original cleanup exceptions and may aggregate failures in `AggregateError`. This suite does not override that behavior with the warning-only policy proposed separately by PR #60. Do not merge both competing cleanup implementations blindly. No GitHub Actions, npm publication, production deployment or automatic merge is part of this gate.
 
