@@ -19,7 +19,13 @@ This change does not alter chart geometry, animation speed or public chart input
 
 `GraficoRenderService.ngOnDestroy()` also attempts `scene.clear()` and WebGL renderer `dispose()` and clears the service's renderer/scene/camera references even if scene cleanup, resize unsubscription or renderer disposal fails. Multiple errors are reported together.
 
-**Limits:** these fast Node tests use the real TypeScript helper/method extracted by AST, synthetic disposable objects and a minimal `THREE.Texture` stub. They do **not** create a WebGL context or prove GPU driver resources have been released. The redraw and PNG-export call-site failure paths are not covered by this particular increment; validate those paths in dedicated browser/renderer acceptance before release. The full WebGL memory/visual lifecycle gate remains open under [issue #5](https://github.com/Cesare-ml/astrological-charts/issues/5). The full WebGL memory/visual lifecycle gate remains open under [issue #5](https://github.com/Cesare-ml/astrological-charts/issues/5).
+## Redraw and PNG-export cleanup
+
+`GraficoRenderService.disegnaScena()` owns a newly constructed scene group until it has been attached to the live scene. On texture-wait failure, a stale generation, a failed previous-scene cleanup or a failed scene setup, the unadopted group is disposed. The old scene's `clear()` is attempted even if `disposeSceneResources()` throws. When both the redraw and its candidate cleanup fail, an `AggregateError` preserves both original failures. A successfully adopted group remains owned by the live scene, even if the subsequent render throws; later scene teardown will release it.
+
+`generaImmagineInterna()` releases the offscreen renderer after attempting to dispose and clear its scene even when PNG rendering, texture waiting or cleanup throws. This also applies if construction of the offscreen `THREE.Scene` itself throws after the renderer is created. The original export error is retained; if cleanup also fails, both are reported together. On the success path, dimensions, drawing order and the PNG data URL are unchanged.
+
+**Limits:** fast Node regressions execute the real TypeScript helpers/methods extracted by AST using synthetic scenes, resource stubs and no WebGL context. They do **not** prove actual GPU memory reclamation, screenshot parity, headless PNG parity or consumer compatibility. Real-browser redraw/export, Firefox/Chromium, mobile and Astrolabio checks remain mandatory before integration. The wider WebGL lifecycle gate remains open under [issue #5](https://github.com/Cesare-ml/astrological-charts/issues/5).
 
 ## Regression check
 
@@ -28,7 +34,8 @@ After `npm ci`, run:
 ```bash
 npm run test:scene-animations
 npm run test:scene-resources
+npm run test:scene-redraw-export
 npm run verify:angular
 ```
 
-Both Node suites transpile the actual TypeScript functions using the installed TypeScript compiler without browser APIs; they do not prove WebGL resource disposal or PNG/chart correctness. Run browser redraw/export tests separately before merging into a rendering release. Do not deploy or modify VirgoStars/Astrolabio consumers as part of this test.
+The three Node suites transpile the actual TypeScript helpers/methods with the installed TypeScript compiler and synthetic dependencies; they do not prove WebGL resource disposal or PNG/chart correctness. Run browser redraw/export tests separately before merging into a rendering release. Do not deploy or modify VirgoStars/Astrolabio consumers as part of this test.
