@@ -169,3 +169,7 @@ The synthetic HTTP suite also checks that an approved asset's `HEAD` response ha
 ## Asset preview attribution
 
 The local approved-asset gallery displays a visible [VirgoStars](https://virgostars.it/) credit. This gallery is a file-integrity preview only, not a rendered Three.js chart. The link is external; no remote images or scripts are loaded.
+
+## Asset preview landmark accessibility
+
+The local `__preview` gallery wraps approved asset cards in one named HTML `<main>` landmark (`Approved asset gallery`) so screen-reader landmark navigation can reach the inventory independently of the heading and VirgoStars footer. This changes only the local integrity preview, not the Angular/Three.js canvas or asset URL contract. `node --test tests/serve-local-assets.test.mjs` checks the generated markup with synthetic assets; a keyboard/screen-reader check remains necessary before accessibility signoff.
