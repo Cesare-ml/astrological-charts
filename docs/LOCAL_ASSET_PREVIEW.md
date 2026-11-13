@@ -112,3 +112,7 @@ Confrontare la demo con baseline visive approvate e verificare le opzioni avanza
 ### Regressione CORS per richieste HEAD
 
 `node --test tests/local-asset-cors-preflight.test.mjs` usa esclusivamente un pacchetto sintetico temporaneo e controlla anche che `HEAD` su un asset restituisca gli stessi `Content-Type` e `Content-Length` di `GET`, senza corpo, autorizzando solo le origini locali configurate. Il test non legge immagini originali, non verifica la demo Three.js e non sostituisce `npm run verify:pack` nel checkout separato di `astrological-assets`. Il suo risultato deve essere registrato come **NOT RUN** finché non viene eseguito in un ambiente Node.js completo.
+
+## CORS regression coverage (2026-11-13)
+
+The synthetic-pack HTTP regression in `tests/local-asset-cors-preflight.test.mjs` now checks `OPTIONS` requests for both permitted `GET` and `HEAD`, rejects unsupported `POST` and lowercase `post` preflight methods, and covers allowed/denied origins, `GET`, `HEAD`, and `POST`. Run `node --test tests/local-asset-cors-preflight.test.mjs` on Node.js 22 with loopback access. These are test assertions committed for later execution, **not** a claim that the test has passed. This check does not validate Angular builds, browser WebGL output, artwork rights or actual image-file SHA-256 hashes; run `npm run verify:pack` in the separate `astrological-assets` checkout for the last check.
