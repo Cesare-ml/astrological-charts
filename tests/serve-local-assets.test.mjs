@@ -58,6 +58,8 @@ test('independent localhost server serves verified PNG files without VirgoStars 
     const html=await preview.text();
     assert.ok(html.includes('78 approved files'));
     assert.ok(html.includes('img/simboli-bianchi/segni/01.png'));
+    assert.match(html, /href="https:\/\/virgostars\.it\/"/);
+    assert.match(html, /rel="noopener noreferrer"/);
   });
 });
 
