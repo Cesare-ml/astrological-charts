@@ -175,3 +175,7 @@ The local approved-asset gallery displays a visible [VirgoStars](https://virgost
 ## Asset preview landmark accessibility
 
 The local `__preview` gallery wraps approved asset cards in one named HTML `<main>` landmark (`Approved asset gallery`) so screen-reader landmark navigation can reach the inventory independently of the heading and VirgoStars footer. This changes only the local integrity preview, not the Angular/Three.js canvas or asset URL contract. `node --test tests/serve-local-assets.test.mjs` checks the generated markup with synthetic assets; a keyboard/screen-reader check remains necessary before accessibility signoff.
+
+### Preview HEAD metadata regression
+
+The synthetic local-server suite checks that `HEAD /__preview` returns the same content type, byte length and content-security policy as `GET /__preview`, without transferring HTML. Run `node --test tests/serve-local-assets.test.mjs` to execute this regression. It does not validate the Angular canvas, browser keyboard behavior or approved artwork hashes.
