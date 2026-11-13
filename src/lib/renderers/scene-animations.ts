@@ -22,5 +22,15 @@ export function stopSceneAnimations(object: THREE.Object3D): void {
   // Unregister before calling external kill() hooks: they may recursively call
   // stopSceneAnimations or register a replacement timeline for the same object.
   sceneAnimations.delete(object);
-  for (const animation of animations) animation.kill();
+  const errors: unknown[] = [];
+  for (const animation of animations) {
+    try {
+      animation.kill();
+    } catch (error) {
+      // A failing GSAP hook must not prevent stopping the remaining timelines.
+      errors.push(error);
+    }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'Failed to stop scene animations.');
 }
