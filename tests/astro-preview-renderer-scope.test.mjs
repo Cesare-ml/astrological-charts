@@ -125,3 +125,20 @@ test('private browser QA must await a fresh successful render, not stale status 
   assert.doesNotMatch(browser, /await ready\(\)/,
     'The former stale-state waiter must not be used in the browser test');
 });
+
+test('browser revision parser accepts numeric increments and rejects nonnumeric values', () => {
+  const browser = readFileSync(new URL('./astro-preview-browser.test.mjs', import.meta.url), 'utf8');
+  const line = browser.split('\n').find(value =>
+    value.includes("Demo must expose a numeric render revision")
+  );
+  assert.ok(line, 'Browser revision validation must exist');
+  const literal = line.match(/assert\.match\(value \?\? '', (\/\^.*?\$\/),/);
+  assert.ok(literal, 'Expected literal /^...$/ revision matcher');
+  const regex = new RegExp(literal[1].slice(1, -1));
+  for (const valid of ['0','1','12','123456']) {
+    assert.equal(regex.test(valid), true, 'Revision must accept ' + valid);
+  }
+  for (const invalid of ['', 'abc', '-1', '1.2', '\\d', '01done']) {
+    assert.equal(regex.test(invalid), false, 'Revision must reject ' + invalid);
+  }
+});
