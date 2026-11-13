@@ -104,6 +104,20 @@ test('CORS preflight and HEAD never bypass local origin or asset integrity check
   });
 });
 
+test('OPTIONS rejects unknown paths and files modified after startup',async()=>{
+  await withAssetServer(async({url,root,file})=>{
+    const headers={Origin:'http://localhost:4200','Access-Control-Request-Method':'GET'};
+    const unknown=await fetch(url+'/assets/img/not-approved.png',{method:'OPTIONS',headers});
+    assert.equal(unknown.status,404);
+    const valid=await fetch(url+'/assets/'+file,{method:'OPTIONS',headers});
+    assert.equal(valid.status,204);
+    writeFileSync(join(root,...file.split('/')),'tampered after preflight');
+    const changed=await fetch(url+'/assets/'+file,{method:'OPTIONS',headers});
+    assert.equal(changed.status,409);
+    assert.equal(changed.headers.get('cache-control'),'no-store');
+  });
+});
+
 test('requires an approved manifest with valid SHA-256 and safe local origins',async()=>{
   const dir=mkdtempSync(join(tmpdir(),'chart-verified-'));
   try {
