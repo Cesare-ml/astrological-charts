@@ -84,7 +84,7 @@ The new glyph masks have a square 512x512 canvas. The renderer uses a **square m
 
 The preview toggle is **global/static** because `GestoreImmagini` is already static; it should not be mutated during an active render. Future per-renderer configuration must avoid the broader global-state concurrency limitation.
 
-## Local verification / not yet validated
+## Local verification — HTTP verified, Angular/browser pending
 
 ```bash
 npm ci
@@ -92,6 +92,7 @@ npm run test:astro-preview
 npm run test:astro-preview-scope
 npm run test:astro-png
 npm run test:astro-http-routing
+npm run test:astro-http
 npm run test:astro-geometry-race
 npm run test:astro-url-integration
 npm run test:astro-render-guard
@@ -99,6 +100,23 @@ npm run test:astro-overlay
 npm run check:types
 npm run build:demo
 ```
+
+### Real HTTP integration results (2026-11-13)
+
+**Actually executed on Node 22.16.0:** `node --test tests/astro-local-http.test.mjs` — **1/1 integrated test PASS**. It starts the actual `createAssetServer` on `127.0.0.1` with a synthetic approved SVG and 22 synthetic 512×512 white RGBA masks, and uses real HTTP requests to test GET, HEAD, approved CORS, unapproved Origin (403), unsupported method (405), OPTIONS (204), never-approved paths (404), SHA integrity, post-start tampering (409), removal (409), and root disappearance (409). **No private owner artwork is required or used by this public CI-safe test.** It is included in normal `test:assets` via `npm run test:astro-http`.
+
+**Actual private v0.3.1 overlay verification:** the same exact committed local server and validators were run on loopback with the approved **22/22 private glyph masks** temporarily extracted outside the repository. All 22 mask GETs returned HTTP 200 and matched their recorded SHA-256; **6/6 additional HTTP checks passed** (synthetic base asset GET, private HEAD, unapproved path 404, forbidden external Origin 403, POST 405, OPTIONS 204). The temporary extraction was deleted and no private files were committed or modified. For repeatability, the new **opt-in** script performs the same read-only check using the owner's own approved pack:
+
+```bash
+npm run verify:astro-private-http -- \
+  --overlay-root ../private-astro-masks/public/assets \
+  --overlay-manifest ../private-astro-masks/manifest.json \
+  --overlay-approval ../private-astro-masks/private-astro-approval.json
+```
+
+On Windows PowerShell, use the same arguments on one line after `npm run verify:astro-private-http --`. The folder name is illustrative: point at the **privately extracted pack outside the public Git checkouts**. The script requires all three paths and valid preview-only authorization; it does not enable public redistribution, touch the user's files or publish anything.
+
+**Source integrity:** the locally executed integration-test source and the local server's four runtime modules were compared using Git blob SHA-1 and **match the committed GitHub versions byte for byte**. These checks validate asset serving and integrity, **not** the Angular/Three.js chart drawing, browser PNG exports, or pointer interactions. Those remain mandatory before merging.
 
 **Local route regression (2026-11-13):** The actual committed server selection logic was executed in an isolated JavaScript harness across **10 positive and negative cases (10/10 PASS)**, covering both approved roots, removal of approved files, root-resolution failures, never-approved mask paths, encoded aliases and missing `/assets/` prefixes. In addition, the **exact committed** `tests/astro-local-routing.test.mjs` file (Git blob `9c89d9483514183e63cd69c3b12f4ec2781dcd64`) was run with Node 22.16.0 in an isolated temporary fixture containing that server route block: **4/4 Node test groups PASS**. These exercise real committed route-selection logic but are **not** a full localhost HTTP server integration suite. The regression remains wired into `test:assets`.
 
