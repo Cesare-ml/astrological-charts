@@ -27,6 +27,14 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.match(allowed.headers.get('access-control-allow-methods') ?? '', /GET/);
     assert.equal(await allowed.text(), '');
 
+    const rejectedPreflight = await fetch(url, {
+      method: 'OPTIONS',
+      headers: { Origin: 'http://localhost:4200', 'Access-Control-Request-Method': 'POST' },
+    });
+    assert.equal(rejectedPreflight.status, 405);
+    assert.equal(rejectedPreflight.headers.get('allow'), 'GET, HEAD, OPTIONS');
+    assert.equal(rejectedPreflight.headers.get('access-control-allow-methods'), null);
+
     const denied = await fetch(url, {
       method: 'OPTIONS',
       headers: { Origin: 'https://untrusted.example', 'Access-Control-Request-Method': 'GET' },
