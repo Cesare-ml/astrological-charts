@@ -58,6 +58,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   renderRevision = 0;
   /** Prevent an obsolete asynchronous draw from claiming the latest frame. */
   private drawRequest = 0;
+  /** Prevent asynchronous callbacks from reviving a destroyed chart. */
+  private destroyed = false;
   error = '';
   /** Explicit notice after restoring legacy glyphs from a failed private preview. */
   previewNotice = '';
@@ -76,7 +78,14 @@ class DemoComponent implements AfterViewInit, OnDestroy {
       void this.drawWithPreviewRecovery();
     } catch (error) { this.showError(error); }
   }
-  ngOnDestroy(): void { this.renderer.ngOnDestroy(); }
+  ngOnDestroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    ++this.drawRequest;
+    // The preview switch is currently global. Do not leak opt-in to a later chart.
+    GestoreImmagini.configureVirgoStarsAstroPreview(false);
+    this.renderer.ngOnDestroy();
+  }
   changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.drawWithPreviewRecovery(); }
   changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.drawWithPreviewRecovery(); }
   changeBase(event: Event): void {
@@ -99,6 +108,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     return opts;
   }
   async draw(): Promise<void> {
+    if (this.destroyed) return;
     const request = ++this.drawRequest;
     this.busy = true; this.error = ''; this.previewNotice = '';
     this.status = 'Rendering…'; this.changes.markForCheck();
@@ -107,14 +117,14 @@ class DemoComponent implements AfterViewInit, OnDestroy {
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
       // The renderer can cancel older queued draws without throwing. Never
       // count those as completed; otherwise Playwright sees a false revision.
-      if (request !== this.drawRequest) return;
+      if (this.destroyed || request !== this.drawRequest) return;
       this.renderRevision += 1;
       this.status = 'Rendered with the configured asset server.';
     } catch (error) {
-      if (request === this.drawRequest) this.showError(error);
+      if (!this.destroyed && request === this.drawRequest) this.showError(error);
     } finally {
       // An old request must not unlock controls while the latest one is busy.
-      if (request === this.drawRequest) {
+      if (!this.destroyed && request === this.drawRequest) {
         this.busy = false;
         this.changes.markForCheck();
       }
@@ -126,9 +136,10 @@ class DemoComponent implements AfterViewInit, OnDestroy {
    * unrelated approved assets or the renderer fail.
    */
   private async drawWithPreviewRecovery(): Promise<void> {
+    if (this.destroyed) return;
     const request = this.drawRequest + 1;
     await this.draw();
-    if (request !== this.drawRequest || !this.astroPreviewEnabled ||
+    if (this.destroyed || request !== this.drawRequest || !this.astroPreviewEnabled ||
         !this.error.includes('virgostars-astro/masks/')) return;
 
     this.astroPreviewEnabled = false;
@@ -138,22 +149,25 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     await this.draw();
     // A newer request can supersede/cancel this fallback without throwing.
     // Claim restoration only if THIS fallback rendered successfully.
-    if (fallbackRequest !== this.drawRequest || this.astroPreviewEnabled ||
+    if (this.destroyed || fallbackRequest !== this.drawRequest || this.astroPreviewEnabled ||
         this.error || this.renderRevision <= previousRenderRevision) return;
     this.previewNotice = 'VirgoStars Astro masks were unavailable; the original symbols have been restored.';
     this.changes.markForCheck();
   }
   async exportPng(): Promise<void> {
+    if (this.destroyed) return;
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
     try {
       const png = await this.renderer.generaImmagine(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options(), {x: 800, y: 800}, 2);
+      if (this.destroyed) return;
       const link = document.createElement('a'); link.href = png; link.download = `chart-${this.mode}-${this.skin}.png`; link.click();
       this.status = 'PNG exported.';
-    } catch (error) { this.showError(error); }
-    finally { this.busy = false; this.changes.markForCheck(); }
+    } catch (error) { if (!this.destroyed) this.showError(error); }
+    finally { if (!this.destroyed) { this.busy = false; this.changes.markForCheck(); } }
   }
   private showError(error: unknown): void {
+    if (this.destroyed) return;
     const detail = error instanceof Error ? error.message : typeof error === 'string' ? error : 'A required asset could not be loaded.';
     this.error = `Rendering failed: ${detail} Check the asset server, manifest and requested paths.`;
     this.changes.markForCheck();
