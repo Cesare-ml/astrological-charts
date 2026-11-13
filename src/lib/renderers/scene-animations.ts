@@ -1,15 +1,36 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
 
 // Timelines belong to the scene object they animate, not to a global cache.
-const sceneAnimations = new WeakMap<THREE.Object3D, Array<{kill(): unknown}>>();
+// A Set prevents a single timeline from being killed twice if it was registered
+// more than once for the same scene object.
+type SceneAnimation = { kill(): unknown };
+const sceneAnimations = new WeakMap<THREE.Object3D, Set<SceneAnimation>>();
 
-export function registerSceneAnimation(object: THREE.Object3D, animation: {kill(): unknown}): void {
-  const animations = sceneAnimations.get(object) ?? [];
-  animations.push(animation);
-  sceneAnimations.set(object, animations);
+export function registerSceneAnimation(object: THREE.Object3D, animation: SceneAnimation): void {
+  let animations = sceneAnimations.get(object);
+  if (!animations) {
+    animations = new Set<SceneAnimation>();
+    sceneAnimations.set(object, animations);
+  }
+  animations.add(animation);
 }
 
 export function stopSceneAnimations(object: THREE.Object3D): void {
-  for (const animation of sceneAnimations.get(object) ?? []) animation.kill();
+  const animations = sceneAnimations.get(object);
+  if (!animations) return;
+
+  // Unregister before calling external kill() hooks: they may recursively call
+  // stopSceneAnimations or register a replacement timeline for the same object.
   sceneAnimations.delete(object);
+  const errors: unknown[] = [];
+  for (const animation of animations) {
+    try {
+      animation.kill();
+    } catch (error) {
+      // A failing GSAP hook must not prevent stopping the remaining timelines.
+      errors.push(error);
+    }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'Failed to stop scene animations.');
 }

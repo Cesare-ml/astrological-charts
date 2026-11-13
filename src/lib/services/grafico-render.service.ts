@@ -23,20 +23,67 @@ function disposeSceneResources(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
-  root.traverse((object: any) => {
-    stopSceneAnimations(object);
-    if (object.geometry) geometries.add(object.geometry);
-    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-      if (!material) continue;
-      materials.add(material);
-      for (const value of Object.values(material)) {
-        if (value instanceof THREE.Texture) textures.add(value);
+  const errors: unknown[] = [];
+  const objects: THREE.Object3D[] = [];
+  // Snapshot scene ownership before kill() callbacks can detach children or
+  // change material/geometry references during teardown.
+  try {
+    root.traverse((object: any) => {
+      objects.push(object);
+      // Legacy scene objects may expose throwing getters. Capture failures
+      // without aborting sibling ownership discovery or resource disposal.
+      try {
+        const geometry = object.geometry;
+        if (geometry) geometries.add(geometry);
+      } catch (error) { errors.push(error); }
+
+      let ownedMaterials: any;
+      try { ownedMaterials = object.material; }
+      catch (error) { errors.push(error); return; }
+      for (const material of Array.isArray(ownedMaterials) ? ownedMaterials : [ownedMaterials]) {
+        if (!material) continue;
+        materials.add(material);
+        try {
+          for (const key of Object.keys(material)) {
+            // A broken getter must not hide other textures on this material.
+            try {
+              const value = material[key];
+              if (value instanceof THREE.Texture) textures.add(value);
+            } catch (error) { errors.push(error); }
+          }
+        } catch (error) { errors.push(error); }
       }
-    }
-  });
-  textures.forEach(texture => texture.dispose());
-  materials.forEach(material => material.dispose());
-  geometries.forEach(geometry => geometry.dispose());
+    });
+  } catch (error) {
+    // Traversal itself may fail. Release everything captured before failure.
+    errors.push(error);
+  }
+  for (const object of objects) {
+    try { stopSceneAnimations(object); }
+    catch (error) { errors.push(error); }
+  }
+  // Disposing one faulty resource must not strand the other GPU allocations.
+  for (const texture of textures) {
+    try { texture.dispose(); } catch (error) { errors.push(error); }
+  }
+  for (const material of materials) {
+    try { material.dispose(); } catch (error) { errors.push(error); }
+  }
+  for (const geometry of geometries) {
+    try { geometry.dispose(); } catch (error) { errors.push(error); }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'Failed to dispose scene resources.');
+}
+
+
+/** Release resources and detach children even if a cleanup hook throws. */
+function disposeAndClearScene(scene: THREE.Scene): void {
+  const errors: unknown[] = [];
+  try { disposeSceneResources(scene); } catch (error) { errors.push(error); }
+  try { scene.clear(); } catch (error) { errors.push(error); }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'Failed to clear chart scene.');
 }
 
 async function waitForSceneTextures(root: THREE.Object3D): Promise<void> {
@@ -113,20 +160,29 @@ export class GraficoRenderService implements OnDestroy {
 
   public ngOnDestroy(): void {
     ++this.drawGeneration;
-    if (this.frameId != null) cancelAnimationFrame(this.frameId);
-    
-    if(this.resizeSub) {
-      this.resizeSub.unsubscribe();
+    const errors: unknown[] = [];
+    // Release handles first so repeated teardown cannot cancel/unsubscribe twice.
+    const frameId = this.frameId;
+    const resizeSub = this.resizeSub;
+    this.frameId = null;
+    this.resizeSub = null;
+    if (frameId != null) {
+      try { cancelAnimationFrame(frameId); } catch (error) { errors.push(error); }
+    }
+    if (resizeSub) {
+      try { resizeSub.unsubscribe(); } catch (error) { errors.push(error); }
     }
     if (this.scene) {
-      disposeSceneResources(this.scene);
-      this.scene.clear();
+      try { disposeSceneResources(this.scene); } catch (error) { errors.push(error); }
+      try { this.scene.clear(); } catch (error) { errors.push(error); }
     }
-    this.renderer?.dispose();
+    try { this.renderer?.dispose(); } catch (error) { errors.push(error); }
     this.renderer = null;
     this.scene = null;
     this.camera = null;
     this.isInizializzato = false;
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, 'Failed to destroy chart renderer.');
   }
 
   // -------------------- INIT --------------------
@@ -251,33 +307,45 @@ export class GraficoRenderService implements OnDestroy {
       if (generation !== this.drawGeneration) return;
       if (this.dimensioni) OggettiSempliciRender.setDimensioniCanvas(this.dimensioni);
       let disegno = null;
-      switch (grafico) {
-        case 'latitudini':
-          disegno = await LatitudiniRender.creaScena(temaRender,temaRenderTransiti,temaRenderSinastria,opzioni);
-          break;
-        case 'carta-astrale':
-        default:
-          disegno = await CartaAstraleCreaScena(opzioni,temaRender,temaRenderTransiti,temaRenderSinastria);
-          break;
-      }
+      let adopted = false;
+      let operationFailed = false;
+      let operationError: unknown;
       try {
+        switch (grafico) {
+          case 'latitudini':
+            disegno = await LatitudiniRender.creaScena(temaRender,temaRenderTransiti,temaRenderSinastria,opzioni);
+            break;
+          case 'carta-astrale':
+          default:
+            disegno = await CartaAstraleCreaScena(opzioni,temaRender,temaRenderTransiti,temaRenderSinastria);
+            break;
+        }
         if (disegno) await waitForSceneTextures(disegno);
+        if (generation !== this.drawGeneration) return;
+        if (!this.scene) this.scene = new THREE.Scene();
+        // A failed old-scene disposal must not strand the newly built scene.
+        disposeAndClearScene(this.scene);
+        const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
+        this.scene.background = new THREE.Color(bgColor);
+        if (this.camera) this.scene.add(this.camera);
+        if (disegno) this.scene.add(disegno);
+        adopted = true;
+        this.render();
       } catch (error) {
-        if (disegno) disposeSceneResources(disegno);
+        operationFailed = true;
+        operationError = error;
         throw error;
+      } finally {
+        if (disegno && !adopted) {
+          try { disposeSceneResources(disegno); }
+          catch (cleanupError) {
+            if (operationFailed) {
+              throw new AggregateError([operationError, cleanupError], 'Failed to draw and discard chart scene.');
+            }
+            throw cleanupError;
+          }
+        }
       }
-      if (generation !== this.drawGeneration) {
-        if (disegno) disposeSceneResources(disegno);
-        return;
-      }
-      if (!this.scene) this.scene = new THREE.Scene();
-      disposeSceneResources(this.scene);
-      this.scene.clear();
-      const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
-      this.scene.background = new THREE.Color(bgColor);
-      if (this.camera) this.scene.add(this.camera);
-      if (disegno) this.scene.add(disegno);
-      this.render();
     });
   }
 
@@ -319,8 +387,12 @@ export class GraficoRenderService implements OnDestroy {
       alpha: true,
     });
 
-    const scene = new THREE.Scene();
+    let scene: THREE.Scene | null = null;
+    let disegno: THREE.Object3D | null = null;
+    let exportFailed = false;
+    let exportError: unknown;
     try {
+      scene = new THREE.Scene();
       OggettiSempliciRender.setDimensioniCanvas(dimensioni);
       offRenderer.setPixelRatio(scala);
       offRenderer.setSize(dimensioni.x, dimensioni.y, false);
@@ -330,7 +402,6 @@ export class GraficoRenderService implements OnDestroy {
       scene.background = new THREE.Color(bgColor);
       scene.add(camera);
       // Genera il contenuto grafico come nella scena interattiva.
-      let disegno = null;
       switch (grafico) {
         case 'latitudini':
           disegno = await LatitudiniRender.creaScena(temaRender, temaRenderTransiti, temaRenderSinastria, opzioni);
@@ -345,10 +416,28 @@ export class GraficoRenderService implements OnDestroy {
       if (disegno) await waitForSceneTextures(disegno);
       offRenderer.render(scene, camera);
       return offRenderer.domElement.toDataURL('image/png');
+    } catch (error) {
+      exportFailed = true;
+      exportError = error;
+      throw error;
     } finally {
-      disposeSceneResources(scene);
-      scene.clear();
-      offRenderer.dispose();
+      const cleanupErrors: unknown[] = [];
+      // An add() failure can leave a newly built drawing outside the scene.
+      // Only the owning scene should dispose a drawing already attached to it.
+      if (disegno) {
+        try {
+          if (!scene || !scene.children.includes(disegno)) disposeSceneResources(disegno);
+        } catch (error) { cleanupErrors.push(error); }
+      }
+      if (scene) {
+        try { disposeAndClearScene(scene); } catch (error) { cleanupErrors.push(error); }
+      }
+      try { offRenderer.dispose(); } catch (error) { cleanupErrors.push(error); }
+      if (cleanupErrors.length) {
+        const errors = exportFailed ? [exportError, ...cleanupErrors] : cleanupErrors;
+        if (errors.length === 1) throw errors[0];
+        throw new AggregateError(errors, 'Failed to export PNG or release offscreen renderer.');
+      }
     }
   }
 
