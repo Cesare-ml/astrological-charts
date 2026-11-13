@@ -26,7 +26,7 @@ test('reports computed dynamic imports with stable 1-based locations', () => {
     "// import(variable);",
     "const missing = import();",
     "const sideEffect = import('./ok');",
-  ].join('\\n');
+  ].join('\n');
   assert.deepEqual(importTargets(source), ['./safe', './ok']);
   assert.deepEqual(nonLiteralImportLocations(source), ['2:18', '3:18', '5:17']);
   assert.deepEqual(nonLiteralImportLocations("const sample = \"import(variable)\";"), []);
