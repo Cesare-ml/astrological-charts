@@ -49,6 +49,27 @@ test('synthetic preview covers exactly the real 78 static preload symbols', () =
   assert.deepEqual(paths,[...paths].sort(), 'Manifest input must be deterministic');
 });
 
+test('synthetic preload rejects later mutations or aliases outside its literal declaration', () => {
+  // The current source has one reviewed read in getPreloadArray():
+  // .concat(this.preloadArraySimboli). New write/alias references require
+  // manual review before a synthetic manifest may claim full coverage.
+  const mutations = [
+    'GestoreImmagini.preloadArraySimboli.push("/assets/img/extra.png");',
+    'this.preloadArraySimboli = ["/assets/img/changed.png"];',
+    'const alias = this.preloadArraySimboli; alias.push("/assets/img/extra.png");',
+    'this.preloadArraySimboli.splice(0, 1);',
+    'const another = this.preloadArraySimboli;',
+  ];
+  for (const mutation of mutations) {
+    assert.throws(
+      () => sourcePreloadPaths(sourcePreload + '\n' + mutation),
+      /Unreviewed dynamic preloadArraySimboli reference/,
+      mutation
+    );
+  }
+  assert.equal(sourcePreloadPaths(sourcePreload).length, 78);
+});
+
 test('synthetic preload refuses computed, spread, interpolated or appended source entries', () => {
   const edits = [
     [originalLast, originalLast + ',\n    ...dynamicAssets'],
