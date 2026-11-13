@@ -67,3 +67,46 @@ test('stop called from kill is safe and does not run the same timeline again', (
   stopSceneAnimations(object);
   assert.equal(kills, 1);
 });
+
+test('a failing kill does not prevent later animations from being stopped', () => {
+  const object = {};
+  const calls = [];
+  const failure = new Error('first kill failed');
+  registerSceneAnimation(object, { kill() { calls.push('first'); throw failure; } });
+  registerSceneAnimation(object, { kill() { calls.push('second'); } });
+  assert.throws(() => stopSceneAnimations(object), error => error === failure);
+  assert.deepEqual(calls, ['first', 'second']);
+  stopSceneAnimations(object);
+  assert.deepEqual(calls, ['first', 'second']);
+});
+
+test('multiple kill failures are reported without skipping other timelines', () => {
+  const object = {};
+  const calls = [];
+  const first = new Error('first');
+  const second = new TypeError('second');
+  registerSceneAnimation(object, { kill() { calls.push('first'); throw first; } });
+  registerSceneAnimation(object, { kill() { calls.push('middle'); } });
+  registerSceneAnimation(object, { kill() { calls.push('second'); throw second; } });
+  assert.throws(() => stopSceneAnimations(object), error => {
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, [first, second]);
+    return true;
+  });
+  assert.deepEqual(calls, ['first', 'middle', 'second']);
+});
+
+test('replacement registered during a failing kill survives for next cleanup', () => {
+  const object = {};
+  const calls = [];
+  const failure = new Error('kill failed');
+  registerSceneAnimation(object, { kill() {
+    calls.push('old');
+    registerSceneAnimation(object, { kill() { calls.push('new'); } });
+    throw failure;
+  } });
+  assert.throws(() => stopSceneAnimations(object), error => error === failure);
+  assert.deepEqual(calls, ['old']);
+  stopSceneAnimations(object);
+  assert.deepEqual(calls, ['old', 'new']);
+});
