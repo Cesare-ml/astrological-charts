@@ -63,7 +63,7 @@ test('independent localhost server serves verified PNG files without VirgoStars 
     assert.match(html, /<a class="skip-link" href="#asset-gallery">Skip to approved assets<\/a>/);
     assert.match(html, /\.skip-link:focus\{top:12px;z-index:1\}/);
     assert.equal((html.match(/class="skip-link"/g)??[]).length,1);
-    assert.match(html, /<main id="asset-gallery" aria-label="Approved asset gallery">/);
+    assert.match(html, /<main id="asset-gallery" tabindex="-1" aria-label="Approved asset gallery">/);
     assert.match(html, /<\/main>/);
     assert.equal((html.match(/<main\b/g)??[]).length,1);
   });
