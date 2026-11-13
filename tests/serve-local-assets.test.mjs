@@ -156,6 +156,20 @@ test('preflight responses remain origin-specific and non-cacheable',async()=>{
   });
 });
 
+test('asset checkout removal fails closed for GET and OPTIONS without crashing server',async()=>{
+  await withAssetServer(async({url,root,file})=>{
+    rmSync(root,{recursive:true,force:true});
+    const path='/assets/'+file;
+    const headers={Origin:'http://localhost:4200'};
+    const preflight=await fetch(url+path,{method:'OPTIONS',headers});
+    assert.equal(preflight.status,404);
+    const get=await fetch(url+path,{headers});
+    assert.equal(get.status,404);
+    const preview=await fetch(url+'/__preview');
+    assert.equal(preview.status,200);
+  });
+});
+
 test('requires an approved manifest with valid SHA-256 and safe local origins',async()=>{
   const dir=mkdtempSync(join(tmpdir(),'chart-verified-'));
   try {
