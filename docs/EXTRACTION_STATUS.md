@@ -10,13 +10,13 @@
 - Contributor instructions, PR template and upstream technical reference snapshots.
 - Extraction source-integrity script (`npm run check:extraction`); this **does not** test the renderer.
 - An independent Angular demo renders natal, transit, synastry and latitude fixtures with seven selectable skins and PNG export using locally generated placeholder assets.
-- Browser smoke tests exercise Chromium and Firefox with both synthetic and private original images; the separate Firefox offline test uses local synthetic files and does not exercise the shipped Astrolabio adapter.
+- Historical browser smoke tests exercised Chromium and Firefox with synthetic images and owner-authorized images from a separate asset checkout; the separate Firefox offline test uses local synthetic files and does not exercise the shipped Astrolabio adapter.
 - The extraction and downstream PRs were integrated in order after their local preflight and build checks. The extracted #1 renderer also passed a synthetic browser smoke test; those checks do not establish original-artwork fidelity.
 
 ## Pending before describing the package as ready
 
 - Align `TemaRender` and `OpzioniGrafico` input contracts with actual renderer use.
-- The owner authorized private sharing of imported artwork, including font-derived images; the font's license and public redistribution remain unresolved. Keep the current production source unchanged and validate the separate pack before any migration.
+- The separate `Cesare-ml/astrological-assets` checkout is publicly readable and supplies a manifest of approved paths with SHA-256 values, but repository visibility and integrity checks do not authorize artwork redistribution. The original font is excluded; its license and public redistribution rights remain unresolved. Run `npm run verify:pack` in the asset checkout to verify actual file bytes before any local real-artwork testing. Keep the current production source unchanged and validate the separate pack before any migration.
 - Compare the four chart modes and seven skins against approved real-artwork baselines; synthetic screenshots alone do not establish visual fidelity.
 - Verify no resource growth after repeated redraw and PNG export.
 - Rebuild VirgoStars web, mobile PNG, Astrolabio UI and actual headless/e-ink render before any consumer migration.
