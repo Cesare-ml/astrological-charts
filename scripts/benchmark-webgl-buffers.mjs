@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {existsSync, statSync} from 'node:fs';
 import {chromium, firefox} from 'playwright-core';
 import {installWebGLBufferLedger} from './webgl-buffer-ledger.mjs';
+import {collectWebGLBenchmarkProvenance} from './webgl-benchmark-provenance.mjs';
 
 const browserName = process.env.CHART_TEST_BROWSER || 'chromium';
 assert.ok(['chromium', 'firefox'].includes(browserName),
@@ -20,6 +21,7 @@ function boundedInt(name, fallback, maximum) {
 }
 const redraws = boundedInt('CHART_BUFFER_REDRAWS', 30, 200);
 const exportsCount = boundedInt('CHART_BUFFER_EXPORTS', 3, 10);
+const provenance = collectWebGLBenchmarkProvenance();
 
 const candidates = browserName === 'firefox'
   ? [process.env.FIREFOX_PATH, firefox.executablePath()]
@@ -111,6 +113,8 @@ try {
       recordedAt: new Date().toISOString(),
       node: process.version,
       platform: process.platform,
+      architecture: process.arch,
+      ...provenance,
       browser: browserName,
       browserVersion: browser.version(),
       viewport: {width: 1200, height: 1000},
