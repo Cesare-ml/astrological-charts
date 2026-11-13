@@ -108,3 +108,8 @@ Sono stati eseguiti su Windows test con fixture sintetiche per il generatore PNG
 ## Successivo gate
 
 Confrontare la demo con baseline visive approvate e verificare le opzioni avanzate e l'Astrolabio. Non considerare questa galleria o i test browser come sostitutivi delle prove hardware.
+
+
+### Keyboard focus visibility
+
+The local asset gallery provides a keyboard-only skip link to the main landmark. Its `tabindex="-1"` allows the skip target to receive focus without adding a normal Tab stop; the main landmark has a visible focus outline when targeted. This is an accessibility affordance for the asset gallery, **not** a substitute for testing the interactive Three.js canvas with a keyboard and screen reader.
