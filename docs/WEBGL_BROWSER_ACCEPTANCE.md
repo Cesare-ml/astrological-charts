@@ -51,7 +51,7 @@ Cycle counts accept 1–100. Growth thresholds are optional (default: just repor
 
 Run `npm run test:webgl-lifecycle-instrumentation` and `npm run test:synthetic-png` for the fast Node regressions. The latter uses generated in-memory colorful, white, transparent and invalid PNG fixtures; no original artwork is required.
 
-Run `npm run test:webgl-lifecycle-instrumentation` for the WebGL counter unit test. It extracts the **same** browser-side WebGL counter callback from source and exercises synthetic WebGL1, WebGL2 inherited methods, WebGL2 overrides and context-loss events. This fast test is included in `preflight`. The full browser test is deliberately **not** included because it requires an actual local browser, both dev servers and WebGL.
+Run `npm run test:webgl-lifecycle-instrumentation` for the WebGL counter unit test. It extracts the **same** browser-side WebGL counter callback from source and exercises six cases: native WebGL1, WebGL2 inheritance, WebGL2 overrides, context-loss notification, WebGL1/WebGL2 inheriting a **shared WebGL base prototype**, and subclass methods that call `super`. The instrumentation climbs the prototype chain to find the method owner, patches shared owners only once and avoids duplicate counts from nested overrides. This fast test is included in `preflight`. The full browser test is deliberately **not** included because it requires an actual local browser, both dev servers and WebGL.
 
 ## Interpretation and limits
 
