@@ -15,9 +15,9 @@ This change does not alter chart geometry, animation speed or public chart input
 
 ## Three.js scene and renderer cleanup
 
-`GraficoRenderService.disposeSceneResources` attempts to stop animations for **all** traversed scene objects before releasing unique textures, materials and geometries. An exception from one animation or resource `dispose()` no longer skips the remaining resources. A single failure is thrown unchanged; multiple failures become an `AggregateError` in encounter order. Success-path disposal order remains textures, materials, geometries.
+`GraficoRenderService.disposeSceneResources` first snapshots the scene object identities and unique textures, materials and geometries **before** invoking any external animation `kill()` hook. This prevents a timeline that detaches a sibling or nulls out geometry/material references from hiding those resources from cleanup. Once ownership has been captured, it attempts to stop animations for **all** snapshot objects, then releases the captured resources. An exception from one animation or resource `dispose()` no longer skips the remaining resources. A single failure is thrown unchanged; multiple failures become an `AggregateError` in encounter order. Success-path disposal order remains textures, materials, geometries.
 
-`GraficoRenderService.ngOnDestroy()` also attempts `scene.clear()` and WebGL renderer `dispose()` and clears the service's renderer/scene/camera references even if scene cleanup, resize unsubscription or renderer disposal fails. Multiple errors are reported together.
+`GraficoRenderService.ngOnDestroy()` also attempts `scene.clear()` and WebGL renderer `dispose()` and clears the service's renderer/scene/camera references even if scene cleanup, resize unsubscription or renderer disposal fails. Before performing any external teardown, it also resets the pending animation-frame ID and resize subscription handles to `null`, preventing repeated cancellation or unsubscribe during a later destroy. An exception from `cancelAnimationFrame()` is captured and reported after the other cleanup attempts, rather than stopping the teardown immediately. Multiple errors are reported together.
 
 ## Redraw and PNG-export cleanup
 

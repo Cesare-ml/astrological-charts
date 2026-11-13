@@ -167,3 +167,117 @@ test('ngOnDestroy resets state even if resize unsubscribe and scene clear throw'
   assert.equal(instance.scene, null);
   assert.equal(instance.renderer, null);
 });
+
+test('animation-frame cancellation error does not skip scene and renderer teardown', () => {
+  const events = [];
+  const failure = new Error('cancel failed');
+  const Harness = destroyFactory(() => events.push('resources'), () => {
+    events.push('cancel');
+    throw failure;
+  });
+  const instance = Object.assign(new Harness(), {
+    drawGeneration: 1, frameId: 7,
+    resizeSub: {unsubscribe() {events.push('unsubscribe');}},
+    scene: {clear() {events.push('clear');}},
+    renderer: {dispose() {events.push('renderer');}},
+    camera: {}, isInizializzato: true,
+  });
+  assert.throws(() => instance.ngOnDestroy(), error => error === failure);
+  assert.deepEqual(events, ['cancel', 'unsubscribe', 'resources', 'clear', 'renderer']);
+  assert.equal(instance.frameId, null);
+  assert.equal(instance.resizeSub, null);
+  assert.equal(instance.renderer, null);
+  assert.equal(instance.scene, null);
+  assert.equal(instance.camera, null);
+  assert.equal(instance.isInizializzato, false);
+});
+
+test('repeated ngOnDestroy does not cancel the same frame or unsubscribe twice', () => {
+  const events = [];
+  const Harness = destroyFactory(() => events.push('resources'), () => events.push('cancel'));
+  const instance = Object.assign(new Harness(), {
+    drawGeneration: 0, frameId: 11,
+    resizeSub: {unsubscribe() {events.push('unsubscribe');}},
+    scene: {clear() {events.push('clear');}},
+    renderer: {dispose() {events.push('renderer');}},
+    camera: {}, isInizializzato: true,
+  });
+  instance.ngOnDestroy();
+  instance.ngOnDestroy();
+  assert.deepEqual(events, ['cancel', 'unsubscribe', 'resources', 'clear', 'renderer']);
+  assert.equal(instance.frameId, null);
+  assert.equal(instance.resizeSub, null);
+  assert.equal(instance.isInizializzato, false);
+});
+
+test('cancel, cleanup, and renderer failures are all reported in order', () => {
+  const events = [];
+  const cancelError = new Error('cancel');
+  const cleanupError = new Error('cleanup');
+  const rendererError = new Error('renderer');
+  const Harness = destroyFactory(() => {events.push('resources'); throw cleanupError;}, () => {
+    events.push('cancel'); throw cancelError;
+  });
+  const instance = Object.assign(new Harness(), {
+    drawGeneration: 0, frameId: 1,
+    scene: {clear() {events.push('clear');}},
+    renderer: {dispose() {events.push('renderer'); throw rendererError;}},
+    isInizializzato: true,
+  });
+  assert.throws(() => instance.ngOnDestroy(), error => {
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, [cancelError, cleanupError, rendererError]);
+    return true;
+  });
+  assert.deepEqual(events, ['cancel', 'resources', 'clear', 'renderer']);
+  assert.equal(instance.frameId, null);
+  assert.equal(instance.renderer, null);
+});
+
+test('animation kill cannot hide material and geometry from disposal', () => {
+  const events = [];
+  const texture = new FakeTexture(() => events.push('texture'));
+  const node = {
+    geometry: resource('geometry', events),
+    material: {...resource('material', events), map: texture},
+  };
+  const dispose = makeDispose(object => {
+    if (object === node) {
+      events.push('kill');
+      node.geometry = null;
+      node.material = null;
+    }
+  });
+  dispose(root(node));
+  assert.deepEqual(events, ['kill', 'texture', 'material', 'geometry']);
+});
+
+test('animation kill detaching a sibling cannot skip its resource disposal', () => {
+  const events = [];
+  const first = {
+    geometry: resource('geometry first', events),
+    material: resource('material first', events),
+  };
+  const second = {
+    geometry: resource('geometry second', events),
+    material: resource('material second', events),
+  };
+  const scene = {
+    children: [first, second],
+    traverse(visitor) {
+      visitor(this);
+      for (let i = 0; i < this.children.length; i++) visitor(this.children[i]);
+    },
+  };
+  const dispose = makeDispose(object => {
+    if (object === first) {
+      events.push('kill first');
+      scene.children.splice(1, 1);
+    } else if (object === second) events.push('kill second');
+  });
+  dispose(scene);
+  assert.deepEqual(events, [
+    'kill first', 'kill second',
+    'material first', 'material second', 'geometry first', 'geometry second',
+  ]);
+});
