@@ -69,6 +69,21 @@ test('independent localhost server serves verified PNG files without VirgoStars 
   });
 });
 
+test('preview HEAD preserves GET metadata without sending HTML',async()=>{
+  await withAssetServer(async({url})=>{
+    const get=await fetch(url+'/__preview');
+    assert.equal(get.status,200);
+    const html=await get.text();
+    const head=await fetch(url+'/__preview',{method:'HEAD'});
+    assert.equal(head.status,200);
+    assert.equal(head.headers.get('content-type'),get.headers.get('content-type'));
+    assert.equal(Number(head.headers.get('content-length')),Buffer.byteLength(html));
+    assert.equal(head.headers.get('content-security-policy'),get.headers.get('content-security-policy'));
+    assert.equal(head.headers.get('cache-control'),'no-store');
+    assert.equal((await head.arrayBuffer()).byteLength,0);
+  });
+});
+
 test('approved HEAD responses match GET metadata without returning image bytes',async()=>{
   await withAssetServer(async({url,file})=>{
     const path='/assets/'+file;
