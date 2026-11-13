@@ -47,6 +47,8 @@ node scripts/serve-local-assets.mjs \
 
 The `private-astro-masks` folder name is illustrative. Use the actual private location. The server rejects incomplete overlays, non-local origins, unauthorized uses, wrong hashes, missing/duplicate/incorrectly named masks, wrong PNG dimensions, symlinks and any filename overlap with the original approved assets. **It also decodes the actual RGBA pixels**, rejects all nonwhite RGB **including pixels with zero alpha** (to avoid texture-filtering halos), and rejects any alpha coverage count that differs from the private manifest, even if someone refreshes the PNG's hash. PNG chunk CRCs, a 2 MiB size limit and a 64-chunk limit prevent corrupted or oversized input from being accepted. These controls protect light/dark tinting in Three.js; they do not establish chart rendering quality or font licensing.
 
+**HTTP integrity statuses:** The local server selects from the approved manifests **before** attempting to resolve the file on disk. A previously approved base asset or private VirgoStars mask that is subsequently deleted, replaced with a symlink, or becomes inaccessible because a root directory disappears returns **HTTP 409** instead of a misleading 404 or an unhandled exception. A URL that was never in either manifest remains **HTTP 404**, including encoded aliases. No fallback across manifests is permitted. The dedicated `npm run test:astro-http-routing` suite covers these cases using only Node builtins; the existing `test:astro-overlay` suite additionally checks real localhost HTTP behavior with synthetic images.
+
 5. Run the Angular demo (if installed): `npm run demo`. Enable **“Preview VirgoStars Astro glyph images”** or append `?astroGlyphs=1` to the demo URL. The preview starts **off** by default and requires the verified mask overlay when enabled.
 6. Test natal/transit/synastry, light/dark and exported PNG. Include pointer/aspect focus checks after merging the separate interaction feature branch. Turn the preview off to restore original image references without changing production.
 
@@ -89,6 +91,7 @@ npm ci
 npm run test:astro-preview
 npm run test:astro-preview-scope
 npm run test:astro-png
+npm run test:astro-http-routing
 npm run test:astro-geometry-race
 npm run test:astro-url-integration
 npm run test:astro-render-guard
@@ -96,6 +99,8 @@ npm run test:astro-overlay
 npm run check:types
 npm run build:demo
 ```
+
+**Local route regression (2026-11-13):** The actual committed server selection logic was executed in an isolated JavaScript harness across **10 positive and negative cases (10/10 PASS)**, covering both approved roots, removal of approved files, root-resolution failures, never-approved mask paths, encoded aliases and missing `/assets/` prefixes. This is **not** the complete localhost HTTP integration suite. A dependency-free `tests/astro-local-routing.test.mjs` now preserves those scenarios in normal asset preflight.
 
 **Dependency-free Node PNG decoder regression (2026-11-13):** `npm run test:astro-png` runs `tests/astro-png-decoder.test.mjs` using only built-in Node libraries. It constructs generated 512×512 RGBA PNG fixtures and covers **all five PNG row filters (0–4)**, hidden black RGB under zero alpha, CRC tampering, alpha coverage mismatch, invalid filter bytes, interlacing, excessive PNG chunks, truncated/trailing data, true bounded-DEFLATE output overflow, and the 2 MiB file cap. **ACTUALLY EXECUTED with Node 22.16.0: 13/13 PASS.** The local test file Git blob was verified to match the committed file exactly (`d4bae9053589e84114df06d8f1088af8580c2282`); the verified validator file also matches its Git blob (`bd1d419570ea48a44f67d5c0bf641c156954c2ee`). Using the same validator, the 22 owner-approved private v0.3.1 mask images were rechecked in memory: **22/22 SHA-256 and decoded-alpha checks PASS**. The private binary assets remain outside Git. These are genuine standalone Node tests, **not** a full Angular test or real browser rendering pass.
 
