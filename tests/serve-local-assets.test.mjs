@@ -93,6 +93,7 @@ test('CORS preflight and HEAD never bypass local origin or asset integrity check
     assert.equal(options.status,204);
     assert.equal(options.headers.get('access-control-allow-origin'),'http://127.0.0.1:4200');
     assert.match(options.headers.get('access-control-allow-methods'),/HEAD/);
+    assert.equal(options.headers.get('access-control-allow-methods'),'GET, HEAD');
     const rejected=await fetch(url+path,{
       method:'OPTIONS',headers:{Origin:'https://evil.example'}
     });
