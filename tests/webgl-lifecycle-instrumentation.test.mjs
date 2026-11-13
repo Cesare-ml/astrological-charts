@@ -76,3 +76,51 @@ test('records WebGL context lost for the browser acceptance gate', () => {
   listeners.get('webglcontextlost')();
   assert.equal(stats.contextLost, 1);
 });
+
+test('WebGL1 and WebGL2 inheriting shared WebGLRenderingContextBase methods are counted', () => {
+  let nextId = 0;
+  class SharedWebGLBase {
+    createTexture() { return {id: ++nextId}; }
+    deleteTexture() {}
+  }
+  class WebGL1 extends SharedWebGLBase {}
+  class WebGL2 extends SharedWebGLBase {}
+  const listeners = new Map();
+  const sandbox = {
+    WebGLRenderingContext: WebGL1,
+    WebGL2RenderingContext: WebGL2,
+    document: {addEventListener(name, callback) { listeners.set(name, callback); }},
+  };
+  runInNewContext('(' + callbacks[0] + ')', sandbox)();
+  const webgl1 = new WebGL1(), webgl2 = new WebGL2();
+  const first = webgl1.createTexture(), second = webgl2.createTexture();
+  webgl1.deleteTexture(first);
+  webgl2.deleteTexture(second);
+  assert.deepEqual(
+    {created: sandbox.__webglLife.created, deleted: sandbox.__webglLife.deleted},
+    {created: 2, deleted: 2},
+  );
+});
+
+test('WebGL2 override delegating to super does not double-count texture calls', () => {
+  class WebGL1 {
+    createTexture() { return {}; }
+    deleteTexture() {}
+  }
+  class WebGL2 extends WebGL1 {
+    createTexture() { return super.createTexture(); }
+    deleteTexture(texture) { return super.deleteTexture(texture); }
+  }
+  const sandbox = {
+    WebGLRenderingContext: WebGL1,
+    WebGL2RenderingContext: WebGL2,
+    document: {addEventListener() {}},
+  };
+  runInNewContext('(' + callbacks[0] + ')', sandbox)();
+  const webgl2 = new WebGL2();
+  webgl2.deleteTexture(webgl2.createTexture());
+  assert.deepEqual(
+    {created: sandbox.__webglLife.created, deleted: sandbox.__webglLife.deleted},
+    {created: 1, deleted: 1},
+  );
+});
