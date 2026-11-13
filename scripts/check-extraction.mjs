@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { importTargets } from './extraction-imports.mjs';
+import { importTargets, nonLiteralImportLocations } from './extraction-imports.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sourceRoot = join(root, 'src');
@@ -41,6 +41,9 @@ const files = existsSync(sourceRoot)
 const specifiers = new Set();
 for (const path of files) {
   const content = readFileSync(path, 'utf8');
+  for (const location of nonLiteralImportLocations(content)) {
+    errors.push(`Non-literal dynamic import ${report(path)}:${location}; use a static module specifier`);
+  }
   for (const specifier of importTargets(content)) {
     specifiers.add(specifier);
     if (specifier === 'grafici-astrologici' || specifier.startsWith('grafici-astrologici/')) {
