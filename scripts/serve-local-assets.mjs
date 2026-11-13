@@ -127,11 +127,21 @@ export function createAssetServer({
       ? pathname.slice('/assets/'.length) : null;
     const privateExpected=manifestPath ? overlay?.paths.get(manifestPath) : null;
     const usePrivate=Boolean(privateExpected);
-    const requested=resolveAssetRequest(usePrivate?overlay.root:absolute,pathname);
-    const expected=usePrivate ? privateExpected :
-      (requested ? pack.paths.get(requested.path) : null);
-    if(usePrivate && !requested){
-      res.writeHead(409);res.end('Approved private asset unavailable or changed');return;
+    const expected=usePrivate ? privateExpected
+      : (manifestPath ? pack.paths.get(manifestPath) : null);
+    let requested=null;
+    try {
+      // A directory or root can disappear AFTER startup verification. Treat
+      // resolution failures as conflicts for authorized paths, never throw
+      // from the HTTP handler or fall back to a different manifest.
+      requested=resolveAssetRequest(usePrivate?overlay.root:absolute,pathname);
+    } catch {
+      res.writeHead(expected?409:404);
+      res.end(expected?'Approved asset unavailable or changed':'Not in approved manifest');
+      return;
+    }
+    if(expected && !requested){
+      res.writeHead(409);res.end('Approved asset unavailable or changed');return;
     }
     if(!requested||!expected){
       res.writeHead(404);res.end('Not in approved manifest');return;
