@@ -39,3 +39,5 @@ npm run verify:angular
 ```
 
 The three Node suites transpile the actual TypeScript helpers/methods with the installed TypeScript compiler and synthetic dependencies; they do not prove WebGL resource disposal or PNG/chart correctness. Run browser redraw/export tests separately before merging into a rendering release. Do not deploy or modify VirgoStars/Astrolabio consumers as part of this test.
+
+For optional real-browser checks of repeated redraws, PNG exports and two canvases, see [WebGL browser lifecycle acceptance](WEBGL_BROWSER_ACCEPTANCE.md). This gate runs separately from Node `preflight` and does not claim physical GPU memory measurement.
