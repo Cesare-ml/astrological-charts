@@ -25,6 +25,23 @@ function nonEmpty(value, label) {
   return value;
 }
 
+function optionalHex(value, length, label) {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string' ||
+      !new RegExp('^[0-9a-f]{' + length + '}$').test(value)) {
+    throw new TypeError(`${label} must be a lowercase hexadecimal digest or null`);
+  }
+  return value;
+}
+
+function optionalDirty(value, label) {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`${label} must be true, false or null`);
+  }
+  return value;
+}
+
 function normalized(report, label) {
   object(report, label);
   // The report analyzer checks every checkpoint, ordering, totals, and
@@ -58,7 +75,12 @@ function normalized(report, label) {
     existingContextExportLiveDelta: analysis.exportsByContext.existingContextLiveDelta,
     contextLost: analysis.contextLost,
   };
-  return {browser, report, analysis, result};
+  const provenance = {
+    sourceRevision: optionalHex(report.sourceRevision, 40, `${label}.sourceRevision`),
+    sourceDirty: optionalDirty(report.sourceDirty, `${label}.sourceDirty`),
+    assetManifestSha256: optionalHex(report.assetManifestSha256, 64, `${label}.assetManifestSha256`),
+  };
+  return {browser, report, analysis, result, provenance};
 }
 
 function safeDifference(firefoxValue, chromiumValue, label) {
@@ -91,6 +113,14 @@ export function compareWebGLBufferReports(first, second) {
     }
   }
 
+  for (const field of ['sourceRevision', 'assetManifestSha256']) {
+    const left = chromium.provenance[field];
+    const right = firefox.provenance[field];
+    if (left !== null && right !== null && left !== right) {
+      throw new TypeError(`Cannot compare different ${field} values`);
+    }
+  }
+
   const differences = {};
   for (const key of ['initialLive', 'afterRedrawLive', 'finalLive',
     'persistentLiveDelta', 'newExportContextCount', 'newExportContextLive',
@@ -108,7 +138,7 @@ export function compareWebGLBufferReports(first, second) {
 
   const warnings = [
     'WebGL API buffer handles are not GPU bytes, proof of a leak, or a performance ranking.',
-    'The reports do not cryptographically establish matching asset packs, code revisions, graphics drivers, or hardware.',
+    'Report metadata cannot prove the dev server served matching asset packs, code revisions, graphics drivers, or hardware.',
   ];
   // The probe emits an ISO UTC timestamp. Do not silently treat reports from
   // widely separated sessions as equivalent controlled measurements.
@@ -124,6 +154,18 @@ export function compareWebGLBufferReports(first, second) {
     warnings.push('Recorded-at UTC timestamp missing or invalid in at least one report; session proximity cannot be checked');
   } else if (Math.abs(chromiumTime - firefoxTime) > 24 * 60 * 60 * 1000) {
     warnings.push('Reports were recorded more than 24 hours apart; confirm matching assets, source revision and host environment');
+  }
+  for (const field of ['sourceRevision', 'assetManifestSha256']) {
+    if (chromium.provenance[field] === null || firefox.provenance[field] === null) {
+      warnings.push(`${field} missing from at least one report; source/asset comparability is not verified`);
+    }
+  }
+  for (const item of [chromium, firefox]) {
+    if (item.provenance.sourceDirty === true) {
+      warnings.push(`${item.browser}: working tree has tracked changes; HEAD alone does not describe the benchmark code`);
+    } else if (item.provenance.sourceDirty === null) {
+      warnings.push(`${item.browser}: working-tree status unavailable; code revision cannot establish checkout cleanliness`);
+    }
   }
   for (const label of ['node', 'platform', 'architecture']) {
     const left = chromium.report[label];
@@ -159,11 +201,13 @@ export function compareWebGLBufferReports(first, second) {
       chromium: {
         browserVersion: chromium.analysis.source.browserVersion,
         recordedAt: chromium.analysis.source.recordedAt,
+        provenance: chromium.provenance,
         metrics: chromium.result,
       },
       firefox: {
         browserVersion: firefox.analysis.source.browserVersion,
         recordedAt: firefox.analysis.source.recordedAt,
+        provenance: firefox.provenance,
         metrics: firefox.result,
       },
     },
