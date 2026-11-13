@@ -12,6 +12,9 @@ aside, .stage { background: #1b1e2a; border: 1px solid #303444; border-radius: 1
 aside label { display: block; font-weight: 650; margin: 12px 0 6px; }
 select, input, button { font: inherit; color: inherit; background: #282c3b; border: 1px solid #424759; border-radius: 8px; padding: 10px; }
 select, input { width: 100%; }
+.astro-preview { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+.astro-preview input[type="checkbox"] { width: 18px; height: 18px; margin: 0; flex: none; accent-color: #bfabff; }
+.astro-preview input[type="checkbox"]:focus-visible { outline: 2px solid #bfabff; outline-offset: 3px; }
 button { cursor: pointer; } button:disabled { opacity: .55; cursor: wait; }
 .buttons { display: flex; gap: 8px; margin: 20px 0 28px; }
 .buttons button { flex: 1; } .buttons .primary { flex: 3; color: #171322; background: #bfabff; border-color: #bfabff; font-weight: 700; }

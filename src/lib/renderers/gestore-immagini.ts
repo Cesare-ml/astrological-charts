@@ -1,6 +1,7 @@
 import { SkinManager } from './@skin-manager';
 import * as THREE from 'three';
 import { resolveChartAssetUrl } from './chart-asset-urls';
+import { getVirgoStarsAstroImageOverride } from './virgostars-astro-image-preview';
 
 export class GestoreImmagini {
   /** @deprecated Historical raw prefix. Prefer configurePublicAssetsBase(). */
@@ -9,6 +10,24 @@ export class GestoreImmagini {
   private static pendingTextures = new WeakMap<THREE.Texture, Promise<void>>();
   private static publicAssetsBase = '/assets/';
 
+  // Explicitly disabled by default. The host must stage privately licensed
+  // white-alpha masks at /assets/img/virgostars-astro/masks/ before opting in.
+  private static virgoStarsAstroPreviewEnabled = false;
+
+  /** Preview owner-approved glyph images without altering other chart assets. */
+  public static configureVirgoStarsAstroPreview(enabled: boolean): void {
+    if (typeof enabled !== 'boolean') {
+      throw new TypeError('VirgoStars Astro preview must be enabled with a boolean.');
+    }
+    this.virgoStarsAstroPreviewEnabled = enabled;
+  }
+
+  /** Preview only explicitly opted-in primary sign/body render slots. */
+  public static isVirgoStarsAstroPreviewAsset(reference: string, allowAstroPreview = false): boolean {
+    return allowAstroPreview && this.virgoStarsAstroPreviewEnabled &&
+      getVirgoStarsAstroImageOverride(reference) !== null;
+  }
+
   /** The host owns these files; this only changes how URLs are resolved. */
   public static configurePublicAssetsBase(base: string): void {
     // Fail fast on invalid configuration instead of breaking texture loads later.
@@ -16,9 +35,14 @@ export class GestoreImmagini {
     this.publicAssetsBase = base;
   }
 
-  public static resolveAssetUrl(ref: string): string {
+  public static resolveAssetUrl(ref: string, allowAstroPreview = false): string {
+    const preview = this.isVirgoStarsAstroPreviewAsset(ref, allowAstroPreview)
+      ? getVirgoStarsAstroImageOverride(ref) : null;
+    const effective = preview ?? ref;
     // Preserve the historical override for older consumers while migrating.
-    return this.assetsBase ? this.assetsBase + ref : resolveChartAssetUrl(ref, this.publicAssetsBase);
+    return this.assetsBase
+      ? this.assetsBase + effective
+      : resolveChartAssetUrl(effective, this.publicAssetsBase);
   }
 
   public static getImg(ref: string): THREE.Texture {
@@ -39,7 +63,7 @@ export class GestoreImmagini {
     return this.pendingTextures.get(texture) ?? Promise.resolve();
   }
 
-  public static async loadAsync(ref: string): Promise<THREE.Texture> {
+  public static async loadAsync(ref: string, allowAstroPreview = false): Promise<THREE.Texture> {
     /*
     if (this.pool.has(ref)) return this.pool.get(ref)!;
     
@@ -52,7 +76,7 @@ export class GestoreImmagini {
     return texture;*/
     
     const loader = new THREE.TextureLoader();
-    const url = this.resolveAssetUrl(ref);
+    const url = this.resolveAssetUrl(ref, allowAstroPreview);
     const promise = new Promise<THREE.Texture>((resolve, reject) => {
       loader.load(url, resolve, undefined, () => reject(new Error(`Unable to load chart asset: ${url}`)));
     });

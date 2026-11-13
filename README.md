@@ -40,6 +40,7 @@ These commands and `npm run preflight` passed on Windows with Node 22.18.0. The 
 - [Extraction status](docs/EXTRACTION_STATUS.md)
 - [Original source provenance](docs/UPSTREAM_PROVENANCE.md)
 - [Rendering architecture](docs/ARCHITECTURE.md)
+- [Private VirgoStars Astro preview in primary chart rings, manifest-verified local overlay, browser QA and rollback](docs/VIRGOSTARS_ASTRO_PRIVATE_IMAGE_PREVIEW.md)
 - [Graphics asset audit](docs/ASSETS_AUDIT.md)
 - [Shared host-owned assets and canonical URLs](docs/SHARED_ASSET_ARCHITECTURE.md)
 - [Deterministic asset manifest and offline version comparison](docs/ASSET_MANIFEST.md)
