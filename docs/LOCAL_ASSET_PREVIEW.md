@@ -38,6 +38,7 @@ Il generatore si rifiuta di sovrascrivere una directory già esistente. Il wrapp
 - Il server verifica l'intero manifest **all'avvio**; a ogni richiesta ricontrolla i byte del file richiesto.
 - La galleria locale è `/__preview`; gli URL sono `/assets/img/...`. Il server serve solamente i percorsi contenuti nel manifest, niente directory listing, metodi di scrittura o condivisione pubblica.
 - Bind soltanto su `127.0.0.1:4177`, con CORS limitato a `http://localhost:4200` e `http://127.0.0.1:4200`. Non è un servizio esponibile a Internet.
+- Le richieste preflight `OPTIONS` con `Access-Control-Request-Method` diverso da `GET`, `HEAD` o `OPTIONS` ricevono HTTP 405 e non vengono autorizzate; anche i metodi HTTP effettivi non supportati sono rifiutati. Verifica di regressione: `node --test tests/local-asset-cors-preflight.test.mjs` (da eseguire in checkout completo).
 
 Questo test è utile per verificare struttura dei nomi, disponibilità degli asset, MIME, percorso e autorizzazioni, **ma non** certifica le scene Three.js o l'aspetto originale dei grafici.
 
