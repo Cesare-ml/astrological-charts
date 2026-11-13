@@ -79,32 +79,30 @@ export class Posizione {
      : new Citta(obj?.citta);
   }
 
+  /**
+   * Reading an active coordinate must not discard the inactive position.
+   * Call resetCitta()/resetPosManuale() explicitly when discarding data.
+   */
   public getLng() {
     if (this.usa_posizione_manuale) {
-      this.resetCitta();
       return this.posizione_manuale?.lng ?? 0;
     } else {
-      this.resetPosManuale();
       return this.citta?.lng ?? 0;
     }
   }
 
   public getLat() {
     if (this.usa_posizione_manuale) {
-      this.resetCitta();
       return this.posizione_manuale?.lat ?? 0;
     } else {
-      this.resetPosManuale();
       return this.citta?.lat ?? 0;
     }
   }
 
   public getTz() {
     if (this.usa_posizione_manuale) {
-      this.resetCitta();
       return this.posizione_manuale?.tz ?? 'UTC';
     } else {
-      this.resetPosManuale();
       return this.citta?.tz ?? 'UTC';
     }
   }
