@@ -7,6 +7,8 @@ export class GestoreImmagini {
   public static assetsBase = "";
   private static pool = new Map<string, THREE.Texture>();
   private static pendingTextures = new WeakMap<THREE.Texture, Promise<void>>();
+  // Share only active browser image preloads; completed and failed requests may retry.
+  private static imagePreloadsInFlight = new Map<string, Promise<void>>();
   private static publicAssetsBase = '/assets/';
 
   /** The host owns these files; this only changes how URLs are resolved. */
@@ -78,15 +80,29 @@ export class GestoreImmagini {
     // Different legacy references may identify the same browser URL.
     // Preload each URL once, relying on the host browser cache for HTML and WebGL.
     const canonicalUrls = Array.from(new Set(urls.map(url => this.resolveAssetUrl(url))));
-    const promises = canonicalUrls.map(
-      (url) =>
-        new Promise<void>((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => resolve();
-          img.onerror = () => reject(`Errore caricando immagine: ${url}`);
-          img.src = url;
-        })
-    );
+    const promises = canonicalUrls.map((url) => {
+      const pending = this.imagePreloadsInFlight.get(url);
+      if (pending) return pending;
+
+      const load = new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => reject(`Errore caricando immagine: ${url}`);
+        img.src = url;
+      });
+      this.imagePreloadsInFlight.set(url, load);
+
+      // Do not retain completed or failed Image objects across redraws.
+      // Both handlers are supplied so cleanup does not introduce a rejected
+      // orphan Promise; compare identity before deleting a newer request.
+      const clear = () => {
+        if (this.imagePreloadsInFlight.get(url) === load) {
+          this.imagePreloadsInFlight.delete(url);
+        }
+      };
+      void load.then(clear, clear);
+      return load;
+    });
     return Promise.all(promises);
   }
 
