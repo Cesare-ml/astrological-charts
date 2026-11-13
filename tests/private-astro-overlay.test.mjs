@@ -189,6 +189,19 @@ test('local server serves only verified private overlay and approved base pack',
         'HEAD must report the same integrity status as GET');
       assert.equal((await fetch(url+'/assets/img/virgostars-astro/masks/unapproved.png')).status,404,
         'Never-approved masks must still be 404');
+      // Once verified, the original pack must also be treated as approved
+      // inventory: deletion is an integrity conflict, not an unknown URL.
+      const originalPath=join(base.root,'img/simboli-bianchi/segni/01.png');
+      rmSync(originalPath);
+      assert.equal((await fetch(url+'/assets/img/simboli-bianchi/segni/01.png')).status,409,
+        'A deleted originally approved base asset must be a conflict');
+      // The overlay root can also disappear between requests. Catch
+      // realpathSync errors and keep the loopback server alive.
+      rmSync(root,{recursive:true,force:true});
+      assert.equal((await fetch(approvedUrl)).status,409,
+        'Removed private root must return 409, not crash the server');
+      assert.equal((await fetch(url+'/assets/img/virgostars-astro/masks/unapproved.png')).status,404,
+        'An unknown URL must remain 404 even if the overlay root disappeared');
     } finally {
       await new Promise(resolve=>server.close(resolve));
     }
