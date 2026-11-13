@@ -21,6 +21,8 @@ const geometryLimit = process.env.CHART_LIFECYCLE_MAX_GEOMETRY_GROWTH === undefi
 // Optional export-specific WebGL call-balance guard, independent of the active scene.
 const exportHandleLimit = process.env.CHART_LIFECYCLE_MAX_EXPORT_HANDLE_GROWTH === undefined
   ? null : integerEnv('CHART_LIFECYCLE_MAX_EXPORT_HANDLE_GROWTH', 0, 0, 10000);
+const trackedLiveLimit = process.env.CHART_LIFECYCLE_MAX_EXPORT_TRACKED_LIVE_GROWTH === undefined
+  ? null : integerEnv('CHART_LIFECYCLE_MAX_EXPORT_TRACKED_LIVE_GROWTH', 0, 0, 10000);
 const browserName = process.env.CHART_TEST_BROWSER ?? 'chromium';
 assert.ok(['chromium', 'firefox'].includes(browserName), 'Invalid CHART_TEST_BROWSER');
 const browserType = browserName === 'firefox' ? firefox : chromium;
@@ -216,6 +218,10 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
       const trackedLiveGrowth = result.trackedLiveAfter - exportCallBaseline.trackedLive;
       peakTrackedLiveGrowth = Math.max(peakTrackedLiveGrowth, trackedLiveGrowth);
       assert.ok(result.trackedLiveAfter >= 0, mode + ' invalid tracked-live count');
+      if (trackedLiveLimit !== null)
+        assert.ok(trackedLiveGrowth <= trackedLiveLimit,
+          mode + ' tracked live texture growth ' + trackedLiveGrowth +
+          ' exceeded CHART_LIFECYCLE_MAX_EXPORT_TRACKED_LIVE_GROWTH ' + trackedLiveLimit);
       if (exportHandleLimit !== null)
         assert.ok(exportHandleGrowth <= exportHandleLimit,
           mode + ' export WebGL call-balance growth ' + exportHandleGrowth +
@@ -262,8 +268,8 @@ test('redraw, PNG and second canvas lifecycle gate', {timeout: 600000}, async ()
     console.log(JSON.stringify({browser: browserName, version: browser.version(),
       redraws, exports: exportsCount, modes, baseline, afterRedraw, final,
       textureGrowth, geometryGrowth, textureLimit, geometryLimit,
-      exportHandleLimit, exportCallBaseline, baselineHandleBalance, peakExportHandleGrowth,
-      peakTrackedLiveGrowth,
+      exportHandleLimit, trackedLiveLimit, exportCallBaseline, baselineHandleBalance,
+      peakExportHandleGrowth, peakTrackedLiveGrowth,
       redrawSamples, exportSamples, exportVisualSamples, twoCanvases,
       limitations: 'Pixel-color checks prove only visible non-uniform synthetic output, not chart/astrology correctness. Three.js memory counters are not physical GPU memory. WeakMap-tracked texture handles are API-level observations only: context loss and browser internals are not accounted for. Texture create/delete call balance includes temporary offscreen contexts but is NOT GPU bytes or leak proof. Synthetic headless rendering does not prove artwork parity, production, or Astrolabio.'}, null, 2));
   } finally {
