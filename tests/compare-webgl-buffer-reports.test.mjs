@@ -155,3 +155,78 @@ test('reports over 24 hours apart warn without asserting a resource leak', () =>
   assert.equal(result.comparison, 'descriptive-only');
   assert.ok(!result.warnings.some(w => /is a leak|proves a leak/.test(w)));
 });
+
+test('matching revision and manifest digest are retained in compared provenance', () => {
+  const chrome = report('chromium');
+  const firefox = report('firefox');
+  for (const item of [chrome, firefox]) {
+    item.sourceRevision = 'a'.repeat(40);
+    item.sourceDirty = false;
+    item.assetManifestSha256 = 'b'.repeat(64);
+  }
+  const result = compareWebGLBufferReports(chrome, firefox);
+  assert.deepEqual(result.browsers.chromium.provenance, {
+    sourceRevision: 'a'.repeat(40),
+    sourceDirty: false,
+    assetManifestSha256: 'b'.repeat(64),
+  });
+  assert.deepEqual(result.browsers.firefox.provenance, result.browsers.chromium.provenance);
+  assert.ok(!result.warnings.some(w => w.includes('source/asset comparability')));
+});
+
+test('different source commit rejects an otherwise compatible comparison', () => {
+  const chrome = report('chromium');
+  const firefox = report('firefox');
+  chrome.sourceRevision = 'a'.repeat(40);
+  firefox.sourceRevision = 'b'.repeat(40);
+  assert.throws(() => compareWebGLBufferReports(chrome, firefox),
+    /different sourceRevision/);
+});
+
+test('different asset manifest digest rejects an otherwise compatible comparison', () => {
+  const chrome = report('chromium');
+  const firefox = report('firefox');
+  chrome.assetManifestSha256 = 'a'.repeat(64);
+  firefox.assetManifestSha256 = 'b'.repeat(64);
+  assert.throws(() => compareWebGLBufferReports(chrome, firefox),
+    /different assetManifestSha256/);
+});
+
+test('one-sided missing provenance warns and preserves legacy report support', () => {
+  const chrome = report('chromium');
+  const firefox = report('firefox');
+  chrome.sourceRevision = 'a'.repeat(40);
+  chrome.assetManifestSha256 = 'b'.repeat(64);
+  chrome.sourceDirty = false;
+  const result = compareWebGLBufferReports(chrome, firefox);
+  assert.ok(result.warnings.some(w => w.includes('sourceRevision missing')));
+  assert.ok(result.warnings.some(w => w.includes('assetManifestSha256 missing')));
+  assert.ok(result.warnings.some(w => w.includes('working-tree status unavailable')));
+  assert.equal(result.browsers.firefox.provenance.sourceRevision, null);
+});
+
+test('malformed digest metadata and nonboolean dirty flags fail closed', () => {
+  for (const mutate of [
+    r => { r.sourceRevision = 'ABC'.repeat(13) + 'a'; },
+    r => { r.sourceRevision = '0'.repeat(39); },
+    r => { r.sourceRevision = 123; },
+    r => { r.assetManifestSha256 = 'g'.repeat(64); },
+    r => { r.assetManifestSha256 = 'f'.repeat(65); },
+    r => { r.sourceDirty = 'false'; },
+  ]) {
+    const chrome = report('chromium');
+    mutate(chrome);
+    assert.throws(() => compareWebGLBufferReports(chrome, report('firefox')), TypeError);
+  }
+});
+
+test('dirty worktrees are never silently treated as clean matching revisions', () => {
+  const chrome = report('chromium');
+  const firefox = report('firefox');
+  chrome.sourceRevision = firefox.sourceRevision = 'a'.repeat(40);
+  chrome.sourceDirty = true;
+  firefox.sourceDirty = false;
+  const compared = compareWebGLBufferReports(chrome, firefox);
+  assert.ok(compared.warnings.some(w => w.includes('chromium: working tree has tracked changes')));
+  assert.ok(!compared.warnings.some(w => w.includes('firefox: working tree has tracked changes')));
+});
