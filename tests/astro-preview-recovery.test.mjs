@@ -33,6 +33,7 @@ function harness(outcomes) {
   )(controller);
   const instance = new Harness();
   instance.drawRequest = 0;
+  instance.renderRevision = 0;
   instance.astroPreviewEnabled = true;
   instance.error = '';
   instance.previewNotice = '';
@@ -42,6 +43,7 @@ function harness(outcomes) {
     instance.drawRequest++;
     instance.previewNotice = '';
     instance.error = outcomes[draws++] ?? '';
+    if (!instance.error) instance.renderRevision++;
   };
   return { instance, calls: () => configCalls, draws: () => draws, marks: () => marks };
 }
@@ -103,4 +105,51 @@ test('demo shows a visible notice and routes initial, toggle and mode draws to r
   assert.match(source, /\{\{error \|\| previewNotice \|\| status\}\}/);
   assert.match(source, /void this\.drawWithPreviewRecovery\(\)/);
   assert.match(source, /configureVirgoStarsAstroPreview\(this\.astroPreviewEnabled\)/);
+});
+
+test('superseding a pending legacy fallback cannot falsely claim restoration', async () => {
+  const { instance, calls, marks } = harness([maskError]);
+  let resolveFallback;
+  let draws = 0;
+  instance.draw = async () => {
+    instance.drawRequest++;
+    if (++draws === 1) {
+      instance.error = maskError;
+      return;
+    }
+    await new Promise(resolve => { resolveFallback = resolve; });
+  };
+  const pending = instance.drawWithPreviewRecovery();
+  // The first draw fails immediately; the legacy redraw is now waiting.
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(typeof resolveFallback, 'function');
+  instance.drawRequest++;
+  instance.renderRevision++;
+  instance.error = ''; // a NEWER draw happened to render successfully
+  resolveFallback(); // obsolete legacy redraw completes without throwing
+  await pending;
+  assert.equal(instance.astroPreviewEnabled, false);
+  assert.deepEqual(calls(), [false]);
+  assert.equal(instance.previewNotice, '',
+    'The outdated fallback cannot claim that its own restoration succeeded');
+  assert.equal(marks(), 0);
+});
+
+test('cancelled fallback without a replacement render cannot claim recovery', async () => {
+  const { instance, calls } = harness([maskError]);
+  instance.draw = async () => {
+    instance.drawRequest++;
+    if (instance.drawRequest === 1) {
+      instance.error = maskError;
+    } else {
+      instance.error = '';
+      // Like GraficoRenderService's cancelled draw: returns without rendering,
+      // therefore renderRevision must remain unchanged.
+    }
+  };
+  await instance.drawWithPreviewRecovery();
+  assert.deepEqual(calls(), [false]);
+  assert.equal(instance.previewNotice, '');
+  assert.equal(instance.renderRevision, 0);
 });
