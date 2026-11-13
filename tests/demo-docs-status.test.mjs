@@ -117,3 +117,14 @@ test('independent asset checkout guide reflects public access and byte verificat
   assert.match(guide, /Font originale escluso/);
   assert.doesNotMatch(guide, /repository privato degli asset|archivio privato/i);
 });
+
+test('extraction status keeps asset visibility separate from redistribution and hash verification', () => {
+  const status = readFileSync(new URL('../docs/EXTRACTION_STATUS.md', import.meta.url), 'utf8');
+  assert.match(status, /astrological-assets.*publicly readable/i);
+  assert.match(status, /SHA-256/);
+  assert.match(status, /npm run verify:pack/);
+  assert.match(status, /verify actual file bytes/i);
+  assert.match(status, /original font is excluded/i);
+  assert.match(status, /do not authorize artwork redistribution/i);
+  assert.doesNotMatch(status, /private original images|owner authorized private sharing/i);
+});
