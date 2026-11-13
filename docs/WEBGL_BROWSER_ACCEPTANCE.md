@@ -62,3 +62,18 @@ The inherited PR #57 lifecycle helpers preserve original cleanup exceptions and 
 ## Verification record
 
 Source copied from PR #60 browser harness at blob `2238d9bb8396f125a50c6b97caab8172023e220f` and synthetic instrumentation test at `dbc586826ba75b7ce6e835a8dcd27a2823b1dcc3`. Source parse/readback alone is **not** successful browser execution. On the authored branch, record commit SHA, browser version, Node version, commands, exit codes and actual output before changing Draft status.
+
+### More precise texture-handle diagnostics
+
+The WebGL instrumentation also maintains a `WeakMap` of observed `WebGLTexture` handles. Its `trackedLive` counter increments for each unique successfully created handle and decrements only on the **first successful** `deleteTexture` for that handle. Duplicate deletions, unknown handles, null creations and failed deletions are accounted for separately; the benchmark itself does not hold strong references to textures.
+
+The JSON report adds `trackedLiveBefore`/`trackedLiveAfter` per PNG, `peakTrackedLiveGrowth`, `repeatedDeletes`, and `untrackedDeletes`. An additional opt-in limit `CHART_LIFECYCLE_MAX_EXPORT_TRACKED_LIVE_GROWTH` (integer 0–10000) can fail the test when the count of observed-but-not-deleted handles grows beyond the pre-export baseline. Example:
+
+```powershell
+$env:CHART_LIFECYCLE_MAX_EXPORT_TRACKED_LIVE_GROWTH = '0'
+npm run test:demo-webgl-lifecycle
+```
+
+**Important:** this is still not physical GPU memory or a proof of a memory leak. Texture handles can be invalidated by context loss or garbage-collected without triggering a tracked `deleteTexture`. Browser internal allocations may also be invisible to the hook. Calibrate thresholds locally before using them as release criteria; keep both call-balance and unique-handle metrics in the logs.
+
+The fast Node regression suite now includes nine checks, covering the three new cases: duplicate deletion without underflow, null creation and unknown deletion, and failed deletion followed by successful retry.
