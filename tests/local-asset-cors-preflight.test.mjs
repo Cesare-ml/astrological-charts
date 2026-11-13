@@ -142,6 +142,8 @@ test('asset server rejects non-loopback and non-canonical CORS allowlists', () =
     const { root, manifest } = generateSyntheticPack(join(directory, 'pack'));
     for (const origin of [
       'https://untrusted.example',
+      'ftp://localhost:4200',
+      'file://localhost/assets',
       'http://localhost.evil.example:4200',
       'http://localhost:4200/path',
       'http://localhost:4200/',
