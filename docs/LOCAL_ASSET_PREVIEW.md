@@ -116,3 +116,7 @@ Confrontare la demo con baseline visive approvate e verificare le opzioni avanza
 ## CORS regression coverage (2026-11-13)
 
 The synthetic-pack HTTP regression in `tests/local-asset-cors-preflight.test.mjs` now checks `OPTIONS` requests for both permitted `GET` and `HEAD`, rejects unsupported `POST` and lowercase `post` preflight methods, and covers allowed/denied origins, `GET`, `HEAD`, and `POST`. Run `node --test tests/local-asset-cors-preflight.test.mjs` on Node.js 22 with loopback access. These are test assertions committed for later execution, **not** a claim that the test has passed. This check does not validate Angular builds, browser WebGL output, artwork rights or actual image-file SHA-256 hashes; run `npm run verify:pack` in the separate `astrological-assets` checkout for the last check.
+
+## HTTP-only development origin policy (2026-11-14)
+
+`createAssetServer` explicitly accepts only canonical `http://localhost:<port>` or `http://127.0.0.1:<port>` origins in its allowlist. Other schemes, including `ftp:` and `file:`, are rejected at server construction; this is defense in depth even where URL normalization would already reject a non-HTTP origin. The synthetic regression covers both cases in `tests/local-asset-cors-preflight.test.mjs`. This change does not enable HTTPS, expose the server beyond loopback, or affect production asset resolution. **NOT RUN:** Node test execution, Angular builds, Chromium/Firefox WebGL and real approved-pack byte checks. Run the Node test on Node 22 and validate the separate asset checkout before merge.
