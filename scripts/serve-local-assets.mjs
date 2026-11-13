@@ -69,7 +69,8 @@ function previewHtml(pack) {
     '<p>'+pack.count+' approved files, '+pack.totalBytes+' bytes verified by SHA-256.</p>'+
     '<p>This is an <b>asset smoke preview</b>, not yet a full natal-chart renderer. '+
     'Only approved-manifest files are served. No access to VirgoStars is needed.</p></header>'+
-    '<div class="grid">'+items+'</div></body></html>';
+    '<div class="grid">'+items+'</div>'+ 
+    '<footer><p>Chart rendering project: <a href="https://virgostars.it/" rel="noopener noreferrer">VirgoStars</a></p></footer></body></html>';
 }
 
 export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
