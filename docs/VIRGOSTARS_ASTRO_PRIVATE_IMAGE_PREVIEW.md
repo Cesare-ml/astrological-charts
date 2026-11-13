@@ -78,6 +78,8 @@ GestoreImmagini.configureVirgoStarsAstroPreview(false);
 
 The new glyph masks have a square 512x512 canvas. The renderer uses a **square mesh for only explicitly opted-in main-ring images** to avoid distorting them into old 100x69 / 875x605 image aspect ratios. Original mesh sizes stay unchanged whenever the preview flag is off.
 
+**Asynchronous preview safety:** A preview switch may change while Three.js is still fetching a texture. `OggettiSempliciRender.getImg` now snapshots the image-format decision **before** awaiting the material/texture load. The geometry therefore remains consistent with the URL selected at the beginning of that request; it cannot suddenly become square for a pending legacy image (or stretched for a pending private mask). `tests/astro-preview-geometry-race.test.mjs` exercises the actual renderer method with deferred texture promises for both toggle directions and for a non-opted-in drawing slot. The corresponding source-level asynchronous harness was **executed directly against the committed method, 3/3 PASS**. The full Node unit file and Angular browser runs have **not** yet been executed in an installed repository checkout.
+
 The preview toggle is **global/static** because `GestoreImmagini` is already static; it should not be mutated during an active render. Future per-renderer configuration must avoid the broader global-state concurrency limitation.
 
 ## Local verification / not yet validated
@@ -87,6 +89,7 @@ npm ci
 npm run test:astro-preview
 npm run test:astro-preview-scope
 npm run test:astro-png
+npm run test:astro-geometry-race
 npm run test:astro-url-integration
 npm run test:astro-render-guard
 npm run test:astro-overlay
