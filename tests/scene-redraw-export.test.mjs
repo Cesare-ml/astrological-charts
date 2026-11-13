@@ -34,7 +34,7 @@ const makeClass = new Function(
   }`) + '\nreturn GraficoRenderService;',
 );
 
-function fixture({create, wait, dispose, clear, render, rendererDispose, png, sceneCreateError} = {}) {
+function fixture({create, wait, dispose, clear, render, rendererDispose, png, sceneCreateError, add} = {}) {
   const events = [];
   const renderers = [];
   let constructedScenes = 0;
@@ -44,7 +44,7 @@ function fixture({create, wait, dispose, clear, render, rendererDispose, png, sc
     }
     kind = 'scene';
     children = [];
-    add(child) { events.push(`add:${child.kind}`); this.children.push(child); }
+    add(child) { events.push(`add:${child.kind}`); add?.(child, this); this.children.push(child); }
     clear() { events.push('clear'); clear?.(); this.children = []; }
   }
   class Renderer {
@@ -213,4 +213,60 @@ test('PNG renderer is released when offscreen scene constructor throws', async (
   );
   assert.deepEqual(f.events, ['renderer-dispose']);
   assert.equal(f.renderers.length, 1);
+});
+
+
+test('PNG scene add failure cleans up an unattached drawing and offscreen renderer', async () => {
+  const failure = new Error('cannot attach drawing');
+  const f = fixture({add(child) { if (child.kind === 'candidate') throw failure; }});
+  await assert.rejects(
+    f.makeService().generaImmagineInterna(
+      {}, null, null, 'carta-astrale', f.options, {x: 20, y: 20}, 1,
+    ),
+    error => error === failure,
+  );
+  assert.deepEqual(f.events, [
+    'add:camera', 'add:candidate', 'dispose:candidate', 'dispose:scene', 'clear', 'renderer-dispose',
+  ]);
+});
+
+test('PNG add failure and detached drawing disposal failure preserve both errors', async () => {
+  const attachmentError = new Error('cannot attach drawing');
+  const cleanupError = new Error('cannot release unattached drawing');
+  const f = fixture({
+    add(child) { if (child.kind === 'candidate') throw attachmentError; },
+    dispose(object) { if (object.kind === 'candidate') throw cleanupError; },
+  });
+  await assert.rejects(
+    f.makeService().generaImmagineInterna(
+      {}, null, null, 'carta-astrale', f.options, {x: 20, y: 20}, 1,
+    ),
+    error => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [attachmentError, cleanupError]);
+      return true;
+    },
+  );
+  assert.deepEqual(f.events, [
+    'add:camera', 'add:candidate', 'dispose:candidate', 'dispose:scene', 'clear', 'renderer-dispose',
+  ]);
+});
+
+test('PNG partially attached drawing is left for scene cleanup instead of double disposal', async () => {
+  const failure = new Error('attachment failed after parenting');
+  const f = fixture({add(child, scene) {
+    if (child.kind === 'candidate') {
+      scene.children.push(child);
+      throw failure;
+    }
+  }});
+  await assert.rejects(
+    f.makeService().generaImmagineInterna(
+      {}, null, null, 'carta-astrale', f.options, {x: 20, y: 20}, 1,
+    ),
+    error => error === failure,
+  );
+  assert.deepEqual(f.events, [
+    'add:camera', 'add:candidate', 'dispose:scene', 'clear', 'renderer-dispose',
+  ]);
 });
