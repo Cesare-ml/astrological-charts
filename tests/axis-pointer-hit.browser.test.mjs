@@ -104,6 +104,9 @@ async function axisPoint(page,name){
     scene.traverse(object=>{
       if(point || !object.isMesh || object.userData?.chartPlanet?.layer!=='natal'
         || object.userData.chartPlanet.name!==name) return;
+      // Match the real Raycaster's current camera layer mask. A tagged
+      // mesh in a disabled layer must never be treated as the visible axis.
+      if(!object.layers.test(camera.layers)) return;
       for(let parent=object;parent;parent=parent.parent) if(!parent.visible) return;
       const materials=Array.isArray(object.material)?object.material:[object.material];
       if(!materials.some(m=>m?.visible && (!m.transparent || m.opacity>0)))return;
