@@ -36,7 +36,7 @@ test('approved VirgoStars Astro images render in charts and opt-out restores ori
     const screenshotHash = buffer => createHash('sha256').update(buffer).digest('hex');
     async function renderedRevision() {
       const value = await status.getAttribute('data-render-revision');
-      assert.match(value ?? '', /^\\d+$/, 'Demo must expose a numeric render revision');
+      assert.match(value ?? '', /^\d+$/, 'Demo must expose a numeric render revision');
       return Number(value);
     }
     async function readyAfter(previousRevision) {
