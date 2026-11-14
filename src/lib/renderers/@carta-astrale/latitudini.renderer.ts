@@ -132,7 +132,7 @@ export class LatitudiniRender {
 
       if(
         temaRender.planets[nome]
-        && temaRender.planets[nome].latitude
+        && Number.isFinite(temaRender.planets[nome].latitude)
         && elOpt.att
       ) {
         elementiCelesti[nome]=temaRender.planets[nome];
