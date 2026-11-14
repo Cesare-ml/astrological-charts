@@ -54,6 +54,8 @@ The two browser test commands require their documented local browser and server 
 
 The roadmap contract test checks that referenced npm scripts exist, that all four release gates stay explicitly pending until runtime evidence is recorded, that clean installation precedes build verification, and that axis-canvas and multi-canvas risks remain tracked, and that `verify:angular` still runs preflight, library build and demo build in order with the documented browser-test and synthetic-pack entrypoints; it does not run Angular, WebGL, or approved-asset checksum verification.
 
+The contract suite also guards against accidental npm publication/deployment scripts, verifies `private: true`, the supported Node 22 baseline, and retention of the owner-approval, source-rights, upstream-calculation and visible-credit requirements. These are static safeguards only; they do not establish legal clearance or rendering correctness.
+
 For every command capture the **actual exit code** and the tested commit. A GitHub commit/readback, a static assertion or a synthetic-only screenshot must not be reported as a successful Angular build, original-artwork comparison, or Astrolabio acceptance.
 
 ## Evidence log template
