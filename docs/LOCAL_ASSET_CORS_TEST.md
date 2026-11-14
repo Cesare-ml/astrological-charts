@@ -41,3 +41,9 @@ The local asset gallery now provides a keyboard-visible skip link to the labelle
 The synthetic HTTP suite now verifies that an approved loopback `Origin` cannot use `HEAD` to access an asset path absent from the validated manifest. The expected response is HTTP 404, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, and an empty body, matching the existing GET denial. This checks method parity without reading or committing any real artwork.
 
 **Validation:** GitHub commit/readback only; executable Node test **NOT RUN** in this connector-only change. Run `node --test tests/local-asset-cors-preflight.test.mjs` in a complete Node 22 checkout before merge. Angular, browser WebGL, real approved-asset SHA-256 byte comparison and license clearance remain **NOT RUN**. The `astrological-assets` approved manifest metadata was inspected, not its image bytes. No production, CI, or rendering changes.
+
+## Synthetic HTTP payload parity (2026-11-14)
+
+The regression now reads the generated fixture PNG directly and compares **all GET response bytes** against that fixture with a strict buffer assertion. It also verifies that GET and HEAD advertise the exact fixture byte length, while HEAD returns no body. This strengthens the end-to-end HTTP contract beyond status/header-only checks and runs entirely on synthetic images. The existing post-startup tampering checks still require HTTP 409.
+
+**Validation:** source and documentation committed through the GitHub connector; Node 22 runtime test, Angular build, browser WebGL and actual approved-artwork SHA-256 checks remain **NOT RUN**. Run `node --test tests/local-asset-cors-preflight.test.mjs` in a full checkout. No changes to renderer calculations, approved asset images, deployment or production.
