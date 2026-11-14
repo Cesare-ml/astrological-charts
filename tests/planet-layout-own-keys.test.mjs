@@ -11,7 +11,7 @@ const source = readFileSync(
 const output = ts.transpileModule(source, {
   compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022}
 }).outputText;
-const {layoutChartGlyphLongitudes} = await import(
+const {layoutChartGlyphLongitudes, relaxChartGlyphCycle} = await import(
   'data:text/javascript;base64,' + Buffer.from(output).toString('base64')
 );
 
