@@ -186,6 +186,11 @@ export class SinastriaRender {
 
     return group;
     } catch (error) {
+      // House textures/animations are normally appended after the sign ring.
+      // If sign rendering throws, adopt the finished case ring for cleanup.
+      if (anelloCase && !group.children.includes(anelloCase)) {
+        group.add(anelloCase);
+      }
       group.traverse(stopSceneAnimations);
       throw error;
     }
