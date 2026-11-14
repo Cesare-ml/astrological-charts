@@ -31,7 +31,16 @@ export class SinastriaRender {
     var as = 0;
     var mc = 0;
     if(!temaRender) return null;
-    const selectedHouses = temaRender.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
+    const candidateHouses = temaRender.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
+    // Partial offline records can have a selected key without usable angles or cusps.
+    // Treat those like an unknown birth time rather than rendering NaN geometry.
+    const selectedHouses = candidateHouses
+      && Number.isFinite(candidateHouses.ascendant)
+      && Number.isFinite(candidateHouses.mc)
+      && Array.isArray(candidateHouses.house)
+      && candidateHouses.house.length === 12
+      && candidateHouses.house.every((cusp) => Number.isFinite(cusp))
+        ? candidateHouses : null;
     // Without the selected house system, suppress axes derived from other systems.
     const temaPerElementi = selectedHouses ? temaRender : { ...temaRender, houses: {} };
     if(selectedHouses) {
