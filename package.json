@@ -36,7 +36,8 @@
     "test:demo-docs": "node --test tests/demo-docs-status.test.mjs",
     "verify:angular": "npm run preflight && npm run build:library && npm run build:demo",
     "test:mouse-hover": "node --test tests/mouse-hover-lifecycle.test.mjs",
-    "test:mouse-pointer": "node --test tests/mouse-pointer-lifecycle.test.mjs"
+    "test:mouse-pointer": "node --test tests/mouse-pointer-lifecycle.test.mjs",
+    "test:mouse-dom": "node --test tests/mouse-hover-dom.playwright.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
