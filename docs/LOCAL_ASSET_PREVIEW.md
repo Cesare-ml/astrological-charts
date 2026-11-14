@@ -130,3 +130,8 @@ The CORS HTTP regression now changes one **temporary synthetic** PNG after the s
 ## Local preview attribution (2026-11-14)
 
 The standalone `/__preview` gallery now displays a visible **Powered by VirgoStars** link to `https://www.virgostars.it/`. The synthetic HTTP regression checks the rendered HTML for the exact external link and `rel="noopener noreferrer"`. This is a gallery-only attribution improvement: it does not modify the Angular Three.js renderer, approved assets, astronomical calculations, or production. **NOT RUN in a complete checkout:** `node --test tests/local-asset-cors-preflight.test.mjs`, `npm run verify:angular`, browser WebGL and `astrological-assets` `npm run verify:pack`.
+
+
+## Unlisted asset HTTP regression (2026-11-14)
+
+The synthetic-pack test now requests `/assets/img/not-approved.png` using an otherwise permitted localhost CORS origin and asserts HTTP 404 plus `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. This guards against accidentally treating CORS permission as permission to serve files absent from the SHA-256 manifest. The fixture contains no real artwork. **NOT RUN:** the Node test, Angular build, browser WebGL tests and SHA-256 verification of the actual `astrological-assets` files. Execute `node --test tests/local-asset-cors-preflight.test.mjs` in a Node 22 checkout, followed by `npm run verify:angular` and `npm run verify:pack` in the separate assets repository. No release or production changes are implied.
