@@ -599,3 +599,29 @@ test('nested pointermove during pick wins over the older projected hit',()=>{
   assert.deepEqual(p.state(),{paints:1,renders:1});
   p.controller.destroy();
 });
+
+test('controller created in a visible but unfocused window starts with suspended input',()=>{
+  const windowTarget=new FakeTarget();
+  const canvas=new FakeTarget();
+  canvas.style={cursor:'crosshair'};
+  const doc=new FakeTarget();
+  doc.defaultView=windowTarget;
+  doc.visibilityState='visible';
+  doc.hasFocus=()=>false;
+  canvas.ownerDocument=doc;
+  const events=[];
+  const controller=new PlanetInteractionController(canvas,{zoom:1,position:{z:3}},
+    event=>events.push(event.type+':'+event.planet.name),()=>{});
+  controller.scene={};
+  controller.pick=event=>event.ref;
+  canvas.emit('pointermove',{ref:axis('AS')});
+  canvas.emit('click',{ref:axis('AS')});
+  assert.deepEqual(events,[],'initially unfocused document must not accept pointer hits');
+  assert.equal(controller.windowBlurred,true);
+  doc.hasFocus=()=>true;
+  windowTarget.emit('focus');
+  canvas.emit('pointermove',{ref:axis('AS')});
+  assert.deepEqual(events,['enter:AS']);
+  controller.destroy();
+  assert.equal(windowTarget.count('focus'),0);
+});
