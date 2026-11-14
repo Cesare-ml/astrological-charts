@@ -76,3 +76,9 @@ After verifying that changed fixture bytes cause HTTP 409 for both GET and HEAD,
 The synthetic tampering scenario now checks that HTTP 409 GET returns the exact diagnostic `Pack file changed since verification`, while HTTP 409 HEAD has no response body. Both methods retain the allowed loopback CORS origin and security headers. The assertions follow the current `createAssetServer` implementation; they are not an independent browser or real-artwork integrity check.
 
 **Validation:** reviewed server source and GitHub readback; executable Node test, Angular build and browser/WebGL suite **NOT RUN** in this connector-only change. Run `node --test tests/local-asset-cors-preflight.test.mjs` on Node 22 before merge. No asset copies, astronomical calculations, CI, deploy or production changes.
+
+## Existing but unlisted disk file (2026-11-14)
+
+The synthetic HTTP test now creates `img/not-approved.png` **on disk after pack verification**, using disposable synthetic PNG bytes. Both GET and HEAD must still return HTTP 404 because this path is absent from the validated manifest. This distinguishes genuine manifest enforcement from a 404 caused only by a missing filesystem path. No real images are added or redistributed.
+
+Validation: GitHub source update/readback only; the Node 22 test command, Angular build, browser WebGL, and approved real-asset SHA-256 byte verification are **NOT RUN** here. Run `node --test tests/local-asset-cors-preflight.test.mjs` in a full checkout before merge.
