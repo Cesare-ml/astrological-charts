@@ -87,6 +87,11 @@ export class TransitiRender {
 
   public static async getAntisci(temaRender, ascRef, opzioni, diametroAnelloCase, diametroAnelloSegni, diametroInternoAnelloAntisci, diametroEsternoAnelloAntisci) {
     var group = new THREE.Group();
+    // An invalid origin angle or zodiac diameter cannot produce finite axis geometry.
+    // Skip the antiscia overlay instead of putting NaN/Infinity into Three.js transforms.
+    if (!Number.isFinite(ascRef) || !Number.isFinite(diametroAnelloSegni)) {
+      return group;
+    }
     var assi = {
       'Cardinale': 270, // Capricorno-Cancro
       'Fissa':     300, // Acquario-Leone
@@ -127,7 +132,7 @@ export class TransitiRender {
 
     // Se antisciTransitiHover allora traccio le linee
     for (const c of assiAttivi) {
-      if(Number.isFinite(hoverLongitude)) {
+      if(Number.isFinite(hoverLongitude) && Number.isFinite(diametroAnelloCase)) {
         var lngantisci = 2*assi[c] - hoverLongitude;
 
         var pianeta = OggettiSempliciRender.getCerchio(0.025,coloreCerchio);
