@@ -4,7 +4,7 @@
 
 Develop only the Angular/Three.js astrological chart rendering library. Preserve its visual geometry, compatibility with VirgoStars and Astrolabio, and contributor freedom to propose improvements. A framework-agnostic rewrite is not requested.
 
-Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/src/`. This extracted repository is currently **PUBLIC on GitHub** (verified 2026-11-10), but there is no `LICENSE` on `main` and the source has **not** passed the public-release rights audit. It is not used by production until separately integrated; do not interpret public visibility as permission to redistribute source or separate artwork.
+Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/src/`. This repository is **publicly readable on GitHub** (verified 2026-11-12), but the source and third-party rights audit is not complete; `main` has no open-source `LICENSE` and the npm package remains `private: true`. Public visibility does not grant reuse or redistribution rights. The extracted renderer is not used by production until separately reviewed and integrated.
 
 ## Rules
 
@@ -15,10 +15,228 @@ Original production source: `Cesare-ml/virgo-stars/shared/grafici-astrologici/sr
 5. Avoid unrelated refactors. Describe visuals before/after, input fixtures, affected consumers, and any changed public contracts.
 6. Do not introduce secrets, tokens, production payloads, personal natal-chart data, or private business records into code or test fixtures.
 7. Use `scripts/derive-chart-asset-selection.mjs` to derive candidate chart-only paths from active TypeScript AST plus host folders; unresolved active skin resources must be investigated rather than silently renamed. The manifest generator is metadata-only; use `scripts/asset-manifest.mjs` with explicit selection and review `docs/ASSET_MANIFEST.md`. Do not commit inventory snapshots that include unrelated host content. All production visual assets are **host-owned** in `virgo-stars/public/assets/`. Never copy them into this renderer repository, package output or demo. Use `resolveChartAssetUrl` for rendering, share canonical `/assets/img/` URLs with host HTML/CSS, and check rights before adding any fixture images or fonts. Asset files already publicly visible do not imply redistribution rights.
-8. A collaborator without VirgoStars repository access may use `scripts/serve-local-assets.mjs` with a **separate approved chart-assets checkout**. Do not silently hotlink the production website, copy artwork into the renderer package or use private cloud credentials. The private `Cesare-ml/astrological-assets` repository contains owner-authorized images and a manifest for private collaboration; the original font is not included and public redistribution is not authorized. Always require a validated `manifests/approved-assets.json` to run the real local asset server. Use `scripts/preview-synthetic.ps1` for generated placeholder preview only; never claim it reproduces the chart's real visuals.
+8. A collaborator without VirgoStars repository access may use `scripts/serve-local-assets.mjs` with a **separate approved chart-assets checkout**. Do not silently hotlink the production website, copy artwork into the renderer package or use private cloud credentials. The separate, now **publicly readable** `Cesare-ml/astrological-assets` repository includes an SHA-256 manifest and image files, but public visibility does not clear all individual artwork for redistribution. The original font is not included; its rights remain unresolved. Verify the approved asset manifest locally and follow its asset-specific rights policy before redistribution. Always require a validated `manifests/approved-assets.json` to run the real local asset server. Use `scripts/preview-synthetic.ps1` for generated placeholder preview only; never claim it reproduces the chart's real visuals.
 9. Never add GitHub Actions, production deployments, publish-to-npm workflows, or scheduled jobs unless explicitly authorized by repository owner.
 10. Do not treat a successful build as proof of visual correctness. Test browser, mobile PNG and headless/e-ink paths when relevant.
 11. Update docs for every meaningful feature or behavioral change. Report test commands executed and distinguish untested work.
+
+## Owner-approved interaction direction (2026-11-11)
+
+Use `docs/PLANET_INTERACTIONS.md#target-visual-behavior--owner-reference-2026-11-11`
+as the interaction and palette design contract. In particular:
+
+- Light/dark planet symbols are neutral/monochrome until selected.
+  Pointer **enter latches selection**; leaving the canvas does not clear
+  the selection. Button and touch selection must remain accessible.
+- Color only the selected planet and partners of the supplied aspects.
+  Keep natal aspects gray behind colored natal-to-transit highlights;
+  use dashed radial links toward involved outer transiting planets.
+- For a natal-only chart, keep all ordinary natal aspects colored.
+  When the **Focus aspects** toggle is enabled, gray unrelated natal
+  aspects and initially select **Sun** when no selection exists.
+- Do not compute new astrology in the renderer. Use original natal
+  aspect geometry/tags from `AspettiRender` and cross-chart
+  relations from the host. Restore colors, line objects and scales on
+  mode switches/redraw/destroy. Keep headless PNG/Firefox untouched.
+- The owner's screenshot is a behavioral reference, **not** a
+  redistributable asset; never commit it or copy the source software UI.
+- The first implementation is in draft PR #22. Full screenshot fidelity
+  and the exact gray-under-color layering remain human-review gates,
+  not assumptions. Do not merge without local Chrome/Firefox checks.
+
+## No-enlargement and four-axis interactive acceptance
+
+The owner explicitly requested **no planet scaling on hover or
+selection**. Do not reintroduce `mesh.scale.multiplyScalar` into
+`PlanetInteractionController.updateVisuals`; focus uses tint,
+aspect-line colors and accessible button state. Test that all
+canvas symbols retain their original size through hover, click,
+touch, scene refresh and teardown.
+
+AS/DS/MC/IC are house-derived astronomical angles, **not
+additional planets**. The demo must offer all four as accessible
+selection targets, set `.aspVerso` in its options so the existing
+aspect engine includes planet–axis relationships, and never invent
+real orbs. Cross-theme illustrative links remain explicitly labeled
+synthetic. Preserve the existing no-axis-to-axis logic.
+Maintain the matching browser and Node regression tests.
+
+## Native natal aspect focus foreground ownership
+
+The current draft interaction controller implements the owner's
+gray-under-colored natal focus using **screen-only clones of the
+existing tagged native aspect strokes**. Preserve the exact original
+line geometry, angle directions, widths and solid/dashed/dotted
+patterns. Copies must clone both BufferGeometry and Material instead
+of sharing mutable Three.js resources with the gray background,
+and must be disposed on focus change/redraw/destroy. Do not duplicate
+aspect calculations, alter native export PNG/JPEG visuals or commit
+original assets. Keep `tests/fixtures/planet-focus-style-harness.ts`
+covering independent foreground colors, disposal events and repeated
+focus cycles. The 2026-11-11 owner confirmed the prior nonzoom/axis
+version, **not yet** this double-layer revision.
+
+## Native fat-line integration regression
+
+Keep `tests/fixtures/native-natal-line-harness.ts` wired into
+`npm run test:demo-interactions`. Its `Line2`/`LineGeometry`/
+`LineMaterial` objects exercise the native three.js fat-line shape,
+including grouped dash/dot-like segments, not only a simple
+`THREE.Line`. Preserve original native colors, material linewidth,
+chart-group transforms and independent ownership of foreground
+clone geometry/material. When focus changes, dispose only the
+temporary copies, never the native chart's resources. No new
+astronomical calculations, image assets or production changes.
+An unexecuted browser fixture is not proof of visual correctness.
+
+## Exact transit radial-guide invariant
+
+The original radius of the outer transiting planet ring is stored
+as `chartTransitRingRadius` on transit glyph meshes by
+`ElementiCelestiRender`. Preserve this **render-only** metadata,
+which is distinct from collision-shifted glyph center positions.
+The focused dashed aspect guide must follow `chartAspectAngle`
+and the actual world-space chart transforms (rotation and
+southern-hemisphere mirroring), terminate with bounded clearance
+before the transit periphery, and not cover glyph text. Use
+`chartTransitConnectorRadii` to guard narrow/invalid spans. Keep
+the metadata-free fallback for older chart fixtures/hosts. Update
+`tests/planet-interactions.test.mjs` and
+`tests/fixtures/transit-spoke-harness.ts` when changing it; do not
+calculate new astronomical positions or aspect orbs. Browser tests
+need a real local demo server; source checks alone do not suffice.
+
+## Shared-transit guide color determinism
+
+When multiple active precomputed cross-theme aspects involve the
+same transiting planet, draw every central aspect in its own original
+color but only one dashed transit spoke. The spoke selects the
+**smallest finite absolute orb**; use a stable aspect-type/endpoints
+tie-breaker, never API relation order. This is a screen-only
+representation rule, not an astrological interpretation or new
+orb/aspect calculation. Preserve the original arrays passed to
+host callbacks and never enlarge symbols. Keep the pure regression
+test in `tests/planet-interactions.test.mjs` and real Three.js tests
+in `tests/fixtures/transit-spoke-harness.ts` for reversed inputs,
+two simultaneous transit planets and southern-hemisphere mirroring.
+The light/dark visuals need manual approval before merge.
+
+## Pinned pointer no-op repaint guard
+
+The on-screen controller must avoid unnecessary overlay
+reallocation when a pointer enters/leaves the **same pinned planet**
+without a visual focus change. Still send enter/leave events to
+frontend consumers, respect layer-qualified identity, and preserve
+scene/visual revision guards for reentrant callbacks. Do not skip
+repainting on transitions from a *different* hovered planet, or
+when a callback changes selection or displayed aspects. The
+Playwright synthetic fixture
+`tests/fixtures/pinned-pointer-idempotence-harness.ts` tests
+30 enter/leave cycles, unchanged overlay identities, no material
+disposal/render requests, different-planet transitions and clearing
+selection. These tests require real Chrome/Firefox browser execution
+before merge; static inspection is not a performance benchmark.
+
+## Hover-to-pin handoff invariant
+
+The Angular demo pins each planet inside the synchronous
+`enter` event callback. `PlanetInteractionController.highlight()`
+must not paint redundantly when a hover is active, since the
+hovered body still controls visible focus. `move()` must capture
+the pinned body **before** `send('enter')`: newly pinned
+bodies still require their first visual paint, whereas a body
+already pinned before the event can reuse existing overlays.
+Changing the pin by button under a different active hover
+becomes visible on pointer leave. Preserve callback delivery,
+reentrant scene guards, and no-symbol-scaling behavior.
+Keep `tests/fixtures/hover-pin-handoff-harness.ts` in the
+Playwright suite along with the pinned hover-idempotence test;
+do not infer real FPS improvements from source-level checks.
+
+## Inside-canvas focus identity guard
+
+A pointer may leave a planet glyph for **empty space inside the
+canvas** via `move()`, without any canvas-wide `pointerleave`.
+Capture effective visible focus `hovered ?? pinned` before the host
+callbacks, compare with the effective focus afterward and reuse
+existing overlays when both are the same layer-qualified body.
+Do not suppress host enter/leave events or skip redraws for a genuinely
+new focus (including button-selected pins revealed by moving into
+empty space). Preserve scene and visual revision guards for reentrant
+callbacks. The Node interaction test and the augmented
+`pinned-pointer-idempotence-harness.ts` Playwright regression cover
+this. No focus zoom, new calculations or production changes.
+
+## Dynamic chart mesh ownership during picking
+
+`pickTargets` is indexed per `setScene()` to avoid hot-path
+`scene.traverse()`. If a host detaches a cached mesh or reparents
+it into another chart, its hit must be rejected without rebuilding
+the cache. In `visiblePlanetHit`, ensure all ancestors are visible
+AND the chain reaches **this controller's exact active scene**,
+before checking material visibility. Preserve the existing camera
+layer mask and closest-visible-depth behavior; a valid planet
+behind a removed glyph must become pickable immediately.
+Reattaching restores picking without setScene. Keep both the
+headless Node method extraction and
+`tests/fixtures/planet-picking-harness.ts` regression in sync.
+No separate chart's meshes may steal pointer events.
+
+## Cross-scene focus rendering ownership
+
+A cached `chartPlanet` mesh may be detached or moved into another
+chart after `setScene()`. Scene ownership applies not only when
+picking, but also when tinting glyphs and choosing the endpoints
+of active natal/transit aspect lines and dashed guides.
+`ownsGlyph` checks parent ancestry against this controller's
+exact `THREE.Scene`; `activeGlyph` finds the first still-owned
+mesh among possibly duplicated keys. Never recolor a transferred
+mesh or use it for an aspect. Keep the Node extraction test and
+`transferred-glyph-isolation-harness.ts` up to date. Independent charts may share an untinted base material
+or texture: focus must use disposable **per-mesh cloned materials**,
+not change that shared original. The module-level weak origin map
+allows an arriving controller to recover the untinted material even
+when receiving a mesh carrying another controller's focus clone.
+On cleanup, restore only slots still owned by this controller and
+never overwrite a transferred mesh's new active material. Dispose
+only focused copies, **never shared bases or textures**. Keep
+`tests/fixtures/shared-material-isolation-harness.ts` and the
+Node method-extraction test as regression gates. Cross-chart hosts
+must still avoid sharing mutable scene-wide geometry/state.
+No new astrology or private art may be added.
+
+## Two-chart WebGL focus lifecycle gate
+
+The on-screen controller uses material clones for glyph focus.
+Keep the dedicated stress fixture
+`tests/fixtures/multi-chart-gpu-focus-harness.ts`
+registered in `tests/demo-interactions.browser.test.mjs`.
+It renders **two WebGL contexts simultaneously**, with the
+same underlying base material and synthetic 1×1 texture;
+60 changing focus cycles per chart must not grow geometry,
+texture or shader-program counts. Every transient material
+must emit exactly one `dispose`, and destroying one
+controller must never affect the remaining chart.
+`renderer.info.memory` reports resource **counts**, not
+VRAM bytes or OS memory; no FPS or leak-free claim may
+be made without the owner-run browser suite and GPU
+review. Keep source/texture ownership intact; do not
+copy production artwork or modify astronomy.
+
+## Nested natal aspect tags are indexed once
+
+When collecting existing `chartNatalAspect` annotations in
+`PlanetInteractionController.setScene`, a native dashed/dotted
+`Line2` may carry the same annotation as its parent `Group`.
+Register only the **outermost identical** parent relation: cloning
+the parent and child separately doubles foreground rendering and
+allocates extra temporary geometry. Do not globally deduplicate
+different roots or different relations; these represent real
+distinct strokes. Index once during `setScene`, not on every
+pointer event. Maintain the headless Node scene-indexing test,
+`native-natal-line-harness.ts` and 120-selection
+`natal-focus-gpu-harness.ts` with intentionally redundant child
+metadata. Verify with actual Chrome/Firefox before merging.
 
 ## Known technical risks
 

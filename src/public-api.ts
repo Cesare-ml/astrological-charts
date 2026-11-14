@@ -3,6 +3,7 @@
  */
 
 export * from './lib/services/grafico-render.service';
+export * from './lib/renderers/planet-interaction.types';
 
 export * from './lib/models/tema.model';
 export * from './lib/models/tema-localdb.model';

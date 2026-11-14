@@ -48,7 +48,8 @@ export class TransitiRender {
       temaRender.australInversion,
       'longitude',
       true,//usaAssi
-      false//calcolaPartiArabe
+      false,//calcolaPartiArabe
+      0, 0, 0, false, false, 'transit'
     );
     
     

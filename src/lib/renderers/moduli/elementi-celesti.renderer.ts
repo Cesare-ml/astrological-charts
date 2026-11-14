@@ -1,10 +1,13 @@
 import * as THREE from 'three';
+import type { ChartPlanetLayer } from '../planet-interaction.types';
 import gsap from 'gsap';
 import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
-import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
+import { registerSceneAnimation } from '../scene-animations';
+import { disposeSceneResources } from '../scene-resources';
+import { chartBodyRenderAngles, layoutChartGlyphLongitudes, relaxChartGlyphCycle } from '../planet-layout';
 
 
 export class ElementiCelestiRender {
@@ -31,7 +34,8 @@ export class ElementiCelestiRender {
     offsDirezioniSemplificate=0,
     offsDirezioniSemplificateFasullo=0,
     isCerchiaLaLuna=false,
-    isElementiSinastria=false
+    isElementiSinastria=false,
+    interactionLayer: ChartPlanetLayer = 'natal'
   ): Promise<any> {
     var group = new THREE.Group();
     try {
@@ -69,6 +73,12 @@ export class ElementiCelestiRender {
     }
 
     var elementiCelestiRenderPos = this.getRenderPosPianeti(elementiCelesti,parametroDiRender);
+    // The legacy collision helper preserves input order to break ties
+    // between identical longitudes. Scene.children may be reordered by
+    // consumers without changing this ring's original source order.
+    const chartBodySourceOrder: string[] = [];
+    for (const sourceName in elementiCelesti) chartBodySourceOrder.push(sourceName);
+    group.userData['chartBodySourceOrder'] = Object.freeze(chartBodySourceOrder);
 
 
     var raggioConfineAnelloPianeti = diametroCerchioEsterno/2;
@@ -137,7 +147,14 @@ export class ElementiCelestiRender {
     }
 
     for(let nome in elementiCelesti) {
+      // A neutral parent makes a body's symbol, true-angle leader ticks and
+      // optional decorations discoverable as one layer-qualified unit.
+      // Do NOT rotate this group to move its glyph: collision displacement
+      // and original zodiac direction remain independent.
       var elGroup = new THREE.Group();
+      elGroup.name = 'chart-planet-body';
+      elGroup.userData['chartPlanetBody'] = {layer:interactionLayer,name:nome};
+      group.add(elGroup);
 
       var elRef = null;
 
@@ -165,11 +182,30 @@ export class ElementiCelestiRender {
       } else {
         elRef = 'simboli-bianchi/elementi-celesti/'+nome+'.png';
       }
+      const bodyAngles = chartBodyRenderAngles(
+        elementiCelesti[nome][parametroDiRender],
+        elementiCelestiRenderPos[nome][parametroDiRender],
+        ascendente,degOffs
+      );
+      // Render-only provenance for the grouped visual parts. No scene
+      // transforms or astronomical values are changed by this snapshot.
+      elGroup.userData['chartBodyLayout'] = {
+        // Capture the owning ring, not the outer scene. A body moved to
+        // another otherwise identical wheel cannot reuse its old layout.
+        ringId: group.uuid,
+        coordinate: parametroDiRender,
+        original: elementiCelesti[nome][parametroDiRender],
+        adjusted: elementiCelestiRenderPos[nome][parametroDiRender],
+        ascendant: ascendente,
+        degreesOffset: degOffs,
+        tickDegrees: bodyAngles.tickDegrees,
+        glyphDisplacementDegrees: bodyAngles.glyphDisplacementDegrees,
+        outerLeaderEnabled: !!lineaSuCerchioEsterno,
+        moonMarkerEnabled: !!isCerchiaLaLuna && nome === 'Moon'
+      };
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
       el.scale.set(0.22*simboliScale,0.22*simboliScale,1);
-      el.rotateZ(THREE.MathUtils.degToRad(
-        elementiCelestiRenderPos[nome][parametroDiRender] - elementiCelesti[nome][parametroDiRender]
-      ));
+      el.rotateZ(THREE.MathUtils.degToRad(bodyAngles.glyphDisplacementDegrees));
       el.translateY(raggioEclittica);
 
       if(opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') {
@@ -180,7 +216,7 @@ export class ElementiCelestiRender {
         if(nome == partiArabeNomePianetaHighlight) {
           //animazione
           var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
-          registerSceneAnimation(group, tl);
+          registerSceneAnimation(elGroup, tl);
           tl.to(el.material, {opacity: 0});
         } else {
           el.material.opacity = 0.3;
@@ -199,21 +235,19 @@ export class ElementiCelestiRender {
         var raggioCerchietto = (raggioConfineAnelloPianeti - diametroCerchioInterno/2)/2;
         var cerchietto = OggettiSempliciRender.getCerchio(raggioCerchietto,coloreCerchio);
         cerchietto.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
+          bodyAngles.tickDegrees
         ));
         cerchietto.translateX(el.position.x);
         cerchietto.translateY(el.position.y);
         //cerchietto.translateY(el.position.y);
         var lineaCerchietto = OggettiSempliciRender.getLinea({x:0,y:0},el.position,"#888");
         lineaCerchietto.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
+          bodyAngles.tickDegrees
         ));
-        group.add(cerchietto);
-        group.add(lineaCerchietto);
+        cerchietto.userData['chartBodyVisualRole'] = 'moon-ring';
+        elGroup.add(cerchietto);
+        lineaCerchietto.userData['chartBodyVisualRole'] = 'moon-ring-leader';
+        elGroup.add(lineaCerchietto);
       }
 
       if(
@@ -271,11 +305,10 @@ export class ElementiCelestiRender {
 
         var lineaB = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
         lineaB.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
+          bodyAngles.tickDegrees
         ));
-        group.add(lineaB);
+        lineaB.userData['chartBodyVisualRole'] = 'outer-leader';
+        elGroup.add(lineaB);
       }
 
       const p2 = {x:0,y:diametroCerchioInterno/2};
@@ -283,18 +316,30 @@ export class ElementiCelestiRender {
 
       var lineaA = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
       lineaA.rotateZ(THREE.MathUtils.degToRad(
-        75-ascendente+15
-        + elementiCelesti[nome][parametroDiRender]
-        + degOffs
+        bodyAngles.tickDegrees
       ));
-      group.add(lineaA);
+      lineaA.userData['chartBodyVisualRole'] = 'inner-leader';
+        elGroup.add(lineaA);
 
       el.translateY(-raggioEclittica);
-      var elDegDiRender = 75-ascendente+15 + elementiCelesti[nome][parametroDiRender] + degOffs;
+      var elDegDiRender = bodyAngles.tickDegrees;
       el.rotateZ(THREE.MathUtils.degToRad(elDegDiRender));
       el.translateY(raggioEclittica);
       el.rotation.z = 0;
-      group.add( el );
+      el.userData['chartPlanet'] = { layer: interactionLayer, name: nome };
+      // Retain the true rendered longitude direction, not the collision-shifted
+      // glyph center. An aspect focus can then use the inner aspect circle.
+      if (parametroDiRender === 'longitude') {
+        el.userData['chartAspectAngle'] = THREE.MathUtils.degToRad(elDegDiRender);
+        if (interactionLayer === 'transit') {
+          // Exact original radius of the transit glyph ring, before
+          // collision separation shifts the displayed symbol. This is
+          // rendering metadata only, never a new ephemeris calculation.
+          el.userData['chartTransitRingRadius'] = raggioEclittica;
+        }
+      }
+      el.userData['chartBodyVisualRole'] = 'glyph';
+        elGroup.add(el);
 
       /*
       if(eventiMouse) {
@@ -317,7 +362,8 @@ export class ElementiCelestiRender {
         eld.translateY(raggioEclitticaDodecatemore);
         eld.rotation.z = 0;
 
-        group.add(eld);
+        eld.userData['chartBodyVisualRole'] = 'dodecatemore';
+        elGroup.add(eld);
 /*
         if(eventiMouseDodecatemori) {
           GestoreEventiMouse.gem.aggiungiOggetto(
@@ -340,7 +386,8 @@ export class ElementiCelestiRender {
         eld.translateY(raggioEclittica);
         eld.rotation.z = 0;
 
-        group.add(eld);
+        eld.userData['chartBodyVisualRole'] = 'dodecatemore';
+        elGroup.add(eld);
 /*
         if(eventiMouseDodecatemori) {
           GestoreEventiMouse.gem.aggiungiOggetto(
@@ -352,7 +399,7 @@ export class ElementiCelestiRender {
 
         //animazione
         var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
-        registerSceneAnimation(group, tl);
+        registerSceneAnimation(elGroup, tl);
         tl.to(eld.material, {opacity: 0});
 
         var frecciaAdArco = OggettiSempliciRender.lanciaFrecciaAdArco(
@@ -360,7 +407,8 @@ export class ElementiCelestiRender {
           Colori.elementiCelesti[nome],"#aaa",
           diametroCerchioInterno,diametroCerchioEsterno
         );
-        group.add(frecciaAdArco);
+        frecciaAdArco.userData['chartBodyVisualRole'] = 'dodecatemore-arc';
+        elGroup.add(frecciaAdArco);
       }
     };
 /*
@@ -373,99 +421,29 @@ export class ElementiCelestiRender {
 
     return group;
     } catch (error) {
-      // The group is not returned to the service when construction fails, so
-      // its animations must be stopped here rather than during scene disposal.
-      stopSceneAnimations(group);
+      // The partially built group is never returned to the caller. It
+      // already owns all completed per-body meshes/animations; dispose it.
+      disposeSceneResources(group);
       throw error;
     }
   }
 
+  /**
+   * Compatibility wrapper for consumers of the historical render-only
+   * collision pass. This intentionally mutates the supplied working array.
+   */
   public static ciclo(pianeti) {
-    pianeti.sort(function (a, b) {
-      return a.deg - b.deg;
-    });
-    for(var i=1; i<pianeti.length; i++) {
-      var a = pianeti[i-1].deg;
-      var b = pianeti[i].deg;
-
-      if(b-a < ElementiCelestiRender.offsetMinimoPianeti) {
-        b += ElementiCelestiRender.offsetMinimoPianeti - (b-a);
-      }
-      pianeti[i].deg = b;
-    }
-
-    for(var i=0; i<pianeti.length; i++) {
-      pianeti[i].deg = (pianeti[i].deg + 180) %360;
-    }
-
-    return pianeti;
+    return relaxChartGlyphCycle(pianeti, ElementiCelestiRender.offsetMinimoPianeti);
   }
 
+  /**
+   * The old two-pass longitude layout is kept pixel-for-pixel compatible.
+   * Calculation and UI updates can now share the same pure render-layout
+   * primitive without duplicating any astronomical or house algorithms.
+   */
   public static getRenderPosPianeti(elementiCelesti,parametroDiRender) {
-
-    //serve un array, elementiCelesti è un oggetto
-    var pianetiOrdineDiRiferimento = [];
-    for(var nome in elementiCelesti) {
-      var p = {
-        'key': nome,
-        'deg': elementiCelesti[nome][parametroDiRender]%360
-      };
-      pianetiOrdineDiRiferimento.push(p);
-    }
-    var pianeti = JSON.parse(JSON.stringify(pianetiOrdineDiRiferimento));
-
-    pianeti = this.ciclo(pianeti);
-    pianeti = this.ciclo(pianeti);
-/*
-    pianetiOrdineDiRiferimento.forEach(p => p.deg = ((Number(p.deg) % 360) + 360) % 360);
-    pianetiOrdineDiRiferimento.sort(function (a, b) {
-      return Number(a.deg) - Number(b.deg);
-    });
-
-    console.log("inizio",pianeti);
-    pianeti.forEach(p => p.deg = ((Number(p.deg) % 360) + 360) % 360);
-
-    pianeti.sort((a, b) => a.deg - b.deg);
-
-    console.log("ordinati", pianeti.map(p => `${p.key}: ${p.deg.toFixed(2)}`));
-
-    //  pianetiOrdineDiRiferimento e pianeti dovrebbero avere la stessa sequenza di pianeti,
-    
-    var inizioJ=0;
-    while(pianeti[inizioJ].key != pianetiOrdineDiRiferimento[0].key) {
-      inizioJ++;
-    }
-    console.log('inizioJ',inizioJ);
-    for(let i=0; i<pianetiOrdineDiRiferimento.length; i++) {
-      let j = (inizioJ+i)%pianeti.length;
-      let pi = pianetiOrdineDiRiferimento[i];
-      let pj = pianeti[j];
-      //console.log(pianeti,pi,pj);
-      if(pi.key != pj.key){
-        let jk = j;
-        do {
-          jk = (jk+1)%pianeti.length;
-        } while(pianeti[jk].key != pi.key);
-        
-        //console.log('sostituzione', pianeti[jk],pianeti[j]);
-        let tmp = pianeti[jk].key;
-        pianeti[jk].key = pianeti[j].key;
-        pianeti[j].key = tmp;
-
-        tmp = pianeti[jk].deg;
-        pianeti[jk].deg = pianeti[j].deg;
-        pianeti[j].deg = tmp;
-      }
-    }
-    console.log(pianeti,pianetiOrdineDiRiferimento);
-*/
-    var pianetiRet = {};
-    for(var i=0; i<pianeti.length; i++) {
-      pianetiRet[pianeti[i]['key']]={};
-      pianetiRet[pianeti[i]['key']][parametroDiRender] = pianeti[i].deg;
-    }
-
-    return pianetiRet;
+    return layoutChartGlyphLongitudes(elementiCelesti,parametroDiRender,
+      ElementiCelestiRender.offsetMinimoPianeti);
   }
 
   public static initElementoCeleste(nome,parametroDiRender,deg) {

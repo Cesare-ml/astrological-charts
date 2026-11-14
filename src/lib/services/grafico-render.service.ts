@@ -6,7 +6,10 @@ import {TemaRender} from '../models/tema-render.model';
 import {CartaAstraleCreaScena} from '../renderers/@carta-astrale/carta-astrale.renderer';
 import { OggettiSempliciRender } from '../renderers/oggetti-semplici.renderer';
 import { GestoreImmagini } from '../renderers/gestore-immagini';
-import { stopSceneAnimations } from '../renderers/scene-animations';
+import { disposeSceneResources } from '../renderers/scene-resources';
+import { PlanetInteractionController } from '../renderers/planet-interaction.controller';
+import type { ChartAspectRelation, ChartPlanetInteractionEvent, ChartPlanetRef } from '../renderers/planet-interaction.types';
+import { isChartPlanetRef, snapshotChartAspects } from '../renderers/planet-interaction.types';
 //import {ElementiRender} from '../renderers/elementi.renderer';
 import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer';
 //import {OrePlanetarieRender} from '../renderers/ore-planetarie.renderer';
@@ -17,27 +20,6 @@ import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer'
 
 import {SkinManager} from '../renderers/@skin-manager';
 import { debounceTime, fromEvent, map, startWith } from 'rxjs';
-
-/** Dispose resources owned by a generated scene, once per object identity. */
-function disposeSceneResources(root: THREE.Object3D): void {
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
-  root.traverse((object: any) => {
-    stopSceneAnimations(object);
-    if (object.geometry) geometries.add(object.geometry);
-    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-      if (!material) continue;
-      materials.add(material);
-      for (const value of Object.values(material)) {
-        if (value instanceof THREE.Texture) textures.add(value);
-      }
-    }
-  });
-  textures.forEach(texture => texture.dispose());
-  materials.forEach(material => material.dispose());
-  geometries.forEach(geometry => geometry.dispose());
-}
 
 async function waitForSceneTextures(root: THREE.Object3D): Promise<void> {
   const textures = new Set<THREE.Texture>();
@@ -72,6 +54,11 @@ export class GraficoRenderService implements OnDestroy {
   private renderer: THREE.WebGLRenderer;
   public camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;
+  private planetController: PlanetInteractionController | null = null;
+  private planetListener: ((event: ChartPlanetInteractionEvent) => void) | null = null;
+  private crossChartAspects: ChartAspectRelation[] = [];
+  private pinnedPlanet: ChartPlanetRef | null = null;
+  private natalAspectPresentation: 'all' | 'focused' | 'muted' = 'all';
   
   public scale = 1;
 
@@ -90,13 +77,45 @@ export class GraficoRenderService implements OnDestroy {
 
   public constructor() {}
 
+  /** Bridge pointer events to any Angular/frontend state store. */
+  public setPlanetInteractionListener(listener: ((event: ChartPlanetInteractionEvent) => void) | null): void {
+    this.planetListener = listener;
+  }
+
+  /** Use aspect results calculated upstream; this renderer never computes transit orbs. */
+  public setCrossChartAspects(aspects: readonly ChartAspectRelation[]): void {
+    this.crossChartAspects = snapshotChartAspects(aspects);
+    this.planetController?.setRelations(this.crossChartAspects);
+  }
+
+  /** On-screen natal aspect palette: all colored, focused colored, or gray. */
+  public setNatalAspectPresentation(presentation: 'all' | 'focused' | 'muted'): void {
+    // TypeScript types do not validate untyped JavaScript/JSON host inputs.
+    // Reject an unknown mode rather than caching it for the next redraw.
+    if (presentation !== 'all' && presentation !== 'focused' && presentation !== 'muted') return;
+    this.natalAspectPresentation = presentation;
+    this.planetController?.setNatalAspectPresentation(presentation);
+  }
+
+  /** Programmatic focus for buttons/keyboard controls. null clears it. */
+  public highlightPlanet(planet: ChartPlanetRef | null): void {
+    // Only an explicit null clears selection. A malformed host payload
+    // must not silently erase the current keyboard/pointer focus.
+    if (planet !== null && !isChartPlanetRef(planet)) return;
+    this.pinnedPlanet = planet ? { ...planet } : null;
+    this.planetController?.highlight(this.pinnedPlanet);
+  }
+
   // ### ZOOM ###
   public setZoom(zoom: number): void {
+    // NaN would corrupt PerspectiveCamera's projection matrix. Ignore all
+    // non-finite host inputs rather than silently changing the chart view.
+    if (!Number.isFinite(zoom)) return;
     this.zoomValue = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
     if (this.camera) {
       this.camera.zoom = this.zoomValue;
       this.camera.updateProjectionMatrix();
-      this.render();
+      this.requestInteractiveFrame();
     }
   }
 
@@ -113,7 +132,12 @@ export class GraficoRenderService implements OnDestroy {
 
   public ngOnDestroy(): void {
     ++this.drawGeneration;
+    // Pending frames from an old canvas must never replay after teardown.
+    this.renderRequestedBeforeInit = false;
+    this.planetController?.destroy();
+    this.planetController = null;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
+    this.frameId = null;
     
     if(this.resizeSub) {
       this.resizeSub.unsubscribe();
@@ -122,7 +146,13 @@ export class GraficoRenderService implements OnDestroy {
       disposeSceneResources(this.scene);
       this.scene.clear();
     }
-    this.renderer?.dispose();
+    // dispose() releases Three.js resources; forceContextLoss() additionally
+    // frees the browser's WebGL context when the canvas is permanently retired.
+    // Never force loss during ordinary scene redraws.
+    if (this.renderer) {
+      this.renderer.dispose();
+      this.renderer.forceContextLoss();
+    }
     this.renderer = null;
     this.scene = null;
     this.camera = null;
@@ -161,6 +191,13 @@ export class GraficoRenderService implements OnDestroy {
     this.camera.zoom = this.zoomValue;
     this.camera.updateProjectionMatrix();
     this.scene.add(this.camera);
+    this.planetController = new PlanetInteractionController(
+      this.canvas, this.camera, event => this.planetListener?.(event), () => this.requestInteractiveFrame()
+    );
+    this.planetController.setRelations(this.crossChartAspects);
+    this.planetController.setNatalAspectPresentation(this.natalAspectPresentation);
+    this.planetController.highlight(this.pinnedPlanet);
+    this.planetController.setScene(this.scene);
 
     this.aggiornaRisoluzioneRenderer();
 
@@ -264,29 +301,71 @@ export class GraficoRenderService implements OnDestroy {
         if (disegno) await waitForSceneTextures(disegno);
       } catch (error) {
         if (disegno) disposeSceneResources(disegno);
+        // A superseded redraw may fail while its textures are still loading.
+        // Never report that obsolete failure over the newer chart's result.
+        if (generation !== this.drawGeneration) return;
         throw error;
       }
       if (generation !== this.drawGeneration) {
         if (disegno) disposeSceneResources(disegno);
         return;
       }
-      if (!this.scene) this.scene = new THREE.Scene();
+      if (!this.scene || !this.renderer || !this.camera) {
+        if (disegno) disposeSceneResources(disegno);
+        return;
+      }
+      this.planetController?.setScene(null);
+      // A synchronous leave listener may destroy the renderer or request
+      // a newer date/skin before we commit this asynchronously built scene.
+      if (generation !== this.drawGeneration || !this.scene || !this.renderer || !this.camera) {
+        if (disegno) disposeSceneResources(disegno);
+        return;
+      }
       disposeSceneResources(this.scene);
       this.scene.clear();
       const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
       this.scene.background = new THREE.Color(bgColor);
       if (this.camera) this.scene.add(this.camera);
       if (disegno) this.scene.add(disegno);
+      this.planetController?.setScene(this.scene);
+      this.render();
+    });
+  }
+
+  /**
+   * Fold consecutive hover/focus/aspect/zoom updates into one WebGL frame.
+   * A full scene commit still calls render() immediately and cancels any
+   * pending presentation frame, so an obsolete scene is never drawn twice.
+   */
+  private requestInteractiveFrame(): void {
+    if (!this.renderer) return;
+    if (!this.isInizializzato) {
+      this.renderRequestedBeforeInit = true;
+      return;
+    }
+    if (this.frameId != null) return;
+    const expectedRenderer = this.renderer;
+    const generation = this.drawGeneration;
+    this.frameId = requestAnimationFrame(() => {
+      this.frameId = null;
+      if (this.renderer !== expectedRenderer || generation !== this.drawGeneration) return;
       this.render();
     });
   }
 
   public render(): void {
+    // Explicit redraw/scene commit supersedes an already queued focus frame.
+    if (this.frameId != null) {
+      cancelAnimationFrame(this.frameId);
+      this.frameId = null;
+    }
     if (!this.isInizializzato) {
-      this.renderRequestedBeforeInit = true;
+      // Initialization can request one deferred frame. A fully destroyed
+      // service has no renderer and must not queue a frame for a later mount.
+      if (this.renderer) this.renderRequestedBeforeInit = true;
       return;
     }
-    
+    if (!this.renderer || !this.scene || !this.camera) return;
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -349,6 +428,9 @@ export class GraficoRenderService implements OnDestroy {
       disposeSceneResources(scene);
       scene.clear();
       offRenderer.dispose();
+      // PNG export uses a new temporary canvas/context on every call.
+      // Release it immediately instead of waiting for browser GC/context caps.
+      offRenderer.forceContextLoss();
     }
   }
 
