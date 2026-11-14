@@ -45,9 +45,12 @@ export class LatitudiniRender {
     var diametroRisuonatoreSolare     = diametroAnelloSegni*9.42/120; //28.26
 
     // A nonempty houses collection does not guarantee the requested system
-    // exists. Missing selected houses should not hide planets or signs.
+    // exists. Only explicitly supplied systems count: inherited house data
+    // must not create an accidental ring or rotate the chart.
     const candidateHouses = !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
-      ? temaRender.houses?.[opzioni.settaggi.domificazione_selezionata]
+      && temaRender.houses != null
+      && Object.prototype.hasOwnProperty.call(temaRender.houses, opzioni.settaggi.domificazione_selezionata)
+      ? temaRender.houses[opzioni.settaggi.domificazione_selezionata]
       : undefined;
     // Only a complete numeric house ring can safely drive rotation and
     // geometry. Check own indices: inherited numeric values cannot fill holes.
