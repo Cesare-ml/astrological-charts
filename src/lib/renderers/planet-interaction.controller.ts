@@ -62,6 +62,7 @@ export class PlanetInteractionController {
   private pinned: ChartPlanetRef | null = null;
   private readonly cursor: string;
   private readonly hostWindow: Window | null;
+  private readonly hostDocument: Document | null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -70,16 +71,20 @@ export class PlanetInteractionController {
     private readonly requestRender: () => void
   ) {
     this.cursor = canvas.style.cursor;
-    // A detached/document-owned canvas may belong to a different Window.
-    // Resolve its real owner once; Node-only renderer probes have no window.
-    this.hostWindow = canvas.ownerDocument?.defaultView
-      ?? (typeof window === 'undefined' ? null : window);
+    // Bind to the canvas's actual owner: an iframe or detached document
+    // must not receive events from an unrelated global window.
+    this.hostDocument = canvas.ownerDocument ??
+      (typeof document === 'undefined' ? null : document);
+    this.hostWindow = this.hostDocument
+      ? this.hostDocument.defaultView
+      : (typeof window === 'undefined' ? null : window);
     canvas.addEventListener('pointermove', this.move);
     canvas.addEventListener('pointerleave', this.leave);
     canvas.addEventListener('pointerup', this.finishPointer);
     canvas.addEventListener('pointercancel', this.finishPointer);
     canvas.addEventListener('click', this.click);
     this.hostWindow?.addEventListener('blur', this.onWindowBlur);
+    this.hostDocument?.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
   }
 
   setScene(scene: THREE.Scene | null): void {
@@ -248,6 +253,7 @@ export class PlanetInteractionController {
     this.disposed = true;
     ++this.sceneRevision;
     this.hostWindow?.removeEventListener('blur', this.onWindowBlur);
+    this.hostDocument?.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
     this.canvas.removeEventListener('pointermove', this.move);
     this.canvas.removeEventListener('pointerleave', this.leave);
     this.canvas.removeEventListener('pointerup', this.finishPointer);
@@ -399,6 +405,14 @@ export class PlanetInteractionController {
    */
   private onWindowBlur = (): void => {
     if (!this.disposed && (this.hovered || this.pendingHoverExit)) this.leave();
+  };
+
+  /** Some browsers background a tab without a window blur event.
+   * Only visibility *loss* ends transient hover; restoring visibility must
+   * never fabricate a pointer enter or clear the user's pinned selection.
+   */
+  private onDocumentVisibilityChange = (): void => {
+    if (this.hostDocument?.visibilityState === 'hidden') this.onWindowBlur();
   };
 
   private leave = (): void => {
