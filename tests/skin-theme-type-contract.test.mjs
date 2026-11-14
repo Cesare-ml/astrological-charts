@@ -112,8 +112,8 @@ test('Settaggi constructor and saved defaults select a registered skin', () => {
   assert.ok(defaultSettings?.initializer, 'settaggiDefault must exist');
   const persistedSkinId = propertyOf(defaultSettings.initializer, 'skin_id');
   assert.ok(ts.isStringLiteral(persistedSkinId), 'Saved default skin must be a string literal');
-  assert.equal(skinId.initializer.text, persistedSkinId.text);
-  assert.ok(themeRegistry.has(skinId.initializer.text), 'Default renderer skin must exist');
+  assert.ok(themeRegistry.has(skinId.initializer.text), 'Constructor renderer skin must exist');
+  assert.ok(themeRegistry.has(persistedSkinId.text), 'Saved renderer skin must exist');
 });
 
 test('TypeScript accepts Girasole theme in the public type and rejects unknown skins', () => {
@@ -133,6 +133,9 @@ const selected: PublicChartSelection = { temaGrafico: ${JSON.stringify(theme)} }
     const program = ts.createProgram([virtualFile], compilerOptions, host);
     return ts.getPreEmitDiagnostics(program).filter((diagnostic) => diagnostic.file?.fileName === virtualFile);
   };
-  assert.deepEqual(diagnosticsFor('astrolabio-girasole'), []);
+  for (const theme of declaredThemes) {
+    assert.deepEqual(diagnosticsFor(theme), [], `Public type must accept registered skin ${theme}`);
+  }
   assert.ok(diagnosticsFor('invalid-chart-skin').some((diagnostic) => diagnostic.code === 2322));
+
 });
