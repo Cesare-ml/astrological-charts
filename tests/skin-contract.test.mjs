@@ -31,8 +31,11 @@ function nonemptyString(value, description) {
   assert.ok(value.trim().length > 0, description + ' must not be blank');
 }
 
-function imagePath(value, description) {
-  if (value == null) return; // Some skins intentionally use flat colors.
+function imagePath(value, description, { required = false } = {}) {
+  if (value == null) {
+    assert.ok(!required, description + ' is required for every skin');
+    return; // Optional textures may intentionally use flat colors.
+  }
   nonemptyString(value, description);
   assert.ok(
     !/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value),
@@ -42,6 +45,12 @@ function imagePath(value, description) {
     resolveChartAssetUrl(value).startsWith('/assets/img/'),
     description + ' must resolve to a host-owned image',
   );
+}
+
+function assertImageFolder(folder, description) {
+  if (folder == null) return; // Some skin rings draw colored glyphs instead of images.
+  assert.ok(folder === 'bianco' || folder === 'nero',
+    description + ' must use an existing white/black glyph directory');
 }
 
 test('demo exposes the seven supported skin IDs, without accidental removals', () => {
@@ -99,6 +108,10 @@ test('each skin has a usable natal, transit, synastry and latitude configuration
       assert.equal(typeof override, 'object', context + '.' + section + '.sinastria');
       nonemptyString(override.coloreLinea, context + '.' + section + '.sinastria.coloreLinea');
       nonemptyString(override.coloreSimboli, context + '.' + section + '.sinastria.coloreSimboli');
+      assertImageFolder(override.coloreImgFolder, context + '.' + section + '.sinastria.coloreImgFolder');
+    }
+    for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase', 'anelloTransiti']) {
+      assertImageFolder(skin[section].coloreImgFolder, context + '.' + section + '.coloreImgFolder');
     }
   }
 });
@@ -106,7 +119,7 @@ test('each skin has a usable natal, transit, synastry and latitude configuration
 test('declared skin image and texture paths remain host-owned and canonical', () => {
   for (const id of expectedSkins) {
     const skin = SkinManager.skins[id];
-    imagePath(skin.cerchioAspetti.imgRisuonatoreSolare, id + '.resonator');
+    imagePath(skin.cerchioAspetti.imgRisuonatoreSolare, id + '.resonator', { required: true });
     imagePath(skin.cerchioAspetti.texture, id + '.aspectTexture');
     for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase', 'anelloTransiti']) {
       imagePath(skin[section].texture, id + '.' + section + '.texture');
