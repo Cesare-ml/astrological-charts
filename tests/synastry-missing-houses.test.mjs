@@ -83,7 +83,7 @@ function selectedCelestial(theme, selectedSystem) {
   );
 }
 
-function syntheticRenderer({ texture = 'local-test-texture', failHouses = false } = {}) {
+function syntheticRenderer({ texture = 'local-test-texture', failHouses = false, validateCusps = unwrapHouseCusps } = {}) {
   const calls = { houses: 0, planets: 0, signs: 0, visualTheme: null, selectedAngles: null, cleaned: 0 };
   class Group {
     children = [];
@@ -108,7 +108,7 @@ function syntheticRenderer({ texture = 'local-test-texture', failHouses = false 
         },
       },
     },
-    './house-cusps': { unwrapHouseCusps },
+    './house-cusps': { unwrapHouseCusps: validateCusps },
     './case.renderer': {
       CaseRender: {
         getAnelloCaseCartaAstrale: async () => {
@@ -331,4 +331,20 @@ test('existing case-render failure still rejects and triggers cleanup', async ()
     /Synthetic case rendering failure/);
   assert.equal(calls.cleaned, 1);
   assert.equal(calls.planets, 0);
+});
+
+test('unexpected cusp validator errors propagate and clean up instead of silently hiding houses', async () => {
+  const failure = new Error('Synthetic unexpected validator failure');
+  const theme = createTheme(otherHouses);
+  const before = structuredClone(theme);
+  const { renderer, calls } = syntheticRenderer({
+    validateCusps: () => { throw failure; },
+  });
+
+  await assert.rejects(render(renderer, theme, 'placido'), actual => actual === failure);
+  assert.equal(calls.cleaned, 1, 'Partially built group must be cleaned on failure');
+  assert.equal(calls.houses, 0, 'Do not continue to house drawing');
+  assert.equal(calls.planets, 0, 'Do not continue to celestial drawing');
+  assert.equal(calls.signs, 0, 'Do not continue to zodiac drawing');
+  assert.deepEqual(theme, before, 'Validation must never mutate source chart data');
 });
