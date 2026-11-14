@@ -18,6 +18,14 @@ const optionsSource = ts.createSourceFile(
   ts.ScriptKind.TS,
 );
 
+const settingsSource = ts.createSourceFile(
+  'settaggi.model.ts',
+  readFileSync(new URL('../src/lib/models/settaggi.model.ts', import.meta.url), 'utf8'),
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
+
 function propertyName(name) {
   if (name && (ts.isIdentifier(name) || ts.isStringLiteral(name))) return name.text;
   return undefined;
@@ -85,4 +93,44 @@ test('the default chart theme resolves to an available registered skin', () => {
   const theme = propertyOf(defaults.initializer, 'temaGrafico');
   assert.ok(ts.isStringLiteral(theme), 'Default theme must be a string literal');
   assert.ok(themeRegistry.has(theme.text), 'Default chart theme must exist in SkinManager.skins');
+});
+
+test('Settaggi constructor and saved defaults select a registered skin', () => {
+  const settingsClass = settingsSource.statements.find(
+    (node) => ts.isClassDeclaration(node) && node.name?.text === 'Settaggi',
+  );
+  assert.ok(settingsClass, 'Settaggi class must exist');
+  const skinId = settingsClass.members.find(
+    (member) => ts.isPropertyDeclaration(member) && propertyName(member.name) === 'skin_id',
+  );
+  assert.ok(skinId?.initializer && ts.isStringLiteral(skinId.initializer));
+  const defaultSettings = settingsSource.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((statement) => statement.declarationList.declarations)
+    .find((declaration) => declaration.name.getText(settingsSource) === 'settaggiDefault');
+  assert.ok(defaultSettings?.initializer, 'settaggiDefault must exist');
+  const persistedSkinId = propertyOf(defaultSettings.initializer, 'skin_id');
+  assert.ok(ts.isStringLiteral(persistedSkinId), 'Saved default skin must be a string literal');
+  assert.equal(skinId.initializer.text, persistedSkinId.text);
+  assert.ok(themeRegistry.has(skinId.initializer.text), 'Default renderer skin must exist');
+});
+
+test('TypeScript accepts Girasole theme in the public type and rejects unknown skins', () => {
+  const virtualFile = '/virtual/chart-theme-consumer.ts';
+  const compilerOptions = { strict: true, noEmit: true, target: ts.ScriptTarget.ES2022 };
+  const sourceOf = (theme) => `${typeAlias.getText(optionsSource)}
+const selected: TemaGrafico = ${JSON.stringify(theme)};
+`;
+  const diagnosticsFor = (theme) => {
+    const host = ts.createCompilerHost(compilerOptions);
+    const originalGetSourceFile = host.getSourceFile.bind(host);
+    host.getSourceFile = (name, version, onError, shouldCreateNewSourceFile) =>
+      name === virtualFile
+        ? ts.createSourceFile(name, sourceOf(theme), version, true, ts.ScriptKind.TS)
+        : originalGetSourceFile(name, version, onError, shouldCreateNewSourceFile);
+    const program = ts.createProgram([virtualFile], compilerOptions, host);
+    return ts.getPreEmitDiagnostics(program).filter((diagnostic) => diagnostic.file?.fileName === virtualFile);
+  };
+  assert.deepEqual(diagnosticsFor('astrolabio-girasole'), []);
+  assert.ok(diagnosticsFor('invalid-chart-skin').some((diagnostic) => diagnostic.code === 2322));
 });
