@@ -61,12 +61,19 @@ function graphOptions(system) {
 const actualBodies = (theme, system) =>
   celestial.ElementiCelestiRender.getElementiCelesti(theme, graphOptions(system), true);
 
-function renderer({ validate = unwrapHouseCusps, failHouses = false } = {}) {
-  const calls = { selected: null, layer: null, planets: 0, cases: 0, signs: 0, cleaned: 0 };
+function renderer({ validate = unwrapHouseCusps, failHouses = false, failSigns = false } = {}) {
+  const calls = { selected: null, layer: null, planets: 0, cases: 0, signs: 0, cleaned: 0, cleanedNodes: [] };
   class Group {
     children = [];
     add(child) { this.children.push(child); }
-    traverse(callback) { calls.cleaned++; callback(this); }
+    traverse(callback) {
+      calls.cleaned++;
+      const visit = node => {
+        callback(node);
+        for (const child of node.children ?? []) visit(child);
+      };
+      visit(this);
+    }
   }
   const three = { Group, MathUtils: { degToRad: x => x * Math.PI / 180 } };
   const modules = {
@@ -92,20 +99,24 @@ function renderer({ validate = unwrapHouseCusps, failHouses = false } = {}) {
         getAnelloCaseCartaAstrale: async () => {
           calls.cases++;
           if (failHouses) throw new Error('Synthetic case rendering failure');
-          return { kind: 'houses' };
+          return { kind: 'houses', children: [{ kind: 'case-image' }] };
         },
       },
     },
     './house-cusps': { unwrapHouseCusps: validate },
     './segni.renderer': {
       SegniRender: {
-        getAnelloSegniSinastria: async () => { calls.signs++; return { kind: 'signs' }; },
+        getAnelloSegniSinastria: async () => {
+          calls.signs++;
+          if (failSigns) throw new Error('Synthetic sign-render failure');
+          return { kind: 'signs' };
+        },
       },
     },
     '../@skin-manager': {
       SkinManager: { skins: { synthetic: { anelloCase: { texture: 'test-texture' } } } },
     },
-    '../scene-animations': { stopSceneAnimations: () => {} },
+    '../scene-animations': { stopSceneAnimations: node => calls.cleanedNodes.push(node.kind ?? 'root') },
     '../@carta-astrale/carta-astrale.renderer': {},
   };
   const SinastriaRender = load(
@@ -188,4 +199,25 @@ test('case-render failure still triggers cleanup and does not register stale pla
   assert.equal(calls.cleaned, 1);
   assert.equal(calls.planets, 0);
   assert.equal(calls.layer, null);
+});
+
+test('failed sign render visits detached case-ring animations while preserving synastry layer', async () => {
+  const { calls, draw } = renderer({ failSigns: true });
+  await assert.rejects(draw(createTheme(otherHouses), 'placido'), /Synthetic sign-render failure/);
+  assert.equal(calls.cases, 1, 'House ring was created before signs');
+  assert.equal(calls.planets, 1, 'Interactive planet ring was created before signs');
+  assert.equal(calls.signs, 1);
+  assert.equal(calls.layer, 'synastry');
+  assert.equal(calls.cleaned, 1, 'Only one failure cleanup traversal');
+  assert.deepEqual(calls.cleanedNodes, ['root', 'planets', 'houses', 'case-image']);
+});
+
+test('failed sign render without selected houses does not create phantom ring during cleanup', async () => {
+  const { calls, draw } = renderer({ failSigns: true });
+  await assert.rejects(draw(createTheme(otherHouses), 'egizia'), /Synthetic sign-render failure/);
+  assert.equal(calls.cases, 0);
+  assert.equal(calls.planets, 1);
+  assert.equal(calls.layer, 'synastry');
+  assert.equal(calls.cleaned, 1);
+  assert.deepEqual(calls.cleanedNodes, ['root', 'texture', 'planets']);
 });
