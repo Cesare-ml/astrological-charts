@@ -115,6 +115,55 @@ test('empty or missing house collections preserve the existing no-houses behavio
   }
 });
 
+
+test('an exact 0-degree ascendant is valid and retains its house ring', async () => {
+  const houses = {egizia: {...validHouses, ascendant: 0, house: Array.from({length: 12}, (_, i) => i * 30)}};
+  const {scene, calls} = await renderWith(houses);
+  assert.equal(calls.houses.length, 1);
+  assert.deepEqual(calls.ascendants, [0]);
+  assert.deepEqual(scene.children.map(child => child.kind), ['houses', 'background', 'signs', 'planets']);
+});
+
+test('an invalid ascendant or nonnumeric cusp skips unsafe house geometry', async () => {
+  const broken = [
+    {...validHouses, ascendant: Number.NaN},
+    {...validHouses, ascendant: Infinity},
+    {...validHouses, ascendant: '42'},
+    {...validHouses, house: [...validHouses.house.slice(0, 11), Number.NaN]},
+    {...validHouses, house: [...validHouses.house.slice(0, 11), undefined]},
+    {...validHouses, house: [...validHouses.house.slice(0, 11), '0']},
+  ];
+  for (const candidate of broken) {
+    const houses = {egizia: candidate};
+    const {scene, calls, theme} = await renderWith(houses);
+    assert.equal(calls.houses.length, 0, 'invalid selected system must not reach house ring');
+    assert.deepEqual(calls.ascendants, [0]);
+    assert.equal(calls.planets, 1);
+    assert.deepEqual(scene.children.map(child => child.kind), ['background', 'signs', 'planets']);
+    assert.equal(theme.houses, houses);
+  }
+});
+
+test('short and sparse cusp arrays are rejected, rather than yielding NaN rotations', async () => {
+  const sparse = Array.from({length: 12}, (_, i) => (42 + i * 30) % 360);
+  delete sparse[5];
+  for (const house of [[], validHouses.house.slice(0, 11), sparse, null, {}]) {
+    const {scene, calls} = await renderWith({egizia: {...validHouses, house}});
+    assert.equal(calls.houses.length, 0);
+    assert.deepEqual(calls.ascendants, [0]);
+    assert.deepEqual(scene.children.map(child => child.kind), ['background', 'signs', 'planets']);
+  }
+});
+
+test('null house collections and null selected entries retain the no-houses fallback', async () => {
+  for (const houses of [null, {egizia: null}]) {
+    const {scene, calls} = await renderWith(houses);
+    assert.equal(calls.houses.length, 0);
+    assert.deepEqual(calls.ascendants, [0]);
+    assert.deepEqual(scene.children.map(child => child.kind), ['background', 'signs', 'planets']);
+  }
+});
+
 test('ephemerides mode ignores the selected house system even when available', async () => {
   const {scene, calls} = await renderWith({egizia: validHouses}, options('egizia', true));
   assert.equal(calls.houses.length, 0);
