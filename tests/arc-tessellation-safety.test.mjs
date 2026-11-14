@@ -176,6 +176,7 @@ test('nonfinite or negative arc radii fail before curve sampling', () => {
     [NaN, 1], [1, NaN],
     [Infinity, 1], [1, -Infinity],
     [-1, 1], [1, -0.001],
+    [1e39, 1], [1, 1e39], // finite as JS Number, Infinity as Float32
   ]) {
     sampleCounts.length = 0;
     assert.throws(
@@ -223,6 +224,7 @@ test('invalid textured arcs reject input without requesting an image', () => {
     [NaN, 30, 1, 2],
     [0, 30, -1, 2],
     [0, 30, 1, Infinity],
+    [0, 30, 1, 1e39], // reject overflow without triggering texture load
   ]) {
     sampleCounts.length = 0;
     textureRequests.length = 0;
@@ -257,6 +259,7 @@ test('extreme valid radii and exact upper subdivision bound remain finite', () =
     [0, 360, 0, 2, 360],
     [90, 90, 2, 2, 2],
     [0, 30, 1e-8, 1e-7, 30],
+    [0, 30, 1e35, 2e35, 30], // finite Float32 range
   ]) {
     sampleCounts.length = 0;
     const mesh = Renderer.getSemiArcoGrosso(start, end, inner, outer, '#abc');
