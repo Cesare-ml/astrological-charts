@@ -207,3 +207,12 @@ test('all three house-ring entrypoints reject invalid cusp arrays before drawing
   await assert.rejects(CaseRender.renderAnelloCaseSinastria(invalid, 0, 1, 100, 120, 180, false, options), { name: 'TypeError' });
   await assert.rejects(CaseRender.renderAnelloCaseLatitudini(invalid, 100, 180, false, options), { name: 'TypeError' });
 });
+
+test('natal, synastry and latitude reject multi-revolution house data before drawing', async () => {
+  skin.anelloCase.texture = null;
+  delete skin.anelloCase.sinastria;
+  const invalid = { ascendant: 0, house: [0, 359, 0, 359, 0, 359, 0, 359, 0, 359, 0, 359] };
+  await assert.rejects(CaseRender.renderAnelloCase(invalid, 0, 1, 100, 120, 180, false, options), { name: 'RangeError' });
+  await assert.rejects(CaseRender.renderAnelloCaseSinastria(invalid, 0, 1, 100, 120, 180, false, options), { name: 'RangeError' });
+  await assert.rejects(CaseRender.renderAnelloCaseLatitudini(invalid, 100, 180, false, options), { name: 'RangeError' });
+});
