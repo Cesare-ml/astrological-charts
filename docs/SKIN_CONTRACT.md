@@ -82,7 +82,16 @@ with all other values inherited from the base ring. The test asserts a
 visible difference between the base and partial override and pixel-level
 agreement between partial and explicit results (with a small WebGL
 antialiasing tolerance). It restores the previous skin configuration even
-if a render fails. It does not change the Angular demo, ship assets or
+if a render fails. The fixture preserves whether the original `sinastria`
+property was present at all (rather than confusing an explicitly undefined
+value with an absent property). A separate failure-path probe temporarily
+rejects a synthetic asset request, asserts that the original skin object and
+`GestoreImmagini.loadAsync` function are restored, disposes the failed
+renderer, and verifies that a subsequent ordinary PNG export succeeds.
+The asset-load rejection is intercepted inside the browser and does not
+require editing the host's verified synthetic image pack.
+
+The browser regression does not change the Angular demo, ship assets or
 create approved screenshot baselines.
 
 Run in a complete checkout after `npm ci` and `npm run demo:pack`. Keep
