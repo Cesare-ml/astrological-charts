@@ -216,3 +216,33 @@ test('invalid textured arcs reject input without requesting an image', () => {
     assert.equal(textureRequests.length, 0);
   }
 });
+
+
+test('all 12 zodiac wedges at rotated ascendants preserve finite UVs and 30 segments', () => {
+  // Synthetic inputs only: exercise wraparound at 0/360 and negative offsets.
+  // Wedges are still sampled from their original (unmodded) source angles.
+  for (const ascendantOffset of [-375, -15, 0, 75, 345, 735]) {
+    for (let sign = 0; sign < 12; sign++) {
+      const start = ascendantOffset + sign * 30;
+      sampleCounts.length = 0;
+      const mesh = Renderer.getSemiArcoGrosso(start, start + 30, 1.5, 2, '#abc');
+      assert.deepEqual(Array.from(sampleCounts), [30, 30],
+        'Expected 30 segments for sign ' + sign + ' at offset ' + ascendantOffset);
+      assertFiniteUv(mesh);
+    }
+  }
+});
+
+test('extreme valid radii and exact upper subdivision bound remain finite', () => {
+  for (const [start, end, inner, outer, segments] of [
+    [0, 720, 1, 2, 720],
+    [0, 360, 0, 2, 360],
+    [90, 90, 2, 2, 2],
+    [0, 30, 1e-8, 1e-7, 30],
+  ]) {
+    sampleCounts.length = 0;
+    const mesh = Renderer.getSemiArcoGrosso(start, end, inner, outer, '#abc');
+    assert.deepEqual(Array.from(sampleCounts), [segments, segments]);
+    assertFiniteUv(mesh);
+  }
+});
