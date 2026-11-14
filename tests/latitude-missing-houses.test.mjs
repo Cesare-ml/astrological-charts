@@ -155,6 +155,23 @@ test('short and sparse cusp arrays are rejected, rather than yielding NaN rotati
   }
 });
 
+test('an inherited cusp cannot disguise a sparse selected house array', async () => {
+  const house = [...validHouses.house];
+  delete house[5];
+  const withInheritedCusp = Object.create(Array.prototype);
+  withInheritedCusp[5] = validHouses.house[5];
+  Object.setPrototypeOf(house, withInheritedCusp);
+
+  // Reading the missing index returns an inherited finite value. It must
+  // still count as absent: otherwise the case renderer sees a phantom cusp.
+  assert.equal(Number.isFinite(house[5]), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(house, 5), false);
+  const {scene, calls} = await renderWith({egizia: {...validHouses, house}});
+  assert.equal(calls.houses.length, 0);
+  assert.deepEqual(calls.ascendants, [0]);
+  assert.deepEqual(scene.children.map(child => child.kind), ['background', 'signs', 'planets']);
+});
+
 test('null house collections and null selected entries retain the no-houses fallback', async () => {
   for (const houses of [null, {egizia: null}]) {
     const {scene, calls} = await renderWith(houses);
