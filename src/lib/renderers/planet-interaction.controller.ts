@@ -418,7 +418,10 @@ export class PlanetInteractionController {
   };
 
   private onWindowFocus = (): void => {
-    if (!this.disposed) this.windowBlurred = false;
+    // Some mobile engines dispatch focus before the hidden document becomes
+    // visible. Keep the blur latch until both conditions allow interaction.
+    if (!this.disposed && this.hostDocument?.visibilityState !== 'hidden')
+      this.windowBlurred = false;
   };
 
   /** Some browsers background a tab without a window blur event.
@@ -427,7 +430,10 @@ export class PlanetInteractionController {
    */
   private onDocumentVisibilityChange = (): void => {
     if (this.hostDocument?.visibilityState === 'hidden') this.onWindowBlur();
-    else if (this.hostDocument?.visibilityState === 'visible') this.onWindowFocus();
+    // Visibility alone is not focus: a tab can become visible while a
+    // separate browser window or another application still owns the input.
+    else if (this.hostDocument?.visibilityState === 'visible' &&
+        this.hostDocument.hasFocus()) this.onWindowFocus();
   };
 
   private leave = (): void => {
