@@ -12,8 +12,10 @@ Resolve `houses[settaggi.domificazione_selezionata]` once. Accept it only if `as
 
 Synthetic example: `houses = { placido: {...} }` and selected `egizia` now yields the signs/planet ring and optional empty-house texture, without case divisions or synthetic AS/DS/MC/IC. A valid `placido` selection remains unchanged.
 
+The integration regression also calls the **actual** `ElementiCelestiRender.getElementiCelesti` method. On the original unfiltered theme it demonstrably emits phantom AS and MC at 0° when the requested system is missing; on the fallback theme passed by `SinastriaRender`, it emits only the actual Sun. Selecting a valid `placido` system retains the authentic AS=55°, DS=235°, MC=150° and IC=330° positions. This strengthens the earlier ring-only mock tests without copying calculation logic into the test.
+
 ## Verification
 
-Run `npm run test:synastry-missing-houses` for eight deterministic scenarios covering partial records, nonfinite positions and valid 0° angles against the actual TypeScript module (transpiled using the pinned TypeScript dependency, with visual modules mocked). Run `npm run verify:angular` and browser screenshot checks with all seven synthetic skins before merging, including house-system changes while viewing synastry. Actual artwork, Firefox headless/e-ink and Astrolabio device parity require separate verification.
+Run `npm run test:synastry-missing-houses` for ten deterministic scenarios, including direct checks of the actual celestial selector for AS/DS/MC/IC against the actual TypeScript module (transpiled using the pinned TypeScript dependency, with visual modules mocked). Run `npm run verify:angular` and browser screenshot checks with all seven synthetic skins before merging, including house-system changes while viewing synastry. Actual artwork, Firefox headless/e-ink and Astrolabio device parity require separate verification.
 
 This change affects missing, incomplete or nonfinite selected house systems. Consumers supplying numeric strings rather than numbers for angles must normalize them before calling the renderer. It introduces no public API, new assets, licenses, production integrations, publishing or GitHub Actions. PR #22 also modifies the synastry renderer: rebase or reconcile its interaction work before integration into main.
