@@ -32,6 +32,10 @@ export class SinastriaRender {
     var as = 0;
     var mc = 0;
     if(!temaRender) return null;
+    // Reject invalid reference directions before they propagate to planet/sign rotations.
+    if (!Number.isFinite(ascendenteTemaDiRiferimento)) {
+      throw new TypeError('Synastry reference ascendant must be a finite longitude.');
+    }
     const candidateHouses = temaRender.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
     // Partial offline records can have a selected key without usable angles or cusps.
     // Treat those like an unknown birth time rather than rendering NaN geometry.
