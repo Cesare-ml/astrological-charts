@@ -81,3 +81,34 @@ test('normalizes higher and negative input frames without changing a valid house
   assert.deepEqual(higher, higherSnapshot);
   assert.deepEqual(negative, negativeSnapshot);
 });
+
+test('normalization is invariant under deterministic per-cusp revolution shifts', () => {
+  // Generate distinct valid house wheels with unequal sectors and arbitrary
+  // negative/positive 360° input frames, including a shifted first cusp.
+  let state = 0x05eed123;
+  const random = () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+  for (let sample = 0; sample < 256; sample++) {
+    const first = Math.floor(random() * 360000) / 1000;
+    const widths = Array.from({ length: 12 }, () => 1 + Math.floor(random() * 72));
+    const widthSum = widths.reduce((sum, width) => sum + width, 0);
+    const reference = [first];
+    for (let index = 1; index < 12; index++) {
+      reference.push(reference[index - 1] + widths[index - 1] * 360 / widthSum);
+    }
+    const firstFrame = Math.floor(random() * 15) - 7;
+    const input = Object.freeze(reference.map((longitude, index) => {
+      const frame = index === 0 ? firstFrame : Math.floor(random() * 15) - 7;
+      return ((longitude % 360) + 360) % 360 + frame * 360;
+    }));
+    const actual = unwrapHouseCusps(input);
+    for (let index = 0; index < 12; index++) {
+      const expected = reference[index] + firstFrame * 360;
+      assert.ok(Math.abs(actual[index] - expected) < 1e-9,
+        `sample ${sample}, house ${index + 1}: ${actual[index]} versus ${expected}`);
+    }
+    assert.ok(actual[11] - actual[0] < 360);
+  }
+});
