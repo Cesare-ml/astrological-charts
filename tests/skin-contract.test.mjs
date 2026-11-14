@@ -106,7 +106,8 @@ test('each skin has a usable natal, transit, synastry and latitude configuration
 
     for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase']) {
       assertSkinColor(skin[section].coloreLinea, context + '.' + section + '.coloreLinea');
-      assertSkinColor(skin[section].coloreSimboli, context + '.' + section + '.coloreSimboli', { allowElementi: true });
+      assertSkinColor(skin[section].coloreSimboli, context + '.' + section + '.coloreSimboli',
+        { allowElementi: section !== 'anelloElementiCelesti' });
     }
     assertSkinColor(skin.anelloTransiti.coloreLinea, context + '.anelloTransiti.coloreLinea');
     assertSkinColor(skin.anelloSegni.coloreTexture, context + '.anelloSegni.coloreTexture');
@@ -121,7 +122,8 @@ test('each skin has a usable natal, transit, synastry and latitude configuration
       if (override == null) continue;
       assert.equal(typeof override, 'object', context + '.' + section + '.sinastria');
       assertSkinColor(override.coloreLinea, context + '.' + section + '.sinastria.coloreLinea');
-      assertSkinColor(override.coloreSimboli, context + '.' + section + '.sinastria.coloreSimboli', { allowElementi: true });
+      assertSkinColor(override.coloreSimboli, context + '.' + section + '.sinastria.coloreSimboli',
+        { allowElementi: section !== 'anelloElementiCelesti' });
       if (override.coloreTexture != null) {
         assertSkinColor(override.coloreTexture, context + '.' + section + '.sinastria.coloreTexture');
       }
@@ -170,7 +172,15 @@ test('the contract rejects missing artwork, foreign URLs and unknown glyph direc
     () => assertSkinColor('elementi', 'test.bgColor'),
     /must be a CSS hex color or a supported skin color token/,
   );
-  assert.doesNotThrow(() => assertSkinColor('elementi', 'test.coloreSimboli', { allowElementi: true }));
+  assert.doesNotThrow(() => assertSkinColor('elementi', 'test.segni.coloreSimboli', { allowElementi: true }));
+  assert.throws(
+    () => assertSkinColor('elementi', 'test.anelloElementiCelesti.coloreSimboli'),
+    /must be a CSS hex color or a supported skin color token/,
+  );
+  assert.throws(
+    () => assertSkinColor('#xyzxyz', 'test.coloreLinea'),
+    /must be a CSS hex color or a supported skin color token/,
+  );
   assert.doesNotThrow(() => assertSkinColor('#abc', 'test.coloreLinea'));
   assert.doesNotThrow(() => imagePath(null, 'test.optionalTexture'));
   assert.doesNotThrow(() => assertImageFolder(null, 'test.optionalFolder'));
