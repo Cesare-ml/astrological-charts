@@ -58,9 +58,10 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
 };
 
 
-// Exercise a real rejected export, then assert the shared skin and loader are
-// restored before rendering a fresh image. No external assets or server calls
-// are intentionally failed: the loader rejects the first synthetic image.
+// Exercise a real rejected export while building the partner's sign ring.
+// An existing browser harness shows the second sign-06 load belongs to the
+// nested synastry construction. Do not reject the first natal image: that
+// would never verify cleanup after the secondary chart starts rendering.
 (globalThis as any).probeSynastryFailureCleanup = async () => {
   GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
   const opts = structuredClone(defaultOpzioniGrafico) as any;
@@ -76,10 +77,16 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
   const partner = makeDemoTheme(71);
   const failedRenderer = new GraficoRenderService();
   let failure = '';
+  let matchingSignLoads = 0;
+  let injectedAtPartnerSign = false;
   try {
     skin.sinastria = { coloreLinea: '#d00076' };
-    GestoreImmagini.loadAsync = async () => {
-      throw new Error('Injected failure: synthetic synastry asset load');
+    GestoreImmagini.loadAsync = async (ref: string) => {
+      if (ref.endsWith('/segni/06.png') && ++matchingSignLoads === 2) {
+        injectedAtPartnerSign = true;
+        throw new Error('Injected failure: second synastry sign 06.png');
+      }
+      return originalLoad.call(GestoreImmagini, ref);
     };
     try {
       await failedRenderer.generaImmagine(
@@ -103,7 +110,14 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
     const png = await recoveredRenderer.generaImmagine(
       natal, null, partner, 'carta-astrale', opts, {x: 400, y: 400}, 1,
     );
-    return { failure, skinRestored, loaderRestored, recoveryIsPng: png.startsWith('data:image/png;base64,') };
+    return {
+      failure,
+      matchingSignLoads,
+      injectedAtPartnerSign,
+      skinRestored,
+      loaderRestored,
+      recoveryIsPng: png.startsWith('data:image/png;base64,'),
+    };
   } finally {
     recoveredRenderer.ngOnDestroy();
   }
