@@ -348,3 +348,42 @@ test('unexpected cusp validator errors propagate and clean up instead of silentl
   assert.equal(calls.signs, 0, 'Do not continue to zodiac drawing');
   assert.deepEqual(theme, before, 'Validation must never mutate source chart data');
 });
+
+
+test('rejects nonfinite or nonnumeric reference ascendants before drawing', async () => {
+  for (const reference of [undefined, null, NaN, Infinity, -Infinity, '15']) {
+    const { renderer, calls } = syntheticRenderer();
+    const theme = createTheme(otherHouses);
+    const snapshot = structuredClone(theme);
+    await assert.rejects(
+      renderer.getAnelloSinastria(theme, reference, [], state('placido'),
+        160, 140, 120, 110, 100, 130),
+      { name: 'TypeError', message: /reference ascendant must be a finite longitude/ },
+    );
+    assert.equal(calls.houses, 0, 'no case geometry should be created');
+    assert.equal(calls.planets, 0, 'no planet geometry should be created');
+    assert.equal(calls.signs, 0, 'no zodiac geometry should be created');
+    assert.equal(calls.cleaned, 1, 'failure must traverse the temporary scene for cleanup');
+    assert.deepEqual(theme, snapshot, 'caller theme must not be mutated');
+  }
+});
+
+test('zero reference ascendant preserves selected and fallback synastry geometry', async () => {
+  for (const selected of ['placido', 'egizia']) {
+    const { renderer, calls } = syntheticRenderer();
+    const theme = createTheme(otherHouses);
+    const result = await renderer.getAnelloSinastria(
+      theme, 0, [], state(selected), 160, 140, 120, 110, 100, 130,
+    );
+    assert.equal(calls.selectedAngles, 0);
+    assert.equal(calls.planets, 1);
+    assert.equal(calls.signs, 1);
+    assert.equal(calls.cleaned, 0);
+    assert.deepEqual(
+      result.children.map(child => child.kind),
+      selected === 'placido'
+        ? ['planets', 'signs', 'houses']
+        : ['fallback-texture', 'planets', 'signs'],
+    );
+  }
+});
