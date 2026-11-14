@@ -39,8 +39,10 @@ npm run verify:angular
 ```
 
 The focused Node test evaluates the actual TypeScript renderer with instrumented
-Three.js geometry stubs, checking normal/short/reversed/degenerate/oversized arcs
-and normalized UVs. The test is **not** an actual WebGL render, screenshot
+Three.js geometry stubs, checking normal/short/reversed/degenerate/oversized arcs,
+invalid radii, **synthetic texture material configuration**, and normalized UVs.
+It also checks that invalid textured arcs fail before any texture lookup. Tests use
+placeholder references only; no artwork or host asset server is required. The test is **not** an actual WebGL render, screenshot
 baseline, browser performance study, VirgoStars integration, or Astrolabio
 hardware validation. Those remain mandatory acceptance gates before merging
 or deploying anything.
