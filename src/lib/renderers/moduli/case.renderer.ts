@@ -35,7 +35,7 @@ export class CaseRender {
     diametroCerchioInternoTermini,
     australInversion,
     isCaseSinastria=false,
-    synastryRotationOverride=undefined
+    synastryRotationOverride: number | undefined = undefined
   ) {
     var group = new THREE.Group();
     var mostraTermini =
@@ -281,7 +281,7 @@ export class CaseRender {
     diametroEsterno,
     australInversion, 
     opzioni,
-    synastryRotationOverride=undefined,
+    synastryRotationOverride: number | undefined = undefined,
   ) {
     var group = new THREE.Group();
     
