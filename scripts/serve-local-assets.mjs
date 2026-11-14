@@ -105,9 +105,11 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
       res.writeHead(404);res.end('Not in approved manifest');return;
     }
     try{
-      // Recheck integrity on each request to avoid accidentally serving a changed asset.
-      const body=readSafeAsset(absolute,requested.path);
-      if(!verifyRequestBytes(body,pack.paths.get(requested.path))){
+      // Reject changed file sizes before loading bytes even after server startup.
+      // Verify the SHA-256 afterwards to catch same-size modifications and races.
+      const approved=pack.paths.get(requested.path);
+      const body=readSafeAsset(absolute,requested.path,approved.bytes);
+      if(!verifyRequestBytes(body,approved)){
         res.writeHead(409);res.end('Pack file changed since verification');return;
       }
       res.writeHead(200,{'Content-Type':requested.type,'Content-Length':body.length});
