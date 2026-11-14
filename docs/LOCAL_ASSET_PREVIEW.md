@@ -120,3 +120,9 @@ The synthetic-pack HTTP regression in `tests/local-asset-cors-preflight.test.mjs
 ## HTTP-only development origin policy (2026-11-14)
 
 `createAssetServer` explicitly accepts only canonical `http://localhost:<port>` or `http://127.0.0.1:<port>` origins in its allowlist. Other schemes, including `ftp:` and `file:`, are rejected at server construction; this is defense in depth even where URL normalization would already reject a non-HTTP origin. The synthetic regression covers both cases in `tests/local-asset-cors-preflight.test.mjs`. This change does not enable HTTPS, expose the server beyond loopback, or affect production asset resolution. **NOT RUN:** Node test execution, Angular builds, Chromium/Firefox WebGL and real approved-pack byte checks. Run the Node test on Node 22 and validate the separate asset checkout before merge.
+
+## Post-startup integrity regression (2026-11-14)
+
+The CORS HTTP regression now changes one **temporary synthetic** PNG after the server has validated its manifest. Both `GET` and `HEAD` must then return HTTP 409 rather than exposing modified bytes, while retaining `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. This specifically checks the per-request SHA-256 gate, not just the startup check. It never edits or redistributes the separate approved image pack.
+
+**Validation status: NOT RUN** in this GitHub-only change. Run `node --test tests/local-asset-cors-preflight.test.mjs` with Node 22 and localhost binding; subsequently run `npm run verify:angular` and browser tests in a complete checkout. For actual approved assets, separately run `npm run verify:pack` in `astrological-assets`. The manifest was inspected but its recorded hashes were not compared against image bytes during this change.
