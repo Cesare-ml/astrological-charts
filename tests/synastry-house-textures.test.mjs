@@ -259,3 +259,24 @@ test('natal and synastry reject nonfinite rotation offsets, while zero retains l
     synastry.children.filter(child => child.kind === 'line').map(child => child.angle),
   );
 });
+
+test('mixed higher longitude frames preserve the same sectors in all three chart modes', async () => {
+  skin.anelloCase.texture = 'base-texture';
+  skin.anelloCase.sinastria = { texture: 'synastry-texture' };
+  const houseValues = [0, 390, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
+  const snapshot = [...houseValues];
+  const input = { ascendant: 5, house: houseValues };
+  const natal = await CaseRender.renderAnelloCase(input, 0, 1, 100, 120, 180, false, options);
+  const synastry = await render(false, input);
+  const latitude = await CaseRender.renderAnelloCaseLatitudini(input, 100, 180, false, options);
+  const angles = ring => ring.children.filter(child => child.kind === 'line').map(child => child.angle);
+  const expected = Array.from({ length: 12 }, (_, index) => (index * 30 + 85) * Math.PI / 180);
+  assert.deepEqual(angles(natal), expected);
+  assert.deepEqual(angles(synastry), expected);
+  assert.deepEqual(angles(latitude), expected);
+  const bands = synastry.children.filter(child => child.kind === 'band');
+  assert.equal(bands.length, 24);
+  assert.deepEqual([bands[0].start, bands[0].end], [175, 205]);
+  assert.deepEqual([bands[1].inner, bands[1].outer], [50, 60]);
+  assert.deepEqual(houseValues, snapshot, 'input longitudes must remain untouched');
+});
