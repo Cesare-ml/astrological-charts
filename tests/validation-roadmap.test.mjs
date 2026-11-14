@@ -51,7 +51,7 @@ test('release roadmap cannot silently bypass the private-package and owner-appro
   assert.match(roadmap, /source\/third-party rights audit/);
   assert.match(roadmap, /precomputed astronomical inputs remain owned by the upstream ephemeris\/functions layer/);
   assert.match(roadmap, /project link in the demo/);
-  assert.match(packageJson.engines.node, /22\\.12\\.0/, 'documented Node 22 baseline must remain supported');
+  assert.match(packageJson.engines.node, /22\.12\.0/, 'documented Node 22 baseline must remain supported');
   for (const script of Object.keys(packageJson.scripts)) {
     assert.doesNotMatch(script, /^(?:publish|deploy|release)(?::|$)/, `unexpected automatic release script: ${script}`);
   }
