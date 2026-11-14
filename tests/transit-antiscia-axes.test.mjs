@@ -398,3 +398,18 @@ test('antiscia hover geometry is periodic under whole-turn longitude shifts', as
     }
   }
 });
+
+test('nonfinite inner ring diameters never trigger expensive planet lookups', async () => {
+  for (const diameter of [NaN, Infinity, -Infinity, undefined]) {
+    const h = createHarness(10, { failOnCelestial: true });
+    const chart = await h.TransitiRender.getAntisci(
+      { planets: { Sun: { longitude: 10 } } }, 90, {
+        settaggi: { skin_id: 'light' }, antisci: { Cardinale: true },
+        antisciTransitiHover: { nome: 'Sun' },
+      }, diameter, 4, 5, 6,
+    );
+    assert.equal(chart.children.length, 1, 'finite axis remains rendered');
+    assert.equal(h.getCelestialCalls(), 0, 'no need to clone planets for an invalid hover radius');
+    assert.ok(h.objects.every(isFiniteObject));
+  }
+});
