@@ -67,18 +67,23 @@ check proves that private, real artwork has been approved or is present.
 
 A separate browser regression in `tests/demo-browser.test.mjs` bundles
 `tests/fixtures/synastry-skin-harness.ts`. It renders the same illustrative
-natal/sinastria themes three times using the actual renderer, with the
-`light` skin and the host-verified **synthetic** asset pack:
+natal/sinastria themes three times per scenario through the real renderer,
+using the host-verified **synthetic** asset pack:
 
-1. Normal house-ring styling, with no `sinastria` override.
-2. A partial override setting **only** `anelloCase.sinastria.coloreLinea`.
-3. An explicit override setting the same line color and repeating the
-   inherited glyph-color and texture defaults.
+- `line`: the untextured `light` skin, changing only
+  `anelloCase.sinastria.coloreLinea`.
+- `texture`: the textured `astrolabio` skin, changing only
+  `anelloCase.sinastria.coloreTexture` while retaining the existing
+  synthetic gold texture.
 
-The test asserts a visible change between 1 and 2, and compares decoded PNG
-pixels for 2 and 3 with a small WebGL antialiasing tolerance. It restores
-the skin configuration after the probe. It does not change the Angular demo,
-ship assets or create approved screenshot baselines.
+For each scenario, the three PNGs represent the base ring (without a
+sinastria override), a partial override, and a fully explicit equivalent
+with all other values inherited from the base ring. The test asserts a
+visible difference between the base and partial override and pixel-level
+agreement between partial and explicit results (with a small WebGL
+antialiasing tolerance). It restores the previous skin configuration even
+if a render fails. It does not change the Angular demo, ship assets or
+create approved screenshot baselines.
 
 Run in a complete checkout after `npm ci` and `npm run demo:pack`. Keep
 `npm run demo:assets` and `npm run demo` running in separate terminals,
