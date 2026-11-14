@@ -36,7 +36,8 @@
     "test:verify-local": "node --test tests/verify-local-runner.test.mjs tests/verify-local-windows.integration.test.mjs",
     "test:pr-overlap": "node --test tests/check-pr-overlap.test.mjs",
     "test:demo-docs": "node --test tests/demo-docs-status.test.mjs",
-    "verify:angular": "npm run preflight && npm run build:library && npm run build:demo"
+    "verify:angular": "npm run preflight && npm run build:library && npm run build:demo",
+    "test:latitude": "node --test tests/latitude-zero.test.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
