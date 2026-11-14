@@ -29,12 +29,12 @@ signatures are added. The original input object is not mutated.
 ## Test gate
 
 ```sh
-node --test tests/planet-layout-own-keys.test.mjs
-node --test tests/planet-layout.test.mjs
+npm run test:planet-layout
 npm run verify:angular
 ```
 
-The new Node suite transpiles the **real** TypeScript helper using the
+The existing `test:planet-layout` command (already in `preflight`) now runs
+both the parent suite and the new regressions. The new Node suite transpiles the **real** TypeScript helper using the
 repository's `typescript` dependency; it checks inherited names,
 own special keys, and ordinary input isolation. The parent PR's 200-case
 legacy geometry suite remains mandatory for parity. Run Chromium/Firefox
