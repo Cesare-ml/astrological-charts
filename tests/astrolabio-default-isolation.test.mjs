@@ -113,3 +113,21 @@ test('legacy shared-default mutations do not contaminate newly created charts', 
     legacy.modalita_adesso_posizione.posizione_manuale = oldValues.manual;
   }
 });
+
+test('every celestial-body option has a private instance and keeps its original value', () => {
+  const a = models.createDefaultSettaggiAstrolabio();
+  const b = models.createDefaultSettaggiAstrolabio();
+  const legacy = models.settaggiAstrolabioDefault;
+  const names = Object.keys(legacy.elementi_celesti);
+  assert.ok(names.length >= 20, 'test requires the complete celestial settings list');
+  assert.ok(['AS', 'DS', 'MC', 'IC', 'Sun', 'Moon'].every(name => names.includes(name)));
+  for (const name of names) {
+    assert.deepEqual({ ...a.elementi_celesti[name] }, legacy.elementi_celesti[name], name);
+    assert.notStrictEqual(a.elementi_celesti[name], b.elementi_celesti[name], name);
+    assert.notStrictEqual(a.elementi_celesti[name], legacy.elementi_celesti[name], name);
+  }
+  a.elementi_celesti.AS.orb = 0; // valid explicit numeric zero, not a missing option
+  assert.equal(a.elementi_celesti.AS.orb, 0);
+  assert.equal(b.elementi_celesti.AS.orb, 6);
+  assert.equal(legacy.elementi_celesti.AS.orb, 6);
+});
