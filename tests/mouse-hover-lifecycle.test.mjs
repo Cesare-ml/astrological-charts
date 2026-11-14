@@ -33,7 +33,7 @@ class FakeEvents {
   }
 }
 
-function harness(onLeave = null) {
+function harness(onLeave = null, onEnter = null) {
   const fakeWindow = new FakeEvents();
   const canvas = new FakeEvents();
   canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 300 });
@@ -56,7 +56,10 @@ function harness(onLeave = null) {
 
   const events = [];
   const manager = new exports.GestoreEventiMouse(canvas, {}, scene, {
-    onHoverEnter: object => events.push(['enter', object]),
+    onHoverEnter: object => {
+      events.push(['enter', object]);
+      onEnter?.(canvas);
+    },
     onHoverLeave: object => {
       events.push(['leave', object]);
       onLeave?.(canvas);
@@ -127,5 +130,69 @@ test('reentrant mouseleave does not emit duplicate hover-leave callbacks', () =>
   ctx.canvas.emit('mouseleave');
 
   assert.deepEqual(ctx.events, [['enter', glyph], ['leave', glyph]]);
+  ctx.manager.distruggi();
+});
+
+test('mouseleave dispatched during enter immediately clears the active glyph', () => {
+  const ctx = harness(null, canvas => canvas.emit('mouseleave'));
+  const glyph = { name: 'DS' };
+  ctx.scene.hits = [glyph];
+
+  ctx.move();
+
+  assert.deepEqual(ctx.events, [['enter', glyph], ['leave', glyph]]);
+  ctx.manager.distruggi();
+});
+
+test('mouseleave dispatched by previous glyph leave prevents an obsolete new enter', () => {
+  let shouldLeave = false;
+  const ctx = harness(canvas => { if (shouldLeave) canvas.emit('mouseleave'); });
+  const first = { name: 'Sun' };
+  const second = { name: 'Moon' };
+  ctx.scene.hits = [first];
+  ctx.move();
+  shouldLeave = true;
+  ctx.scene.hits = [second];
+  ctx.move();
+
+  assert.deepEqual(ctx.events, [['enter', first], ['leave', first]]);
+  ctx.manager.distruggi();
+});
+
+test('ordinary glyph transition emits one leave followed by one enter', () => {
+  const ctx = harness();
+  const first = { name: 'Sun' };
+  const second = { name: 'Moon' };
+  ctx.scene.hits = [first];
+  ctx.move();
+  ctx.scene.hits = [second];
+  ctx.move();
+
+  assert.deepEqual(ctx.events, [
+    ['enter', first], ['leave', first], ['enter', second]
+  ]);
+  ctx.manager.distruggi();
+});
+
+test('newer nested pointer move wins over obsolete outer transition', () => {
+  let nested = false;
+  let ctx;
+  const first = { name: 'Sun' };
+  const obsolete = { name: 'Moon' };
+  const latest = { name: 'MC' };
+  ctx = harness(() => {
+    if (nested) return;
+    nested = true;
+    ctx.scene.hits = [latest];
+    ctx.move();
+  });
+  ctx.scene.hits = [first];
+  ctx.move();
+  ctx.scene.hits = [obsolete];
+  ctx.move();
+
+  assert.deepEqual(ctx.events, [
+    ['enter', first], ['leave', first], ['enter', latest]
+  ]);
   ctx.manager.distruggi();
 });
