@@ -44,22 +44,16 @@ export class LatitudiniRender {
     //var diametroCerchioCase         = diametroAnelloSegni*9.42/120; //28.26
     var diametroRisuonatoreSolare     = diametroAnelloSegni*9.42/120; //28.26
 
-    var as = 0;
-    var mc = 0;
-    if(
-      !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
-      && temaRender.houses && Object.keys(temaRender.houses).length
-    ) {
-      as = temaRender.houses[opzioni.settaggi.domificazione_selezionata].ascendant;
-      mc = temaRender.houses[opzioni.settaggi.domificazione_selezionata].mc;
-    }
+    // A nonempty houses collection does not guarantee the requested system
+    // exists. Missing selected houses should not hide planets or signs.
+    const selectedHouses = !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
+      ? temaRender.houses?.[opzioni.settaggi.domificazione_selezionata]
+      : undefined;
+    const as = selectedHouses?.ascendant ?? 0;
 
     var disegno = new THREE.Group();
 
-    if(
-      !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
-      && temaRender.houses && Object.keys(temaRender.houses).length
-    ) {
+    if (selectedHouses) {
       //var assi = await AssiRender.getAssi(as,mc,diametroAssi,opzioni);
 
       var anelloCase = await CaseRender.getAnelloCaseLatitudini(
