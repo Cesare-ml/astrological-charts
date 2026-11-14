@@ -20,6 +20,23 @@ const { outputText } = ts.transpileModule(source, {
 
 // Exercise the actual celestial selection logic, rather than inferring the
 // absence of phantom axes only from the shallow fallback chart's shape.
+// Use the same helper that the stacked cusp PR ships to the chart renderer.
+const cuspSource = readFileSync(
+  new URL('../src/lib/renderers/moduli/house-cusps.ts', import.meta.url),
+  'utf8',
+);
+const cuspCompiled = ts.transpileModule(cuspSource, {
+  fileName: 'house-cusps.ts',
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const cuspModule = { exports: {} };
+new Function('require', 'module', 'exports', cuspCompiled)(
+  request => { throw new Error('Unexpected cusp dependency: ' + request); },
+  cuspModule,
+  cuspModule.exports,
+);
+const { unwrapHouseCusps } = cuspModule.exports;
+
 const celestialSource = readFileSync(
   new URL('../src/lib/renderers/moduli/elementi-celesti.renderer.ts', import.meta.url),
   'utf8',
@@ -91,6 +108,7 @@ function syntheticRenderer({ texture = 'local-test-texture', failHouses = false 
         },
       },
     },
+    './house-cusps': { unwrapHouseCusps },
     './case.renderer': {
       CaseRender: {
         getAnelloCaseCartaAstrale: async () => {
@@ -201,6 +219,48 @@ test('incomplete selected house data falls back safely without synthetic axes', 
     assert.strictEqual(calls.visualTheme.planets, theme.planets, 'Case ' + index);
     assert.deepEqual(theme, snapshot, 'Case ' + index + ' must not mutate input');
   }
+});
+
+test('finite but impossible one-revolution house sectors use the safe fallback', async () => {
+  const inconsistent = [
+    [0, 355, 1, 4, 5, 7, 8, 9, 10, 11, 12, 13],
+    [0, 359, 0, 359, 0, 359, 0, 359, 0, 359, 0, 359],
+    [Number.MAX_VALUE, -Number.MAX_VALUE, ...Array(10).fill(0)],
+  ];
+  for (const [index, house] of inconsistent.entries()) {
+    assert.throws(() => unwrapHouseCusps(house), {
+      name: 'RangeError',
+    }, 'House helper must independently reject ' + index);
+    const theme = createTheme({
+      ...otherHouses,
+      egizia: { ascendant: 0, mc: 90, house },
+    });
+    const original = structuredClone(theme);
+    const { renderer, calls } = syntheticRenderer();
+    const result = await render(renderer, theme, 'egizia');
+    assert.deepEqual(
+      result.children.map(item => item.kind),
+      ['fallback-texture', 'planets', 'signs'],
+      'Cannot render invalid sectors for case ' + index,
+    );
+    assert.deepEqual(calls.visualTheme.houses, {}, 'No fake angles for case ' + index);
+    assert.equal(calls.houses, 0, 'No invalid case ring for ' + index);
+    assert.deepEqual(theme, original, 'Do not mutate theme for case ' + index);
+  }
+});
+
+test('valid mixed angular frames retain their house ring and unchanged source', async () => {
+  const house = [725, 15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 315];
+  assert.deepEqual(unwrapHouseCusps(house),
+    [725, 735, 765, 795, 825, 855, 885, 915, 945, 975, 1005, 1035]);
+  const theme = createTheme({ egizia: { ascendant: 5, mc: 90, house } });
+  const before = structuredClone(theme);
+  const { renderer, calls } = syntheticRenderer();
+  const result = await render(renderer, theme, 'egizia');
+  assert.deepEqual(result.children.map(item => item.kind), ['planets', 'signs', 'houses']);
+  assert.equal(calls.houses, 1);
+  assert.strictEqual(calls.visualTheme, theme);
+  assert.deepEqual(theme, before);
 });
 
 test('zero-degree ascendant, midheaven and cusp remain valid inputs', async () => {
