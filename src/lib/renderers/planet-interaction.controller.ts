@@ -352,7 +352,9 @@ export class PlanetInteractionController {
   }
 
   private move = (event: PointerEvent): void => {
-    if (this.disposed) return;
+    // Browser tabs may receive synthetic/stale events while backgrounded.
+    // A hidden owner document must not reacquire hover until visible again.
+    if (this.disposed || this.hostDocument?.visibilityState === 'hidden') return;
     const pointerRevision = ++this.pointerRevision;
     // Pointer hits are computed against one particular scene. A synchronous
     // leave listener may redraw or destroy that scene before we emit enter.
@@ -453,6 +455,8 @@ export class PlanetInteractionController {
     if (event.pointerType === 'touch' || event.type === 'pointercancel') this.leave();
   };
   private click = (event: MouseEvent): void => {
+    // Never deliver a synthetic click from a hidden or already destroyed view.
+    if (this.disposed || this.hostDocument?.visibilityState === 'hidden') return;
     const planet = this.pick(event);
     if (planet) this.send('click', planet);
   };
