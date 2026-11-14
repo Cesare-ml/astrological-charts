@@ -15,7 +15,7 @@ For synthetic diameters 100 / 120 / 180, the expected radii are:
 
 ## Verification
 
-`node --test tests/synastry-house-textures.test.mjs` runs ten deterministic geometry checks against the real TypeScript `CaseRender` method, using test doubles for Three.js primitives and synthetic house cusps. The harness compiles and injects the **real** `house-cusps.ts` helper introduced by parent PR #83. Extra checks verify mixed-frame cusp sectors, invalid data, unchanged source longitudes, continued natal/latitude rendering, identical cusp-line angles in all three chart modes, and rejection of invalid cusps in all three entrypoints.
+`node --test tests/synastry-house-textures.test.mjs` runs eleven deterministic geometry checks against the real TypeScript `CaseRender` method, using test doubles for Three.js primitives and synthetic house cusps. The harness compiles and injects the **real** `house-cusps.ts` helper introduced by parent PR #83. Extra checks verify mixed-frame cusp sectors, invalid data, unchanged source longitudes, continued natal/latitude rendering, identical cusp-line angles in all three chart modes, and rejection of invalid cusps in all three entrypoints.
 
 This tests the radius contract and inversion depth but **does not** verify screenshot parity, pixel rendering, antialiasing or host asset rights. Before integrating into VirgoStars or Astrolabio, check textured synastry on a browser canvas and e-ink/headless output, including the inverted southern setting. No assets or real natal records are included.
 
@@ -45,3 +45,7 @@ The isolated in-memory V8 harness that exercised the two source versions returne
 ### Integration status
 
 PR #83 now fails early for normalized cusps spanning more than one zodiac revolution or overflowing to nonfinite angles (`RangeError`). The stacked #88 branch explicitly merges the updated #83 head and adds a cross-mode regression for this contract. Exact SHA verification of the helper and its unit tests against the isolated real Node workspace succeeded. The combined renderer is still pending a full Angular/browser/device validation gate.
+
+## Ascendant guard integration
+
+All three render modes use the parent #83's finite Ascendant guard, rejecting missing, NaN, infinite or nonnumeric Ascendant input with `TypeError` before drawing house sectors. The added eleventh synthetic test runs the full render functions with these inputs, not merely a source-text pattern assertion. It is intentionally strict for numeric-string inputs: caller normalization is the responsibility of the ephemeris/host layer, not the renderer.
