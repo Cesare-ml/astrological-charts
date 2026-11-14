@@ -34,7 +34,8 @@ export class CaseRender {
     diametroEsterno,
     diametroCerchioInternoTermini,
     australInversion,
-    isCaseSinastria=false
+    isCaseSinastria=false,
+    synastryRotationOverride: number | undefined = undefined
   ) {
     var group = new THREE.Group();
     var mostraTermini =
@@ -109,7 +110,8 @@ export class CaseRender {
         diametroInternoMiniArcoCase,
         diametroConfineEsternoCase,
         australInversion,
-        opzioni
+        opzioni,
+        synastryRotationOverride
       );
     } else {
       caseRenderedGroup = await CaseRender.renderAnelloCase(
@@ -278,7 +280,8 @@ export class CaseRender {
     diametroMiniArco, 
     diametroEsterno,
     australInversion, 
-    opzioni, 
+    opzioni,
+    synastryRotationOverride: number | undefined = undefined,
   ) {
     var group = new THREE.Group();
     
@@ -290,9 +293,13 @@ export class CaseRender {
       SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.coloreSimboli;
     //var miniarcoOffs = 0.21;
 
-    var offsetDegRotazione = -caseObj.ascendant + 90 + degOffs;
-    //le texture hanno sistemi di render diversi, cerchio inizio 90 gradi dopo
-    var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
+    var offsetDegRotazione = synastryRotationOverride === undefined
+      ? -caseObj.ascendant + 90 + degOffs
+      : synastryRotationOverride + 90;
+    // Textured arcs start at a different angular origin from the house lines.
+    var offsetDegRotazioneTextures = synastryRotationOverride === undefined
+      ? -caseObj.ascendant + degOffs + 180
+      : synastryRotationOverride + 180;
 
     const casePos = unwrapHouseCusps(caseObj.house);
     // A missing or nonfinite Ascendant would make every rotation NaN.
@@ -301,6 +308,9 @@ export class CaseRender {
     }
     if (!Number.isFinite(degOffs)) {
       throw new TypeError('House rotation offset must be a finite number.');
+    }
+    if (synastryRotationOverride !== undefined && !Number.isFinite(synastryRotationOverride)) {
+      throw new TypeError('Synastry house rotation override must be finite.');
     }
 
     const texture = 
