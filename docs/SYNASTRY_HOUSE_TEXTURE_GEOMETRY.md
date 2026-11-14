@@ -15,7 +15,7 @@ For synthetic diameters 100 / 120 / 180, the expected radii are:
 
 ## Verification
 
-`node --test tests/synastry-house-textures.test.mjs` runs eleven deterministic geometry checks against the real TypeScript `CaseRender` method, using test doubles for Three.js primitives and synthetic house cusps. The harness compiles and injects the **real** `house-cusps.ts` helper introduced by parent PR #83. Extra checks verify mixed-frame cusp sectors, invalid data, unchanged source longitudes, continued natal/latitude rendering, identical cusp-line angles in all three chart modes, and rejection of invalid cusps in all three entrypoints.
+`node --test tests/synastry-house-textures.test.mjs` runs twelve deterministic geometry checks against the real TypeScript `CaseRender` method, using test doubles for Three.js primitives and synthetic house cusps. The harness compiles and injects the **real** `house-cusps.ts` helper introduced by parent PR #83. Extra checks verify mixed-frame cusp sectors, invalid data, unchanged source longitudes, continued natal/latitude rendering, identical cusp-line angles in all three chart modes, and rejection of invalid cusps in all three entrypoints.
 
 This tests the radius contract and inversion depth but **does not** verify screenshot parity, pixel rendering, antialiasing or host asset rights. Before integrating into VirgoStars or Astrolabio, check textured synastry on a browser canvas and e-ink/headless output, including the inverted southern setting. No assets or real natal records are included.
 
@@ -49,3 +49,7 @@ PR #83 now fails early for normalized cusps spanning more than one zodiac revolu
 ## Ascendant guard integration
 
 All three render modes use the parent #83's finite Ascendant guard, rejecting missing, NaN, infinite or nonnumeric Ascendant input with `TypeError` before drawing house sectors. The added eleventh synthetic test runs the full render functions with these inputs, not merely a source-text pattern assertion. It is intentionally strict for numeric-string inputs: caller normalization is the responsibility of the ephemeris/host layer, not the renderer.
+
+## External rotation offset gate
+
+Natal and synastry renderer entrypoints now validate `degOffs` (a finite JavaScript number). The latitude renderer always uses a literal zero. This integration branch includes a dedicated behavioral regression to reject undefined, null, NaN, infinite and string offsets in both externally offset renderers while preserving matching natal/synastry line rotations for zero offset. The parent PR #83 has the same guards and a source-wiring assertion. This does not constitute a browser screenshot or production integration test.
