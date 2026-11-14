@@ -11,7 +11,7 @@ const source = readFileSync(
 const output = ts.transpileModule(source, {
   compilerOptions: {module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022}
 }).outputText;
-const {layoutChartGlyphLongitudes, relaxChartGlyphCycle} = await import(
+const {layoutChartGlyphLongitudes, relaxChartGlyphCycle, chartBodyRenderAngles} = await import(
   'data:text/javascript;base64,' + Buffer.from(output).toString('base64')
 );
 
@@ -120,4 +120,47 @@ test('valid gaps preserve existing two-pass glyph positions and finite angles', 
   }
   assert.deepEqual(layoutChartGlyphLongitudes(bodies, 'longitude'), legacy(7));
   assert.deepEqual(bodies, original);
+});
+
+test('render angles reject nonfinite and nonnumeric source coordinates', () => {
+  const values = [NaN, Infinity, -Infinity, undefined, null, '12'];
+  const defaults = [12, 19, 20, 2];
+  for (let index=0; index<4; index++) for(const value of values) {
+    const inputs = [...defaults];
+    inputs[index]=value;
+    assert.throws(() => chartBodyRenderAngles(...inputs), {
+      name: 'RangeError', message: 'Glyph render angles require finite numeric inputs'
+    }, `index ${index}, value ${value}`);
+  }
+});
+
+test('render angles reject finite inputs whose intermediate arithmetic overflows', () => {
+  for (const inputs of [
+    [1e308, -1e308, 20, 0],
+    [1e308, 1e308, -1e308, 1e308],
+    [0, 1e308, -1e308, 1e308],
+  ]) {
+    assert.throws(() => chartBodyRenderAngles(...inputs), {
+      name: 'RangeError', message: 'Glyph render angle arithmetic overflowed'
+    });
+  }
+});
+
+test('valid render angles keep exact legacy expression order and results', () => {
+  for(const [original, adjusted, ascendant, offset] of [
+    [12, 19, 20, 2],
+    [0, 0, 0, 0],
+    [359.999, 366.999, 270.25, -40],
+    [-12, -5, 180, 6.5],
+    [1e150, 1e150, 100, 1e150],
+  ]) {
+    const expectedTick=75-ascendant+15+original+offset;
+    const expectedShift=adjusted-original;
+    const expectedGlyph=expectedTick+expectedShift;
+    assert.deepEqual(chartBodyRenderAngles(original,adjusted,ascendant,offset), {
+      tickDegrees: expectedTick,
+      glyphDisplacementDegrees: expectedShift,
+      glyphDegrees: expectedGlyph,
+    });
+  }
 });
