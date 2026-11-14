@@ -297,3 +297,39 @@ are **not** loaded; synthetic stubs still supply scene primitives,
 planet selection, and the seven skin backgrounds. Therefore
 `npm run verify:angular`, actual browser/PNG visual checks and
 Astrolabio integration remain **NOT RUN**.
+
+## Avoid planet cloning for invalid inner-ring geometry (2026-11-14)
+
+An earlier geometry guard prevented the creation of non-finite hover markers
+when `diametroAnelloCase` is invalid, but the renderer still called
+`ElementiCelestiRender.getElementiCelesti` *before* that check. That
+helper JSON-clones the theme's planet data, performing work and possibly
+throwing even though the hover relation would never be drawn.
+
+The planet lookup now also requires
+`Number.isFinite(diametroAnelloCase)`. Valid antiscia axis lines
+continue to render independently, while a non-finite inner-ring diameter
+prevents both the unused planet lookup and the hover geometry.
+Finite diameters (including zero) keep their existing behavior.
+No planetary calculation, chart contract, colors or assets were changed.
+
+**Reproduction:** A new Node regression with
+`failOnCelestial: true` and `NaN`, `Infinity`, `-Infinity` and
+`undefined` inner-ring diameters failed against the previous renderer
+with `Celestial computation must be skipped`. With the change applied,
+the actual reconstructed local test command returned
+**26/26 PASS, 0 FAIL, exit 0**, Node 22.16.0 and TypeScript 5.8.3:
+
+```bash
+node --test tests/transit-antiscia-axes.test.mjs tests/antisci-marker-contrast.test.mjs
+```
+
+The complete local transit renderer and the new axis test file were
+byte-verified against GitHub PR #85 blob SHAs
+`d7684b6bab1e08a2180ef72b29bbfdbacf89f1f6` and
+`02ee56420173a7548a07bad378fbfd2816cc3cb5`.
+The color helper is unchanged. TypeScript `transpileModule` reported
+zero syntax/transpilation diagnostics for both affected TS files.
+This does **not** constitute `tsc` typechecking or
+`npm run verify:angular`; the Three.js and planet inputs remain mocked,
+and real Chromium/Firefox/PNG/Astrolabio tests remain not run.
