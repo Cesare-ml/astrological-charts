@@ -39,7 +39,9 @@ export function layoutChartGlyphLongitudes(
   minSeparation = 7
 ): Record<string,Record<string,number>> {
   const original: ChartGlyphAngle[] = [];
-  for (const name in bodies) {
+  // Only actual chart bodies belong in this ring: enumerable prototype
+  // properties must not become ghost planets.
+  for (const name of Object.keys(bodies ?? {})) {
     original.push({key:name,deg:bodies[name][coordinate] % 360});
   }
   // Match the former JSON working-copy semantics for odd nonfinite
@@ -47,9 +49,12 @@ export function layoutChartGlyphLongitudes(
   const working = JSON.parse(JSON.stringify(original)) as ChartGlyphAngle[];
   relaxChartGlyphCycle(working,minSeparation);
   relaxChartGlyphCycle(working,minSeparation);
-  const result: Record<string,Record<string,number>> = {};
-  for (const body of working) result[body.key] = {[coordinate]:body.deg};
-  return result;
+  // Object.fromEntries creates own data properties even for names such as
+  // "__proto__". Plain-object assignment would silently change the result's
+  // prototype and omit that body from Object.keys/scene iteration.
+  return Object.fromEntries(
+    working.map(body => [body.key, {[coordinate]:body.deg}])
+  ) as Record<string,Record<string,number>>;
 }
 
 /**
