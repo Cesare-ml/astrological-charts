@@ -80,3 +80,44 @@ test('plain chart input retains layout, shape and original ephemerides', () => {
     assert.ok(Number.isFinite(first[name].longitude));
   }
 });
+
+test('invalid collision gaps fail closed before changing any working coordinates', () => {
+  for (const separation of [NaN, Infinity, -Infinity, -1, 361, 1e308, '7', null]) {
+    const working = [{key: 'Sun', deg: 3}, {key: 'Moon', deg: 4}];
+    const before = structuredClone(working);
+    assert.throws(() => relaxChartGlyphCycle(working, separation), {
+      name: 'RangeError',
+      message: 'Glyph separation must be finite and between 0 and 360 degrees'
+    }, String(separation));
+    assert.deepEqual(working, before, 'invalid spacing must not sort/mutate the caller');
+    const bodies = {Sun: {longitude: 3}, Moon: {longitude: 4}};
+    assert.throws(() => layoutChartGlyphLongitudes(bodies, 'longitude', separation),
+      RangeError, String(separation));
+    assert.deepEqual(bodies, {Sun: {longitude: 3}, Moon: {longitude: 4}});
+  }
+});
+
+test('valid gaps preserve existing two-pass glyph positions and finite angles', () => {
+  const bodies = {Sun: {longitude: 3}, Moon: {longitude: 4}, Venus: {longitude: 20}};
+  const original = structuredClone(bodies);
+  const legacy = (gap) => {
+    const planets = Object.entries(bodies).map(([key, body]) => ({key, deg: body.longitude % 360}));
+    const cycle = () => {
+      planets.sort((a,b) => a.deg - b.deg);
+      for (let i=1;i<planets.length;i++) {
+        const distance = planets[i].deg - planets[i-1].deg;
+        if (distance < gap) planets[i].deg += gap - distance;
+      }
+      for (const body of planets) body.deg = (body.deg + 180) % 360;
+    };
+    cycle(); cycle();
+    return Object.fromEntries(planets.map(p => [p.key, {longitude: p.deg}]));
+  };
+  for (const gap of [0, 0.25, 3, 7, 12, 180, 360]) {
+    const result = layoutChartGlyphLongitudes(bodies, 'longitude', gap);
+    assert.deepEqual(result, legacy(gap), 'valid gap must keep the legacy exact angles');
+    assert.ok(Object.values(result).every(body => Number.isFinite(body.longitude)));
+  }
+  assert.deepEqual(layoutChartGlyphLongitudes(bodies, 'longitude'), legacy(7));
+  assert.deepEqual(bodies, original);
+});
