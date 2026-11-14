@@ -131,3 +131,58 @@ test('every celestial-body option has a private instance and keeps its original 
   assert.equal(b.elementi_celesti.AS.orb, 6);
   assert.equal(legacy.elementi_celesti.AS.orb, 6);
 });
+
+test('clone a customized profile without sharing nested state or losing zero coordinates', () => {
+  const saved = models.createDefaultSettaggiAstrolabio();
+  saved.skin_id = 'sun';
+  saved.aspetti_attivi.trigono = false;
+  saved.aspetti_orbite.quintile = 0;
+  saved.elementi_celesti.Moon.orb = 2;
+  saved.modalita_adesso_posizione.usa_posizione_manuale = true;
+  saved.modalita_adesso_posizione.posizione_manuale = {
+    nome: 'Synthetic', lat: 0, lng: -12.5, tz: 'Etc/UTC'
+  };
+  const copy = models.cloneAstrolabioSettings(saved);
+
+  assert.notStrictEqual(copy, saved);
+  assert.equal(copy instanceof models.SettaggiAstrolabio, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(copy)), JSON.parse(JSON.stringify(saved)));
+  assert.notStrictEqual(copy.aspetti_attivi, saved.aspetti_attivi);
+  assert.notStrictEqual(copy.aspetti_orbite, saved.aspetti_orbite);
+  assert.notStrictEqual(copy.elementi_celesti.Moon, saved.elementi_celesti.Moon);
+  assert.notStrictEqual(copy.modalita_adesso_posizione, saved.modalita_adesso_posizione);
+  assert.notStrictEqual(copy.modalita_adesso_posizione.posizione_manuale, saved.modalita_adesso_posizione.posizione_manuale);
+  assert.notStrictEqual(copy.modalita_adesso_posizione.citta, saved.modalita_adesso_posizione.citta);
+  assert.equal(copy.modalita_adesso_posizione.posizione_manuale.lat, 0);
+  assert.equal(copy.aspetti_orbite.quintile, 0);
+
+  copy.aspetti_attivi.trigono = true;
+  copy.aspetti_orbite.quintile = 99;
+  copy.elementi_celesti.Moon.orb = 3;
+  copy.modalita_adesso_posizione.posizione_manuale.lng = 20;
+  copy.modalita_adesso_posizione.citta.label = 'Changed only in copy';
+
+  assert.equal(saved.aspetti_attivi.trigono, false);
+  assert.equal(saved.aspetti_orbite.quintile, 0);
+  assert.equal(saved.elementi_celesti.Moon.orb, 2);
+  assert.equal(saved.modalita_adesso_posizione.posizione_manuale.lng, -12.5);
+  assert.notEqual(saved.modalita_adesso_posizione.citta.label, 'Changed only in copy');
+  // Current coordinate getters reset the inactive position only in the invoked
+  // instance. Cloning must protect the saved profile from that mutation.
+  assert.equal(copy.modalita_adesso_posizione.getLat(), 0);
+  assert.equal(copy.modalita_adesso_posizione.citta, undefined);
+  assert.ok(saved.modalita_adesso_posizione.citta);
+  assert.equal(saved.modalita_adesso_posizione.citta_id,
+    models.settaggiAstrolabioDefault.modalita_adesso_posizione.citta_id);
+  assert.equal(models.createDefaultSettaggiAstrolabio().aspetti_attivi.trigono, true);
+});
+
+test('copying one profile twice does not share the original manual-position data', () => {
+  const saved = models.createDefaultSettaggiAstrolabio();
+  saved.modalita_adesso_posizione.posizione_manuale = { lat: 37, lng: 11 };
+  const a = models.cloneAstrolabioSettings(saved);
+  const b = models.cloneAstrolabioSettings(saved);
+  a.modalita_adesso_posizione.posizione_manuale.lat = -1;
+  assert.equal(b.modalita_adesso_posizione.posizione_manuale.lat, 37);
+  assert.equal(saved.modalita_adesso_posizione.posizione_manuale.lat, 37);
+});
