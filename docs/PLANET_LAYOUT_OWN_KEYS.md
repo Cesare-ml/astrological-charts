@@ -66,3 +66,24 @@ The shared `test:planet-layout` command runs two extra regression cases:
 invalid inputs must not mutate working coordinates, and permitted gaps
 must reproduce the historical two-pass outputs. The special-key and
 prototype-inheritance tests continue to apply unchanged.
+
+## Render angle boundary
+
+The `chartBodyRenderAngles` helper derives zodiac leader/tick and visually
+shifted glyph angles. A malformed upstream coordinate or an arithmetic
+overflow previously produced `NaN` / `Infinity`, which could reach Three.js
+rotation or line geometry.
+
+It now throws `RangeError` before returning any such values:
+
+- Original and collision-adjusted coordinates, ascendant and optional offset
+  must be finite JavaScript numbers, not strings, `null` or missing.
+- Derived tick, displacement and glyph angles must also remain finite.
+- **All valid results preserve the historical expression order, exact
+  numerical values and the distinction between true longitude ticks and
+  collision-displaced symbols.** No angle normalization or astronomy is
+  introduced.
+
+The same local `test:planet-layout` script now covers both the parent's
+legacy layout tests and the new coordinate guards. These are pure numerical
+checks, not evidence of browser pixel parity or production device readiness.
