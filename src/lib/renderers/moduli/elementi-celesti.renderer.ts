@@ -625,7 +625,7 @@ export class ElementiCelestiRender {
     }
 
     if(
-      opzioni.settaggi.transaturniniSeCongiunti
+      opzioni.settaggi.transaturnini_se_congiunti
       && !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
       && !calcolaPartiArabe
     ) {
