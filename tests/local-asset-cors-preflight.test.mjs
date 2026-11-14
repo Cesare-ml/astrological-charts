@@ -185,6 +185,21 @@ test('CORS preflight only authorizes configured local origins', async () => {
       assert.equal(tampered.headers.get('x-content-type-options'), 'nosniff', method);
     }
 
+    // Restoring the exact approved bytes must recover normal GET/HEAD access.
+    // A 409 must not permanently poison the server's startup manifest state.
+    writeFileSync(join(root, 'img/simboli-bianchi/segni/01.png'), expectedBytes);
+    const restoredGet = await fetch(url, {
+      headers: { Origin: 'http://localhost:4200' },
+    });
+    assert.equal(restoredGet.status, 200);
+    assert.deepEqual(Buffer.from(await restoredGet.arrayBuffer()), expectedBytes);
+    const restoredHead = await fetch(url, {
+      method: 'HEAD', headers: { Origin: 'http://localhost:4200' },
+    });
+    assert.equal(restoredHead.status, 200);
+    assert.equal(Number(restoredHead.headers.get('content-length')), expectedBytes.length);
+    assert.equal(await restoredHead.text(), '');
+
     const deniedHead = await fetch(url, {
       method: 'HEAD',
       headers: { Origin: 'https://untrusted.example' },
