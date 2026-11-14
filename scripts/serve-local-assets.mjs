@@ -57,8 +57,10 @@ function previewHtml(pack) {
     '.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(154px,1fr));gap:12px;max-width:1150px;margin:auto}'+
     'article{background:#202d3e;border:1px solid #3d4b5f;border-radius:10px;padding:12px;overflow-wrap:anywhere}'+
     'img,.font{height:110px;max-width:100%;object-fit:contain;display:block;margin:0 auto 8px}'+
-    'p{min-height:42px}small{color:#afbdce}a{color:#b8d7ff}'+\n    '.skip{position:absolute;left:-10000px}.skip:focus{position:static;display:inline-block;padding:8px}</style></head><body>'+
-    '<a class="skip" href="#assets">Skip to asset gallery</a>'+\n    '<header><h1>Approved astrology assets — local preview</h1>'+
+    'p{min-height:42px}small{color:#afbdce}a{color:#b8d7ff}'+
+    '.skip{position:absolute;left:-10000px}.skip:focus{position:static;display:inline-block;padding:8px}</style></head><body>'+
+    '<a class="skip" href="#assets">Skip to asset gallery</a>'+
+    '<header><h1>Approved astrology assets — local preview</h1>'+
     '<p>'+pack.count+' approved files, '+pack.totalBytes+' bytes verified by SHA-256.</p>'+
     '<p>This is an <b>asset smoke preview</b>, not yet a full natal-chart renderer. '+
     'Only approved-manifest files are served. No access to VirgoStars is needed.</p>'+ 
