@@ -32,6 +32,7 @@ export class GestoreEventiMouse {
   private scene: THREE.Scene;
   private callbacks: MouseEventCallbacks;
   private oggettoHoverCorrente: THREE.Object3D | null = null;
+  private hoverTransition = 0;
   private lastClientPoint: { x: number; y: number } | null = null;
 
   constructor(
@@ -53,6 +54,7 @@ export class GestoreEventiMouse {
     this.canvas.addEventListener('mouseleave', this.onMouseLeave);
     this.canvas.addEventListener('click', this.onClick);
     window.addEventListener('resize', this.onResize);
+    window.addEventListener('blur', this.onMouseLeave);
   }
 
   private onMouseMove = (event: MouseEvent): void => {
@@ -98,7 +100,10 @@ export class GestoreEventiMouse {
   }
 
   private clearHover(): void {
+    // Invalidate an in-flight transition even when nothing is currently hovered.
+    ++this.hoverTransition;
     const previous = this.oggettoHoverCorrente;
+    // Detach before invoking external callbacks to avoid duplicate leave events.
     this.oggettoHoverCorrente = null;
     if (previous) this.callbacks.onHoverLeave?.(previous);
   }
@@ -106,11 +111,18 @@ export class GestoreEventiMouse {
   private controllaHover(): void {
     const intersezioni = this.intersecaOggetti();
     const oggettoAttuale = intersezioni.length > 0 ? intersezioni[0].object : null;
-    if (oggettoAttuale !== this.oggettoHoverCorrente) {
-      this.clearHover();
-      if (oggettoAttuale) this.callbacks.onHoverEnter?.(oggettoAttuale);
-      this.oggettoHoverCorrente = oggettoAttuale;
-    }
+    if (oggettoAttuale === this.oggettoHoverCorrente) return;
+
+    const previous = this.oggettoHoverCorrente;
+    const transition = ++this.hoverTransition;
+    // Detach the previous hover before notifying consumers: a callback can
+    // synchronously dispatch mouseleave, a new move, or destroy the canvas.
+    this.oggettoHoverCorrente = null;
+    if (previous) this.callbacks.onHoverLeave?.(previous);
+    if (transition !== this.hoverTransition) return;
+
+    this.oggettoHoverCorrente = oggettoAttuale;
+    if (oggettoAttuale) this.callbacks.onHoverEnter?.(oggettoAttuale);
   }
 
   public distruggi(): void {
@@ -118,6 +130,7 @@ export class GestoreEventiMouse {
     this.canvas.removeEventListener('mouseleave', this.onMouseLeave);
     this.canvas.removeEventListener('click', this.onClick);
     window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('blur', this.onMouseLeave);
     this.lastClientPoint = null;
     this.clearHover();
   }
