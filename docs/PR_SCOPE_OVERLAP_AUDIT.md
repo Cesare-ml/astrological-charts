@@ -28,6 +28,14 @@ The tool first resolves **both local refs to immutable commit SHA values**, then
 
 The optional `--out` flag deliberately accepts **only** `.local/<filename>.json` (one filename; no subfolders or traversal). Existing source files, `package.json`, README files and arbitrary absolute paths are not valid report destinations. A preexisting `.local` directory or report path must not be a symlink, even a dangling one. Reports use exclusive creation: choose a new filename for each run, since existing files and hard links are never overwritten. These checks protect against accidental writes; they do not secure a directory being concurrently replaced by an untrusted process.
 
+The destination validator additionally blocks **Windows reserved device basenames**
+(`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9` and `LPT1`–`LPT9`),
+regardless of case or additional extensions. For example,
+`.local/CON.json` and `.local/con.backup.json` are invalid even on Linux.
+This avoids a Windows report silently targeting a device rather than an
+ordinary file. Use a descriptive filename such as `.local/pr-overlap-report.json`.
+
+
 The JSON report contains the checked-out HEAD, the exact `base` and `head` ref names, **`baseRevision`** and **`revision`** commit SHAs, the historical **`mergeBase`** SHA, sorted changed files, pairwise overlaps, number of clear pairs, and limitations. Reviewers should compare these SHAs with the PRs' current GitHub branch tips before using an older report: re-run the audit if either branch has advanced. A change to the base tip can leave the historical merge-base unchanged.
 
 - Exit **0**: no same-file overlap among the supplied pairs (`NO_FILE_OVERLAP`).
