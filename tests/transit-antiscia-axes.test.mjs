@@ -12,6 +12,18 @@ const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
+// The consolidated renderer imports the actual color helper; evaluate it
+// rather than treating the import as an unknown dependency.
+const helperSource = readFileSync(
+  new URL('../src/lib/renderers/antisci-marker-color.ts', import.meta.url), 'utf8',
+);
+const helperCompiled = ts.transpileModule(helperSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const helperExports = {};
+vm.runInNewContext(helperCompiled, { exports: helperExports });
+const { getAntisciMarkerColor } = helperExports;
+
 function createHarness() {
   const objects = [];
   class Group {
@@ -54,7 +66,8 @@ function createHarness() {
       },
     },
     '../_colori.config': { Colori: { elementiCelesti: { Sun: '#ffcc00' } } },
-    '../@skin-manager': { SkinManager: { skins: {} } },
+    '../@skin-manager': { SkinManager: { skins: { light: { bgColor: '#fefefe' } } } },
+    '../antisci-marker-color': { getAntisciMarkerColor },
   };
   const context = {
     exports: {},
