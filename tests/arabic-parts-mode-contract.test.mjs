@@ -50,7 +50,7 @@ test('TypeScript type checker accepts abumashar and rejects the obsolete spaced 
   const program = ts.createProgram([file], compilerOptions, host);
   const errors = ts.getPreEmitDiagnostics(program).filter(d => d.file?.fileName === file);
   assert.equal(errors.length, 1, errors.map(e => ts.flattenDiagnosticMessageText(e.messageText, '\n')).join('\n'));
-  assert.equal(errors[0].code, 2322);
+  assert.equal(errors[0].code, 2820); // TS 5.8 suggests the canonical 'abumashar' spelling
   assert.match(ts.flattenDiagnosticMessageText(errors[0].messageText, '\n'), /"abu mashar"/);
 });
 
