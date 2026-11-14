@@ -66,6 +66,7 @@ const THREE = {
     constructor(shape) {
       this.points = shape.points;
       this.disposed = false;
+      this.disposeCount = 0;
       createdGeometries.push(this);
       this.attributes = {
         position: {
@@ -92,7 +93,7 @@ const THREE = {
       }
       this.attributes[name] = attribute;
     }
-    dispose() { this.disposed = true; }
+    dispose() { this.disposed = true; this.disposeCount++; }
   },
   Float32BufferAttribute: class {
     constructor(array, itemSize) { this.array = array; this.itemSize = itemSize; }
@@ -101,9 +102,10 @@ const THREE = {
     constructor(options) {
       this.options = options;
       this.disposed = false;
+      this.disposeCount = 0;
       createdMaterials.push(this);
     }
-    dispose() { this.disposed = true; }
+    dispose() { this.disposed = true; this.disposeCount++; }
   },
   Mesh: class {
     constructor(geometry, material) {
@@ -134,6 +136,9 @@ const GestoreImmagini = {
       magFilter: 0,
       rotation: 1,
     };
+    if (reference === 'synthetic/throw-transform.png') {
+      texture.repeat.set = () => { throw new Error('synthetic texture configuration error'); };
+    }
     acquiredTextures.push(texture);
     return texture;
   },
@@ -341,6 +346,7 @@ test('synchronous texture lookup failure disposes arc geometry without allocatin
   );
   assert.equal(createdGeometries.length, startGeometries + 1);
   assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdGeometries.at(-1).disposeCount, 1);
   assert.equal(createdMaterials.length, startMaterials);
 });
 
@@ -354,7 +360,9 @@ test('mesh construction failure releases arc geometry and its material', () => {
   assert.equal(createdGeometries.length, startGeometries + 1);
   assert.equal(createdMaterials.length, startMaterials + 1);
   assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdGeometries.at(-1).disposeCount, 1);
   assert.equal(createdMaterials.at(-1).disposed, true);
+  assert.equal(createdMaterials.at(-1).disposeCount, 1);
 });
 
 test('successful arc creation leaves geometry and material owned by the returned mesh', () => {
@@ -378,7 +386,9 @@ test('synchronous mesh failure never disposes a host-owned texture', () => {
   assert.equal(createdMaterials.length, previousMaterials + 1);
   assert.equal(acquiredTextures.length, previousTextures + 1);
   assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdGeometries.at(-1).disposeCount, 1);
   assert.equal(createdMaterials.at(-1).disposed, true);
+  assert.equal(createdMaterials.at(-1).disposeCount, 1);
   assert.equal(acquiredTextures.at(-1).disposed, false);
 });
 
@@ -398,6 +408,7 @@ test('bounding-box failure disposes geometry before any material or texture load
   }
   assert.equal(createdGeometries.length, geometriesBefore + 1);
   assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdGeometries.at(-1).disposeCount, 1);
   assert.equal(createdMaterials.length, materialsBefore);
   assert.equal(textureRequests.length, texturesBefore);
 });
@@ -417,6 +428,24 @@ test('UV attribute failure disposes geometry before requesting a texture', () =>
   }
   assert.equal(createdGeometries.length, geometriesBefore + 1);
   assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdGeometries.at(-1).disposeCount, 1);
   assert.equal(createdMaterials.length, materialsBefore);
   assert.equal(textureRequests.length, texturesBefore);
+});
+
+
+test('texture transform failure frees geometry once but preserves the shared texture', () => {
+  const beforeGeometry = createdGeometries.length;
+  const beforeMaterials = createdMaterials.length;
+  const beforeTextures = acquiredTextures.length;
+  assert.throws(
+    () => Renderer.getSemiArcoGrosso(0, 30, 1, 2, '#abc', 'synthetic/throw-transform.png'),
+    { message: 'synthetic texture configuration error' },
+  );
+  assert.equal(createdGeometries.length, beforeGeometry + 1);
+  assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdGeometries.at(-1).disposeCount, 1);
+  assert.equal(createdMaterials.length, beforeMaterials);
+  assert.equal(acquiredTextures.length, beforeTextures + 1);
+  assert.equal(acquiredTextures.at(-1).disposed, false);
 });
