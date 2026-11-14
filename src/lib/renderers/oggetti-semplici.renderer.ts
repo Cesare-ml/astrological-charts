@@ -124,8 +124,10 @@ export class OggettiSempliciRender {
     const shape = new THREE.Shape(punti);
     const geometry = new THREE.ShapeGeometry(shape);
 
-    // 🔹 Ricalcolo manuale delle coordinate UV per coprire tutto il semiarco
-    geometry.computeBoundingBox();
+    // Geometry is already allocated here. Ensure that failed UV preparation
+    // cannot leak a Three.js buffer, even when texture setup was never reached.
+    try {
+      geometry.computeBoundingBox();
     const max = geometry.boundingBox.max;
     const min = geometry.boundingBox.min;
 
@@ -145,6 +147,10 @@ export class OggettiSempliciRender {
     }
 
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
+    } catch (error) {
+      geometry.dispose();
+      throw error;
+    }
 
     let material: THREE.MeshBasicMaterial | undefined;
     try {
