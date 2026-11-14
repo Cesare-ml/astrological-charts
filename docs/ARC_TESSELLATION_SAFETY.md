@@ -63,5 +63,11 @@ The package's `preflight` script now runs both line-stroke and arc regression su
 
 **Integration coordination:** this PR additionally changes `package.json`, which is also edited by open PRs #19, #22, #57, #59 and #66. Re-check their scripts and preserve all intended preflight checks when rebasing/merging. Do not auto-resolve such conflicts by taking one side wholesale.
 
+## Validation performed (2026-11-14)
+
+- **PASS, Node.js 22.16.0 / TypeScript 5.8.3:** an **offline focused smoke harness** was actually executed with `node --test`, using the manually reconstructed, functionally identical arc method excerpt read from GitHub (not a complete checkout). Six Node test blocks passed, including 72 synthetic zodiac wedges at six ascendant offsets, full/reversed/zero/huge angles, a reversed-radius center-disc fill, Float32-overflow rejection and large Float32-representable radii. Lightweight Three.js behavior was simulated; no real WebGL or production textures were loaded. The local test file is not part of this PR.
+- **PASS, source-level isolation:** six new Float32-focused checks executed against the exact GitHub-readback methods in the connected JavaScript runtime with synthetic geometry stubs. Includes three nonfinite/overflow cases plus valid large and zero radii.
+- **NOT RUN:** the **committed** `npm run test:render-primitives` scripts, actual `npm ci`, complete `npm run verify:angular`, Chromium/Firefox WebGL/PNG benchmarks, or VirgoStars/Astrolabio compatibility. The full repository/dependency checkout cannot be accessed from the execution shell due DNS/network limits. Neither offline smoke nor source-level isolation satisfies those release gates.
+
 Keep the PR as a draft stacked on #62 until that parent is reviewed. No
 GitHub Actions, license changes, asset publication or production changes.
