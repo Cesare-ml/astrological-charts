@@ -418,9 +418,11 @@ export class PlanetInteractionController {
   };
 
   private onWindowFocus = (): void => {
-    // Some mobile engines dispatch focus before the hidden document becomes
-    // visible. Keep the blur latch until both conditions allow interaction.
-    if (!this.disposed && this.hostDocument?.visibilityState !== 'hidden')
+    // A focus event can precede actual document focus (or be synthetic).
+    // A visible but unfocused window must never resume pointer input.
+    // Windowless Node probes still have no document focus to check.
+    if (!this.disposed && this.hostDocument?.visibilityState !== 'hidden' &&
+        (!this.hostDocument || this.hostDocument.hasFocus()))
       this.windowBlurred = false;
   };
 
