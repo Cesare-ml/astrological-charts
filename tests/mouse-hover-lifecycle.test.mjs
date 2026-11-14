@@ -33,7 +33,7 @@ class FakeEvents {
   }
 }
 
-function harness() {
+function harness(onLeave = null) {
   const fakeWindow = new FakeEvents();
   const canvas = new FakeEvents();
   canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 300 });
@@ -57,7 +57,10 @@ function harness() {
   const events = [];
   const manager = new exports.GestoreEventiMouse(canvas, {}, scene, {
     onHoverEnter: object => events.push(['enter', object]),
-    onHoverLeave: object => events.push(['leave', object]),
+    onHoverLeave: object => {
+      events.push(['leave', object]);
+      onLeave?.(canvas);
+    },
     onClick: object => events.push(['click', object])
   });
 
@@ -115,30 +118,14 @@ test('teardown clears hover and detaches every registered listener', () => {
   }
 });
 
-test('hover is cleared before invoking a reentrant leave callback', () => {
-  const ctx = harness();
+test('reentrant mouseleave does not emit duplicate hover-leave callbacks', () => {
+  const ctx = harness(canvas => canvas.emit('mouseleave'));
   const glyph = { name: 'MC' };
   ctx.scene.hits = [glyph];
-  // Trigger nested leave through an event source, exercising callback reentrancy.
+
+  ctx.move();
+  ctx.canvas.emit('mouseleave');
+
+  assert.deepEqual(ctx.events, [['enter', glyph], ['leave', glyph]]);
   ctx.manager.distruggi();
-  const exports = [];
-  const next = harness();
-  next.scene.hits = [glyph];
-  next.move();
-  const originalEmit = next.canvas.emit.bind(next.canvas);
-  let reentered = false;
-  // When leave is delivered, synchronously send another leave via the event emitter.
-  const originalEventsPush = next.events.push.bind(next.events);
-  next.events.push = (...args) => {
-    const result = originalEventsPush(...args);
-    if (args[0][0] === 'leave' && !reentered) {
-      reentered = true;
-      originalEmit('mouseleave');
-    }
-    return result;
-  };
-  next.canvas.emit('mouseleave');
-  assert.equal(reentered, true);
-  assert.deepEqual(next.events, [['enter', glyph], ['leave', glyph]]);
-  next.manager.distruggi();
 });
