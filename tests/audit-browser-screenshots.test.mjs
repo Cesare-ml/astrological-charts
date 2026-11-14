@@ -124,3 +124,13 @@ test('cross-browser mismatch and missing CLI arguments fail',()=>withMatrix(({ch
   }
   assert.throws(()=>auditBrowserScreenshots(chromium,firefox),/dimensions differ/);
 }));
+test('audit covers exactly the browser demo mode and skin declarations',()=>{
+  const demo=readFileSync(new URL('../tests/demo-browser.test.mjs',import.meta.url),'utf8');
+  const parse=(name)=>{
+    const match=demo.match(new RegExp(`const ${name} = \\[([^\\]]+)\\]`));
+    assert.ok(match,`missing ${name} declaration in browser suite`);
+    return [...match[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
+  };
+  assert.deepEqual(MODES,parse('modes'));
+  assert.deepEqual(SKINS,parse('skins'));
+});
