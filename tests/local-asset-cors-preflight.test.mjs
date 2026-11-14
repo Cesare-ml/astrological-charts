@@ -98,6 +98,7 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.match(previewGet.headers.get('content-security-policy') ?? '', /default-src 'none'/);
     const previewBody = await previewGet.text();
     assert.match(previewBody, /Approved astrology assets/);
+    assert.ok(previewBody.includes('<a href="https://www.virgostars.it/" rel="noopener noreferrer">Powered by VirgoStars</a>'));
 
     const previewHead = await fetch(previewUrl, {
       method: 'HEAD', headers: { Origin: 'http://localhost:4200' },
