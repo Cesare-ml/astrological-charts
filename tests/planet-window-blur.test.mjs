@@ -407,3 +407,44 @@ test('premature focus while tab remains hidden must not clear the blur latch',()
   assert.deepEqual(p.events,['enter:IC']);
   p.controller.destroy();
 });
+
+test('spurious focus event does not resume input when document.hasFocus is false',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.hover('AS');
+  p.ownerDocument.focused=false;
+  p.windowTarget.emit('blur');
+  p.windowTarget.emit('focus'); // Event received, but document is still unfocused.
+  p.canvas.emit('pointermove',{ref:axis('DS')});
+  p.canvas.emit('click',{ref:axis('DS')});
+  assert.deepEqual(p.events,['leave:AS']);
+  assert.equal(p.controller.windowBlurred,true);
+  p.ownerDocument.focused=true;
+  p.windowTarget.emit('focus');
+  p.canvas.emit('pointermove',{ref:axis('DS')});
+  assert.deepEqual(p.events,['leave:AS','enter:DS']);
+  p.controller.destroy();
+});
+
+test('visible-but-unfocused document rejects repeated focus until actual focus returns',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.ownerDocument.focused=false;
+  p.windowTarget.emit('blur');
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.emit('visibilitychange');
+  p.ownerDocument.visibilityState='visible';
+  p.ownerDocument.emit('visibilitychange');
+  p.windowTarget.emit('focus');
+  p.windowTarget.emit('focus');
+  p.canvas.emit('click',{ref:axis('MC')});
+  assert.deepEqual(p.events,[]);
+  assert.equal(p.controller.windowBlurred,true);
+  p.ownerDocument.focused=true;
+  p.windowTarget.emit('focus');
+  p.canvas.emit('click',{ref:axis('MC')});
+  assert.deepEqual(p.events,['click:MC']);
+  p.controller.destroy();
+});
