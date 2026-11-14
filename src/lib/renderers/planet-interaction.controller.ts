@@ -365,6 +365,13 @@ export class PlanetInteractionController {
     const hitScene = this.scene;
     const hitRevision = this.sceneRevision;
     const next = this.pick(event);
+    // Geometry traversal/raycast may synchronously dispatch blur, replace
+    // the scene or destroy the controller. Do not resurrect a stale hover
+    // or clear a newer event's pending exit after that nested transition.
+    if (this.disposed || this.windowBlurred ||
+        this.hostDocument?.visibilityState === 'hidden' ||
+        this.pointerRevision !== pointerRevision ||
+        this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     // A nested pointermove can arrive while an older move has already
     // dispatched leave but not painted its replacement. Remember that
     // retired *visual* focus so it is not mistaken for an idle canvas.
@@ -479,7 +486,17 @@ export class PlanetInteractionController {
     // Never deliver synthetic clicks from a blurred or destroyed view.
     if (this.disposed || this.windowBlurred ||
         this.hostDocument?.visibilityState === 'hidden') return;
+    const activeScene = this.scene;
+    const sceneRevision = this.sceneRevision;
+    const pointerRevision = this.pointerRevision;
     const planet = this.pick(event);
+    // Raycasting invokes host-controlled geometry and may synchronously
+    // blur, unmount or replace the scene. An old hit must never select a
+    // body after the controller has left that interaction state.
+    if (this.disposed || this.windowBlurred ||
+        this.hostDocument?.visibilityState === 'hidden' ||
+        this.scene !== activeScene || this.sceneRevision !== sceneRevision ||
+        this.pointerRevision !== pointerRevision) return;
     if (planet) this.send('click', planet);
   };
 
