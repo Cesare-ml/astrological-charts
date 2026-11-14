@@ -1,5 +1,9 @@
 # Astrological Charts — instructions for AI coding agents
 
+## VirgoStars agent fleet (owner authorization 2026-11-14)
+
+Chats started with the VirgoStars fleet prompt follow [`AGENT_START.md`](https://github.com/Cesare-ml/virgostars-development-orchestrator/blob/main/AGENT_START.md) and the entry for `Cesare-ml/astrological-charts` in [`config/agent-fleet.json`](https://github.com/Cesare-ml/virgostars-development-orchestrator/blob/main/config/agent-fleet.json). For those agents, the runbook's merge gate is the owner's authorization to merge qualifying PRs, and `ci_allowed` there governs adding read-only CI. Every other rule in this file still applies.
+
 ## Mission and scope
 
 Develop only the Angular/Three.js astrological chart rendering library. Preserve its visual geometry, compatibility with VirgoStars and Astrolabio, and contributor freedom to propose improvements. A framework-agnostic rewrite is not requested.
