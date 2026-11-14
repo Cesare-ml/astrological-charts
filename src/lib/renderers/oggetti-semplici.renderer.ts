@@ -85,6 +85,13 @@ export class OggettiSempliciRender {
 
   public static getSemiArcoGrosso(a, b, yInterno, yEsterno, colore, textureUrl = null) {
     const subdivisions = this.arcSubdivisionCount(a, b);
+    // Some valid radial fills (notably the aspect-center disc) intentionally
+    // pass the outer radius as zero. Preserve radius order; reject only invalid
+    // radii before Three.js constructs NaN/Infinity vertices.
+    if (!Number.isFinite(yInterno) || !Number.isFinite(yEsterno) ||
+        yInterno < 0 || yEsterno < 0) {
+      throw new RangeError('Arc radii must be finite and non-negative.');
+    }
     //console.log(a,b,yEsterno,yInterno,colore, textureUrl);
     const arcoInterno = new THREE.EllipseCurve(
       0, 0, yInterno, yInterno,
