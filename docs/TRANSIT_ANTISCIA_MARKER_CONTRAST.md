@@ -45,3 +45,28 @@ before production integration.
 
 This branch does not alter external VirgoStars or Astrolabio consumers,
 ship artwork, activate GitHub Actions, or deploy.
+
+## Legacy skin fallback and incomplete saved options (2026-11-14)
+
+A review of the combined renderer found a regression in the new contrast
+lookup: `SkinManager.skins[skin_id].bgColor` threw when a saved skin
+identifier was removed, unknown, or when `settaggi` was absent. The old
+antiscia implementation defaulted to white in these cases; the contrast
+helper already specified white as the fallback for unsupported colors.
+
+The renderer now safely reads the selected skin's `bgColor` and passes
+an empty string to the helper when there is no known skin. The helper
+returns legacy white instead of throwing. All seven current skins keep
+their existing contrast-based choice, and geometry/longitude logic is
+unchanged. A focused Node test now checks an unknown saved skin with
+hover, and absent/empty settings on the no-hover axis-only path.
+
+Regression evidence: before the guard, the GitHub-read renderer raised
+`TypeError` for an unknown skin and missing settings in an isolated V8
+harness; after the guard, **37/37 isolated synthetic checks pass**
+(renderer blob `622fc2fbec6cda35df21a5642c3a819caff6d8fa`).
+The branch contains **13 axis Node test definitions and 4 color test
+definitions**; these test files have not been executed on a full clone.
+Run both committed Node suites and `npm run verify:angular` in a clean
+checkout, followed by Chromium/Firefox/PNG/Astrolabio checks before
+merge. No benchmark, production integration, or browser parity claim.
