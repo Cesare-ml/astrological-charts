@@ -41,6 +41,10 @@ npm run verify:angular          # preflight now invokes test:render-primitives t
 The focused Node test evaluates the actual TypeScript renderer with instrumented
 Three.js geometry stubs, checking normal/short/reversed/degenerate/oversized arcs,
 invalid radii, **synthetic texture material configuration**, and normalized UVs.
+The suite also exercises all 12 zodiac wedges at six synthetic ascendant offsets
+(72 cases, including negative and greater-than-360-degree positions), plus four
+edge-radius/upper-bound cases. These provide deterministic geometric regression
+checks, not a browser pixel/skin comparison.
 It also checks that invalid textured arcs fail before any texture lookup. Tests use
 placeholder references only; no artwork or host asset server is required. The test is **not** an actual WebGL render, screenshot
 baseline, browser performance study, VirgoStars integration, or Astrolabio
