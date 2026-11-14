@@ -63,6 +63,7 @@ export class PlanetInteractionController {
   private readonly cursor: string;
   private readonly hostWindow: Window | null;
   private readonly hostDocument: Document | null;
+  private windowBlurred = false;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -84,6 +85,7 @@ export class PlanetInteractionController {
     canvas.addEventListener('pointercancel', this.finishPointer);
     canvas.addEventListener('click', this.click);
     this.hostWindow?.addEventListener('blur', this.onWindowBlur);
+    this.hostWindow?.addEventListener('focus', this.onWindowFocus);
     this.hostDocument?.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
   }
 
@@ -253,6 +255,7 @@ export class PlanetInteractionController {
     this.disposed = true;
     ++this.sceneRevision;
     this.hostWindow?.removeEventListener('blur', this.onWindowBlur);
+    this.hostWindow?.removeEventListener('focus', this.onWindowFocus);
     this.hostDocument?.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
     this.canvas.removeEventListener('pointermove', this.move);
     this.canvas.removeEventListener('pointerleave', this.leave);
@@ -352,9 +355,10 @@ export class PlanetInteractionController {
   }
 
   private move = (event: PointerEvent): void => {
-    // Browser tabs may receive synthetic/stale events while backgrounded.
-    // A hidden owner document must not reacquire hover until visible again.
-    if (this.disposed || this.hostDocument?.visibilityState === 'hidden') return;
+    // Reject stale/synthetic input after window blur even if the document
+    // remains "visible"; a focus or visible-tab event resumes interaction.
+    if (this.disposed || this.windowBlurred ||
+        this.hostDocument?.visibilityState === 'hidden') return;
     const pointerRevision = ++this.pointerRevision;
     // Pointer hits are computed against one particular scene. A synchronous
     // leave listener may redraw or destroy that scene before we emit enter.
@@ -406,7 +410,15 @@ export class PlanetInteractionController {
    * increment pointerRevision and suppress the outer leave's final repaint.
    */
   private onWindowBlur = (): void => {
-    if (!this.disposed && (this.hovered || this.pendingHoverExit)) this.leave();
+    if (this.disposed) return;
+    // A window may lose focus without becoming a hidden document.
+    // Suspend stale pointer events until focus returns.
+    this.windowBlurred = true;
+    if (this.hovered || this.pendingHoverExit) this.leave();
+  };
+
+  private onWindowFocus = (): void => {
+    if (!this.disposed) this.windowBlurred = false;
   };
 
   /** Some browsers background a tab without a window blur event.
@@ -415,6 +427,7 @@ export class PlanetInteractionController {
    */
   private onDocumentVisibilityChange = (): void => {
     if (this.hostDocument?.visibilityState === 'hidden') this.onWindowBlur();
+    else if (this.hostDocument?.visibilityState === 'visible') this.onWindowFocus();
   };
 
   private leave = (): void => {
@@ -455,8 +468,9 @@ export class PlanetInteractionController {
     if (event.pointerType === 'touch' || event.type === 'pointercancel') this.leave();
   };
   private click = (event: MouseEvent): void => {
-    // Never deliver a synthetic click from a hidden or already destroyed view.
-    if (this.disposed || this.hostDocument?.visibilityState === 'hidden') return;
+    // Never deliver synthetic clicks from a blurred or destroyed view.
+    if (this.disposed || this.windowBlurred ||
+        this.hostDocument?.visibilityState === 'hidden') return;
     const planet = this.pick(event);
     if (planet) this.send('click', planet);
   };
