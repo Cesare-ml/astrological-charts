@@ -42,6 +42,31 @@ npm run test:latitude-missing-houses
 npm run verify:angular
 ```
 
+## Browser PNG regression
+
+The existing `tests/fixtures/latitude-transits-harness.ts` now accepts an
+optional `missingSelectedHouses` parameter. Its default remains unchanged.
+When enabled, synthetic natal and transit themes contain `placido` house
+data while the graph explicitly selects `egizia`.
+
+The `latitude charts with transits` case in `tests/demo-browser.test.mjs`
+exports both variants for all **seven skins**, checks PNG contents are not
+blank, and compares decoded pixel buffers to ensure the missing house ring is
+visibly omitted. It is included in the existing `npm run test:demo` command;
+the Angular demo and manifest-verified asset server must both be running.
+
+```sh
+npm run demo:pack
+npm run demo:assets
+# In a second terminal:
+npm run demo
+# In a third terminal:
+npm run test:demo
+```
+
+This is a browser regression specification, not evidence of a completed
+browser run. Screenshot and device compatibility must still be reviewed.
+
 For rendering parity, additionally run the interactive Angular demo's
 Chromium/Firefox synthetic browser suites (see `docs/ANGULAR_DEMO.md`), and
 visually compare the result with an approved baseline before integrating with
