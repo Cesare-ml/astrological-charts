@@ -174,6 +174,22 @@ test('latitude charts with transits use the circular and ring assets for every s
       assert.match(png, /^data:image\/png;base64,/, skin);
       const image = Buffer.from(png.split(',')[1], 'base64');
       assert.ok((await sharp(image).stats()).channels.some(channel => channel.stdev > 5), `${skin}: blank export`);
+      // Requested Egyptian houses are absent, but Placidus houses exist.
+      // A latitude PNG must remain nonblank without an invalid house ring.
+      const missingPng = await page.evaluate(
+        value => globalThis.renderLatitudeTransits(value, true), skin,
+      );
+      assert.match(missingPng, /^data:image\/png;base64,/, `${skin}: missing houses`);
+      const missingImage = Buffer.from(missingPng.split(',')[1], 'base64');
+      assert.ok(
+        (await sharp(missingImage).stats()).channels.some(channel => channel.stdev > 5),
+        `${skin}: blank missing-houses export`,
+      );
+      assert.notDeepEqual(
+        await sharp(image).ensureAlpha().raw().toBuffer(),
+        await sharp(missingImage).ensureAlpha().raw().toBuffer(),
+        `${skin}: missing house ring should change actual rendered pixels`,
+      );
     }
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
