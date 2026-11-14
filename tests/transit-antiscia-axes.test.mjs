@@ -351,3 +351,50 @@ test('nonfinite inner ring diameters retain finite axes but skip hover markers',
     assert.ok(h.objects.every(isFiniteObject));
   }
 });
+
+test('cardinal antiscia and contra-antiscia have exact mirrored angles and linked endpoints', async () => {
+  const result = await render({
+    antisci: { Cardinale: true }, antisciTransitiHover: { nome: 'Sun' },
+  }, 10);
+  const [axis, planet, antiscia, contra, triangle1, triangle2, triangle3, contraLine] = result.group.children;
+  const toRad = degrees => degrees * Math.PI / 180;
+  const near = (actual, expected, label) =>
+    assert.ok(Math.abs(actual - expected) < 1e-12, `${label}: ${actual} != ${expected}`);
+
+  near(axis.rotation.z, toRad(270), 'cardinal axis');
+  near(planet.rotation.z, toRad(10), 'planet longitude');
+  near(antiscia.rotation.z, toRad(530), 'antiscia longitude (2×270° − 10°)');
+  near(contra.rotation.z, toRad(710), 'contra-antiscia longitude (+180°)');
+  for (const [name, circle, angle] of [
+    ['planet', planet, 10], ['antiscia', antiscia, 530], ['contra-antiscia', contra, 710],
+  ]) {
+    near(circle.position.x, -2 * Math.sin(toRad(angle)), `${name} x`);
+    near(circle.position.y, 2 * Math.cos(toRad(angle)), `${name} y`);
+  }
+  assert.strictEqual(triangle1.start, planet.position);
+  assert.strictEqual(triangle1.end, antiscia.position);
+  assert.strictEqual(triangle2.start, antiscia.position);
+  assert.strictEqual(triangle3.end, planet.position);
+  assert.strictEqual(contraLine.end, contra.position);
+});
+
+test('antiscia hover geometry is periodic under whole-turn longitude shifts', async () => {
+  const options = {
+    antisci: { Cardinale: true, Fissa: true, Mutevole: true },
+    antisciTransitiHover: { nome: 'Sun' },
+  };
+  for (const longitude of [-45, 0, 10, 180, 359.999, 720]) {
+    const normal = await render(options, longitude);
+    const fullTurn = await render(options, longitude + 360);
+    assert.equal(normal.objects.length, fullTurn.objects.length);
+    const circles = normal.objects.filter(x => x.kind === 'circle');
+    const shiftedCircles = fullTurn.objects.filter(x => x.kind === 'circle');
+    assert.equal(circles.length, 9);
+    for (let i = 0; i < circles.length; i++) {
+      assert.ok(Math.abs(circles[i].position.x - shiftedCircles[i].position.x) < 1e-11,
+        `x for circle ${i}, longitude ${longitude}`);
+      assert.ok(Math.abs(circles[i].position.y - shiftedCircles[i].position.y) < 1e-11,
+        `y for circle ${i}, longitude ${longitude}`);
+    }
+  }
+});
