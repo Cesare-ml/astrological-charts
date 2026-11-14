@@ -109,13 +109,15 @@ export class TransitiRender {
     //Disegno gli assi
     // Iterate the supported axes only: legacy option payloads may contain unknown keys.
     for(const c of assiAttivi) {
-      {
-        var asse = await OggettiSempliciRender.getLineaGrossa({x:0,y:-diametroAnelloSegni/2,z:0},{x:0,y:diametroAnelloSegni/2,z:0},"yellow",0.6);
-        asse.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15 + assi[c]
-        ));
-        group.add(asse);
-      }
+      const asse = await OggettiSempliciRender.getLineaGrossa(
+        {x:0,y:-diametroAnelloSegni/2,z:0},
+        {x:0,y:diametroAnelloSegni/2,z:0},
+        "yellow",0.6
+      );
+      asse.rotateZ(THREE.MathUtils.degToRad(
+        75-ascendente+15 + assi[c]
+      ));
+      group.add(asse);
     }
 
     // Se antisciTransitiHover allora traccio le linee
