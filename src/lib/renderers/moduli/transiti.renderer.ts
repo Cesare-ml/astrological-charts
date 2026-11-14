@@ -93,16 +93,23 @@ export class TransitiRender {
       'Mutevole':  330 // Pesci-Vergine
     };
     var ascendente = ascRef;
-    var elementiCelesti = await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false);
+    // Resolving planets clones the theme data; do it only when a drawable
+    // antiscia axis is enabled AND a planet hover relation is requested.
+    const assiAttivi = Object.keys(assi).filter(
+      c => Object.hasOwn(opzioni.antisci ?? {}, c) && opzioni.antisci[c]
+    );
+    const nomeHover = opzioni.antisciTransitiHover?.nome;
+    const elementiCelesti = assiAttivi.length > 0 && nomeHover
+      ? await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false)
+      : null;
 
     const coloreCerchio = getAntisciMarkerColor(SkinManager.skins[opzioni.settaggi.skin_id].bgColor);
-    const hoverPianeta = elementiCelesti?.[opzioni.antisciTransitiHover?.nome];
-    const hoverLongitude = hoverPianeta?.longitude;
+    const hoverLongitude = elementiCelesti?.[nomeHover]?.longitude;
 
     //Disegno gli assi
     // Iterate the supported axes only: legacy option payloads may contain unknown keys.
-    for(const c of Object.keys(assi)) {
-      if(Object.hasOwn(opzioni.antisci ?? {}, c) && opzioni.antisci[c]) {
+    for(const c of assiAttivi) {
+      {
         var asse = await OggettiSempliciRender.getLineaGrossa({x:0,y:-diametroAnelloSegni/2,z:0},{x:0,y:diametroAnelloSegni/2,z:0},"yellow",0.6);
         asse.rotateZ(THREE.MathUtils.degToRad(
           75-ascendente+15 + assi[c]
@@ -112,13 +119,8 @@ export class TransitiRender {
     }
 
     // Se antisciTransitiHover allora traccio le linee
-    for (const c of Object.keys(assi)) {
-      if(
-        Object.hasOwn(opzioni.antisci ?? {}, c)
-        && opzioni.antisci[c]
-        && opzioni.antisciTransitiHover
-        && Number.isFinite(hoverLongitude)
-      ) {
+    for (const c of assiAttivi) {
+      if(Number.isFinite(hoverLongitude)) {
         var lngantisci = 2*assi[c] - hoverLongitude;
 
         var pianeta = OggettiSempliciRender.getCerchio(0.025,coloreCerchio);
