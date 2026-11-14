@@ -86,6 +86,39 @@ for (const method of methods) {
     assert.equal(countMatches(method, 'parallelodideclinazione', a, b), 0);
   });
 
+
+  test(`${method}: one-sided or null declination never creates a match`, () => {
+    const a = node('Sun', 10, 12);
+    for (const b of [node('Moon', 11), node('Moon', 11, null)]) {
+      assert.equal(countMatches(method, 'parallelodideclinazione', a, b), 0);
+      assert.equal(countMatches(method, 'antiparallelo', a, b), 0);
+      assert.equal(countMatches(method, 'parallelodideclinazione', b, a), 0);
+      assert.equal(countMatches(method, 'antiparallelo', b, a), 0);
+    }
+  });
+
+  test(`${method}: non-finite declinations never create a match`, () => {
+    const a = node('Sun', 10, 12);
+    for (const invalid of [NaN, Infinity, -Infinity]) {
+      const b = node('Moon', 11, invalid);
+      assert.equal(countMatches(method, 'parallelodideclinazione', a, b), 0);
+      assert.equal(countMatches(method, 'antiparallelo', a, b), 0);
+    }
+  });
+
+  test(`${method}: antiparallel threshold remains strictly below one degree`, () => {
+    const a = node('Sun', 10, 12);
+    assert.equal(countMatches(method, 'antiparallelo', a, node('Moon', 170, -13)), 0);
+    assert.equal(countMatches(method, 'antiparallelo', a, node('Moon', 170, -12.999)), 1);
+  });
+
+  test(`${method}: longitude conjunction wraps correctly across zero`, () => {
+    const a = node('Sun', 359, undefined);
+    const b = node('Moon', 1, undefined);
+    assert.equal(countMatches(method, 'congiunzione', a, b), 1);
+    assert.equal(countMatches(method, 'parallelodideclinazione', a, b), 0);
+  });
+
   test(`${method}: ordinary longitude conjunction remains supported`, () => {
     const a = node('Sun', 10, undefined);
     const b = node('Moon', 12, undefined);
