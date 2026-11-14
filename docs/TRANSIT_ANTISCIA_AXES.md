@@ -16,8 +16,10 @@ valid keys; the issue applies to malformed or forward-version option objects.
 ## Change
 
 Both axis and hover-link loops now iterate only the existing local
-`assi` table (`Cardinale`, `Fissa`, `Mutevole`). The renderer still uses
-`opzioni.antisci[c]` to honor each enabled/disabled switch.
+`assi` table (`Cardinale`, `Fissa`, `Mutevole`). The renderer enables each
+axis only when its switch is an **own property** of the supplied map;
+inherited properties cannot silently activate axes. An omitted or null
+`antisci` map is treated as empty, not as an exception.
 
 - **Unchanged:** the existing 270°, 300°, and 330° antiscia axes, line
   colors, positions, circle geometry, hover behavior and cardinal order for
@@ -38,8 +40,8 @@ npm run verify:angular
 
 The test compiles the actual TypeScript class and uses synthetic Three.js
 objects. It covers all three enabled axes at expected angles, an unexpected
-own key plus an inherited key, unknown-only enabled flags, and an unavailable
-hovered planet. It asserts finite geometry, object counts, and no invalid
+own key plus an inherited key, unknown-only enabled flags, an unavailable
+hovered planet, inherited *recognized* flags, and absent/null maps. It asserts finite geometry, object counts, and no invalid
 arcs. No user birth data, approved image pack or production calls are needed.
 
 **Visual review gates (not covered by these tests):** compare real browser
@@ -60,3 +62,18 @@ Draft PR review should check against the still-open large interactive
 transit PR #22. Its current change to the same file is in
 `getAnelloTransiti`, while this patch changes only the two loops of
 `getAntisci`; retest after any future merge or rebase.
+
+## Additional isolated regression evidence (2026-11-14)
+
+- **PASS 7/7**: executed seven synthetic geometry cases in an isolated V8
+  harness against the exact GitHub-readback TypeScript method body (minimal
+  import/type syntax removal; source blob SHA `7f4412e4a5599377699b4d382bee121ddda8e2a8`).
+  Cases include 3 valid axes, unexpected/inherited keys, unknown-only switches,
+  missing hovered planets, inherited supported switches, undefined map and
+  null map.
+- **RED control 1/7**: the same seven cases against the original `main`
+  source blob `171f1041b81ba188f21504deb326b6018967dd0a` failed six cases,
+  including non-finite geometry and null/undefined errors.
+- **NOT RUN**: the committed `node --test` suite, complete npm installation,
+  Angular build, actual Chromium/Firefox/WebGL/PNG tests and Astrolabio device.
+  These remain reviewer gates; the isolated harness does not replace them.
