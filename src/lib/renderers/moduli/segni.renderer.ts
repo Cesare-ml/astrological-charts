@@ -125,7 +125,6 @@ export class SegniRender {
                 group.add(arco);
             }
         } else {
-            console.log('asd');
             group.add(OggettiSempliciRender.getCerchio(diametroCerchioEsterno / 2, coloreLinea));
         }
         
@@ -264,14 +263,10 @@ export class SegniRender {
         // Linee principali e secondarie
         // Linee principali (ogni 30°), secondarie (ogni 10°) e terziarie (ogni 5°)
         
-        for (let i = 0; i < 72; i++) {
-            const angolo = i * 5 + degOffsAscendente;
-            let lunghezza = 0;
-
-            // Se è una linea principale (ogni 30°)
-            if (i % 6 === 0) {
-                lunghezza = diametroCerchioEsterno / 2 - diametroCerchioInterno / 2;
-            }
+        for (let i = 0; i < 12; i++) {
+            const angolo = i * 30 + degOffsAscendente;
+            // The synastry ring has 12 visible boundaries, not 60 extra zero-length lines.
+            const lunghezza = diametroCerchioEsterno / 2 - diametroCerchioInterno / 2;
 
             const linea = OggettiSempliciRender.getLinea(
                 { x: 0, y: diametroCerchioInterno / 2 },
@@ -293,7 +288,7 @@ export class SegniRender {
             //let imgFolder = coloreImgFolder ? coloreImgFolder + '/' : '';
             const segno = await OggettiSempliciRender.getImg(
                 `simboli-bianchi/segni/${String(i + 1).padStart(2, '0')}.png`,
-                100, 69, 1 / 69, false, colore
+                100, 69, 1 / 69, australInversion, colore
             );
             segno.scale.set(0.08, 0.08, 1);
             segno.rotateZ(THREE.MathUtils.degToRad(i * 30 + 15 + degOffsAscendente));
