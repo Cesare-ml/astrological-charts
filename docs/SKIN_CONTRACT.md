@@ -81,8 +81,15 @@ sinastria override), a partial override, and a fully explicit equivalent
 with all other values inherited from the base ring. The test asserts a
 visible difference between the base and partial override and pixel-level
 agreement between partial and explicit results (with a small WebGL
-antialiasing tolerance). It restores the previous skin configuration even
-if a render fails. The fixture preserves whether the original `sinastria`
+antialiasing tolerance). For each skin, it also exports the natal-only
+chart with the synastry override absent and present, using the same
+illustrative input. The natal-only images must match within the same
+pixel tolerance: secondary-chart styles must not contaminate the primary
+chart. The fixture disables `mostraSinastria` and omits the partner
+argument during each natal-only export, then restores the original mode
+flag even on failure.
+
+It restores the previous skin configuration even if a render fails. The fixture preserves whether the original `sinastria`
 property was present at all (rather than confusing an explicitly undefined
 value with an absent property). A separate failure-path probe intercepts
 `GestoreImmagini.loadAsync` and rejects the **second** request for
