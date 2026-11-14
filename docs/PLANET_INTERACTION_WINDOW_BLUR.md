@@ -21,7 +21,7 @@ The user-selected (pinned) focus must survive both forms of focus loss.
 - Reuse the existing `leave()` state machine to notify the host and restore
   the pinned or neutral visual focus. Suspend synthetic pointer moves/clicks
   after `window.blur` even when the document remains visible; resume when
-  `window.focus` arrives. Also suppress input while the owning document is
+  `window.focus` arrives **and** `document.hasFocus()` is true. Also suppress input while the owning document is
   hidden and resume on its `visibilitychange` to visible **only when**
   `document.hasFocus()` is true. Mere visibility must not resume a blurred window.
 - Do not manipulate cameras, planet scales, aspects, render geometry or
@@ -46,7 +46,7 @@ npm run test:planet-interactions
 
 `tests/planet-window-blur.test.mjs` transpiles the **actual** TypeScript
 controller in memory and uses minimal Three.js and canvas/window event stubs.
-It checks twenty cases: six window-blur cases (clearing hover, preserving
+It checks twenty-two cases: six window-blur cases (clearing hover, preserving
 pinned DS, nested blur, independent owner windows, blur during pointer enter,
 windowless Node construction) and five document-visibility cases (hidden
 versus visible, pinned MC, nested hidden event during leave, detached
@@ -56,9 +56,10 @@ pointer moves during a hidden-document leave. Four further cases ensure a
 blurred-but-visible window rejects input until focus returns, a visible tab
 can resume without a separate window focus event, a hidden tab stays blocked
 despite an early window focus, and blur leave callbacks cannot re-enter hover.
-Two extra cases prove that becoming visible without document focus does not
-resume mouse input, and a premature focus event during a hidden tab cannot
-clear the suspended-input latch.
+Four extra cases prove that becoming visible without document focus does not
+resume mouse input, a premature focus event during a hidden tab cannot
+clear the suspended-input latch, and synthetic/repeated window `focus`
+events cannot bypass `document.hasFocus() === false`.
 The usual `test:planet-interactions` command includes this
 new file. Synthetic axes are only identifiers; no real natal charts,
 personal birth data or private assets are used.
@@ -67,7 +68,7 @@ personal birth data or private assets are used.
 committed through the GitHub connector; a full repository checkout and the
 `npm ci` / `npm run verify:angular` gates were **NOT RUN** in this session
 because the isolated local container cannot resolve GitHub hosts. Do **not**
-claim all twenty cases passed on the exact GitHub tree without running the
+claim all twenty-two cases passed on the exact GitHub tree without running the
 test command from a real checkout.
 
 ## Browser acceptance and integration
@@ -104,17 +105,21 @@ these visual outcomes without browser execution.
 On a backgrounded or blurred window, a synthetic `pointermove` or `click`
 must not reinstate focus or notify the host, even if it arrives synchronously
 from an `onHoverLeave` callback. A `focus` event restores normal input
-when the owning document is visible; a `visibilitychange` transition to
+only when the owning document is visible and `document.hasFocus()` is true; a `visibilitychange` transition to
 `visible` can restore input if `document.hasFocus()` is true, even if no
 separate window focus event fires. A
 window-focus event **cannot** bypass an owner document that is still hidden.
 
-The test file now declares **20 Node regressions**.
-A logic-level execution of all twenty committed test callbacks using the
-branch's exact `move`, `click`, `leave`, `onWindowBlur`, `onWindowFocus`,
-`onDocumentVisibilityChange` and `destroy` method bodies passed **20/20**
-(source blob `7c942fa3d557d65431b8ca98adb21859bf901052`, test blob
-`fcd6ca43c8c1fa46bffaa18138bda65ed0cbd3e0`).
+The test file now declares **22 Node regressions**.
+A logic-level execution of all twenty-two committed test callbacks using
+the branch's exact `move`, `click`, `leave`, `onWindowBlur`,
+`onWindowFocus`, `onDocumentVisibilityChange` and `destroy` method bodies
+passed **22/22** (source blob `d7e01dcafbebc8bd7d94b055a988a52ff092a516`,
+test blob `25a043a8d7feae3b011aab5330eb23e43bfaacf6`).
+A false-positive focus-resume behavior was independently reproduced in the
+previous method implementation: when a visible document reported
+`hasFocus() === false`, a received `window.focus` event cleared the
+blur latch. The new focus guard requires actual document focus.
 That isolated execution supplied simplified constructor, `send` and GPU
 cleanup implementations. It does **not** run the actual Node test file via
 `node --test` with the full repository and TypeScript transpilation, nor
