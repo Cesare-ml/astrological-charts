@@ -127,3 +127,24 @@ test('declared skin image and texture paths remain host-owned and canonical', ()
     }
   }
 });
+
+test('the contract rejects missing artwork, foreign URLs and unknown glyph directories', () => {
+  assert.throws(
+    () => imagePath(undefined, 'test.resonator', { required: true }),
+    /test\.resonator is required for every skin/,
+  );
+  assert.throws(
+    () => imagePath('https://example.org/remote.png', 'test.resonator', { required: true }),
+    /must use a host-owned asset/,
+  );
+  assert.throws(
+    () => imagePath('img/%2e%2e/secret.png', 'test.texture'),
+    /Invalid chart asset path/,
+  );
+  assert.throws(
+    () => assertImageFolder('missing-folder', 'test.coloreImgFolder'),
+    /must use an existing white\/black glyph directory/,
+  );
+  assert.doesNotThrow(() => imagePath(null, 'test.optionalTexture'));
+  assert.doesNotThrow(() => assertImageFolder(null, 'test.optionalFolder'));
+});
