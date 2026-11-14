@@ -88,6 +88,26 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.equal(previewDenied.status, 403);
     assert.equal(previewDenied.headers.get('access-control-allow-origin'), null);
 
+    // Preview HEAD must mirror GET metadata without exposing an HTML body.
+    const previewUrl = new URL('/__preview', url);
+    const previewGet = await fetch(previewUrl, {
+      headers: { Origin: 'http://localhost:4200' },
+    });
+    assert.equal(previewGet.status, 200);
+    assert.match(previewGet.headers.get('content-type') ?? '', /^text\/html/);
+    assert.match(previewGet.headers.get('content-security-policy') ?? '', /default-src 'none'/);
+    const previewBody = await previewGet.text();
+    assert.match(previewBody, /Approved astrology assets/);
+
+    const previewHead = await fetch(previewUrl, {
+      method: 'HEAD', headers: { Origin: 'http://localhost:4200' },
+    });
+    assert.equal(previewHead.status, 200);
+    assert.equal(previewHead.headers.get('content-type'), previewGet.headers.get('content-type'));
+    assert.equal(previewHead.headers.get('content-length'), previewGet.headers.get('content-length'));
+    assert.equal(previewHead.headers.get('content-security-policy'), previewGet.headers.get('content-security-policy'));
+    assert.equal(await previewHead.text(), '');
+
     const allowedGet = await fetch(url, {
       headers: { Origin: 'http://127.0.0.1:4200' },
     });
