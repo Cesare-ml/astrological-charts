@@ -20,3 +20,13 @@ test('roadmap keeps build and browser evidence separate', () => {
   assert.match(roadmap, /VirgoStars credits/);
   assert.match(roadmap, /without a LICENSE/);
 });
+
+test('release gates remain explicitly pending until runtime evidence is recorded', () => {
+  for (const gate of ['reproducible local build', 'independent Three.js demo', 'approved assets', 'integration and release decision']) {
+    assert.ok(roadmap.includes(gate), `missing validation gate: ${gate}`);
+  }
+  assert.doesNotMatch(roadmap, /^- \[x\]/gim, 'do not mark validation gates complete without runtime evidence');
+  assert.match(roadmap, /npm ci[\s\S]*npm run verify:angular/, 'clean install must precede build verification');
+  assert.match(roadmap, /issue #25/, 'independent axis canvas evidence must remain tracked');
+  assert.match(roadmap, /issue #5/, 'multi-canvas lifecycle validation must remain tracked');
+});
