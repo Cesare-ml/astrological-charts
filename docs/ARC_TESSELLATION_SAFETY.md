@@ -18,7 +18,9 @@ to divide by zero, producing NaN texture coordinates.
   degrees (including the usual 30-degree zodiac wedges and 360-degree rings).
 - Clamp smaller finite spans to **2 subdivisions** and larger finite spans to
   **720 subdivisions**. Clockwise/negative spans use their absolute width for
-  subdivision count; their actual input angles are left untouched.
+  subdivision count. Before creating an `EllipseCurve`, normalize its start
+  modulo 360 degrees and reduce its sweep to at most one turn. A nonzero sweep
+  equal to a whole number of turns remains one full 360-degree rotation.
 - Reject nonfinite angles or overflowed angular spans with `RangeError`.
 - Reject nonfinite or negative inner/outer radii **before** Three.js curve sampling. Preserve reversed radial bands (including outer radius zero), which are intentionally used by the aspect-center fill.
 - When UV bounding-box width/height is zero or nonfinite, use the neutral
@@ -26,9 +28,12 @@ to divide by zero, producing NaN texture coordinates.
 
 This patch does **not** alter astrology, the chart's zoom, the skin asset URLs,
 planet/house positions or public TypeScript APIs. For unusual fractional spans,
-sampling can become denser, intentionally. Huge angular spans are capped in
-sample count, not geometrically normalized; callers should still pass sensible
-angles.
+sampling can become denser, intentionally. Huge angular inputs are reduced
+both in **sample count** and **actual Three.js curve endpoints**, avoiding
+repeated 2π subtraction in `EllipseCurve.getPoint()` (Three.js r170).
+Descending inputs use `clockwise: true` to draw the requested short clockwise
+span instead of accidentally drawing almost 360 degrees. Callers should
+still pass physically meaningful ring angles.
 
 ## Check from a complete checkout
 
@@ -43,7 +48,9 @@ Three.js geometry stubs, checking normal/short/reversed/degenerate/oversized arc
 invalid radii, **synthetic texture material configuration**, and normalized UVs.
 The suite also exercises all 12 zodiac wedges at six synthetic ascendant offsets
 (72 cases, including negative and greater-than-360-degree positions), plus four
-edge-radius/upper-bound cases. These provide deterministic geometric regression
+edge-radius/upper-bound cases. Its ellipse stub now follows the Three.js r170
+angle-wrapping/clockwise semantics, and explicitly checks that extreme angles
+are canonicalized before those loops run. These provide deterministic geometric regression
 checks, not a browser pixel/skin comparison.
 It also checks that invalid textured arcs fail before any texture lookup. Tests use
 placeholder references only; no artwork or host asset server is required. The test is **not** an actual WebGL render, screenshot
