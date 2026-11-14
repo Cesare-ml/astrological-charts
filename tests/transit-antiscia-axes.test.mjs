@@ -310,3 +310,44 @@ test('transit ring enables a single finite hover lookup for all three axes', asy
   assert.equal(h.objects.filter(x => x.kind === 'circle').length, 9);
   assert.ok(h.objects.every(isFiniteObject));
 });
+
+test('nonfinite ascendant skips the entire antiscia overlay, not NaN rotations', async () => {
+  for (const ascendant of [NaN, Infinity, -Infinity, undefined]) {
+    const h = createHarness(10, { failOnCelestial: true });
+    const chart = await h.TransitiRender.getAntisci({}, ascendant, {
+      settaggi: { skin_id: 'light' }, antisci: { Cardinale: true },
+      antisciTransitiHover: { nome: 'Sun' },
+    }, 4, 4, 5, 6);
+    assert.equal(chart.children.length, 0);
+    assert.equal(h.getCelestialCalls(), 0);
+    assert.equal(h.objects.length, 0);
+  }
+});
+
+test('nonfinite zodiac ring diameters skip invalid antiscia axis endpoints', async () => {
+  for (const diameter of [NaN, Infinity, -Infinity, undefined]) {
+    const h = createHarness(10, { failOnCelestial: true });
+    const chart = await h.TransitiRender.getAntisci({}, 90, {
+      settaggi: { skin_id: 'light' }, antisci: { Cardinale: true },
+      antisciTransitiHover: { nome: 'Sun' },
+    }, 4, diameter, 5, 6);
+    assert.equal(chart.children.length, 0);
+    assert.equal(h.getCelestialCalls(), 0);
+    assert.equal(h.objects.length, 0);
+  }
+});
+
+test('nonfinite inner ring diameters retain finite axes but skip hover markers', async () => {
+  for (const diameter of [NaN, Infinity, -Infinity, undefined]) {
+    const h = createHarness(10);
+    const chart = await h.TransitiRender.getAntisci(
+      { planets: { Sun: { longitude: 10 } } }, 90, {
+        settaggi: { skin_id: 'light' }, antisci: { Cardinale: true },
+        antisciTransitiHover: { nome: 'Sun' },
+      }, diameter, 4, 5, 6,
+    );
+    assert.equal(chart.children.length, 1);
+    assert.equal(h.objects.filter(x => x.kind === 'circle').length, 0);
+    assert.ok(h.objects.every(isFiniteObject));
+  }
+});
