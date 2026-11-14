@@ -124,10 +124,11 @@ export class OggettiSempliciRender {
     const shape = new THREE.Shape(punti);
     const geometry = new THREE.ShapeGeometry(shape);
 
-    // Geometry is already allocated here. Ensure that failed UV preparation
-    // cannot leak a Three.js buffer, even when texture setup was never reached.
+    // Own geometry from this point on: any synchronous UV, texture or mesh
+    // construction failure must release these resources exactly once.
+    let material: THREE.MeshBasicMaterial | undefined;
     try {
-        geometry.computeBoundingBox();
+      geometry.computeBoundingBox();
       const max = geometry.boundingBox.max;
       const min = geometry.boundingBox.min;
 
@@ -147,13 +148,7 @@ export class OggettiSempliciRender {
       }
 
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
-    } catch (error) {
-      geometry.dispose();
-      throw error;
-    }
 
-    let material: THREE.MeshBasicMaterial | undefined;
-    try {
       if (textureUrl) {
         const texture = GestoreImmagini.getImg(textureUrl);
         texture.wrapS = THREE.ClampToEdgeWrapping;
