@@ -50,12 +50,15 @@ export class LatitudiniRender {
       ? temaRender.houses?.[opzioni.settaggi.domificazione_selezionata]
       : undefined;
     // Only a complete numeric house ring can safely drive rotation and
-    // geometry. Array.every alone would miss holes in sparse cusp arrays.
+    // geometry. Check own indices: inherited numeric values cannot fill holes.
     const selectedHouses = candidateHouses
       && Number.isFinite(candidateHouses.ascendant)
       && Array.isArray(candidateHouses.house)
       && candidateHouses.house.length === 12
-      && Array.from({length: 12}, (_, i) => candidateHouses.house[i]).every(Number.isFinite)
+      && Array.from({length: 12}, (_, i) =>
+        Object.prototype.hasOwnProperty.call(candidateHouses.house, i)
+        && Number.isFinite(candidateHouses.house[i])
+      ).every(Boolean)
       ? candidateHouses
       : undefined;
     const as = selectedHouses?.ascendant ?? 0;
