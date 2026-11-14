@@ -24,8 +24,9 @@ const helperExports = {};
 vm.runInNewContext(helperCompiled, { exports: helperExports });
 const { getAntisciMarkerColor } = helperExports;
 
-function createHarness(longitude = 10) {
+function createHarness(longitude = 10, { failOnCelestial = false } = {}) {
   const objects = [];
+  let celestialCalls = 0;
   class Group {
     children = [];
     add(child) { this.children.push(child); }
@@ -62,7 +63,11 @@ function createHarness(longitude = 10) {
     '../oggetti-semplici.renderer': { OggettiSempliciRender: primitives },
     './elementi-celesti.renderer': {
       ElementiCelestiRender: {
-        async getElementiCelesti() { return { Sun: { longitude } }; },
+        async getElementiCelesti() {
+          celestialCalls++;
+          if (failOnCelestial) throw new Error('Celestial computation must be skipped');
+          return { Sun: { longitude } };
+        },
       },
     },
     '../_colori.config': { Colori: { elementiCelesti: { Sun: '#ffcc00' } } },
@@ -77,7 +82,7 @@ function createHarness(longitude = 10) {
     },
   };
   vm.runInNewContext(compiled, context, { filename: 'transiti.renderer.js' });
-  return { TransitiRender: context.exports.TransitiRender, objects };
+  return { TransitiRender: context.exports.TransitiRender, objects, getCelestialCalls: () => celestialCalls };
 }
 const axisPositions = {
   Cardinale: 270,
@@ -92,8 +97,8 @@ function isFiniteObject(object) {
   return coordinates.every(Number.isFinite);
 }
 
-async function render(options, longitude = 10) {
-  const h = createHarness(longitude);
+async function render(options, longitude = 10, harnessOptions = {}) {
+  const h = createHarness(longitude, harnessOptions);
   const group = await h.TransitiRender.getAntisci(
     {}, 90, { settaggi: { skin_id: 'light' }, ...options },
     4, 4, 5, 6,
@@ -182,4 +187,50 @@ test('a real planet at zero degrees still renders all hover markers and links', 
   assert.equal(result.group.children.length, 8);
   assert.equal(result.objects.filter((x) => x.kind === 'circle').length, 3);
   assert.ok(result.objects.every(isFiniteObject));
+});
+
+test('axes render without resolving planet data when no hover was requested', async () => {
+  const result = await render({
+    antisci: { Cardinale: true, Fissa: true, Mutevole: true },
+  }, 10, { failOnCelestial: true });
+  assert.equal(result.group.children.length, 3);
+  assert.equal(result.getCelestialCalls(), 0);
+  assert.ok(result.objects.every(isFiniteObject));
+});
+
+test('unknown-only, disabled or absent axes skip planet lookup even with hover', async () => {
+  for (const antisci of [
+    { Unknown: true },
+    { Cardinale: false, Fissa: false, Mutevole: false },
+    undefined,
+    null,
+  ]) {
+    const result = await render({
+      antisci,
+      antisciTransitiHover: { nome: 'Sun' },
+    }, 10, { failOnCelestial: true });
+    assert.equal(result.group.children.length, 0);
+    assert.equal(result.getCelestialCalls(), 0);
+    assert.equal(result.objects.length, 0);
+  }
+});
+
+test('an explicit planet hover resolves data exactly once for three enabled axes', async () => {
+  const result = await render({
+    antisci: { Cardinale: true, Fissa: true, Mutevole: true },
+    antisciTransitiHover: { nome: 'Sun' },
+  });
+  assert.equal(result.getCelestialCalls(), 1);
+  assert.equal(result.group.children.length, 24, 'three axes and seven hover objects per axis');
+  assert.equal(result.objects.filter(x => x.kind === 'circle').length, 9);
+  assert.ok(result.objects.every(isFiniteObject));
+});
+
+test('empty hover name does not request celestial data or draw hover relations', async () => {
+  const result = await render({
+    antisci: { Cardinale: true },
+    antisciTransitiHover: { nome: '' },
+  }, 10, { failOnCelestial: true });
+  assert.equal(result.group.children.length, 1);
+  assert.equal(result.getCelestialCalls(), 0);
 });
