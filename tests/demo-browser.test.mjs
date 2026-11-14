@@ -157,6 +157,64 @@ test('render waits for a slow skin texture and reports its failure', {timeout: 6
   } finally { release(); await browser.close(); }
 });
 
+test('partial synastry house-ring style renders like its explicit inherited equivalent', {timeout: 120000}, async () => {
+  const bundle = await build({
+    entryPoints: ['tests/fixtures/synastry-skin-harness.ts'],
+    bundle: true, write: false, platform: 'browser', format: 'iife',
+    target: 'es2022', tsconfig: 'tsconfig.json',
+  });
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('response', response => {
+    if (response.status() >= 400) pageErrors.push(`${response.status()} ${response.url()}`);
+  });
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await page.waitForFunction(
+      () => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'),
+      {timeout: 30000},
+    );
+    await page.addScriptTag({content: bundle.outputFiles[0].text});
+    const result = await page.evaluate(() => globalThis.probePartialSynastrySkin());
+    async function readImage(dataUrl) {
+      assert.match(dataUrl, /^data:image\/png;base64,/, 'expected a browser-generated PNG');
+      return sharp(Buffer.from(dataUrl.split(',')[1], 'base64'))
+        .removeAlpha().raw().toBuffer({resolveWithObject: true});
+    }
+    const baseline = await readImage(result.baseline);
+    const partial = await readImage(result.partial);
+    const explicit = await readImage(result.explicit);
+    assert.equal(baseline.info.width, 500);
+    assert.equal(baseline.info.height, 500);
+    assert.deepEqual(partial.info, baseline.info);
+    assert.deepEqual(explicit.info, baseline.info);
+
+    // WebGL antialiasing can produce a few unstable edge pixels between
+    // exports. Count visibly different pixels, not exact PNG byte hashes.
+    function changedPixels(a, b) {
+      let changed = 0;
+      for (let offset = 0; offset < a.length; offset += baseline.info.channels) {
+        for (let channel = 0; channel < baseline.info.channels; channel++) {
+          if (Math.abs(a[offset + channel] - b[offset + channel]) > 12) {
+            changed++;
+            break;
+          }
+        }
+      }
+      return changed;
+    }
+    const changedFromBaseline = changedPixels(baseline.data, partial.data);
+    const mismatchWithExplicit = changedPixels(partial.data, explicit.data);
+    assert.ok(changedFromBaseline > 40,
+      `Changing the synastry house-line color affected only ${changedFromBaseline} pixels`);
+    assert.ok(mismatchWithExplicit <= Math.ceil(500 * 500 * 0.0005),
+      `Partial vs explicit synastry fallback differed in ${mismatchWithExplicit} visible pixels`);
+    assert.deepEqual(pageErrors, []);
+  } finally { await browser.close(); }
+});
+
 test('latitude charts with transits use the circular and ring assets for every skin', {timeout:90000}, async () => {
   const bundle = await build({entryPoints:['tests/fixtures/latitude-transits-harness.ts'], bundle:true,
     write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
