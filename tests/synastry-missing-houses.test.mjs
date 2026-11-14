@@ -179,6 +179,9 @@ test('incomplete selected house data falls back safely without synthetic axes', 
     { ascendant: Number.NaN, mc: 100, house: baseCusps },
     { ascendant: 30, mc: Number.POSITIVE_INFINITY, house: baseCusps },
     { ascendant: 30, mc: 100, house: baseCusps.slice(0, 11) },
+    // JavaScript Array.every() skips holes; a missing value cannot be a real cusp.
+    { ascendant: 30, mc: 100, house: Array.from({ length: 12 }, (_, i) => i === 4 ? undefined : baseCusps[i]) },
+    { ascendant: 30, mc: 100, house: (() => { const cusps = [...baseCusps]; delete cusps[7]; return cusps; })() },
     { ascendant: 30, mc: 100, house: [...baseCusps.slice(0, 8), Number.NaN, ...baseCusps.slice(9)] },
     { ascendant: 30, mc: 100, house: 'not-an-array' },
   ];
