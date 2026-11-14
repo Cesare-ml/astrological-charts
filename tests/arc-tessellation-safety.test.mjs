@@ -125,3 +125,26 @@ test('invalid angles fail before allocating arc geometry', () => {
     assert.equal(sampleCounts.length, 0);
   }
 });
+
+
+test('reversed radial band used by the aspect-center disc remains supported', () => {
+  sampleCounts.length = 0;
+  const mesh = Renderer.getSemiArcoGrosso(0, 360, 2, 0, '#ccc');
+  assert.deepEqual(Array.from(sampleCounts), [360, 360]);
+  assertFiniteUv(mesh);
+});
+
+test('nonfinite or negative arc radii fail before curve sampling', () => {
+  for (const [inner, outer] of [
+    [NaN, 1], [1, NaN],
+    [Infinity, 1], [1, -Infinity],
+    [-1, 1], [1, -0.001],
+  ]) {
+    sampleCounts.length = 0;
+    assert.throws(
+      () => Renderer.getSemiArcoGrosso(0, 30, inner, outer, '#ccc'),
+      { name: 'RangeError' },
+    );
+    assert.equal(sampleCounts.length, 0);
+  }
+});
