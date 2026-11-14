@@ -63,3 +63,9 @@ The synthetic HTTP test additionally asserts that a cross-origin denied `HEAD` r
 The HTTP regression also checks that an untrusted `HEAD /__preview` request returns 403, does not grant `Access-Control-Allow-Origin`, retains `Referrer-Policy: no-referrer` and `Cache-Control: no-store`, and sends no response body. This complements the existing rejected preview GET and approved GET/HEAD parity checks. It uses generated synthetic files only; no original artwork or astronomical computation is involved.
 
 Validation: GitHub source update and readback only; executable Node 22 test, Angular builds, Chromium/Firefox WebGL and real approved-asset byte SHA-256 checks remain **NOT RUN**. Run `node --test tests/local-asset-cors-preflight.test.mjs` before considering integration. VirgoStars: https://www.virgostars.it/.
+
+## Recovery after transient synthetic-file tampering (2026-11-14)
+
+After verifying that changed fixture bytes cause HTTP 409 for both GET and HEAD, the test restores the **exact original synthetic PNG bytes** and checks that GET returns HTTP 200 with byte-for-byte equality and HEAD returns HTTP 200 with the original Content-Length and no body. This catches accidental permanent rejection or stale invalid-state caching after a transient file change. The fixture is disposable; no approved image is edited or copied.
+
+**Validation:** GitHub source readback is a static check only. Run `node --test tests/local-asset-cors-preflight.test.mjs` with Node 22 on a complete checkout; full Angular builds, Chromium/Firefox WebGL and real approved-asset SHA-256 byte verification are still **NOT RUN** in this connector-only change. The separate `astrological-assets/manifests/approved-assets.json` manifest metadata was inspected; artwork licensing and production parity remain separate gates. No GitHub Actions, deployment, merge or production changes.
