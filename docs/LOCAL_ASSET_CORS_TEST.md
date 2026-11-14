@@ -47,3 +47,9 @@ The synthetic HTTP suite now verifies that an approved loopback `Origin` cannot 
 The regression now reads the generated fixture PNG directly and compares **all GET response bytes** against that fixture with a strict buffer assertion. It also verifies that GET and HEAD advertise the exact fixture byte length, while HEAD returns no body. This strengthens the end-to-end HTTP contract beyond status/header-only checks and runs entirely on synthetic images. The existing post-startup tampering checks still require HTTP 409.
 
 **Validation:** source and documentation committed through the GitHub connector; Node 22 runtime test, Angular build, browser WebGL and actual approved-artwork SHA-256 checks remain **NOT RUN**. Run `node --test tests/local-asset-cors-preflight.test.mjs` in a full checkout. No changes to renderer calculations, approved asset images, deployment or production.
+
+## Local preview referrer privacy (2026-11-14)
+
+The loopback-only asset server now sets `Referrer-Policy: no-referrer` on every response, including `/__preview`, unlisted assets (404), and tampered assets (409). This reduces accidental disclosure of local preview paths when navigating to the visible VirgoStars credit link. The synthetic HTTP regression asserts the header for these response classes. The credit link remains `https://www.virgostars.it/`; no artwork or ephemeris logic is changed.
+
+**Validation:** GitHub commit and source readback only; `node --test tests/local-asset-cors-preflight.test.mjs` is **NOT RUN** until a full Node 22 checkout is available. Full Angular builds, Chromium/Firefox WebGL and approved real-file SHA-256 verification remain **NOT RUN**. This header is defense-in-depth, not proof of browser behavior or license clearance.
