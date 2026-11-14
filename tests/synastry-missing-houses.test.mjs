@@ -84,7 +84,7 @@ function selectedCelestial(theme, selectedSystem) {
 }
 
 function syntheticRenderer({ texture = 'local-test-texture', failHouses = false, failSigns = false, validateCusps = unwrapHouseCusps } = {}) {
-  const calls = { houses: 0, planets: 0, signs: 0, visualTheme: null, selectedAngles: null, signAngle: null, cleaned: 0, cleanedNodes: [] };
+  const calls = { houses: 0, planets: 0, signs: 0, visualTheme: null, selectedAngles: null, signAngle: null, houseRotationOverride: null, cleaned: 0, cleanedNodes: [] };
   class Group {
     children = [];
     add(child) { this.children.push(child); }
@@ -118,8 +118,9 @@ function syntheticRenderer({ texture = 'local-test-texture', failHouses = false,
     './house-cusps': { unwrapHouseCusps: validateCusps },
     './case.renderer': {
       CaseRender: {
-        getAnelloCaseCartaAstrale: async () => {
+        getAnelloCaseCartaAstrale: async (...args) => {
           calls.houses++;
+          calls.houseRotationOverride = args[11];
           if (failHouses) throw new Error('Synthetic case rendering failure');
           return { kind: 'houses', children: [{ kind: 'case-image' }] };
         },
@@ -417,6 +418,7 @@ test('keeps exact reference angle when selected house frame is unusually large',
   assert.equal(calls.selectedAngles, 13, 'planet ring must keep the exact reference angle');
   assert.equal(calls.signAngle, 13, 'zodiac ring must use the same exact reference angle');
   assert.equal(calls.houses, 1);
+  assert.equal(calls.houseRotationOverride, -13, 'exact negative reference goes to the case ring');
   assert.equal(calls.cleaned, 0);
   assert.deepEqual(theme, before, 'input chart must not be mutated');
 });
