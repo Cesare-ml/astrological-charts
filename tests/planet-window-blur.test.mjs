@@ -448,3 +448,97 @@ test('visible-but-unfocused document rejects repeated focus until actual focus r
   assert.deepEqual(p.events,['click:MC']);
   p.controller.destroy();
 });
+
+test('click is cancelled if the owner window blurs synchronously during raycast',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>{
+    p.windowTarget.emit('blur');
+    return event.ref;
+  };
+  p.canvas.emit('click',{ref:axis('MC')});
+  assert.deepEqual(p.events,[], 'the click must not pin an axis after blur');
+  assert.equal(p.controller.windowBlurred,true);
+  p.controller.destroy();
+});
+
+test('click is cancelled if document becomes hidden during raycast',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>{
+    p.ownerDocument.visibilityState='hidden';
+    p.ownerDocument.emit('visibilitychange');
+    return event.ref;
+  };
+  p.canvas.emit('click',{ref:axis('DS')});
+  assert.deepEqual(p.events,[], 'backgrounded raycast must not deliver click');
+  p.controller.destroy();
+});
+
+test('click is cancelled when pick destroys the controller',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>{
+    p.controller.destroy();
+    return event.ref;
+  };
+  p.canvas.emit('click',{ref:axis('AS')});
+  assert.deepEqual(p.events,[], 'disposed controller cannot emit click');
+  assert.equal(p.windowTarget.count('blur'),0);
+  assert.equal(p.windowTarget.count('focus'),0);
+  assert.equal(p.ownerDocument.count('visibilitychange'),0);
+});
+
+test('click is cancelled if its scene changes during raycast',()=>{
+  const p=harness();
+  const originalScene={};
+  p.controller.scene=originalScene;
+  p.controller.sceneRevision=3;
+  p.controller.pick=event=>{
+    // A synchronous host rebuild can replace the scene during hit testing.
+    p.controller.scene={};
+    p.controller.sceneRevision++;
+    return event.ref;
+  };
+  p.canvas.emit('click',{ref:axis('IC')});
+  assert.deepEqual(p.events,[], 'stale scene hit must not select an axis');
+  p.controller.destroy();
+});
+
+test('pointermove cannot restore hover if blur fires inside a raycast with no previous hover',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>{
+    p.windowTarget.emit('blur');
+    return event.ref;
+  };
+  p.canvas.emit('pointermove',{ref:axis('AS')});
+  assert.deepEqual(p.events,[], 'blurred raycast must not emit enter');
+  assert.equal(p.controller.hovered,null);
+  assert.equal(p.controller.windowBlurred,true);
+  p.controller.destroy();
+});
+
+test('pointermove cannot restore hover if document hides inside raycast',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>{
+    p.ownerDocument.visibilityState='hidden';
+    p.ownerDocument.emit('visibilitychange');
+    return event.ref;
+  };
+  p.canvas.emit('pointermove',{ref:axis('MC')});
+  assert.deepEqual(p.events,[], 'hidden-document raycast must not emit enter');
+  assert.equal(p.controller.hovered,null);
+  p.controller.destroy();
+});
+
+test('normal visible click still reaches host after a stable raycast',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.canvas.emit('click',{ref:axis('MC')});
+  assert.deepEqual(p.events,['click:MC']);
+  assert.equal(p.camera.zoom,1);
+  p.controller.destroy();
+});
