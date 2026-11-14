@@ -33,3 +33,9 @@ After adding the reference-Ascendant guard, a separate isolated test harness com
 All **4/4 isolated Node tests PASS, exit 0**: invalid-reference rejection before drawing; 0° reference behavior for valid and missing selected house systems; null theme early return; and a regression control proving the preceding renderer silently passed `NaN` to both planetary and zodiac ring renderers. The committed test suite has **15 cases**, including the two new reference-Ascendant cases; **that full committed Node suite was NOT RUN** because a full repository checkout and all real dependencies are unavailable in this environment.
 
 The full `npm ci`, `npm run verify:angular`, Chromium/Firefox WebGL/PNG visual baselines and Astrolabio headless/e-ink consumers remain **NOT RUN**. A passing isolated unit test is not approval to merge or release.
+
+## Precision of synastry reference-ring rotation
+
+The selected-house Ascendant may arrive in a numeric frame that differs from the chart's 0–360° reference. The old expression `as + (ascendenteTemaDiRiferimento - as) - offsSinastriaDeflettiva` mathematically cancels `as`, but floating-point arithmetic can lose degrees when `as` is unusually large. A synthetic finite input `as = 1e16`, reference `13°` previously supplied `12°` to both planet and sign rings. Both now receive `ascendenteTemaDiRiferimento - offsSinastriaDeflettiva` directly, preserving the intended reference. A regression exercises the real TypeScript renderer source with fake visual modules, covering exact planet/sign rotations, unchanged ring selection and input immutability. This defensive numeric case does not assert that extremely large longitudes are astronomically meaningful.
+
+The inner house-ring offset formula is unchanged. Full Node, Angular/WebGL and Astrolabio validation remains required.
