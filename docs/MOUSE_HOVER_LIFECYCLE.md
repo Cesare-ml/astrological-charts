@@ -67,9 +67,9 @@ were **not run**. Passing mocks must not be interpreted as render parity.
 
 ## Stacked integration gate (2026-11-14)
 
-Merged the still-draft PR #42 branch as a Git parent while preserving all
-its coordinate-resize test and documentation. This PR now targets the #42
-feature branch rather than main; **merge #42 into main first**, then
+PR #94 is based directly on the still-draft PR #42 head, preserving its
+coordinate-resize tests and documentation without importing unrelated commits
+from main. This is a clean stacked PR: **merge #42 into main first**, then
 review/rebase #94. Neither PR has been independently merged or deployed.
 
 The locally reproduced combined TypeScript helper passed:
