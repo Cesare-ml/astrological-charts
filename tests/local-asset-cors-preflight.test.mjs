@@ -184,7 +184,7 @@ test('CORS preflight only authorizes configured local origins', async () => {
       assert.equal(tampered.headers.get('cache-control'), 'no-store', method);
       assert.equal(tampered.headers.get('x-content-type-options'), 'nosniff', method);
       assert.equal(tampered.headers.get('access-control-allow-origin'), 'http://localhost:4200', method);
-      assert.equal(await tampered.text(), method === 'HEAD' ? '' : 'Asset integrity check failed', method);
+      assert.equal(await tampered.text(), method === 'HEAD' ? '' : 'Pack file changed since verification', method);
     }
 
     // Restoring the exact approved bytes must recover normal GET/HEAD access.
