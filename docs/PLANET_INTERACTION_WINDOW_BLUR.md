@@ -64,12 +64,20 @@ The usual `test:planet-interactions` command includes this
 new file. Synthetic axes are only identifiers; no real natal charts,
 personal birth data or private assets are used.
 
-**Validation status for this change:** Source, test, docs and script are
-committed through the GitHub connector; a full repository checkout and the
-`npm ci` / `npm run verify:angular` gates were **NOT RUN** in this session
-because the isolated local container cannot resolve GitHub hosts. Do **not**
-claim all twenty-two cases passed on the exact GitHub tree without running the
-test command from a real checkout.
+**Validation status (2026-11-14): PASS, 22/22 dedicated Node tests.**
+The exact controller and test files were reconstructed from the GitHub branch
+and each local file's `git hash-object` matches its GitHub blob:
+`d7e01dcafbebc8bd7d94b055a988a52ff092a516` (controller) and
+`25a043a8d7feae3b011aab5330eb23e43bfaacf6` (test).
+Running `node --test tests/planet-window-blur.test.mjs` with Node.js
+**22.16.0** and TypeScript **5.8.3** yielded **22 pass, 0 fail, 0 skip**
+(TAP duration ~565 ms). TypeScript `transpileModule` also returned **zero
+diagnostics**. This test intentionally uses its committed Three.js/DOM event
+stubs, so it is *not* an actual WebGL or Angular integration test.
+
+The full repository checkout, `npm ci`, complete `test:planet-interactions`
+and `npm run verify:angular` remain **NOT RUN**, because DNS prevented
+checking out the complete repository in the isolated container.
 
 ## Browser acceptance and integration
 
@@ -110,21 +118,19 @@ only when the owning document is visible and `document.hasFocus()` is true; a `v
 separate window focus event fires. A
 window-focus event **cannot** bypass an owner document that is still hidden.
 
-The test file now declares **22 Node regressions**.
-A logic-level execution of all twenty-two committed test callbacks using
-the branch's exact `move`, `click`, `leave`, `onWindowBlur`,
-`onWindowFocus`, `onDocumentVisibilityChange` and `destroy` method bodies
-passed **22/22** (source blob `d7e01dcafbebc8bd7d94b055a988a52ff092a516`,
-test blob `25a043a8d7feae3b011aab5330eb23e43bfaacf6`).
-A false-positive focus-resume behavior was independently reproduced in the
-previous method implementation: when a visible document reported
-`hasFocus() === false`, a received `window.focus` event cleared the
-blur latch. The new focus guard requires actual document focus.
-That isolated execution supplied simplified constructor, `send` and GPU
-cleanup implementations. It does **not** run the actual Node test file via
-`node --test` with the full repository and TypeScript transpilation, nor
-does it validate Angular or browser/WebGL integration. Those gates remain
-**NOT RUN**. For complete validation run:
+The dedicated `node --test` run described above executes the actual
+committed test module and transpiles the complete committed controller,
+including its real constructor, event listeners, `leave()` and `destroy()`.
+The same tests previously passed in a smaller handler-only probe, but
+**the Node run now supersedes that limited evidence**.
+
+The earlier false-positive focus-resume behavior was reproduced before the
+fix: a visible document reporting `hasFocus() === false` received
+`window.focus`, incorrectly clearing the blur latch. The new guard requires
+actual document focus.
+
+The rest of the repository and real browser/Three.js integration still
+need their own checks. For the complete integration gate, run:
 
 ```bash
 npm ci
