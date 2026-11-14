@@ -12,10 +12,20 @@ export interface ChartGlyphAngle {
   deg: number;
 }
 
+// A non-finite or negative separation silently produces NaN glyph angles,
+// or disables collision spacing. Keep the allowed range to one full turn.
+function assertGlyphSeparation(value: number): void {
+  if (!Number.isFinite(value) || value < 0 || value > 360) {
+    throw new RangeError('Glyph separation must be finite and between 0 and 360 degrees');
+  }
+}
+
 /** Historical mutating collision pass; use on PRIVATE working copies only. */
 export function relaxChartGlyphCycle<T extends ChartGlyphAngle>(
   planets: T[], minSeparation = 7
 ): T[] {
+  // Validate before sorting: invalid options must not mutate a caller's array.
+  assertGlyphSeparation(minSeparation);
   planets.sort((a,b) => a.deg - b.deg);
   for (let i = 1; i < planets.length; i++) {
     const a = planets[i-1].deg;
@@ -38,6 +48,7 @@ export function layoutChartGlyphLongitudes(
   coordinate: string,
   minSeparation = 7
 ): Record<string,Record<string,number>> {
+  assertGlyphSeparation(minSeparation);
   const original: ChartGlyphAngle[] = [];
   // Only actual chart bodies belong in this ring: enumerable prototype
   // properties must not become ghost planets.
