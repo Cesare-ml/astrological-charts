@@ -89,8 +89,12 @@ export class OggettiSempliciRender {
     // pass the outer radius as zero. Preserve radius order; reject only invalid
     // radii before Three.js constructs NaN/Infinity vertices.
     if (!Number.isFinite(yInterno) || !Number.isFinite(yEsterno) ||
-        yInterno < 0 || yEsterno < 0) {
-      throw new RangeError('Arc radii must be finite and non-negative.');
+        yInterno < 0 || yEsterno < 0 ||
+        !Number.isFinite(Math.fround(yInterno)) ||
+        !Number.isFinite(Math.fround(yEsterno))) {
+      // ShapeGeometry stores position coordinates in Float32 arrays. Finite
+      // JavaScript doubles may otherwise overflow to +/-Infinity on the GPU.
+      throw new RangeError('Arc radii must be finite, non-negative and representable as Float32.');
     }
     // Three.js EllipseCurve.getPoint() normalizes angle differences with
     // repeated +/-2PI loops. Large raw angles would still freeze rendering
