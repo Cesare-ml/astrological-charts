@@ -73,19 +73,30 @@ export class OggettiSempliciRender {
     return mesh;
   }
 
+  // Tiny arcs need at least two sampled divisions to form stable geometry.
+  // Limit pathological input spans to prevent unbounded synchronous allocations.
+  private static arcSubdivisionCount(startDeg: number, endDeg: number): number {
+    if (!Number.isFinite(startDeg) || !Number.isFinite(endDeg) ||
+        !Number.isFinite(endDeg - startDeg)) {
+      throw new RangeError('Arc angles must be finite.');
+    }
+    return Math.min(720, Math.max(2, Math.trunc(Math.abs(endDeg - startDeg))));
+  }
+
   public static getSemiArcoGrosso(a, b, yInterno, yEsterno, colore, textureUrl = null) {
+    const subdivisions = this.arcSubdivisionCount(a, b);
     //console.log(a,b,yEsterno,yInterno,colore, textureUrl);
     const arcoInterno = new THREE.EllipseCurve(
       0, 0, yInterno, yInterno,
       THREE.MathUtils.degToRad(a), THREE.MathUtils.degToRad(b), false, 0
     );
-    const puntiArcoInterno = arcoInterno.getSpacedPoints(Math.trunc(b - a));
+    const puntiArcoInterno = arcoInterno.getSpacedPoints(subdivisions);
 
     const arcoEsterno = new THREE.EllipseCurve(
       0, 0, yEsterno, yEsterno,
       THREE.MathUtils.degToRad(a), THREE.MathUtils.degToRad(b), false, 0
     );
-    const puntiArcoEsterno = arcoEsterno.getSpacedPoints(Math.trunc(b - a)).reverse();
+    const puntiArcoEsterno = arcoEsterno.getSpacedPoints(subdivisions).reverse();
 
     const punti = puntiArcoInterno.concat(puntiArcoEsterno);
     const shape = new THREE.Shape(punti);
@@ -98,13 +109,15 @@ export class OggettiSempliciRender {
 
     const uvAttr = [];
     const posAttr = geometry.attributes['position'];
+    const uvWidth = max.x - min.x;
+    const uvHeight = max.y - min.y;
 
     for (let i = 0; i < posAttr.count; i++) {
       const x = posAttr.getX(i);
       const y = posAttr.getY(i);
 
-      const u = (x - min.x) / (max.x - min.x);
-      const v = (y - min.y) / (max.y - min.y);
+      const u = Number.isFinite(uvWidth) && uvWidth > 0 ? (x - min.x) / uvWidth : 0.5;
+      const v = Number.isFinite(uvHeight) && uvHeight > 0 ? (y - min.y) / uvHeight : 0.5;
 
       uvAttr.push(u, v);
     }
