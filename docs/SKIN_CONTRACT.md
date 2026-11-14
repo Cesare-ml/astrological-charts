@@ -84,12 +84,21 @@ agreement between partial and explicit results (with a small WebGL
 antialiasing tolerance). It restores the previous skin configuration even
 if a render fails. The fixture preserves whether the original `sinastria`
 property was present at all (rather than confusing an explicitly undefined
-value with an absent property). A separate failure-path probe temporarily
-rejects a synthetic asset request, asserts that the original skin object and
-`GestoreImmagini.loadAsync` function are restored, disposes the failed
-renderer, and verifies that a subsequent ordinary PNG export succeeds.
-The asset-load rejection is intercepted inside the browser and does not
-require editing the host's verified synthetic image pack.
+value with an absent property). A separate failure-path probe intercepts
+`GestoreImmagini.loadAsync` and rejects the **second** request for
+`simboli-bianchi/segni/06.png`, which corresponds to the secondary
+sinastry sign ring in the current renderer. This must be observed exactly
+twice before accepting the expected failure; rejecting the first natal
+asset would not exercise nested-sinastry cleanup. After the rejection,
+the test asserts that the original skin override and image loader are
+restored, disposes the failed renderer, and requires a subsequent PNG
+export to succeed.
+
+The injection is local to the browser test and does not require modifying
+the host's verified synthetic asset pack. The second-sign ordering is a
+renderer test invariant; if rendering order intentionally changes, inspect
+the actual asset requests and update the fixture with a documented equivalent
+secondary-ring marker rather than silently weakening this assertion.
 
 The browser regression does not change the Angular demo, ship assets or
 create approved screenshot baselines.
