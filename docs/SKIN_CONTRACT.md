@@ -35,6 +35,10 @@ then checks:
 - Glyph image-folder selectors, when provided, use the available `bianco` and
   `nero` folders. Negative cases demonstrate the check catches missing artwork,
   unsafe/remote URLs, unsupported color tokens and folder names.
+- Every active `texture` and `imgRisuonatoreSolare` declaration in
+  `SkinManager` is a static string literal (or `null` for optional textures).
+  Computed expressions are rejected, because the chart-only AST asset selector
+  cannot guarantee those paths are represented in the synthetic demo manifest.
 
 Optional textures and null synastry overrides are permitted. When adding a
 new supported skin, update the expected IDs and confirm that the demo offers it.
@@ -44,6 +48,11 @@ every active literal skin texture and resonator image discovered by the TypeScri
 AST selection helper. This guards against a newly declared skin resource being
 absent from local browser fixtures. It does not confirm that the original
 host-owned asset exists or that a runtime-generated path resolves.
+
+For a static declaration, the syntax gate protects **enumerability** only.
+The separate `test:demo-pack` coverage check verifies that the declared
+non-null resource paths appear in the generated synthetic manifest. Neither
+check proves that private, real artwork has been approved or is present.
 
 This test is **not** a screenshot, a WebGL render, an asset-manifest integrity
 check or a demonstration of visual parity with VirgoStars or Astrolabio.
