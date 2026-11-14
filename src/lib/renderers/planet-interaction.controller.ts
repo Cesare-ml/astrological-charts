@@ -61,6 +61,7 @@ export class PlanetInteractionController {
   private hovered: ChartPlanetRef | null = null;
   private pinned: ChartPlanetRef | null = null;
   private readonly cursor: string;
+  private readonly hostWindow: Window | null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -69,11 +70,16 @@ export class PlanetInteractionController {
     private readonly requestRender: () => void
   ) {
     this.cursor = canvas.style.cursor;
+    // A detached/document-owned canvas may belong to a different Window.
+    // Resolve its real owner once; Node-only renderer probes have no window.
+    this.hostWindow = canvas.ownerDocument?.defaultView
+      ?? (typeof window === 'undefined' ? null : window);
     canvas.addEventListener('pointermove', this.move);
     canvas.addEventListener('pointerleave', this.leave);
     canvas.addEventListener('pointerup', this.finishPointer);
     canvas.addEventListener('pointercancel', this.finishPointer);
     canvas.addEventListener('click', this.click);
+    this.hostWindow?.addEventListener('blur', this.onWindowBlur);
   }
 
   setScene(scene: THREE.Scene | null): void {
@@ -241,6 +247,7 @@ export class PlanetInteractionController {
     if (this.disposed) return;
     this.disposed = true;
     ++this.sceneRevision;
+    this.hostWindow?.removeEventListener('blur', this.onWindowBlur);
     this.canvas.removeEventListener('pointermove', this.move);
     this.canvas.removeEventListener('pointerleave', this.leave);
     this.canvas.removeEventListener('pointerup', this.finishPointer);
@@ -386,6 +393,14 @@ export class PlanetInteractionController {
         this.requestRender();
     }
   };
+  /** Losing the browser focus ends hover but keeps the selected/pinned axis.
+   * Ignore duplicate blur during a leave callback: a redundant leave() would
+   * increment pointerRevision and suppress the outer leave's final repaint.
+   */
+  private onWindowBlur = (): void => {
+    if (!this.disposed && (this.hovered || this.pendingHoverExit)) this.leave();
+  };
+
   private leave = (): void => {
     if (this.disposed) return;
     // Even with hovered=null, an in-flight pointermove may be in its
