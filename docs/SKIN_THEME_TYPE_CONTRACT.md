@@ -6,12 +6,14 @@ This patch adds the missing literal to the `TemaGrafico` union. It does **not** 
 
 ## Regression contract
 
-`npm run test:skin-theme-types` uses the TypeScript parser to check that:
+`npm run test:skin-theme-types` uses the TypeScript parser and semantic checker to check that:
 1. `TemaGrafico` contains exactly one literal for each theme in `SkinManager.skins`, including `astrolabio-girasole`.
 2. Every registered theme defines the shared chart sections required by the renderer.
 3. The default `temaGrafico` refers to a registered theme.
+4. Both the `Settaggi.skin_id` class initializer and the persisted `settaggiDefault.skin_id` refer to the same registered skin.
+5. The TypeScript compiler accepts a typed `astrolabio-girasole` assignment and rejects an unknown skin with diagnostic TS2322.
 
-The test is also included in `npm run preflight`. This is a source/type-contract regression, not proof of WebGL pixels, production asset rights, skin art parity or Astrolabio hardware compatibility.
+The test is also included in `npm run preflight`. A standalone semantic checker probe of the extracted `TemaGrafico` union passed under Node.js 22.16.0 and TypeScript 5.8.3 (accepted the real `astrolabio-girasole` literal; rejected `invalid-chart-skin` with TS2322). The full committed Node suite and Angular/WebGL build have not run in this environment. This is a source/type-contract regression, not proof of WebGL pixels, production asset rights, skin art parity or Astrolabio hardware compatibility.
 
 ## Required validation before merge
 
