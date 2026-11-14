@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -51,11 +53,28 @@ test('HTTP GET and HEAD reject changed lengths and recover after file restoratio
     // The server was initialized with the original manifest; both HTTP
     // methods must still enforce its approved byte count after startup.
     writeFileSync(file, Buffer.concat([original, Buffer.alloc(1024 * 1024)]));
-    for (const method of ['GET', 'HEAD']) {
-      const response = await fetch(url, {method});
-      assert.equal(response.status, 409, `${method} must reject changed size`);
-      if (method === 'HEAD')
-        assert.equal((await response.arrayBuffer()).byteLength, 0);
+    const originalRead = fs.readFileSync;
+    let oversizedFileReads = 0;
+    // syncBuiltinESMExports propagates this spy to the helper's ESM named
+    // fs.readFileSync import, proving that rejection happens BEFORE reading.
+    fs.readFileSync = (path, ...args) => {
+      if (String(path).endsWith(join('img', 'synthetic.png')))
+        oversizedFileReads++;
+      return originalRead(path, ...args);
+    };
+    syncBuiltinESMExports();
+    try {
+      for (const method of ['GET', 'HEAD']) {
+        const response = await fetch(url, {method});
+        assert.equal(response.status, 409, `${method} must reject changed size`);
+        if (method === 'HEAD')
+          assert.equal((await response.arrayBuffer()).byteLength, 0);
+      }
+      assert.equal(oversizedFileReads, 0,
+        'an oversized approved file must be rejected before readFileSync');
+    } finally {
+      fs.readFileSync = originalRead;
+      syncBuiltinESMExports();
     }
 
     writeFileSync(file, original);
