@@ -44,3 +44,15 @@ test('Angular verification runs preflight and both builds in order', () => {
   assert.match(packageJson.scripts['test:offline'], /node --test tests\/offline-browser\.test\.mjs/);
   assert.match(packageJson.scripts['demo:generate-synthetic'], /--out \.local\/synthetic-pack\b/);
 });
+
+test('release roadmap cannot silently bypass the private-package and owner-approval gates', () => {
+  assert.equal(packageJson.private, true, 'npm package must stay private until release approval');
+  assert.match(roadmap, /explicit owner approval before merge, deployment, npm publication/);
+  assert.match(roadmap, /source\/third-party rights audit/);
+  assert.match(roadmap, /precomputed astronomical inputs remain owned by the upstream ephemeris\/functions layer/);
+  assert.match(roadmap, /project link in the demo/);
+  assert.match(packageJson.engines.node, /22\\.12\\.0/, 'documented Node 22 baseline must remain supported');
+  for (const script of Object.keys(packageJson.scripts)) {
+    assert.doesNotMatch(script, /^(?:publish|deploy|release)(?::|$)/, `unexpected automatic release script: ${script}`);
+  }
+});
