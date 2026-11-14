@@ -85,8 +85,18 @@ export function chartBodyRenderAngles(
   ascendant: number,
   degreesOffset: number
 ): ChartBodyRenderAngles {
+  // The four values come from upstream chart data. Never pass nonfinite
+  // coordinates to a Three.js rotation, vertex or tick-line transform.
+  if (![originalCoordinate, collisionAdjustedCoordinate, ascendant, degreesOffset]
+      .every(Number.isFinite)) {
+    throw new RangeError('Glyph render angles require finite numeric inputs');
+  }
   const tickDegrees = 75 - ascendant + 15 + originalCoordinate + degreesOffset;
   const glyphDisplacementDegrees = collisionAdjustedCoordinate - originalCoordinate;
-  return {tickDegrees,glyphDisplacementDegrees,
-    glyphDegrees:tickDegrees+glyphDisplacementDegrees};
+  const glyphDegrees = tickDegrees + glyphDisplacementDegrees;
+  // Finite operands can still overflow during subtraction/addition.
+  if (![tickDegrees, glyphDisplacementDegrees, glyphDegrees].every(Number.isFinite)) {
+    throw new RangeError('Glyph render angle arithmetic overflowed');
+  }
+  return {tickDegrees,glyphDisplacementDegrees,glyphDegrees};
 }
