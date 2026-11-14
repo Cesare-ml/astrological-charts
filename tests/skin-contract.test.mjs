@@ -92,6 +92,24 @@ function assertStaticAssetDeclarations(source) {
   return declarations;
 }
 
+// The renderer's sinastria branches use nullish fallback to each ring's base
+// style. An override may supply only the properties it intentionally changes.
+function assertSynastryOverrides(skin, context) {
+  for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase']) {
+    const override = skin[section].sinastria;
+    if (override == null) continue;
+    const label = context + '.' + section + '.sinastria';
+    assert.ok(typeof override === 'object' && !Array.isArray(override),
+      label + ' must be an object when supplied');
+    for (const key of ['coloreLinea', 'coloreSimboli', 'coloreTexture']) {
+      if (override[key] == null) continue; // ?? falls back to base-ring values.
+      assertSkinColor(override[key], label + '.' + key,
+        { allowElementi: key === 'coloreSimboli' && section !== 'anelloElementiCelesti' });
+    }
+    assertImageFolder(override.coloreImgFolder, label + '.coloreImgFolder');
+  }
+}
+
 test('active skin asset declarations are static paths or optional null textures', () => {
   const source = readFileSync(new URL('../src/lib/renderers/@skin-manager.ts', import.meta.url), 'utf8');
   const paths = assertStaticAssetDeclarations(source);
@@ -164,22 +182,43 @@ test('each skin has a usable natal, transit, synastry and latitude configuration
     assertSkinColor(latitude.coloreGriglia, context + '.latitudini.elementiCelesti.coloreGriglia');
     assertSkinColor(latitude.coloreEclittica, context + '.latitudini.elementiCelesti.coloreEclittica');
 
-    for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase']) {
-      const override = skin[section].sinastria;
-      if (override == null) continue;
-      assert.equal(typeof override, 'object', context + '.' + section + '.sinastria');
-      assertSkinColor(override.coloreLinea, context + '.' + section + '.sinastria.coloreLinea');
-      assertSkinColor(override.coloreSimboli, context + '.' + section + '.sinastria.coloreSimboli',
-        { allowElementi: section !== 'anelloElementiCelesti' });
-      if (override.coloreTexture != null) {
-        assertSkinColor(override.coloreTexture, context + '.' + section + '.sinastria.coloreTexture');
-      }
-      assertImageFolder(override.coloreImgFolder, context + '.' + section + '.sinastria.coloreImgFolder');
-    }
+    assertSynastryOverrides(skin, context);
     for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase', 'anelloTransiti']) {
       assertImageFolder(skin[section].coloreImgFolder, context + '.' + section + '.coloreImgFolder');
     }
   }
+});
+
+test('partial synastry overrides inherit base styles while validating supplied values', () => {
+  const partial = {
+    anelloElementiCelesti: { sinastria: { coloreLinea: '#aabbcc' } },
+    anelloSegni: { sinastria: { coloreSimboli: 'elementi' } },
+    anelloCase: { sinastria: { coloreTexture: '#abc', coloreImgFolder: 'bianco' } },
+  };
+  assert.doesNotThrow(() => assertSynastryOverrides(partial, 'partial'));
+  assert.doesNotThrow(() => assertSynastryOverrides({
+    anelloElementiCelesti: { sinastria: null },
+    anelloSegni: {},
+    anelloCase: { sinastria: {} },
+  }, 'fallback'));
+
+  partial.anelloElementiCelesti.sinastria.coloreSimboli = 'elementi';
+  assert.throws(
+    () => assertSynastryOverrides(partial, 'invalidPlanet'),
+    /must be a CSS hex color or a supported skin color token/,
+  );
+  delete partial.anelloElementiCelesti.sinastria.coloreSimboli;
+  partial.anelloCase.sinastria.coloreLinea = 'not-a-color';
+  assert.throws(
+    () => assertSynastryOverrides(partial, 'invalidColor'),
+    /must be a CSS hex color or a supported skin color token/,
+  );
+  delete partial.anelloCase.sinastria.coloreLinea;
+  partial.anelloCase.sinastria = [];
+  assert.throws(
+    () => assertSynastryOverrides(partial, 'invalidArray'),
+    /must be an object when supplied/,
+  );
 });
 
 test('declared skin image and texture paths remain host-owned and canonical', () => {
