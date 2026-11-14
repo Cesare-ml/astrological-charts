@@ -4,6 +4,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
 import {ElementiCelestiRender} from './elementi-celesti.renderer';
 import {CaseRender} from './case.renderer';
+import { unwrapHouseCusps } from './house-cusps';
 import {SegniRender} from './segni.renderer';
 import { SkinManager } from '../@skin-manager';
 import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer';
@@ -31,15 +32,38 @@ export class SinastriaRender {
     var as = 0;
     var mc = 0;
     if(!temaRender) return null;
-    if(temaRender.houses && Object.keys(temaRender.houses).length) {
-      as = temaRender.houses[stato.opzioni.settaggi.domificazione_selezionata].ascendant;
-      mc = temaRender.houses[stato.opzioni.settaggi.domificazione_selezionata].mc;
+    // Reject invalid reference directions before they propagate to planet/sign rotations.
+    if (!Number.isFinite(ascendenteTemaDiRiferimento)) {
+      throw new TypeError('Synastry reference ascendant must be a finite longitude.');
+    }
+    const candidateHouses = temaRender.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
+    // Partial offline records can have a selected key without usable angles or cusps.
+    // Treat those like an unknown birth time rather than rendering NaN geometry.
+    let selectedHouses = null;
+    if(candidateHouses && Number.isFinite(candidateHouses.ascendant) && Number.isFinite(candidateHouses.mc)) {
+      try {
+        // Use the same full-revolution validation as the house-ring renderer.
+        // Finite but inconsistent cusp sequences must not crash synastry.
+        unwrapHouseCusps(candidateHouses.house);
+        selectedHouses = candidateHouses;
+      } catch (error) {
+        if (!(error instanceof TypeError || error instanceof RangeError)) throw error;
+      }
+    }
+    // Without the selected house system, suppress axes derived from other systems.
+    const temaPerElementi = selectedHouses ? temaRender : { ...temaRender, houses: {} };
+    if(selectedHouses) {
+      as = selectedHouses.ascendant;
+      mc = selectedHouses.mc;
       //diametroAnelloElementiCelesti = diametroAnelloCase;
     }
 
     var imgRefCase;
     var simboliScaleCase = 0.7;
     var offsSinastriaDeflettiva=0;
+    // Use the reference directly: as + (reference - as) can lose precision
+    // when the selected house Ascendant has a large numeric frame.
+    const rotazioneRiferimentoSinastria = ascendenteTemaDiRiferimento - offsSinastriaDeflettiva;
     /*
     if(opzioni.sinastria.sinastriaDeflettiva) {
       imgRefCase = 'sinastria-deflettiva-case-interno';
@@ -54,7 +78,7 @@ export class SinastriaRender {
     }*/
 
     var anelloCase;
-    if(temaRender.houses && Object.keys(temaRender.houses).length) {
+    if(selectedHouses) {
       anelloCase = await CaseRender.getAnelloCaseCartaAstrale(
         temaRender.houses,
         -(ascendenteTemaDiRiferimento-as) + offsSinastriaDeflettiva,//degOffs
@@ -92,8 +116,8 @@ export class SinastriaRender {
     }
 
     var anelloElementiCelesti = await ElementiCelestiRender.getAnelloElementiCelesti(
-      temaRender,
-      as + (ascendenteTemaDiRiferimento-as) - offsSinastriaDeflettiva,
+      temaPerElementi,
+      rotazioneRiferimentoSinastria,
       pianetiDaColorare,
       0.8,
       stato.opzioni,
@@ -118,7 +142,7 @@ export class SinastriaRender {
     group.add(anelloElementiCelesti);
 
     var anelloSegni = await SegniRender.getAnelloSegniSinastria(
-      as + (ascendenteTemaDiRiferimento-as) - offsSinastriaDeflettiva,
+      rotazioneRiferimentoSinastria,
       diametroCerchioAspetti,
       diametroAnelloSegni,
       false, //australInversion
