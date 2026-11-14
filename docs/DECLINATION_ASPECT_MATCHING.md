@@ -22,10 +22,10 @@ The existing strict 1° threshold is deliberately preserved. This PR does not ch
 Run from the repository checkout after `npm ci`:
 
 ```bash
-node --test tests/aspect-declination.test.mjs
+npm run test:aspects
 ```
 
-The Node test extracts and transpiles the **actual** two static renderer methods to check matching without requiring WebGL, Angular or images. Both methods must reject longitude-only false positives, recognize real parallels/antiparallels, preserve their 1° boundary and keep a normal longitude conjunction.
+The Node test extracts and transpiles the **actual** two static renderer methods to check matching without requiring WebGL, Angular or images. Both methods must reject longitude-only false positives, recognize real parallels/antiparallels, handle one-sided/missing/null/non-finite input, preserve strict 1° thresholds and retain ordinary conjunctions, including the 359°/1° seam. The `test:aspects` command also runs inside `npm run preflight` and therefore `npm run verify:angular`.
 
 A separate isolated V8 execution of both GitHub-branch method bodies on 2026-11-14 passed 16/16 focused assertions; the two methods on `main` each reproduced the longitude-only false positive. This is **not** equivalent to running the repository Node test or Angular/browser suite.
 
