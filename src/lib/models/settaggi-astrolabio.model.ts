@@ -264,10 +264,9 @@ export const settaggiAstrolabioDefault:SettaggiAstrolabio = {
  *
  * The existing exported settaggiAstrolabioDefault object remains unchanged for
  * backwards compatibility. Callers managing multiple charts/devices should use
- * this factory instead of mutating the shared constant.
+ * this factory instead of mutating the shared constant. The initial values are\n * captured at module load, so later legacy mutations cannot contaminate charts.
  */
-export function createDefaultSettaggiAstrolabio(): SettaggiAstrolabio {
-  const defaults = settaggiAstrolabioDefault;
+function cloneAstrolabioSettings(defaults: SettaggiAstrolabio): SettaggiAstrolabio {
   const result = Object.assign(new SettaggiAstrolabio(), defaults);
 
   result.aspetti_attivi = Object.assign(new SettaggiAspettiAttivi(), defaults.aspetti_attivi);
@@ -293,4 +292,14 @@ export function createDefaultSettaggiAstrolabio(): SettaggiAstrolabio {
   });
 
   return result;
+}
+
+/**
+ * Snapshot the original defaults once: legacy users may mutate the exported
+ * constant, but those mutations must not leak into future independent charts.
+ */
+const initialAstrolabioDefaults = cloneAstrolabioSettings(settaggiAstrolabioDefault);
+
+export function createDefaultSettaggiAstrolabio(): SettaggiAstrolabio {
+  return cloneAstrolabioSettings(initialAstrolabioDefaults);
 }
