@@ -14,6 +14,7 @@ export class GestoreEventiMouse {
   private scene: THREE.Scene;
   private callbacks: MouseEventCallbacks;
   private oggettoHoverCorrente: THREE.Object3D | null = null;
+  private hoverTransition = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -76,18 +77,23 @@ export class GestoreEventiMouse {
     const intersezioni = this.intersecaOggetti();
     const oggettoAttuale = intersezioni.length > 0 ? intersezioni[0].object : null;
 
-    if (oggettoAttuale !== this.oggettoHoverCorrente) {
-      if (this.oggettoHoverCorrente && this.callbacks.onHoverLeave) {
-        this.callbacks.onHoverLeave(this.oggettoHoverCorrente);
-      }
-      if (oggettoAttuale && this.callbacks.onHoverEnter) {
-        this.callbacks.onHoverEnter(oggettoAttuale);
-      }
-      this.oggettoHoverCorrente = oggettoAttuale;
-    }
+    if (oggettoAttuale === this.oggettoHoverCorrente) return;
+
+    const previous = this.oggettoHoverCorrente;
+    const transition = ++this.hoverTransition;
+    // Detach the old hover before notifying consumers. Callbacks may synchronously
+    // dispatch mouseleave, change the highlighted glyph, or destroy the canvas.
+    this.oggettoHoverCorrente = null;
+    if (previous) this.callbacks.onHoverLeave?.(previous);
+    if (transition !== this.hoverTransition) return;
+
+    this.oggettoHoverCorrente = oggettoAttuale;
+    if (oggettoAttuale) this.callbacks.onHoverEnter?.(oggettoAttuale);
   }
 
   private clearHover(): void {
+    // Invalidate an in-flight transition even when nothing is currently hovered.
+    ++this.hoverTransition;
     const previous = this.oggettoHoverCorrente;
     // Clear before calling external code so reentrant leave/blur events cannot double-fire.
     this.oggettoHoverCorrente = null;
