@@ -1,4 +1,4 @@
-import {Posizione} from './posizione.model';
+import { Citta, Posizione, Stato } from './posizione.model';
 
 export class SettaggiElementoCeleste {
   public att: boolean = false;
@@ -406,3 +406,39 @@ export const settaggiDefault:Settaggi = {
         }
     })
   };
+
+/**
+ * Create an independent web-chart settings object from the existing defaults.
+ *
+ * The exported settaggiDefault value remains unchanged for legacy consumers.
+ * Use this factory when separate charts need to edit settings independently.
+ */
+export function createDefaultSettaggi(): Settaggi {
+  const defaults = settaggiDefault;
+  const result = Object.assign(new Settaggi(), defaults);
+
+  result.aspetti_attivi = Object.assign(new SettaggiAspettiAttivi(), defaults.aspetti_attivi);
+  result.aspetti_orbite = Object.assign(new SettaggiAspettiOrbite(), defaults.aspetti_orbite);
+
+  const celestial = new SettaggiElementiCelesti();
+  for (const key of Object.keys(defaults.elementi_celesti) as Array<keyof SettaggiElementiCelesti>) {
+    celestial[key] = Object.assign(new SettaggiElementoCeleste(), defaults.elementi_celesti[key]);
+  }
+  result.elementi_celesti = celestial;
+
+  const position = defaults.modalita_adesso_posizione;
+  const city = position.citta;
+  result.modalita_adesso_posizione = Object.assign(new Posizione(), position, {
+    posizione_manuale: position.posizione_manuale
+      ? { ...position.posizione_manuale }
+      : undefined,
+    citta: city
+      ? new Citta({
+          ...city,
+          stato: city.stato ? new Stato(city.stato) : undefined,
+        })
+      : undefined,
+  });
+
+  return result;
+}
