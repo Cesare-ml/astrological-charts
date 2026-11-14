@@ -78,6 +78,7 @@ test('window blur clears AS hover, emits one leave and keeps camera unchanged',(
   const p=harness();
   p.hover('AS');
   assert.equal(p.windowTarget.count('blur'),1);
+  assert.equal(p.windowTarget.count('focus'),1);
   p.windowTarget.emit('blur');
   assert.deepEqual(p.events,['leave:AS']);
   assert.equal(p.controller.hovered,null);
@@ -87,6 +88,7 @@ test('window blur clears AS hover, emits one leave and keeps camera unchanged',(
   assert.equal(p.camera.position.z,3);
   p.controller.destroy();
   assert.equal(p.windowTarget.count('blur'),0);
+  assert.equal(p.windowTarget.count('focus'),0);
 });
 
 test('blur preserves a pinned DS and avoids needless repaint/zoom',()=>{
@@ -288,4 +290,73 @@ test('hidden-document reentrant pointermove cannot revive a retiring glyph',()=>
   assert.equal(p.controller.hovered,null);
   assert.deepEqual(p.state(),{paints:1,renders:1});
   p.controller.destroy();
+});
+
+test('blurred visible window suppresses hover and click until focus returns',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.hover('AS');
+  p.windowTarget.emit('blur');
+  assert.deepEqual(p.events,['leave:AS']);
+  assert.equal(p.ownerDocument.visibilityState,'visible');
+  p.canvas.emit('pointermove',{ref:axis('IC')});
+  p.canvas.emit('click',{ref:axis('IC')});
+  assert.deepEqual(p.events,['leave:AS'],'blurred window must not accept synthetic input');
+  assert.equal(p.controller.hovered,null);
+  p.windowTarget.emit('focus');
+  p.canvas.emit('pointermove',{ref:axis('IC')});
+  p.canvas.emit('click',{ref:axis('IC')});
+  assert.deepEqual(p.events,['leave:AS','enter:IC','click:IC']);
+  assert.equal(p.camera.zoom,1);
+  p.controller.destroy();
+});
+
+test('visibility restored without window focus allows new real pointer input',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.hover('DS');
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.emit('visibilitychange');
+  p.canvas.emit('pointermove',{ref:axis('MC')});
+  assert.deepEqual(p.events,['leave:DS']);
+  p.ownerDocument.visibilityState='visible';
+  p.ownerDocument.emit('visibilitychange');
+  p.canvas.emit('pointermove',{ref:axis('MC')});
+  assert.deepEqual(p.events,['leave:DS','enter:MC']);
+  p.controller.destroy();
+});
+
+test('focus event while the document is still hidden does not accept pointer input',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.emit('visibilitychange');
+  p.windowTarget.emit('focus');
+  p.canvas.emit('pointermove',{ref:axis('MC')});
+  p.canvas.emit('click',{ref:axis('MC')});
+  assert.deepEqual(p.events,[]);
+  p.ownerDocument.visibilityState='visible';
+  p.ownerDocument.emit('visibilitychange');
+  p.canvas.emit('pointermove',{ref:axis('MC')});
+  assert.deepEqual(p.events,['enter:MC']);
+  p.controller.destroy();
+});
+
+test('reentrant pointer event during window blur cannot restore retired hover',()=>{
+  let p;
+  p=harness(new FakeTarget(),event=>{
+    if (event.type==='leave') p.canvas.emit('pointermove',{ref:axis('DS')});
+  });
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.hover('MC');
+  p.windowTarget.emit('blur');
+  assert.deepEqual(p.events,['leave:MC']);
+  assert.equal(p.controller.hovered,null);
+  assert.deepEqual(p.state(),{paints:1,renders:1});
+  p.controller.destroy();
+  assert.equal(p.windowTarget.count('focus'),0);
 });
