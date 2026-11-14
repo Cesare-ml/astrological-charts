@@ -24,7 +24,7 @@ function mockObject(kind, properties = {}) {
     position: { z: 0 },
     rotation: { z: 0 },
     scale: { set() {} },
-    rotateZ() {},
+    rotateZ(angle) { this.angle = angle; },
     translateY() {},
   };
 }
@@ -178,4 +178,32 @@ test('natal and latitude house rings continue rendering with the same shared hel
   const latitude = await CaseRender.renderAnelloCaseLatitudini(house, 100, 180, false, options);
   assert.equal(natal.children.filter(child => child.kind === 'house-glyph').length, 12);
   assert.equal(latitude.children.filter(child => child.kind === 'house-glyph').length, 12);
+});
+
+
+test('natal, synastry and latitude share identical mixed-frame cusp-line angles', async () => {
+  skin.anelloCase.texture = null;
+  delete skin.anelloCase.sinastria;
+  const values = [725, 15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 315];
+  const snapshot = [...values];
+  const input = { ascendant: 5, house: values };
+  const natal = await CaseRender.renderAnelloCase(input, 0, 1, 100, 120, 180, false, options);
+  const synastry = await CaseRender.renderAnelloCaseSinastria(input, 0, 1, 100, 120, 180, false, options);
+  const latitude = await CaseRender.renderAnelloCaseLatitudini(input, 100, 180, false, options);
+  const angles = result => result.children.filter(child => child.kind === 'line').map(child => child.angle);
+  const expected = unwrapHouseCusps(values).map(value => (value + 85) * Math.PI / 180);
+  assert.equal(angles(natal).length, 12);
+  assert.deepEqual(angles(natal), expected);
+  assert.deepEqual(angles(synastry), expected);
+  assert.deepEqual(angles(latitude), expected);
+  assert.deepEqual(values, snapshot, 'shared renderers must not mutate cusp inputs');
+});
+
+test('all three house-ring entrypoints reject invalid cusp arrays before drawing', async () => {
+  skin.anelloCase.texture = null;
+  delete skin.anelloCase.sinastria;
+  const invalid = { ascendant: 0, house: [0, NaN, ...Array(10).fill(0)] };
+  await assert.rejects(CaseRender.renderAnelloCase(invalid, 0, 1, 100, 120, 180, false, options), { name: 'TypeError' });
+  await assert.rejects(CaseRender.renderAnelloCaseSinastria(invalid, 0, 1, 100, 120, 180, false, options), { name: 'TypeError' });
+  await assert.rejects(CaseRender.renderAnelloCaseLatitudini(invalid, 100, 180, false, options), { name: 'TypeError' });
 });
