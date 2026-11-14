@@ -96,6 +96,8 @@ export class TransitiRender {
     var elementiCelesti = await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false);
 
     const coloreCerchio = getAntisciMarkerColor(SkinManager.skins[opzioni.settaggi.skin_id].bgColor);
+    const hoverPianeta = elementiCelesti?.[opzioni.antisciTransitiHover?.nome];
+    const hoverLongitude = hoverPianeta?.longitude;
 
     //Disegno gli assi
     // Iterate the supported axes only: legacy option payloads may contain unknown keys.
@@ -115,15 +117,13 @@ export class TransitiRender {
         Object.hasOwn(opzioni.antisci ?? {}, c)
         && opzioni.antisci[c]
         && opzioni.antisciTransitiHover
-        && elementiCelesti[opzioni.antisciTransitiHover.nome]
+        && Number.isFinite(hoverLongitude)
       ) {
-        var pianeta = elementiCelesti[opzioni.antisciTransitiHover.nome];
-
-        var lngantisci = 2*assi[c] - elementiCelesti[opzioni.antisciTransitiHover.nome].longitude;
+        var lngantisci = 2*assi[c] - hoverLongitude;
 
         var pianeta = OggettiSempliciRender.getCerchio(0.025,coloreCerchio);
         pianeta.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15 + elementiCelesti[opzioni.antisciTransitiHover.nome].longitude
+          75-ascendente+15 + hoverLongitude
         ));
         pianeta.translateY(diametroAnelloCase/2);
 
