@@ -61,6 +61,9 @@ export class PlanetInteractionController {
   private hovered: ChartPlanetRef | null = null;
   private pinned: ChartPlanetRef | null = null;
   private readonly cursor: string;
+  private readonly hostWindow: Window | null;
+  private readonly hostDocument: Document | null;
+  private windowBlurred = false;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -69,11 +72,26 @@ export class PlanetInteractionController {
     private readonly requestRender: () => void
   ) {
     this.cursor = canvas.style.cursor;
+    // Bind to the canvas's actual owner: an iframe or detached document
+    // must not receive events from an unrelated global window.
+    this.hostDocument = canvas.ownerDocument ??
+      (typeof document === 'undefined' ? null : document);
+    this.hostWindow = this.hostDocument
+      ? this.hostDocument.defaultView
+      : (typeof window === 'undefined' ? null : window);
+    // A controller mounted in an already-unfocused tab receives no initial
+    // blur event. Refuse its synthetic pointer hits until real focus returns.
+    // Detached documents and windowless probes have no active Window to blur.
+    this.windowBlurred = !!this.hostWindow &&
+      !!this.hostDocument && !this.hostDocument.hasFocus();
     canvas.addEventListener('pointermove', this.move);
     canvas.addEventListener('pointerleave', this.leave);
     canvas.addEventListener('pointerup', this.finishPointer);
     canvas.addEventListener('pointercancel', this.finishPointer);
     canvas.addEventListener('click', this.click);
+    this.hostWindow?.addEventListener('blur', this.onWindowBlur);
+    this.hostWindow?.addEventListener('focus', this.onWindowFocus);
+    this.hostDocument?.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
   }
 
   setScene(scene: THREE.Scene | null): void {
@@ -241,6 +259,9 @@ export class PlanetInteractionController {
     if (this.disposed) return;
     this.disposed = true;
     ++this.sceneRevision;
+    this.hostWindow?.removeEventListener('blur', this.onWindowBlur);
+    this.hostWindow?.removeEventListener('focus', this.onWindowFocus);
+    this.hostDocument?.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
     this.canvas.removeEventListener('pointermove', this.move);
     this.canvas.removeEventListener('pointerleave', this.leave);
     this.canvas.removeEventListener('pointerup', this.finishPointer);
@@ -339,13 +360,23 @@ export class PlanetInteractionController {
   }
 
   private move = (event: PointerEvent): void => {
-    if (this.disposed) return;
+    // Reject stale/synthetic input after window blur even if the document
+    // remains "visible"; a focus or visible-tab event resumes interaction.
+    if (this.disposed || this.windowBlurred ||
+        this.hostDocument?.visibilityState === 'hidden') return;
     const pointerRevision = ++this.pointerRevision;
     // Pointer hits are computed against one particular scene. A synchronous
     // leave listener may redraw or destroy that scene before we emit enter.
     const hitScene = this.scene;
     const hitRevision = this.sceneRevision;
     const next = this.pick(event);
+    // Geometry traversal/raycast may synchronously dispatch blur, replace
+    // the scene or destroy the controller. Do not resurrect a stale hover
+    // or clear a newer event's pending exit after that nested transition.
+    if (this.disposed || this.windowBlurred ||
+        this.hostDocument?.visibilityState === 'hidden' ||
+        this.pointerRevision !== pointerRevision ||
+        this.scene !== hitScene || this.sceneRevision !== hitRevision) return;
     // A nested pointermove can arrive while an older move has already
     // dispatched leave but not painted its replacement. Remember that
     // retired *visual* focus so it is not mistaken for an idle canvas.
@@ -386,6 +417,39 @@ export class PlanetInteractionController {
         this.requestRender();
     }
   };
+  /** Losing the browser focus ends hover but keeps the selected/pinned axis.
+   * Ignore duplicate blur during a leave callback: a redundant leave() would
+   * increment pointerRevision and suppress the outer leave's final repaint.
+   */
+  private onWindowBlur = (): void => {
+    if (this.disposed) return;
+    // A window may lose focus without becoming a hidden document.
+    // Suspend stale pointer events until focus returns.
+    this.windowBlurred = true;
+    if (this.hovered || this.pendingHoverExit) this.leave();
+  };
+
+  private onWindowFocus = (): void => {
+    // A focus event can precede actual document focus (or be synthetic).
+    // A visible but unfocused window must never resume pointer input.
+    // Windowless Node probes still have no document focus to check.
+    if (!this.disposed && this.hostDocument?.visibilityState !== 'hidden' &&
+        (!this.hostDocument || this.hostDocument.hasFocus()))
+      this.windowBlurred = false;
+  };
+
+  /** Some browsers background a tab without a window blur event.
+   * Only visibility *loss* ends transient hover; restoring visibility must
+   * never fabricate a pointer enter or clear the user's pinned selection.
+   */
+  private onDocumentVisibilityChange = (): void => {
+    if (this.hostDocument?.visibilityState === 'hidden') this.onWindowBlur();
+    // Visibility alone is not focus: a tab can become visible while a
+    // separate browser window or another application still owns the input.
+    else if (this.hostDocument?.visibilityState === 'visible' &&
+        this.hostDocument.hasFocus()) this.onWindowFocus();
+  };
+
   private leave = (): void => {
     if (this.disposed) return;
     // Even with hovered=null, an in-flight pointermove may be in its
@@ -424,7 +488,20 @@ export class PlanetInteractionController {
     if (event.pointerType === 'touch' || event.type === 'pointercancel') this.leave();
   };
   private click = (event: MouseEvent): void => {
+    // Never deliver synthetic clicks from a blurred or destroyed view.
+    if (this.disposed || this.windowBlurred ||
+        this.hostDocument?.visibilityState === 'hidden') return;
+    const activeScene = this.scene;
+    const sceneRevision = this.sceneRevision;
+    const pointerRevision = this.pointerRevision;
     const planet = this.pick(event);
+    // Raycasting invokes host-controlled geometry and may synchronously
+    // blur, unmount or replace the scene. An old hit must never select a
+    // body after the controller has left that interaction state.
+    if (this.disposed || this.windowBlurred ||
+        this.hostDocument?.visibilityState === 'hidden' ||
+        this.scene !== activeScene || this.sceneRevision !== sceneRevision ||
+        this.pointerRevision !== pointerRevision) return;
     if (planet) this.send('click', planet);
   };
 
