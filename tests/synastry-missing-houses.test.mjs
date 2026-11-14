@@ -83,12 +83,19 @@ function selectedCelestial(theme, selectedSystem) {
   );
 }
 
-function syntheticRenderer({ texture = 'local-test-texture', failHouses = false, validateCusps = unwrapHouseCusps } = {}) {
-  const calls = { houses: 0, planets: 0, signs: 0, visualTheme: null, selectedAngles: null, signAngle: null, cleaned: 0 };
+function syntheticRenderer({ texture = 'local-test-texture', failHouses = false, failSigns = false, validateCusps = unwrapHouseCusps } = {}) {
+  const calls = { houses: 0, planets: 0, signs: 0, visualTheme: null, selectedAngles: null, signAngle: null, cleaned: 0, cleanedNodes: [] };
   class Group {
     children = [];
     add(child) { this.children.push(child); }
-    traverse(callback) { calls.cleaned += 1; callback(this); }
+    traverse(callback) {
+      calls.cleaned += 1;
+      const visit = object => {
+        callback(object);
+        for (const child of object.children ?? []) visit(child);
+      };
+      visit(this);
+    }
   }
   const modules = {
     three: { Group, MathUtils: { degToRad: angle => angle * Math.PI / 180 } },
@@ -114,7 +121,7 @@ function syntheticRenderer({ texture = 'local-test-texture', failHouses = false,
         getAnelloCaseCartaAstrale: async () => {
           calls.houses++;
           if (failHouses) throw new Error('Synthetic case rendering failure');
-          return { kind: 'houses' };
+          return { kind: 'houses', children: [{ kind: 'case-image' }] };
         },
       },
     },
@@ -123,6 +130,7 @@ function syntheticRenderer({ texture = 'local-test-texture', failHouses = false,
         getAnelloSegniSinastria: async (angle) => {
           calls.signs++;
           calls.signAngle = angle;
+          if (failSigns) throw new Error('Synthetic sign rendering failure');
           return { kind: 'signs' };
         },
       },
@@ -132,7 +140,7 @@ function syntheticRenderer({ texture = 'local-test-texture', failHouses = false,
         skins: { synthetic: { anelloCase: { texture, coloreTexture: 'white' } } },
       },
     },
-    '../scene-animations': { stopSceneAnimations: () => {} },
+    '../scene-animations': { stopSceneAnimations: object => calls.cleanedNodes.push(object.kind ?? 'root') },
     '../@carta-astrale/carta-astrale.renderer': {},
   };
   const module = { exports: {} };
@@ -411,4 +419,32 @@ test('keeps exact reference angle when selected house frame is unusually large',
   assert.equal(calls.houses, 1);
   assert.equal(calls.cleaned, 0);
   assert.deepEqual(theme, before, 'input chart must not be mutated');
+});
+
+
+test('cleans completed house ring and planet animation descendants when sign rendering fails', async () => {
+  for (const selection of ['placido', 'egizia']) {
+    const { renderer, calls } = syntheticRenderer({ failSigns: true });
+    const theme = createTheme(otherHouses);
+    const before = structuredClone(theme);
+    await assert.rejects(
+      render(renderer, theme, selection),
+      /Synthetic sign rendering failure/,
+    );
+    assert.equal(calls.planets, 1);
+    assert.equal(calls.signs, 1);
+    assert.equal(calls.cleaned, 1, 'the failed scene is traversed once');
+    if (selection === 'placido') {
+      assert.equal(calls.houses, 1);
+      assert.deepEqual(calls.cleanedNodes,
+        ['root', 'planets', 'houses', 'case-image'],
+        'even the not-yet-attached house ring must be traversed for cleanup');
+    } else {
+      assert.equal(calls.houses, 0);
+      assert.deepEqual(calls.cleanedNodes,
+        ['root', 'fallback-texture', 'planets'],
+        'missing-house fallback must not create a phantom case ring');
+    }
+    assert.deepEqual(theme, before, 'failed render must not mutate the source chart');
+  }
 });
