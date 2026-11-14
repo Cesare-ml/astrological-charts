@@ -73,69 +73,114 @@ export class OggettiSempliciRender {
     return mesh;
   }
 
+  // Tiny arcs need at least two sampled divisions to form stable geometry.
+  // Limit pathological input spans to prevent unbounded synchronous allocations.
+  private static arcSubdivisionCount(startDeg: number, endDeg: number): number {
+    if (!Number.isFinite(startDeg) || !Number.isFinite(endDeg) ||
+        !Number.isFinite(endDeg - startDeg)) {
+      throw new RangeError('Arc angles must be finite.');
+    }
+    return Math.min(720, Math.max(2, Math.trunc(Math.abs(endDeg - startDeg))));
+  }
+
   public static getSemiArcoGrosso(a, b, yInterno, yEsterno, colore, textureUrl = null) {
+    const subdivisions = this.arcSubdivisionCount(a, b);
+    // Some valid radial fills (notably the aspect-center disc) intentionally
+    // pass the outer radius as zero. Preserve radius order; reject only invalid
+    // radii before Three.js constructs NaN/Infinity vertices.
+    if (!Number.isFinite(yInterno) || !Number.isFinite(yEsterno) ||
+        yInterno < 0 || yEsterno < 0 ||
+        !Number.isFinite(Math.fround(yInterno)) ||
+        !Number.isFinite(Math.fround(yEsterno))) {
+      // ShapeGeometry stores position coordinates in Float32 arrays. Finite
+      // JavaScript doubles may otherwise overflow to +/-Infinity on the GPU.
+      throw new RangeError('Arc radii must be finite, non-negative and representable as Float32.');
+    }
+    // Three.js EllipseCurve.getPoint() normalizes angle differences with
+    // repeated +/-2PI loops. Large raw angles would still freeze rendering
+    // despite bounded getSpacedPoints() counts. Reduce to one turn first.
+    const sweep = b - a;
+    const startDeg = ((a % 360) + 360) % 360;
+    const magnitude = Math.abs(sweep);
+    const remainder = magnitude % 360;
+    const boundedSweep = magnitude === 0 ? 0 : remainder === 0 ? 360 : remainder;
+    const clockwise = sweep < 0;
+    const endDeg = startDeg + (clockwise ? -boundedSweep : boundedSweep);
+
     //console.log(a,b,yEsterno,yInterno,colore, textureUrl);
     const arcoInterno = new THREE.EllipseCurve(
       0, 0, yInterno, yInterno,
-      THREE.MathUtils.degToRad(a), THREE.MathUtils.degToRad(b), false, 0
+      THREE.MathUtils.degToRad(startDeg), THREE.MathUtils.degToRad(endDeg), clockwise, 0
     );
-    const puntiArcoInterno = arcoInterno.getSpacedPoints(Math.trunc(b - a));
+    const puntiArcoInterno = arcoInterno.getSpacedPoints(subdivisions);
 
     const arcoEsterno = new THREE.EllipseCurve(
       0, 0, yEsterno, yEsterno,
-      THREE.MathUtils.degToRad(a), THREE.MathUtils.degToRad(b), false, 0
+      THREE.MathUtils.degToRad(startDeg), THREE.MathUtils.degToRad(endDeg), clockwise, 0
     );
-    const puntiArcoEsterno = arcoEsterno.getSpacedPoints(Math.trunc(b - a)).reverse();
+    const puntiArcoEsterno = arcoEsterno.getSpacedPoints(subdivisions).reverse();
 
     const punti = puntiArcoInterno.concat(puntiArcoEsterno);
     const shape = new THREE.Shape(punti);
     const geometry = new THREE.ShapeGeometry(shape);
 
-    // 🔹 Ricalcolo manuale delle coordinate UV per coprire tutto il semiarco
-    geometry.computeBoundingBox();
-    const max = geometry.boundingBox.max;
-    const min = geometry.boundingBox.min;
+    // Own geometry from this point on: any synchronous UV, texture or mesh
+    // construction failure must release these resources exactly once.
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      geometry.computeBoundingBox();
+      const max = geometry.boundingBox.max;
+      const min = geometry.boundingBox.min;
 
-    const uvAttr = [];
-    const posAttr = geometry.attributes['position'];
+      const uvAttr = [];
+      const posAttr = geometry.attributes['position'];
+      const uvWidth = max.x - min.x;
+      const uvHeight = max.y - min.y;
 
-    for (let i = 0; i < posAttr.count; i++) {
-      const x = posAttr.getX(i);
-      const y = posAttr.getY(i);
+      for (let i = 0; i < posAttr.count; i++) {
+        const x = posAttr.getX(i);
+        const y = posAttr.getY(i);
 
-      const u = (x - min.x) / (max.x - min.x);
-      const v = (y - min.y) / (max.y - min.y);
+        const u = Number.isFinite(uvWidth) && uvWidth > 0 ? (x - min.x) / uvWidth : 0.5;
+        const v = Number.isFinite(uvHeight) && uvHeight > 0 ? (y - min.y) / uvHeight : 0.5;
 
-      uvAttr.push(u, v);
+        uvAttr.push(u, v);
+      }
+
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
+
+      if (textureUrl) {
+        const texture = GestoreImmagini.getImg(textureUrl);
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.repeat.set(1, 1);
+        texture.offset.set(0, 0);
+        texture.center.set(0.5, 0.5);
+        texture.rotation = 0;
+  
+        // Imposta i filtri per evitare sgranature o tiling
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+  
+        material = new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.DoubleSide,
+          transparent: true,
+          color: colore
+        });
+      } else {
+        material = new THREE.MeshBasicMaterial({ color: colore });
+      }
+  
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      // The texture is host-owned/shared and must not be disposed here.
+      // Release only the geometry/material constructed by this call when a
+      // synchronous texture lookup or mesh construction throws.
+      material?.dispose();
+      geometry.dispose();
+      throw error;
     }
-
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
-
-    let material;
-    if (textureUrl) {
-      const texture = GestoreImmagini.getImg(textureUrl);
-      texture.wrapS = THREE.ClampToEdgeWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-      texture.repeat.set(1, 1);
-      texture.offset.set(0, 0);
-      texture.center.set(0.5, 0.5);
-      texture.rotation = 0;
-
-      // Imposta i filtri per evitare sgranature o tiling
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-
-      material = new THREE.MeshBasicMaterial({
-        map: texture,
-        side: THREE.DoubleSide,
-        transparent: true,
-        color: colore
-      });
-    } else {
-      material = new THREE.MeshBasicMaterial({ color: colore });
-    }
-
-    return new THREE.Mesh(geometry, material);
   }
 
 
