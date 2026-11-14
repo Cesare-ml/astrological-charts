@@ -2,7 +2,21 @@
 
 The renderer's `SkinManager.skins` registry contains seven themes: `dark`, `dark-bn`, `light`, `light-bn`, `sun`, `astrolabio`, and `astrolabio-girasole`. Previously, the public `OpzioniGrafico.temaGrafico` TypeScript alias omitted `astrolabio-girasole` even though the renderer already registered that skin.
 
-This patch adds the missing literal to the `TemaGrafico` union. It does **not** change `Settaggi.skin_id`, any skin asset path, angular render code, defaults, existing themes, geometry, animation, pointer focus, zoom, or PNG export. No new art is copied or bundled.
+This patch adds the missing literal to the `TemaGrafico` union and **exports the named type** through the existing `src/public-api.ts` wildcard re-export, without adding a runtime value. It does **not** change `Settaggi.skin_id`, any skin asset path, angular render code, defaults, existing themes, geometry, animation, pointer focus, zoom, or PNG export. No new art is copied or bundled.
+
+Typed consumers can now import the named union from the package entrypoint:
+
+```ts
+import type { TemaGrafico, OpzioniGrafico } from 'grafici-astrologici';
+
+const selected: TemaGrafico = 'astrolabio-girasole';
+function selectSkin(opzioni: OpzioniGrafico) {
+  opzioni.temaGrafico = selected;
+  opzioni.settaggi.skin_id = selected;
+}
+```
+
+This is an additive TypeScript declaration export. The package is still private; this example describes the integration contract, **not** an npm publishing or production deployment step.
 
 ## Important: UI theme field vs actual renderer skin
 
@@ -21,11 +35,12 @@ opzioni.settaggi.skin_id = 'astrolabio-girasole';
 `npm run test:skin-theme-types` uses the TypeScript parser and semantic checker to check that:
 1. `TemaGrafico` contains exactly one literal for each theme in `SkinManager.skins`, including `astrolabio-girasole`.
 2. The public `OpzioniGrafico.temaGrafico` property remains required and typed as `TemaGrafico` rather than a wide `string` or `any`.
-3. The default `temaGrafico` refers to a registered theme.
-4. The `Settaggi.skin_id` constructor initializer and persisted `settaggiDefault.skin_id` each independently refer to a registered skin. They need not match: distinct defaults are permitted where a consumer deliberately chooses a different skin.
-5. The TypeScript compiler accepts **every registered theme**, including `astrolabio-girasole`, through the public property signature, and rejects an unknown skin with diagnostic TS2322.
+3. `TemaGrafico` is a named export and the public Angular barrel re-exports the options model.
+4. The default `temaGrafico` refers to a registered theme.
+5. The `Settaggi.skin_id` constructor initializer and persisted `settaggiDefault.skin_id` each independently refer to a registered skin. They need not match: distinct defaults are permitted where a consumer deliberately chooses a different skin.
+6. An isolated TypeScript compilation imports both `TemaGrafico` and a synthetic chart-selection interface via the real public barrel re-export; it accepts **every registered theme**, including `astrolabio-girasole`, and rejects an unknown skin with diagnostic TS2322.
 
-The test is also included in `npm run preflight`. A standalone semantic checker probe of the extracted `TemaGrafico` union passed under Node.js 22.16.0 and TypeScript 5.8.3 (accepted the real `astrolabio-girasole` literal; rejected `invalid-chart-skin` with TS2322). The full committed Node suite and Angular/WebGL build have not run in this environment. This is a source/type-contract regression, not proof of WebGL pixels, production asset rights, skin art parity or Astrolabio hardware compatibility.
+The test is also included in `npm run preflight`. The public import regression is exercised with a virtual three-file TypeScript compiler host (model, barrel, consumer), using the **actual** alias/property/barrel declarations from the repository; the test does not require Angular to compile that narrow contract. A standalone semantic checker probe of the extracted `TemaGrafico` union passed under Node.js 22.16.0 and TypeScript 5.8.3 (accepted the real `astrolabio-girasole` literal; rejected `invalid-chart-skin` with TS2322). The full committed Node suite and Angular/WebGL build have not run in this environment. This is a source/type-contract regression, not proof of WebGL pixels, production asset rights, skin art parity or Astrolabio hardware compatibility.
 
 ## Required validation before merge
 
