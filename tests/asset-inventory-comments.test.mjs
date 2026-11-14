@@ -20,7 +20,7 @@ test('preserves active asset expressions around multiline and same-line comments
 test('does not mistake comment markers in URLs, regexp and interpolated templates for comments', () => {
   const source = [
     `const url = 'https://example.test/assets/img/full.png'; // fake.png`,
-    String.raw`const rule = /\\/\\//; const logo = 'assets/img/logo.png';`,
+    String.raw`const rule = /\/\//; const logo = 'assets/img/logo.png';`,
     'const ring = `assets/img/${planet}/circle.png`; // hidden.png',
     'const more = `assets/img/${ /* skip.png */ name}/Sun.png`;',
     `// getImg('ignored.png')`,
