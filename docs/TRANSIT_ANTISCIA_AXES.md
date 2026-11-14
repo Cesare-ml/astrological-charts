@@ -234,3 +234,35 @@ It still replaces several imported dependencies, including most
 establish a passing Angular typecheck/build, actual browser/WebGL
 geometry parity, PNG export, or Astrolabio support. These gates remain
 **NOT RUN** until a full checkout and approved local assets are available.
+
+## Non-finite geometry inputs (2026-11-14)
+
+The axis rotations depend on the reference ascendant and zodiac-ring
+diameter; hover marker positions additionally depend on the inner ring
+diameter. If any of these inputs is `NaN` or infinite, the original
+renderer could emit non-finite rotations, line endpoints or positions.
+
+The renderer now **returns an empty antiscia group** when either the
+reference ascendant or zodiac-ring diameter is not a finite number.
+For an invalid inner-ring diameter, it still draws finite axis lines
+but **omits the hover circles and their connecting lines**. No fallback
+coordinates are invented; ordinary finite values, including zero, use
+the existing astronomical angle and geometry formulas.
+
+The new tests check `NaN`, `Infinity`, `-Infinity`, and missing
+values across those three inputs. The original PR renderer failed
+**3/3** targeted red-control checks in a local Node test harness.
+After the change, the two committed test suites completed with
+**23/23 PASS, exit 0** on Node v22.16.0 / TypeScript 5.8.3 in the
+temporary reconstructed workspace. The full `transiti.renderer.ts`
+and modified axis test file were checked as **byte-identical** to
+their GitHub PR blobs:
+`2202562c35dfd584f756228edda903b5d6360ed3` and
+`5027b7722b991c5d9d20cf28b9605f6c38831642`.
+
+The 23 tests comprise 19 axis/integration cases and four marker
+contrast cases. Three.js primitives, planet lookup and a minimal
+seven-color `SkinManager` fixture remain synthetic. This
+is **not** a full `npm ci`, Angular build, browser/WebGL
+pixel comparison, PNG export, Astrolabio headless or release
+signoff. Keep the PR draft until real consumer validation.
