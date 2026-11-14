@@ -215,10 +215,14 @@ test('partial synastry house-line and texture tints render like explicit inherit
       assert.ok(mismatchWithExplicit <= Math.ceil(500 * 500 * 0.0005),
         `${scenario}: partial vs explicit fallback differed in ${mismatchWithExplicit} pixels`);
     }
-    // A deliberate loader rejection must not leak the skin override or
-    // poison the next normal chart export in the same browser page.
+    // Reject a specific second sign load after natal construction (the nested
+    // synastry ring), then require a fresh export and restored shared state.
     const cleanup = await page.evaluate(() => globalThis.probeSynastryFailureCleanup());
-    assert.match(cleanup.failure, /Injected failure: synthetic synastry asset load/);
+    assert.match(cleanup.failure, /Injected failure: second synastry sign 06\.png/);
+    assert.equal(cleanup.matchingSignLoads, 2,
+      'failure must occur on the second sign-06 asset, after the natal ring');
+    assert.equal(cleanup.injectedAtPartnerSign, true,
+      'failure injection did not reach partner sign-ring construction');
     assert.equal(cleanup.skinRestored, true, 'a failed export leaked the shared synastry override');
     assert.equal(cleanup.loaderRestored, true, 'a failed export leaked the injected asset loader');
     assert.equal(cleanup.recoveryIsPng, true, 'normal rendering did not recover after failure');
