@@ -114,3 +114,29 @@ as zero degrees. This guard is local to the antiscia hover visualization:
 no ephemeris values are changed or converted and no fake coordinates are
 created. Verify in-browser that removing the hover relation on invalid
 planet data does not leave stale drawn objects after redraw.
+
+## Lazy planet resolution during redraw (2026-11-14)
+
+The transit antiscia renderer previously invoked
+`ElementiCelestiRender.getElementiCelesti` unconditionally, even when no
+hover relationship was requested. That function clones the planet input
+and expects a complete theme payload. On redraws where only antiscia
+axes are visible, these unnecessary computations could also fail on
+yet-to-be-loaded planet data.
+
+The renderer now collects only the **owned and enabled** supported axes
+once and uses the same collection to draw axes and hover relations.
+It resolves planet data **once**, and only when there is at least one
+enabled known axis and a nonempty hovered planet name. Otherwise, axes
+are drawn without accessing planet data. For normal valid hover input,
+the same geometry and angular formulas are retained; the 0° longitude
+path continues to produce three markers and four links per enabled axis.
+
+Four new regressions assert no planet-data resolution with no hover,
+with missing/disabled/unknown axes, and with empty hover names, plus
+exactly one resolution when three axes have a valid hover.
+An independent isolated V8 check of the current GitHub method returned
+**24 PASS / 0 FAIL** (source blob
+`e885d2170fdc9bc3154b6cdcee59ff6e54f33072`).
+This check uses synthetic Three.js inputs; it is **not** a
+benchmark, full TypeScript compile, Angular build or browser pixel test.
