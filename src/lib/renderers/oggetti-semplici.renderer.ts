@@ -92,16 +92,27 @@ export class OggettiSempliciRender {
         yInterno < 0 || yEsterno < 0) {
       throw new RangeError('Arc radii must be finite and non-negative.');
     }
+    // Three.js EllipseCurve.getPoint() normalizes angle differences with
+    // repeated +/-2PI loops. Large raw angles would still freeze rendering
+    // despite bounded getSpacedPoints() counts. Reduce to one turn first.
+    const sweep = b - a;
+    const startDeg = ((a % 360) + 360) % 360;
+    const magnitude = Math.abs(sweep);
+    const remainder = magnitude % 360;
+    const boundedSweep = magnitude === 0 ? 0 : remainder === 0 ? 360 : remainder;
+    const clockwise = sweep < 0;
+    const endDeg = startDeg + (clockwise ? -boundedSweep : boundedSweep);
+
     //console.log(a,b,yEsterno,yInterno,colore, textureUrl);
     const arcoInterno = new THREE.EllipseCurve(
       0, 0, yInterno, yInterno,
-      THREE.MathUtils.degToRad(a), THREE.MathUtils.degToRad(b), false, 0
+      THREE.MathUtils.degToRad(startDeg), THREE.MathUtils.degToRad(endDeg), clockwise, 0
     );
     const puntiArcoInterno = arcoInterno.getSpacedPoints(subdivisions);
 
     const arcoEsterno = new THREE.EllipseCurve(
       0, 0, yEsterno, yEsterno,
-      THREE.MathUtils.degToRad(a), THREE.MathUtils.degToRad(b), false, 0
+      THREE.MathUtils.degToRad(startDeg), THREE.MathUtils.degToRad(endDeg), clockwise, 0
     );
     const puntiArcoEsterno = arcoEsterno.getSpacedPoints(subdivisions).reverse();
 
