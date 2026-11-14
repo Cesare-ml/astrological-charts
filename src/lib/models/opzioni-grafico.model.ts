@@ -28,7 +28,7 @@ interface Ascendenza {
 }
 
 interface PartiArabeOptions {
-  modalita?: 'essenziali' | 'abu mashar' | 'crea';
+  modalita?: 'essenziali' | 'abumashar' | 'crea';
   formulaAbumasharCasaSelezionata?: number;
   formulaSelezionataIndex?: number;
   elDestinazione?: string;
