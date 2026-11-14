@@ -67,3 +67,17 @@ test('rejects arithmetic overflow and never returns nonfinite angles', () => {
   const cusp = unwrapHouseCusps(Array.from({ length: 12 }, (_, index) => (350 + index * 30) % 360));
   assert.ok(cusp.every(Number.isFinite));
 });
+
+
+test('normalizes higher and negative input frames without changing a valid house ring', () => {
+  const higher = [0, 390, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
+  const negative = [350, 380, -310, -280, -250, -220, -190, -160, -130, -100, -70, -40];
+  const higherSnapshot = [...higher];
+  const negativeSnapshot = [...negative];
+  assert.deepEqual(unwrapHouseCusps(higher),
+    Array.from({ length: 12 }, (_, i) => i * 30));
+  assert.deepEqual(unwrapHouseCusps(negative),
+    Array.from({ length: 12 }, (_, i) => 350 + i * 30));
+  assert.deepEqual(higher, higherSnapshot);
+  assert.deepEqual(negative, negativeSnapshot);
+});
