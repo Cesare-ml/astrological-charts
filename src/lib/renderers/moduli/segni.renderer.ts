@@ -125,7 +125,7 @@ export class SegniRender {
                 group.add(arco);
             }
         } else {
-            console.log('asd');
+            // A texture-free skin still uses the same sign-ring geometry.
             group.add(OggettiSempliciRender.getCerchio(diametroCerchioEsterno / 2, coloreLinea));
         }
         
@@ -178,7 +178,7 @@ export class SegniRender {
             group.add(segno);
         }
 
-        if (opzioni.mostraDecani) {
+        if (mostraDecani) {
             const decani = await SegniRender.getDecani(
                 degOffsAscendente,
                 simboliScale,
@@ -190,7 +190,7 @@ export class SegniRender {
             group.add(decani);
         }
 
-        if (opzioni.mostraDecadi) {
+        if (mostraDecadi) {
             // TODO: implementare getDecadi
             const decadi = await SegniRender.getDecadi(
                 degOffsAscendente,
