@@ -40,8 +40,17 @@ then checks:
   Computed expressions are rejected, because the chart-only AST asset selector
   cannot guarantee those paths are represented in the synthetic demo manifest.
 
-Optional textures and null synastry overrides are permitted. When adding a
-new supported skin, update the expected IDs and confirm that the demo offers it.
+Optional textures, absent synastry overrides and **partial synastry overrides**
+are permitted. The natal/transit base-ring colors remain required, while
+`sinastria` properties are validated **when supplied**, because the renderer
+uses `??` to fall back to base-ring colors and textures. For example, a
+sinastry override may set only `coloreLinea` or only `coloreTexture`.
+An invalid supplied color or a non-object override is rejected; an empty object
+is allowed. This keeps the contract compatible with the renderer's fallback
+behavior rather than requiring all override properties to be repeated.
+
+When adding a new supported skin, update the expected IDs and confirm that
+the demo offers it.
 
 The existing `test:demo-pack` check also ensures the synthetic demo manifest includes
 every active literal skin texture and resonator image discovered by the TypeScript
