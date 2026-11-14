@@ -99,8 +99,11 @@ function isFiniteObject(object) {
 
 async function render(options, longitude = 10, harnessOptions = {}) {
   const h = createHarness(longitude, harnessOptions);
+  const theme = Object.hasOwn(harnessOptions, 'theme')
+    ? harnessOptions.theme
+    : { planets: { Sun: { longitude } } };
   const group = await h.TransitiRender.getAntisci(
-    {}, 90, { settaggi: { skin_id: 'light' }, ...options },
+    theme, 90, { settaggi: { skin_id: 'light' }, ...options },
     4, 4, 5, 6,
   );
   return { ...h, group };
@@ -233,4 +236,19 @@ test('empty hover name does not request celestial data or draw hover relations',
   }, 10, { failOnCelestial: true });
   assert.equal(result.group.children.length, 1);
   assert.equal(result.getCelestialCalls(), 0);
+});
+
+test('active axes remain visible when hovered theme planets have not loaded', async () => {
+  for (const theme of [
+    {}, { planets: undefined }, { planets: null }, null,
+  ]) {
+    const result = await render({
+      antisci: { Cardinale: true, Fissa: true },
+      antisciTransitiHover: { nome: 'Sun' },
+    }, 10, { theme, failOnCelestial: true });
+    assert.equal(result.group.children.length, 2, 'only the supported axis lines');
+    assert.equal(result.getCelestialCalls(), 0, 'do not clone an unavailable planet map');
+    assert.equal(result.objects.filter(x => x.kind === 'circle').length, 0);
+    assert.ok(result.objects.every(isFiniteObject));
+  }
 });
