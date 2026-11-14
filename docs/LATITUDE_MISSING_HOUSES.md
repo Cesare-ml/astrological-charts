@@ -68,6 +68,26 @@ verify:angular`, Chromium/Firefox browser suites and genuine Astrolabio
 device/e-ink verification. The local environment cannot clone GitHub over
 network, so these gates must be rerun on a complete checkout before merging.
 
+## Sparse arrays with inherited cusp values (2026-11-14)
+
+All twelve cusps must be **own numeric array entries**. Checking
+`Array.from(house).every(Number.isFinite)` was not sufficient: a sparse array
+could inherit a finite value from a custom prototype at a missing index.
+The renderer now uses `Object.prototype.hasOwnProperty.call` for each of the
+twelve positions and rejects inherited entries, while preserving valid
+ordinary arrays and the 0° Ascendant.
+
+Regression: `an inherited cusp cannot disguise a sparse selected house array`
+deliberately creates a hole at index 5, supplies an inherited finite value
+at the same index, and confirms that planets and signs remain visible
+**without** the house ring.
+
+The test was executed on a local isolated Node 22.16.0 / TypeScript 5.8.3
+snapshot of the scene method and committed test body: **12/12 PASS**, exit 0.
+The isolated test specifically **FAILS with the pre-fix selection guard**
+(exit 1) and PASSES with the corrected guard. Full Angular/WebGL suites remain
+NOT RUN; see the release gates above.
+
 ## Browser PNG regression
 
 The existing `tests/fixtures/latitude-transits-harness.ts` now accepts an
