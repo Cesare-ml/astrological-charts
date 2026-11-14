@@ -107,7 +107,7 @@ export class TransitiRender {
     // getElementiCelesti JSON-clones temaRender.planets. An unfinished theme
     // without a planet map must still be able to draw its valid antiscia axes.
     const hasPlanets = temaRender?.planets != null && typeof temaRender.planets === 'object';
-    const elementiCelesti = assiAttivi.length > 0 && nomeHover && hasPlanets
+    const elementiCelesti = assiAttivi.length > 0 && nomeHover && hasPlanets && Number.isFinite(diametroAnelloCase)
       ? await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false)
       : null;
 
