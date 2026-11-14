@@ -42,6 +42,32 @@ npm run test:latitude-missing-houses
 npm run verify:angular
 ```
 
+## Targeted Node validation (2026-11-14)
+
+A local **minimal snapshot** was created for the actual source of
+`LatitudiniRender.creaScena` and the committed regression test. This is
+deliberately narrower than an installed repository checkout:
+
+- GitHub's regression test blob SHA and the local file's Git SHA both equal
+  `7a47e572fe1b6ad3b9957de3a27ec09bf4b4b779` (byte-for-byte identical).
+- The scene method extracted from the GitHub renderer and the locally
+  reconstructed method both contain 3,295 characters and match the same
+  FNV-1a 64-bit check value `da59c413bf1cc94`. This check covers the method
+  body, **not** the imports or the rest of the renderer file.
+- With Node.js `22.16.0` and the actual TypeScript `5.8.3` compiler,
+  `node --test tests/latitude-missing-houses.test.mjs` completed **11/11
+  PASS**, **0 FAIL**, exit code 0. Those cases cover missing/valid/malformed
+  selected houses, 0° Ascendant, transit ring count, southern inversion and
+  the ephemerides override.
+- This test intentionally mocks Three.js groups and collaborating renderers:
+  there are no real textures, WebGL pixels, Angular component execution or
+  actual ephemeris calculations in this result.
+
+**NOT RUN:** fresh `npm ci`, full `npm run preflight`, `npm run
+verify:angular`, Chromium/Firefox browser suites and genuine Astrolabio
+device/e-ink verification. The local environment cannot clone GitHub over
+network, so these gates must be rerun on a complete checkout before merging.
+
 ## Browser PNG regression
 
 The existing `tests/fixtures/latitude-transits-harness.ts` now accepts an
