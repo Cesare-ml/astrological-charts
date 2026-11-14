@@ -82,7 +82,6 @@ test('normalizes higher and negative input frames without changing a valid house
   assert.deepEqual(negative, negativeSnapshot);
 });
 
-
 test('normalization is invariant under deterministic per-cusp revolution shifts', () => {
   // Generate distinct valid house wheels with unequal sectors and arbitrary
   // negative/positive 360° input frames, including a shifted first cusp.
