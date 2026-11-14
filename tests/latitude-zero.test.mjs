@@ -17,3 +17,28 @@ test('latitude chart includes finite zero and nonzero values only when enabled',
   assert.deepEqual(Object.keys(result), ['Sun', 'Moon', 'Mars', 'Venus']);
   assert.ok(Object.is(result.Moon.latitude, -0));
 });
+
+test('missing bodies and disabled zero-latitude bodies are excluded without throwing', async () => {
+  const planets = { Sun: { latitude: 0 }, Moon: { latitude: -0 }, Mars: { latitude: 1 } };
+  const elementi_celesti = {
+    Sun: { att: false },
+    Moon: { att: true },
+    Mars: { att: true },
+    Missing: { att: true },
+  };
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti } });
+  assert.deepEqual(Object.keys(result), ['Moon', 'Mars']);
+  assert.strictEqual(result.Moon, planets.Moon, 'preserve precomputed input object');
+});
+
+test('negative infinity, boolean and numeric-string latitudes are rejected', async () => {
+  const planets = {
+    Sun: { latitude: -Infinity },
+    Moon: { latitude: false },
+    Mars: { latitude: '0' },
+    Venus: { latitude: 0 },
+  };
+  const elementi_celesti = Object.fromEntries(Object.keys(planets).map(name => [name, { att: true }]));
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti } });
+  assert.deepEqual(Object.keys(result), ['Venus']);
+});
