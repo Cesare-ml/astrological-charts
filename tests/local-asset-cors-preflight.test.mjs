@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -106,6 +106,19 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.equal(allowedHead.headers.get('content-type'), allowedGet.headers.get('content-type'));
     assert.equal(allowedHead.headers.get('content-length'), allowedGet.headers.get('content-length'));
     assert.equal(await allowedHead.text(), '');
+
+    // The server must recheck bytes after startup, not just trust the manifest.
+    // This test only mutates a disposable synthetic fixture, never approved artwork.
+    writeFileSync(join(root, 'img/simboli-bianchi/segni/01.png'), 'tampered fixture');
+    for (const method of ['GET', 'HEAD']) {
+      const tampered = await fetch(url, {
+        method,
+        headers: { Origin: 'http://localhost:4200' },
+      });
+      assert.equal(tampered.status, 409, method);
+      assert.equal(tampered.headers.get('cache-control'), 'no-store', method);
+      assert.equal(tampered.headers.get('x-content-type-options'), 'nosniff', method);
+    }
 
     const deniedHead = await fetch(url, {
       method: 'HEAD',
