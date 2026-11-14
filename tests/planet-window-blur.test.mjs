@@ -56,6 +56,8 @@ function harness(windowTarget = new FakeTarget(), onEvent = null, hasDocument = 
   if (ownerDocument) {
     ownerDocument.defaultView = windowTarget;
     ownerDocument.visibilityState = 'visible';
+    ownerDocument.focused = true;
+    ownerDocument.hasFocus = () => ownerDocument.focused;
     canvas.ownerDocument = ownerDocument;
   }
   const camera={zoom:1,position:{z:3}};
@@ -359,4 +361,49 @@ test('reentrant pointer event during window blur cannot restore retired hover',(
   assert.deepEqual(p.state(),{paints:1,renders:1});
   p.controller.destroy();
   assert.equal(p.windowTarget.count('focus'),0);
+});
+
+test('visible tab without document focus does not prematurely re-enable pointer events',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.hover('AS');
+  p.windowTarget.emit('blur');
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.focused=false;
+  p.ownerDocument.emit('visibilitychange');
+  p.ownerDocument.visibilityState='visible';
+  p.ownerDocument.emit('visibilitychange');
+  p.canvas.emit('pointermove',{ref:axis('DS')});
+  p.canvas.emit('click',{ref:axis('DS')});
+  assert.deepEqual(p.events,['leave:AS'],
+    'visibilityState=visible is not proof that the window regained focus');
+  assert.equal(p.controller.windowBlurred,true);
+  p.ownerDocument.focused=true;
+  p.windowTarget.emit('focus');
+  p.canvas.emit('pointermove',{ref:axis('DS')});
+  assert.deepEqual(p.events,['leave:AS','enter:DS']);
+  p.controller.destroy();
+});
+
+test('premature focus while tab remains hidden must not clear the blur latch',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.windowTarget.emit('blur');
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.focused=false;
+  p.ownerDocument.emit('visibilitychange');
+  p.windowTarget.emit('focus');
+  assert.equal(p.controller.windowBlurred,true,
+    'focus on a hidden document must not restore interactive state');
+  p.ownerDocument.visibilityState='visible';
+  p.ownerDocument.emit('visibilitychange');
+  p.canvas.emit('pointermove',{ref:axis('IC')});
+  assert.deepEqual(p.events,[]);
+  p.ownerDocument.focused=true;
+  p.windowTarget.emit('focus');
+  p.canvas.emit('pointermove',{ref:axis('IC')});
+  assert.deepEqual(p.events,['enter:IC']);
+  p.controller.destroy();
 });
