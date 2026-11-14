@@ -127,26 +127,26 @@ export class OggettiSempliciRender {
     // Geometry is already allocated here. Ensure that failed UV preparation
     // cannot leak a Three.js buffer, even when texture setup was never reached.
     try {
-      geometry.computeBoundingBox();
-    const max = geometry.boundingBox.max;
-    const min = geometry.boundingBox.min;
+        geometry.computeBoundingBox();
+      const max = geometry.boundingBox.max;
+      const min = geometry.boundingBox.min;
 
-    const uvAttr = [];
-    const posAttr = geometry.attributes['position'];
-    const uvWidth = max.x - min.x;
-    const uvHeight = max.y - min.y;
+      const uvAttr = [];
+      const posAttr = geometry.attributes['position'];
+      const uvWidth = max.x - min.x;
+      const uvHeight = max.y - min.y;
 
-    for (let i = 0; i < posAttr.count; i++) {
-      const x = posAttr.getX(i);
-      const y = posAttr.getY(i);
+      for (let i = 0; i < posAttr.count; i++) {
+        const x = posAttr.getX(i);
+        const y = posAttr.getY(i);
 
-      const u = Number.isFinite(uvWidth) && uvWidth > 0 ? (x - min.x) / uvWidth : 0.5;
-      const v = Number.isFinite(uvHeight) && uvHeight > 0 ? (y - min.y) / uvHeight : 0.5;
+        const u = Number.isFinite(uvWidth) && uvWidth > 0 ? (x - min.x) / uvWidth : 0.5;
+        const v = Number.isFinite(uvHeight) && uvHeight > 0 ? (y - min.y) / uvHeight : 0.5;
 
-      uvAttr.push(u, v);
-    }
+        uvAttr.push(u, v);
+      }
 
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
     } catch (error) {
       geometry.dispose();
       throw error;
