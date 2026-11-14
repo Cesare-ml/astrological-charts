@@ -148,7 +148,6 @@ export class OggettiSempliciRender {
 
     let material: THREE.MeshBasicMaterial | undefined;
     try {
-      let material;
       if (textureUrl) {
         const texture = GestoreImmagini.getImg(textureUrl);
         texture.wrapS = THREE.ClampToEdgeWrapping;
