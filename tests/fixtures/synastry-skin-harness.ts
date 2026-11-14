@@ -28,15 +28,31 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
   const render = () => renderer.generaImmagine(
     natal, null, partner, 'carta-astrale', options, { x: 500, y: 500 }, 1,
   );
+  // The partner-only style must not change the independent natal rendering.
+  // Clear both the partner argument and the mode flag, then restore the flag
+  // even if an asset error interrupts the export.
+  const renderNatalOnly = async () => {
+    const previousMode = options.mostraSinastria;
+    options.mostraSinastria = false;
+    try {
+      return await renderer.generaImmagine(
+        natal, null, null, 'carta-astrale', options, { x: 500, y: 500 }, 1,
+      );
+    } finally {
+      options.mostraSinastria = previousMode;
+    }
+  };
 
   try {
     delete skin.sinastria;
     const baseline = await render();
+    const natalBaseline = await renderNatalOnly();
 
     // The light case changes line color; astrolabio changes the tint of its
     // existing synthetic texture. Every other value inherits base-ring style.
     skin.sinastria = { [property]: overrideColor };
     const partial = await render();
+    const natalWithOverride = await renderNatalOnly();
 
     // The renderer's ?? fallback must match an explicit equivalent for both
     // untextured and textured rings. This also checks asset URL resolution.
@@ -49,7 +65,7 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
     };
     const explicit = await render();
 
-    return { baseline, partial, explicit };
+    return { baseline, partial, explicit, natalBaseline, natalWithOverride };
   } finally {
     if (hadOverride) skin.sinastria = original;
     else delete skin.sinastria;
