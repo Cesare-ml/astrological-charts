@@ -131,6 +131,15 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.equal(allowedHead.headers.get('content-length'), allowedGet.headers.get('content-length'));
     assert.equal(await allowedHead.text(), '');
 
+    // A file outside the approved manifest must remain inaccessible even when
+    // the request has a permitted CORS origin. No filesystem fallback is allowed.
+    const unlisted = await fetch(new URL('/assets/img/not-approved.png', url), {
+      headers: { Origin: 'http://localhost:4200' },
+    });
+    assert.equal(unlisted.status, 404);
+    assert.equal(unlisted.headers.get('cache-control'), 'no-store');
+    assert.equal(unlisted.headers.get('x-content-type-options'), 'nosniff');
+
     // The server must recheck bytes after startup, not just trust the manifest.
     // This test only mutates a disposable synthetic fixture, never approved artwork.
     writeFileSync(join(root, 'img/simboli-bianchi/segni/01.png'), 'tampered fixture');
