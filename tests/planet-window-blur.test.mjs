@@ -542,3 +542,60 @@ test('normal visible click still reaches host after a stable raycast',()=>{
   assert.equal(p.camera.zoom,1);
   p.controller.destroy();
 });
+
+test('click ignores a stale hit if pointerleave runs synchronously inside pick',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>{
+    p.canvas.emit('pointerleave');
+    return event.ref;
+  };
+  p.canvas.emit('click',{ref:axis('AS')});
+  assert.deepEqual(p.events,[], 'newer pointer event cancels obsolete click');
+  p.controller.destroy();
+});
+
+test('pointermove ignores a hit from a scene replaced during pick',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.sceneRevision=4;
+  p.controller.pick=event=>{
+    p.controller.scene={};
+    p.controller.sceneRevision++;
+    return event.ref;
+  };
+  p.canvas.emit('pointermove',{ref:axis('MC')});
+  assert.deepEqual(p.events,[]);
+  assert.equal(p.controller.hovered,null);
+  p.controller.destroy();
+});
+
+test('pointermove cannot revive a destroyed chart during pick',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>{
+    p.controller.destroy();
+    return event.ref;
+  };
+  p.canvas.emit('pointermove',{ref:axis('IC')});
+  assert.deepEqual(p.events,[]);
+  assert.equal(p.controller.hovered,null);
+});
+
+test('nested pointermove during pick wins over the older projected hit',()=>{
+  const p=harness();
+  p.controller.scene={};
+  let nested=false;
+  p.controller.pick=event=>{
+    if (!nested) {
+      nested=true;
+      p.canvas.emit('pointermove',{ref:axis('DS')});
+    }
+    return event.ref;
+  };
+  p.canvas.emit('pointermove',{ref:axis('AS')});
+  assert.deepEqual(p.events,['enter:DS']);
+  assert.equal(p.controller.hovered.name,'DS');
+  assert.deepEqual(p.state(),{paints:1,renders:1});
+  p.controller.destroy();
+});
