@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { generateSyntheticPack } from '../scripts/generate-synthetic-pack.mjs';
-import { createAssetServer } from '../scripts/serve-local-assets.mjs';
+import { createAssetServer, resolveAssetRequest } from '../scripts/serve-local-assets.mjs';
 
 test('CORS preflight only authorizes configured local origins', async () => {
   const directory = mkdtempSync(join(tmpdir(), 'charts-cors-'));
@@ -173,6 +173,30 @@ test('asset server rejects non-loopback and non-canonical CORS allowlists', () =
       root, manifest, origins: ['http://localhost:4200'],
     });
     server.close();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('asset resolver rejects encoded traversal and malformed paths', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'charts-asset-path-'));
+  try {
+    const { root } = generateSyntheticPack(join(directory, 'pack'));
+    const valid = resolveAssetRequest(root, '/assets/img/simboli-bianchi/segni/01.png');
+    assert.equal(valid?.path, 'img/simboli-bianchi/segni/01.png');
+
+    for (const unsafePath of [
+      '/assets/img/../simboli-bianchi/segni/01.png',
+      '/assets/img/%2e%2e/simboli-bianchi/segni/01.png',
+      '/assets/img/%2Fsimboli-bianchi/segni/01.png',
+      '/assets/img/%5Csimboli-bianchi/segni/01.png',
+      '/assets/img/%252e%252e/simboli-bianchi/segni/01.png',
+      '/assets/img/%ZZ.png',
+      '/assets/img/simboli-bianchi/segni/01.png%00',
+      '/assets/img/simboli-bianchi/segni/01.png:stream',
+    ]) {
+      assert.equal(resolveAssetRequest(root, unsafePath), null, unsafePath);
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
