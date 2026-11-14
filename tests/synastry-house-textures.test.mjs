@@ -216,3 +216,25 @@ test('natal, synastry and latitude reject multi-revolution house data before dra
   await assert.rejects(CaseRender.renderAnelloCaseSinastria(invalid, 0, 1, 100, 120, 180, false, options), { name: 'RangeError' });
   await assert.rejects(CaseRender.renderAnelloCaseLatitudini(invalid, 100, 180, false, options), { name: 'RangeError' });
 });
+
+test('all three house-ring entrypoints reject nonfinite or absent Ascendants', async () => {
+  skin.anelloCase.texture = null;
+  delete skin.anelloCase.sinastria;
+  const original = [...house.house];
+  for (const ascendant of [NaN, Infinity, -Infinity, undefined, '5']) {
+    const invalid = { ascendant, house: house.house };
+    await assert.rejects(
+      CaseRender.renderAnelloCase(invalid, 0, 1, 100, 120, 180, false, options),
+      { name: 'TypeError', message: /ascendant must be a finite longitude/ },
+    );
+    await assert.rejects(
+      CaseRender.renderAnelloCaseSinastria(invalid, 0, 1, 100, 120, 180, false, options),
+      { name: 'TypeError', message: /ascendant must be a finite longitude/ },
+    );
+    await assert.rejects(
+      CaseRender.renderAnelloCaseLatitudini(invalid, 100, 180, false, options),
+      { name: 'TypeError', message: /ascendant must be a finite longitude/ },
+    );
+  }
+  assert.deepEqual(house.house, original);
+});
