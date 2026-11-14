@@ -79,10 +79,10 @@ function options(selected = 'egizia', ephemerides = false) {
     mostraTransiti: false,
   };
 }
-async function renderWith(houses, settings = options()) {
+async function renderWith(houses, settings = options(), {australInversion = false, transits = null} = {}) {
   const {Renderer, calls} = buildHarness();
-  const theme = {houses, australInversion: false};
-  const scene = await Renderer.creaScena(theme, null, null, settings);
+  const theme = {houses, australInversion};
+  const scene = await Renderer.creaScena(theme, transits, null, settings);
   return {scene, calls, theme};
 }
 
@@ -162,6 +162,45 @@ test('null house collections and null selected entries retain the no-houses fall
     assert.deepEqual(calls.ascendants, [0]);
     assert.deepEqual(scene.children.map(child => child.kind), ['background', 'signs', 'planets']);
   }
+});
+
+
+test('missing selected houses keeps transit latitude markers and austral inversion', async () => {
+  const houses = {placido: validHouses};
+  const settings = {...options(), mostraTransiti: true};
+  const transits = {planets: {Sun: {longitude: 75, latitude: -1}}};
+  const {scene, calls, theme} = await renderWith(
+    houses, settings, {australInversion: true, transits},
+  );
+  assert.equal(calls.houses.length, 0);
+  assert.deepEqual(calls.ascendants, [0]);
+  assert.equal(calls.planets, 2, 'natal and transit latitude markers must both render');
+  assert.deepEqual(scene.children.map(child => child.kind), [
+    'background', 'planets', 'signs', 'planets',
+  ]);
+  assert.equal(scene.rotation.y, Math.PI, 'south-hemisphere chart must retain inversion');
+  assert.equal(theme.houses, houses);
+});
+
+test('valid selected houses keep the transit rings and austral inversion', async () => {
+  const settings = {...options(), mostraTransiti: true};
+  const {scene, calls} = await renderWith(
+    {egizia: validHouses}, settings, {australInversion: true, transits: {planets: {}}},
+  );
+  assert.equal(calls.houses.length, 1);
+  assert.deepEqual(calls.ascendants, [42]);
+  assert.equal(calls.planets, 2);
+  assert.deepEqual(scene.children.map(child => child.kind), [
+    'houses', 'background', 'planets', 'signs', 'planets',
+  ]);
+  assert.equal(scene.rotation.y, Math.PI);
+});
+
+test('transit setting without a transit theme does not create phantom markers', async () => {
+  const settings = {...options(), mostraTransiti: true};
+  const {scene, calls} = await renderWith({placido: validHouses}, settings);
+  assert.equal(calls.planets, 1);
+  assert.deepEqual(scene.children.map(child => child.kind), ['background', 'signs', 'planets']);
 });
 
 test('ephemerides mode ignores the selected house system even when available', async () => {
