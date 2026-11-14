@@ -15,10 +15,13 @@ const output = ts.transpileModule(withoutImports, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const sampleCounts = [];
+const textureRequests = [];
 
 const THREE = {
   MathUtils: { degToRad: angle => angle * Math.PI / 180 },
   DoubleSide: 2,
+  ClampToEdgeWrapping: 1001,
+  LinearFilter: 1002,
   EllipseCurve: class {
     constructor(x, y, rx, ry, start, end) {
       this.rx = rx;
@@ -71,7 +74,23 @@ const THREE = {
     }
   },
 };
-const context = { exports: {}, THREE };
+const GestoreImmagini = {
+  getImg(reference) {
+    textureRequests.push(reference);
+    const transform = () => ({ values: null, set(...values) { this.values = values; } });
+    return {
+      repeat: transform(),
+      offset: transform(),
+      center: transform(),
+      wrapS: 0,
+      wrapT: 0,
+      minFilter: 0,
+      magFilter: 0,
+      rotation: 1,
+    };
+  },
+};
+const context = { exports: {}, THREE, GestoreImmagini };
 vm.runInNewContext(output, context, { filename: 'oggetti-semplici.renderer.js' });
 const Renderer = context.exports.OggettiSempliciRender;
 
@@ -146,5 +165,54 @@ test('nonfinite or negative arc radii fail before curve sampling', () => {
       { name: 'RangeError' },
     );
     assert.equal(sampleCounts.length, 0);
+  }
+});
+
+
+test('normal textured arcs preserve material and stable UV mapping', () => {
+  sampleCounts.length = 0;
+  textureRequests.length = 0;
+  const reference = 'synthetic/checkerboard.png';
+  const mesh = Renderer.getSemiArcoGrosso(0, 90, 1, 2, '#abc', reference);
+
+  assert.deepEqual(Array.from(sampleCounts), [90, 90]);
+  assert.deepEqual(Array.from(textureRequests), [reference]);
+  assertFiniteUv(mesh);
+
+  const uv = mesh.geometry.attributes.uv.array;
+  assert.ok(Math.abs(uv[0] - 0.5) < 0.001, 'inner start point retains u=0.5');
+  assert.ok(Math.abs(uv[1]) < 0.001, 'inner start point retains v=0');
+  assert.ok(Math.abs(uv.at(-2) - 1) < 0.001, 'outer end point retains u=1');
+  assert.ok(Math.abs(uv.at(-1)) < 0.001, 'outer end point retains v=0');
+
+  const {options} = mesh.material;
+  assert.equal(options.color, '#abc');
+  assert.equal(options.transparent, true);
+  assert.equal(options.side, THREE.DoubleSide);
+  const texture = options.map;
+  assert.equal(texture.wrapS, THREE.ClampToEdgeWrapping);
+  assert.equal(texture.wrapT, THREE.ClampToEdgeWrapping);
+  assert.equal(texture.minFilter, THREE.LinearFilter);
+  assert.equal(texture.magFilter, THREE.LinearFilter);
+  assert.deepEqual(texture.repeat.values, [1, 1]);
+  assert.deepEqual(texture.offset.values, [0, 0]);
+  assert.deepEqual(texture.center.values, [0.5, 0.5]);
+  assert.equal(texture.rotation, 0);
+});
+
+test('invalid textured arcs reject input without requesting an image', () => {
+  for (const args of [
+    [NaN, 30, 1, 2],
+    [0, 30, -1, 2],
+    [0, 30, 1, Infinity],
+  ]) {
+    sampleCounts.length = 0;
+    textureRequests.length = 0;
+    assert.throws(
+      () => Renderer.getSemiArcoGrosso(...args, '#abc', 'synthetic/checkerboard.png'),
+      {name: 'RangeError'},
+    );
+    assert.equal(sampleCounts.length, 0);
+    assert.equal(textureRequests.length, 0);
   }
 });
