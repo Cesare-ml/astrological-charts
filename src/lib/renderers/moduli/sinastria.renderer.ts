@@ -61,6 +61,9 @@ export class SinastriaRender {
     var imgRefCase;
     var simboliScaleCase = 0.7;
     var offsSinastriaDeflettiva=0;
+    // Use the reference directly: as + (reference - as) can lose precision
+    // when the selected house Ascendant has a large numeric frame.
+    const rotazioneRiferimentoSinastria = ascendenteTemaDiRiferimento - offsSinastriaDeflettiva;
     /*
     if(opzioni.sinastria.sinastriaDeflettiva) {
       imgRefCase = 'sinastria-deflettiva-case-interno';
@@ -114,7 +117,7 @@ export class SinastriaRender {
 
     var anelloElementiCelesti = await ElementiCelestiRender.getAnelloElementiCelesti(
       temaPerElementi,
-      as + (ascendenteTemaDiRiferimento-as) - offsSinastriaDeflettiva,
+      rotazioneRiferimentoSinastria,
       pianetiDaColorare,
       0.8,
       stato.opzioni,
@@ -138,7 +141,7 @@ export class SinastriaRender {
     group.add(anelloElementiCelesti);
 
     var anelloSegni = await SegniRender.getAnelloSegniSinastria(
-      as + (ascendenteTemaDiRiferimento-as) - offsSinastriaDeflettiva,
+      rotazioneRiferimentoSinastria,
       diametroCerchioAspetti,
       diametroAnelloSegni,
       false, //australInversion
