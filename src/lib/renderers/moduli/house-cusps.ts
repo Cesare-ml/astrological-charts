@@ -11,8 +11,9 @@ export function unwrapHouseCusps(house: readonly number[]): number[] {
   for (let index = 1; index < house.length; index++) {
     const previous = result[index - 1];
     // A caller may supply longitudes with a different 360-degree offset.
-    // Adding only one revolution fails if the preceding cusp exceeds 720°.
-    const revolutions = Math.max(0, Math.ceil((previous - house[index]) / 360));
+    // Shift in either direction: normalized and already-unwrapped inputs may
+    // coexist, while the final result still spans at most one revolution.
+    const revolutions = Math.ceil((previous - house[index]) / 360);
     const cusp = house[index] + revolutions * 360;
     // An astrological wheel contains one revolution. Inputs requiring multiple
     // revolutions or overflowing arithmetic cannot form valid house sectors.
