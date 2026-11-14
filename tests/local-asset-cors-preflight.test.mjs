@@ -88,6 +88,16 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.equal(previewDenied.status, 403);
     assert.equal(previewDenied.headers.get('access-control-allow-origin'), null);
 
+    // Denied preview HEAD must not leak page metadata or an HTML body.
+    const previewDeniedHead = await fetch(new URL('/__preview', url), {
+      method: 'HEAD', headers: { Origin: 'https://untrusted.example' },
+    });
+    assert.equal(previewDeniedHead.status, 403);
+    assert.equal(previewDeniedHead.headers.get('access-control-allow-origin'), null);
+    assert.equal(previewDeniedHead.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(previewDeniedHead.headers.get('cache-control'), 'no-store');
+    assert.equal(await previewDeniedHead.text(), '');
+
     // Preview HEAD must mirror GET metadata without exposing an HTML body.
     const previewUrl = new URL('/__preview', url);
     const previewGet = await fetch(previewUrl, {
