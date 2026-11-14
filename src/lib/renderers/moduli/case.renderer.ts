@@ -345,8 +345,8 @@ export class CaseRender {
         const miniarco = OggettiSempliciRender.getSemiArcoGrosso(
           cbefore,//+ 0.4,
           cafter,//- 0.4,
-          diametroMiniArco / 2 ,//+ 0.02,
-          diametroEsterno / 2,
+          diametroInterno / 2 ,// Inner texture band, like renderAnelloCase
+          diametroMiniArco / 2,
           coloreTexture,
           texture
         );
