@@ -78,3 +78,38 @@ test('a changed manual position stays isolated from subsequent defaults', () => 
   assert.equal(next.modalita_adesso_posizione.posizione_manuale?.lat, undefined);
   assert.equal(next.modalita_adesso_posizione.posizione_manuale?.tz, undefined);
 });
+
+test('legacy shared-default mutations do not contaminate newly created charts', () => {
+  const legacy = models.settaggiAstrolabioDefault;
+  const oldValues = {
+    skin: legacy.skin_id,
+    conjunction: legacy.aspetti_attivi.congiunzione,
+    quintile: legacy.aspetti_orbite.quintile,
+    solarOrb: legacy.elementi_celesti.Sun.orb,
+    cityLatitude: legacy.modalita_adesso_posizione.citta.lat,
+    manual: legacy.modalita_adesso_posizione.posizione_manuale
+  };
+  try {
+    legacy.skin_id = 'light';
+    legacy.aspetti_attivi.congiunzione = false;
+    legacy.aspetti_orbite.quintile = 99;
+    legacy.elementi_celesti.Sun.orb = 99;
+    legacy.modalita_adesso_posizione.citta.lat = 0;
+    legacy.modalita_adesso_posizione.posizione_manuale = { lat: 99, tz: 'Etc/UTC' };
+    const fresh = models.createDefaultSettaggiAstrolabio();
+    assert.equal(fresh.skin_id, oldValues.skin);
+    assert.equal(fresh.aspetti_attivi.congiunzione, oldValues.conjunction);
+    assert.equal(fresh.aspetti_orbite.quintile, oldValues.quintile);
+    assert.equal(fresh.elementi_celesti.Sun.orb, oldValues.solarOrb);
+    assert.equal(fresh.modalita_adesso_posizione.citta.lat, oldValues.cityLatitude);
+    assert.notEqual(fresh.modalita_adesso_posizione.posizione_manuale?.lat, 99);
+  } finally {
+    // Preserve the legacy exported object and its nested references for other tests.
+    legacy.skin_id = oldValues.skin;
+    legacy.aspetti_attivi.congiunzione = oldValues.conjunction;
+    legacy.aspetti_orbite.quintile = oldValues.quintile;
+    legacy.elementi_celesti.Sun.orb = oldValues.solarOrb;
+    legacy.modalita_adesso_posizione.citta.lat = oldValues.cityLatitude;
+    legacy.modalita_adesso_posizione.posizione_manuale = oldValues.manual;
+  }
+});
