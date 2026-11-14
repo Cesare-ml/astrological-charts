@@ -155,6 +155,29 @@ test('short and sparse cusp arrays are rejected, rather than yielding NaN rotati
   }
 });
 
+test('inherited selected house systems do not create phantom house rings', async () => {
+  const houses = Object.create({egizia: validHouses});
+  // The legacy direct property lookup would treat this as selected data.
+  assert.equal(houses.egizia, validHouses);
+  assert.equal(Object.prototype.hasOwnProperty.call(houses, 'egizia'), false);
+  const {scene, calls, theme} = await renderWith(houses);
+  assert.equal(calls.houses.length, 0);
+  assert.deepEqual(calls.ascendants, [0]);
+  assert.equal(calls.planets, 1);
+  assert.deepEqual(scene.children.map(child => child.kind), ['background', 'signs', 'planets']);
+  assert.equal(theme.houses, houses, 'must not mutate the input');
+});
+
+test('own selected house system in a null-prototype collection still renders', async () => {
+  const houses = Object.assign(Object.create(null), {egizia: validHouses});
+  assert.equal(Object.getPrototypeOf(houses), null);
+  const {scene, calls} = await renderWith(houses);
+  assert.equal(calls.houses.length, 1);
+  assert.equal(calls.houses[0], houses);
+  assert.deepEqual(calls.ascendants, [42]);
+  assert.deepEqual(scene.children.map(child => child.kind), ['houses', 'background', 'signs', 'planets']);
+});
+
 test('an inherited cusp cannot disguise a sparse selected house array', async () => {
   const house = [...validHouses.house];
   delete house[5];
