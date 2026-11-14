@@ -5,7 +5,7 @@ The renderer uses `caseObj.house` (twelve ecliptic longitudes) to place house bo
 `unwrapHouseCusps()` is a pure function shared by all three house rings:
 
 - Requires an array of exactly twelve finite numeric values. Sparse arrays, missing cusps, NaN and Infinity throw `TypeError` before WebGL geometry construction.
-- Preserves the first longitude's input frame, then adds the minimum nonnegative multiple of 360° required for a nondecreasing result. Never mutates the caller's array.
+- Preserves the first longitude's input frame, then adds the signed multiple of 360° required for a nondecreasing result. A cusp may be supplied with a higher or lower 360° frame than the preceding cusp. Never mutates the caller's array.
 - For conventional twelve cusps (including a single 360° wrap), returned values match the previous renderer; ring layout, labels, skin textures and camera remain unchanged.
 - Handles differently wrapped numerical input in a deterministic way, but refuses unwrapped results spanning more than one 360° zodiac revolution or producing nonfinite angles (`RangeError`). It does **not** independently validate astronomical house systems or guarantee strictly positive arc spans; zero-width sectors and other physically inconsistent inputs still require upstream validation.
 
@@ -34,3 +34,9 @@ Source-level regression coverage checks that each renderer invokes the cusp help
 ## Finite rotation offsets
 
 The natal and synastry renderers receive `degOffs` from the caller; latitude mode uses a fixed zero offset. All three shared ring methods now require this value to be a finite JavaScript number (`TypeError` for undefined, numeric strings, NaN, and Infinity). This prevents an invalid offset from silently producing NaN or coerced string angles passed to Three.js. Valid finite offsets retain the previous positional formula. The source-wiring test checks guards in all three methods; the stacked synastry integration PR #88 supplies actual renderer behavior tests for the external offsets.
+
+## Positive and negative input frames (2026-11-14)
+
+A previously unhandled input mixed a normalized first cusp with a *higher* 360° frame for its successor, e.g. `[0, 390, 60, ...]` (where `390°` should be `30°`). The old nonnegative-only shift rejected the resulting otherwise-valid 12-house ring. The helper now applies the minimum **signed** number of revolutions needed to align each successor with the previous unwrapped cusp, without mutating the source and still rejecting sector sequences spanning more than a 360° revolution. Mixed negative frames (e.g. `[350, 380, -310, ...]`) are also covered.
+
+**Actual run:** Node v22.16.0, TypeScript v5.8.3; **7/7 focused numeric unit tests PASS** using the new helper and the extended test file in a local isolated workspace. The new test fails against the previous helper (RED, RangeError). Isolated `tsc --noEmit --strict --target ES2022 --module ESNext --skipLibCheck src/lib/renderers/moduli/house-cusps.ts` **PASS**. Source-wiring, full Angular and WebGL/device validation still pending.
