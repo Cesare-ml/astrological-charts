@@ -26,6 +26,7 @@ to divide by zero, producing NaN texture coordinates.
 - Reject radii which are finite JavaScript doubles but overflow the Float32 position buffers used by Three.js (for example `1e39`). Preserve representable large radii and the existing reversed-center band.
 - When UV bounding-box width/height is zero or nonfinite, use the neutral
   normalized UV coordinate `0.5` for that axis instead of NaN.
+- On a **synchronous** texture lookup or mesh-construction failure, release the newly created arc geometry and material before rethrowing. Leave textures returned by the shared `GestoreImmagini` cache alone; asynchronous loader errors require the caller's existing wait/error handling.
 
 This patch does **not** alter astrology, the chart's zoom, the skin asset URLs,
 planet/house positions or public TypeScript APIs. For unusual fractional spans,
@@ -67,6 +68,7 @@ The package's `preflight` script now runs both line-stroke and arc regression su
 
 - **PASS, Node.js 22.16.0 / TypeScript 5.8.3:** an **offline focused smoke harness** was actually executed with `node --test`, using the manually reconstructed, functionally identical arc method excerpt read from GitHub (not a complete checkout). Six Node test blocks passed, including 72 synthetic zodiac wedges at six ascendant offsets, full/reversed/zero/huge angles, a reversed-radius center-disc fill, Float32-overflow rejection and large Float32-representable radii. Lightweight Three.js behavior was simulated; no real WebGL or production textures were loaded. The local test file is not part of this PR.
 - **PASS, source-level isolation:** six new Float32-focused checks executed against the exact GitHub-readback methods in the connected JavaScript runtime with synthetic geometry stubs. Includes three nonfinite/overflow cases plus valid large and zero radii.
+- **PASS, local offline regression harness:** Node.js 22.16.0, ten Node test blocks (10 passed, 0 failed, exit 0) using the reconstructed arc-method excerpt and synthetic geometry stubs. This additionally checks failed texture lookup, failed mesh construction, successful ownership and that a shared texture is never disposed when only the arc's geometry/material belong to this call. The first run caught a shadowed `material` declaration (8/9 tests); it was fixed in the GitHub branch and the rerun passed 10/10. This offline harness is **not the committed Node test suite**.
 - **NOT RUN:** the **committed** `npm run test:render-primitives` scripts, actual `npm ci`, complete `npm run verify:angular`, Chromium/Firefox WebGL/PNG benchmarks, or VirgoStars/Astrolabio compatibility. The full repository/dependency checkout cannot be accessed from the execution shell due DNS/network limits. Neither offline smoke nor source-level isolation satisfies those release gates.
 
 Keep the PR as a draft stacked on #62 until that parent is reviewed. No
