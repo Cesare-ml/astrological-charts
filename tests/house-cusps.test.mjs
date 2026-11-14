@@ -45,6 +45,7 @@ test('each of the three house-ring renderers uses the shared cusp helper', () =>
   assert.match(renderer, /import \{ unwrapHouseCusps \} from '\.\/house-cusps';/);
   assert.equal((renderer.match(/const casePos = unwrapHouseCusps\(caseObj\.house\);/g) ?? []).length, 3);
   assert.equal((renderer.match(/if \(!Number\.isFinite\(caseObj\.ascendant\)\)/g) ?? []).length, 3);
+  assert.equal((renderer.match(/if \(!Number\.isFinite\(degOffs\)\)/g) ?? []).length, 3);
   assert.doesNotMatch(renderer, /casePos\.push\(caseObj\.house\[0\]\)/);
 });
 
