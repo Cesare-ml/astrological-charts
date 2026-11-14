@@ -99,7 +99,10 @@ twice before accepting the expected failure; rejecting the first natal
 asset would not exercise nested-sinastry cleanup. After the rejection,
 the test asserts that the original skin override and image loader are
 restored, disposes the failed renderer, and requires a subsequent PNG
-export to succeed.
+export to succeed. This recovery assertion decodes the actual PNG using
+`sharp`, checks the expected **400 x 400** dimensions and rejects an
+effectively blank image (fewer than 11 distinct sampled RGB colors). A PNG
+data URL prefix alone is insufficient to prove usable rendered output.
 
 The injection is local to the browser test and does not require modifying
 the host's verified synthetic asset pack. The second-sign ordering is a
