@@ -77,3 +77,24 @@ transit PR #22. Its current change to the same file is in
 - **NOT RUN**: the committed `node --test` suite, complete npm installation,
   Angular build, actual Chromium/Firefox/WebGL/PNG tests and Astrolabio device.
   These remain reviewer gates; the isolated harness does not replace them.
+
+## Consolidation with marker contrast (2026-11-14)
+
+This branch also includes the fix originally proposed in PR #82: the three
+hover-marker circles now choose black or white from the selected skin's
+existing background color using `getAntisciMarkerColor`. For the seven
+shipped skins, light backgrounds use black and dark backgrounds use white;
+valid antiscia geometry and positions remain unchanged.
+
+Run **both** focused suites on the same checkout:
+
+```bash
+node --test tests/transit-antiscia-axes.test.mjs tests/antisci-marker-contrast.test.mjs
+npm run verify:angular
+```
+
+Both tests are synthetic unit checks, not evidence of WebGL pixel parity.
+Before merge, render transit antiscia hover on all seven skins in Chromium
+and Firefox; verify that unknown own/inherited axis keys cannot generate
+non-finite geometry and that PNG/mobile/headless consumers still behave.
+No changes to `main`, automatic releases, or external asset packaging.
