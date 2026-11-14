@@ -146,31 +146,41 @@ export class OggettiSempliciRender {
 
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
 
-    let material;
-    if (textureUrl) {
-      const texture = GestoreImmagini.getImg(textureUrl);
-      texture.wrapS = THREE.ClampToEdgeWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-      texture.repeat.set(1, 1);
-      texture.offset.set(0, 0);
-      texture.center.set(0.5, 0.5);
-      texture.rotation = 0;
-
-      // Imposta i filtri per evitare sgranature o tiling
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-
-      material = new THREE.MeshBasicMaterial({
-        map: texture,
-        side: THREE.DoubleSide,
-        transparent: true,
-        color: colore
-      });
-    } else {
-      material = new THREE.MeshBasicMaterial({ color: colore });
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      let material;
+      if (textureUrl) {
+        const texture = GestoreImmagini.getImg(textureUrl);
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.repeat.set(1, 1);
+        texture.offset.set(0, 0);
+        texture.center.set(0.5, 0.5);
+        texture.rotation = 0;
+  
+        // Imposta i filtri per evitare sgranature o tiling
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+  
+        material = new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.DoubleSide,
+          transparent: true,
+          color: colore
+        });
+      } else {
+        material = new THREE.MeshBasicMaterial({ color: colore });
+      }
+  
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      // The texture is host-owned/shared and must not be disposed here.
+      // Release only the geometry/material constructed by this call when a
+      // synchronous texture lookup or mesh construction throws.
+      material?.dispose();
+      geometry.dispose();
+      throw error;
     }
-
-    return new THREE.Mesh(geometry, material);
   }
 
 
