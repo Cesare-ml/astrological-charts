@@ -122,6 +122,49 @@ test('missing selected house system renders planet and sign rings without phanto
   assert.equal(calls.selectedAngles, 15);
 });
 
+test('incomplete selected house data falls back safely without synthetic axes', async () => {
+  const baseCusps = Array.from({ length: 12 }, (_, i) => i * 30);
+  const incomplete = [
+    null,
+    {},
+    { ascendant: 30, mc: 100 },
+    { ascendant: Number.NaN, mc: 100, house: baseCusps },
+    { ascendant: 30, mc: Number.POSITIVE_INFINITY, house: baseCusps },
+    { ascendant: 30, mc: 100, house: baseCusps.slice(0, 11) },
+    { ascendant: 30, mc: 100, house: [...baseCusps.slice(0, 8), Number.NaN, ...baseCusps.slice(9)] },
+    { ascendant: 30, mc: 100, house: 'not-an-array' },
+  ];
+
+  for (const [index, value] of incomplete.entries()) {
+    const { renderer, calls } = syntheticRenderer();
+    const theme = createTheme({ ...otherHouses, egizia: value });
+    const snapshot = structuredClone(theme);
+    const result = await render(renderer, theme, 'egizia');
+    assert.deepEqual(
+      result.children.map(x => x.kind),
+      ['fallback-texture', 'planets', 'signs'],
+      'Case ' + index + ' must not render invalid cusps',
+    );
+    assert.equal(calls.houses, 0, 'Case ' + index);
+    assert.deepEqual(calls.visualTheme.houses, {}, 'Case ' + index);
+    assert.strictEqual(calls.visualTheme.planets, theme.planets, 'Case ' + index);
+    assert.deepEqual(theme, snapshot, 'Case ' + index + ' must not mutate input');
+  }
+});
+
+test('zero-degree ascendant, midheaven and cusp remain valid inputs', async () => {
+  const { renderer, calls } = syntheticRenderer();
+  const cusps = Array.from({ length: 12 }, (_, i) => i * 30);
+  const theme = createTheme({
+    egizia: { ascendant: 0, mc: 0, house: cusps },
+  });
+  const result = await render(renderer, theme, 'egizia');
+  assert.deepEqual(result.children.map(x => x.kind), ['planets', 'signs', 'houses']);
+  assert.equal(calls.houses, 1);
+  assert.strictEqual(calls.visualTheme, theme);
+  assert.equal(calls.selectedAngles, 15);
+});
+
 test('theme without any houses uses the existing texture fallback', async () => {
   const { renderer, calls } = syntheticRenderer();
   const result = await render(renderer, createTheme(undefined));
