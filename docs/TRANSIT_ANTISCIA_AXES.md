@@ -98,3 +98,19 @@ Before merge, render transit antiscia hover on all seven skins in Chromium
 and Firefox; verify that unknown own/inherited axis keys cannot generate
 non-finite geometry and that PNG/mobile/headless consumers still behave.
 No changes to `main`, automatic releases, or external asset packaging.
+
+## Finite hovered longitudes
+
+The hovered planet may be available by name while its `longitude` has not
+yet been computed, or an upstream payload can contain `NaN`, `Infinity` or
+a nonnumeric value. Before this additional hardening, those cases generated
+three circles with non-finite rotations and their connecting lines. The
+renderer now only draws the hover relation when the longitude is a finite
+**number** (`Number.isFinite`), while retaining any valid enabled axis
+lines; a valid zero-degree longitude still draws normally.
+
+The focused axis suite covers non-finite/missing/nonnumeric input as well
+as zero degrees. This guard is local to the antiscia hover visualization:
+no ephemeris values are changed or converted and no fake coordinates are
+created. Verify in-browser that removing the hover relation on invalid
+planet data does not leave stale drawn objects after redraw.
