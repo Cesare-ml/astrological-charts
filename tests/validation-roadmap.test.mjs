@@ -30,3 +30,17 @@ test('release gates remain explicitly pending until runtime evidence is recorded
   assert.match(roadmap, /issue #25/, 'independent axis canvas evidence must remain tracked');
   assert.match(roadmap, /issue #5/, 'multi-canvas lifecycle validation must remain tracked');
 });
+
+test('Angular verification runs preflight and both builds in order', () => {
+  const command = packageJson.scripts['verify:angular'];
+  assert.equal(typeof command, 'string', 'verify:angular must be an npm script');
+  const stages = command.split(/\s*&&\s*/);
+  assert.deepEqual(stages, [
+    'npm run preflight',
+    'npm run build:library',
+    'npm run build:demo',
+  ], 'verification must fail fast before building the demo');
+  assert.match(packageJson.scripts['test:demo'], /node --test tests\/demo-browser\.test\.mjs/);
+  assert.match(packageJson.scripts['test:offline'], /node --test tests\/offline-browser\.test\.mjs/);
+  assert.match(packageJson.scripts['demo:generate-synthetic'], /--out \.local\/synthetic-pack\b/);
+});
