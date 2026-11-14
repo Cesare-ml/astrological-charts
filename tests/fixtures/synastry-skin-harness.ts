@@ -23,6 +23,7 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
   const partner = makeDemoTheme(71);
   const skin = (SkinManager.skins as any)[skinId].anelloCase;
   const original = skin.sinastria;
+  const hadOverride = Object.hasOwn(skin, 'sinastria');
   const renderer = new GraficoRenderService();
   const render = () => renderer.generaImmagine(
     natal, null, partner, 'carta-astrale', options, { x: 500, y: 500 }, 1,
@@ -50,8 +51,60 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
 
     return { baseline, partial, explicit };
   } finally {
-    if (original === undefined) delete skin.sinastria;
-    else skin.sinastria = original;
+    if (hadOverride) skin.sinastria = original;
+    else delete skin.sinastria;
     renderer.ngOnDestroy();
+  }
+};
+
+
+// Exercise a real rejected export, then assert the shared skin and loader are
+// restored before rendering a fresh image. No external assets or server calls
+// are intentionally failed: the loader rejects the first synthetic image.
+(globalThis as any).probeSynastryFailureCleanup = async () => {
+  GestoreImmagini.configurePublicAssetsBase('http://127.0.0.1:4177/assets/');
+  const opts = structuredClone(defaultOpzioniGrafico) as any;
+  opts.settaggi.skin_id = 'light';
+  opts.temaGrafico = 'light';
+  opts.mostraSinastria = true;
+  for (const body of demoBodies) opts.settaggi.elementi_celesti[body].att = true;
+  const skin = (SkinManager.skins as any).light.anelloCase;
+  const hadOverride = Object.hasOwn(skin, 'sinastria');
+  const originalOverride = skin.sinastria;
+  const originalLoad = GestoreImmagini.loadAsync;
+  const natal = makeDemoTheme(0);
+  const partner = makeDemoTheme(71);
+  const failedRenderer = new GraficoRenderService();
+  let failure = '';
+  try {
+    skin.sinastria = { coloreLinea: '#d00076' };
+    GestoreImmagini.loadAsync = async () => {
+      throw new Error('Injected failure: synthetic synastry asset load');
+    };
+    try {
+      await failedRenderer.generaImmagine(
+        natal, null, partner, 'carta-astrale', opts, {x: 400, y: 400}, 1,
+      );
+    } catch (error) {
+      failure = error instanceof Error ? error.message : String(error);
+    }
+  } finally {
+    GestoreImmagini.loadAsync = originalLoad;
+    if (hadOverride) skin.sinastria = originalOverride;
+    else delete skin.sinastria;
+    failedRenderer.ngOnDestroy();
+  }
+
+  const skinRestored = Object.hasOwn(skin, 'sinastria') === hadOverride
+    && skin.sinastria === originalOverride;
+  const loaderRestored = GestoreImmagini.loadAsync === originalLoad;
+  const recoveredRenderer = new GraficoRenderService();
+  try {
+    const png = await recoveredRenderer.generaImmagine(
+      natal, null, partner, 'carta-astrale', opts, {x: 400, y: 400}, 1,
+    );
+    return { failure, skinRestored, loaderRestored, recoveryIsPng: png.startsWith('data:image/png;base64,') };
+  } finally {
+    recoveredRenderer.ngOnDestroy();
   }
 };
