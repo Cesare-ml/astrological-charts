@@ -264,7 +264,8 @@ export const settaggiAstrolabioDefault:SettaggiAstrolabio = {
  *
  * The existing exported settaggiAstrolabioDefault object remains unchanged for
  * backwards compatibility. Callers managing multiple charts/devices should use
- * this factory instead of mutating the shared constant. The initial values are\n * captured at module load, so later legacy mutations cannot contaminate charts.
+ * this factory instead of mutating the shared constant. The initial values are
+ * captured at module load, so later legacy mutations cannot contaminate charts.
  */
 function cloneAstrolabioSettings(defaults: SettaggiAstrolabio): SettaggiAstrolabio {
   const result = Object.assign(new SettaggiAstrolabio(), defaults);
