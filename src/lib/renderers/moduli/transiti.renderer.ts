@@ -99,7 +99,10 @@ export class TransitiRender {
       c => Object.hasOwn(opzioni.antisci ?? {}, c) && opzioni.antisci[c]
     );
     const nomeHover = opzioni.antisciTransitiHover?.nome;
-    const elementiCelesti = assiAttivi.length > 0 && nomeHover
+    // getElementiCelesti JSON-clones temaRender.planets. An unfinished theme
+    // without a planet map must still be able to draw its valid antiscia axes.
+    const hasPlanets = temaRender?.planets != null && typeof temaRender.planets === 'object';
+    const elementiCelesti = assiAttivi.length > 0 && nomeHover && hasPlanets
       ? await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false)
       : null;
 
