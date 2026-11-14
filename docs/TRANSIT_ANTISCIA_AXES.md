@@ -140,3 +140,27 @@ An independent isolated V8 check of the current GitHub method returned
 `e885d2170fdc9bc3154b6cdcee59ff6e54f33072`).
 This check uses synthetic Three.js inputs; it is **not** a
 benchmark, full TypeScript compile, Angular build or browser pixel test.
+
+## Hover during partial theme loading (2026-11-14)
+
+`ElementiCelestiRender.getElementiCelesti` clones `temaRender.planets`
+with `JSON.stringify`/`JSON.parse`. A hover can remain selected while
+an asynchronous theme change is in progress, when `planets` is missing
+or null. In that state, attempting the clone throws and previously prevented
+even the independent antiscia axis lines from rendering.
+
+The hover lookup is now attempted only when `temaRender.planets` is a
+non-null object. An incomplete theme, including a null theme, skips only
+the hover relation; enabled known axes still render. Once the planet map
+is supplied, normal hover rendering resumes. No fallback coordinates or
+artificial planets are created. The focused suites use a synthetic theme
+with a planet map for normal-path checks and separately exercise missing,
+null and undefined maps.
+
+**Validation:** 29/29 isolated V8 checks using the GitHub-readback
+`getAntisci` method and contrast helper (including all seven skins,
+missing theme cases, zero longitude, invalid longitude, unknown axes and
+lookup count). This is *not* an execution of the committed Node test files,
+Angular typechecking, or browser WebGL regression. The updated branch
+contains 13 axis cases and 3 marker contrast cases for future full-checkout
+execution.
