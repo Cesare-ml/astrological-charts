@@ -185,6 +185,12 @@ export class SinastriaRender {
 
     return group;
     } catch (error) {
+      // The case ring is normally appended after the sign ring. If sign rendering
+      // fails, its completed textures/animations are not yet scene descendants.
+      // Attach it only for failure cleanup; successful rendering order is unchanged.
+      if (anelloCase && !group.children.includes(anelloCase)) {
+        group.add(anelloCase);
+      }
       group.traverse(stopSceneAnimations);
       throw error;
     }
