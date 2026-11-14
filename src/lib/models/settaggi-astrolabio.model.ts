@@ -1,5 +1,5 @@
-import { PosizioneLocalDB } from './posizione-localdb.model';
-import {SettaggiAspettiAttivi,SettaggiAspettiOrbite, SettaggiElementiCelesti} from './settaggi.model';
+import { CittaLocalDB, PosizioneLocalDB } from './posizione-localdb.model';
+import { SettaggiAspettiAttivi, SettaggiAspettiOrbite, SettaggiElementoCeleste, SettaggiElementiCelesti } from './settaggi.model';
 
 
 export class SettaggiAstrolabio {
@@ -257,3 +257,40 @@ export const settaggiAstrolabioDefault:SettaggiAstrolabio = {
         }
     })
   };
+
+
+/**
+ * Return a fresh Astrolabio configuration without sharing nested mutable defaults.
+ *
+ * The existing exported settaggiAstrolabioDefault object remains unchanged for
+ * backwards compatibility. Callers managing multiple charts/devices should use
+ * this factory instead of mutating the shared constant.
+ */
+export function createDefaultSettaggiAstrolabio(): SettaggiAstrolabio {
+  const defaults = settaggiAstrolabioDefault;
+  const result = Object.assign(new SettaggiAstrolabio(), defaults);
+
+  result.aspetti_attivi = Object.assign(new SettaggiAspettiAttivi(), defaults.aspetti_attivi);
+  result.aspetti_orbite = Object.assign(new SettaggiAspettiOrbite(), defaults.aspetti_orbite);
+
+  const celestial = new SettaggiElementiCelesti();
+  for (const key of Object.keys(defaults.elementi_celesti)) {
+    celestial[key] = Object.assign(
+      new SettaggiElementoCeleste(),
+      defaults.elementi_celesti[key]
+    );
+  }
+  result.elementi_celesti = celestial;
+
+  const position = defaults.modalita_adesso_posizione;
+  result.modalita_adesso_posizione = Object.assign(new PosizioneLocalDB(), position, {
+    posizione_manuale: position.posizione_manuale
+      ? { ...position.posizione_manuale }
+      : undefined,
+    citta: position.citta
+      ? Object.assign(new CittaLocalDB(), position.citta)
+      : undefined
+  });
+
+  return result;
+}
