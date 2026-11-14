@@ -34,8 +34,8 @@ angles.
 
 ```sh
 npm ci
-node --test tests/arc-tessellation-safety.test.mjs
-npm run verify:angular
+npm run test:render-primitives   # both #62 line strokes and #87 arc/UV regressions
+npm run verify:angular          # preflight now invokes test:render-primitives too
 ```
 
 The focused Node test evaluates the actual TypeScript renderer with instrumented
@@ -46,6 +46,10 @@ placeholder references only; no artwork or host asset server is required. The te
 baseline, browser performance study, VirgoStars integration, or Astrolabio
 hardware validation. Those remain mandatory acceptance gates before merging
 or deploying anything.
+
+The package's `preflight` script now runs both line-stroke and arc regression suites via `test:render-primitives`. This checks the actual TypeScript source with synthetic Three.js implementations; it does not replace Chromium/Firefox rendering or a live site comparison.
+
+**Integration coordination:** this PR additionally changes `package.json`, which is also edited by open PRs #19, #22, #57, #59 and #66. Re-check their scripts and preserve all intended preflight checks when rebasing/merging. Do not auto-resolve such conflicts by taking one side wholesale.
 
 Keep the PR as a draft stacked on #62 until that parent is reviewed. No
 GitHub Actions, license changes, asset publication or production changes.
