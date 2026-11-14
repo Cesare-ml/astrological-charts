@@ -19,6 +19,7 @@ const ellipseInputs = [];
 const textureRequests = [];
 const createdGeometries = [];
 const createdMaterials = [];
+const geometryFailures = {boundingBox: false, uvAttribute: false};
 const acquiredTextures = [];
 
 const THREE = {
@@ -75,6 +76,9 @@ const THREE = {
       };
     }
     computeBoundingBox() {
+      if (geometryFailures.boundingBox) {
+        throw new Error('synthetic bounding-box failure');
+      }
       const xs = this.points.map(point => point.x);
       const ys = this.points.map(point => point.y);
       this.boundingBox = {
@@ -82,7 +86,12 @@ const THREE = {
         max: { x: Math.max(...xs), y: Math.max(...ys) },
       };
     }
-    setAttribute(name, attribute) { this.attributes[name] = attribute; }
+    setAttribute(name, attribute) {
+      if (name === 'uv' && geometryFailures.uvAttribute) {
+        throw new Error('synthetic UV attribute failure');
+      }
+      this.attributes[name] = attribute;
+    }
     dispose() { this.disposed = true; }
   },
   Float32BufferAttribute: class {
@@ -371,4 +380,43 @@ test('synchronous mesh failure never disposes a host-owned texture', () => {
   assert.equal(createdGeometries.at(-1).disposed, true);
   assert.equal(createdMaterials.at(-1).disposed, true);
   assert.equal(acquiredTextures.at(-1).disposed, false);
+});
+
+
+test('bounding-box failure disposes geometry before any material or texture load', () => {
+  const geometriesBefore = createdGeometries.length;
+  const materialsBefore = createdMaterials.length;
+  const texturesBefore = textureRequests.length;
+  geometryFailures.boundingBox = true;
+  try {
+    assert.throws(
+      () => Renderer.getSemiArcoGrosso(0, 30, 1, 2, '#abc', 'synthetic/checkerboard.png'),
+      {message: 'synthetic bounding-box failure'},
+    );
+  } finally {
+    geometryFailures.boundingBox = false;
+  }
+  assert.equal(createdGeometries.length, geometriesBefore + 1);
+  assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdMaterials.length, materialsBefore);
+  assert.equal(textureRequests.length, texturesBefore);
+});
+
+test('UV attribute failure disposes geometry before requesting a texture', () => {
+  const geometriesBefore = createdGeometries.length;
+  const materialsBefore = createdMaterials.length;
+  const texturesBefore = textureRequests.length;
+  geometryFailures.uvAttribute = true;
+  try {
+    assert.throws(
+      () => Renderer.getSemiArcoGrosso(0, 30, 1, 2, '#abc', 'synthetic/checkerboard.png'),
+      {message: 'synthetic UV attribute failure'},
+    );
+  } finally {
+    geometryFailures.uvAttribute = false;
+  }
+  assert.equal(createdGeometries.length, geometriesBefore + 1);
+  assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdMaterials.length, materialsBefore);
+  assert.equal(textureRequests.length, texturesBefore);
 });
