@@ -64,6 +64,53 @@ function assertImageFolder(folder, description) {
     description + ' must use an existing white/black glyph directory');
 }
 
+// A dynamic texture expression is invisible to the static asset-selector AST
+// and can make a supposedly complete synthetic pack omit an active resource.
+function assertStaticAssetDeclarations(source) {
+  const ast = ts.createSourceFile('skin-manager.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const declarations = [];
+  function visit(node) {
+    if (ts.isPropertyAssignment(node)) {
+      const key = ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)
+        ? node.name.text : null;
+      if (key === 'texture' || key === 'imgRisuonatoreSolare') {
+        const value = node.initializer;
+        const isLiteral = ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value);
+        const isOptionalNull = key === 'texture' && value.kind === ts.SyntaxKind.NullKeyword;
+        assert.ok(isLiteral || isOptionalNull,
+          key + ' must be a literal asset path' + (key === 'texture' ? ' or null' : '') +
+          ' for deterministic fixture coverage');
+        if (isLiteral) {
+          assert.ok(value.text.trim().length > 0, key + ' must not be blank');
+          declarations.push({ key, path: value.text });
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(ast);
+  return declarations;
+}
+
+test('active skin asset declarations are static paths or optional null textures', () => {
+  const source = readFileSync(new URL('../src/lib/renderers/@skin-manager.ts', import.meta.url), 'utf8');
+  const paths = assertStaticAssetDeclarations(source);
+  assert.ok(paths.some(item => item.key === 'texture'), 'No texture literals found');
+  assert.ok(paths.some(item => item.key === 'imgRisuonatoreSolare'), 'No resonator image literals found');
+
+  assert.throws(
+    () => assertStaticAssetDeclarations("class Config { static skins = { a: { texture: selectTexture() } }; }"),
+    /texture must be a literal asset path or null/,
+  );
+  assert.throws(
+    () => assertStaticAssetDeclarations("class Config { static skins = { a: { imgRisuonatoreSolare: null } }; }"),
+    /imgRisuonatoreSolare must be a literal asset path/,
+  );
+  assert.doesNotThrow(
+    () => assertStaticAssetDeclarations("class Config { static skins = { a: { texture: null } }; }"),
+  );
+});
+
 test('demo exposes the seven supported skin IDs, without accidental removals', () => {
   assert.deepEqual(Object.keys(SkinManager.skins).sort(), expectedSkins);
 });
