@@ -79,7 +79,7 @@ test('transit antiscia hover markers use matching contrast in all seven skins', 
       antisci: { Cardinale: true, Fissa: false, Mutevole: false },
       antisciTransitiHover: { nome: 'Sun' },
     };
-    const group = await TransitiRender.getAntisci({}, 0, options, 2, 2, 3, 4);
+    const group = await TransitiRender.getAntisci({ planets: { Sun: { longitude: 42 } } }, 0, options, 2, 2, 3, 4);
     const circles = group.children.filter((child) => child.kind === 'marker');
     assert.equal(circles.length, 3, `${skin}: planet, antiscia and counter-antiscia circles`);
     for (const circle of circles) {
@@ -89,7 +89,7 @@ test('transit antiscia hover markers use matching contrast in all seven skins', 
 });
 
 test('transit antiscia without a hover selection does not add markers', async () => {
-  const group = await TransitiRender.getAntisci({}, 0, {
+  const group = await TransitiRender.getAntisci({ planets: { Sun: { longitude: 42 } } }, 0, {
     settaggi: { skin_id: 'sun' }, antisci: { Cardinale: true },
   }, 2, 2, 3, 4);
   assert.equal(group.children.filter((child) => child.kind === 'marker').length, 0);
