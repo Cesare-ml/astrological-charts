@@ -20,6 +20,7 @@ to divide by zero, producing NaN texture coordinates.
   **720 subdivisions**. Clockwise/negative spans use their absolute width for
   subdivision count; their actual input angles are left untouched.
 - Reject nonfinite angles or overflowed angular spans with `RangeError`.
+- Reject nonfinite or negative inner/outer radii **before** Three.js curve sampling. Preserve reversed radial bands (including outer radius zero), which are intentionally used by the aspect-center fill.
 - When UV bounding-box width/height is zero or nonfinite, use the neutral
   normalized UV coordinate `0.5` for that axis instead of NaN.
 
