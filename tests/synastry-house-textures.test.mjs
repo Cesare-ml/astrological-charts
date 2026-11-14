@@ -280,3 +280,38 @@ test('mixed higher longitude frames preserve the same sectors in all three chart
   assert.deepEqual([bands[1].inner, bands[1].outer], [50, 60]);
   assert.deepEqual(houseValues, snapshot, 'input longitudes must remain untouched');
 });
+
+test('synastry case ring preserves exact reference angle across large Ascendant frames', async () => {
+  skin.anelloCase.texture = 'base-texture';
+  delete skin.anelloCase.sinastria;
+  const input = {
+    ascendant: 1e16,
+    house: Array.from({ length: 12 }, (_, index) => index * 30),
+  };
+  const snapshot = [...input.house];
+  const chartOptions = {
+    ...options,
+    settaggi: { ...options.settaggi, domificazione_selezionata: 'placido' },
+  };
+  const ring = await CaseRender.getAnelloCaseCartaAstrale(
+    { placido: input },
+    1e16 - 13, // legacy relative offset rounds to 1e16 - 12
+    1, undefined, chartOptions, 100, 120, 180,
+    false, false, true, -13, // exact synastry rotation, independent of input frame
+  );
+  const inner = ring.children.find(child => child instanceof FakeGroup);
+  assert.ok(inner, 'expected the nested synastry house ring');
+  const lines = inner.children.filter(child => child.kind === 'line');
+  const bands = inner.children.filter(child => child.kind === 'band');
+  assert.equal(lines.length, 12);
+  assert.equal(bands.length, 24);
+  assert.equal(lines[0].angle, 77 * Math.PI / 180);
+  assert.deepEqual([bands[0].start, bands[0].end], [167, 197]);
+  assert.deepEqual([bands[1].start, bands[1].end], [167, 197]);
+  assert.deepEqual([bands[1].inner, bands[1].outer], [50, 60]);
+  assert.deepEqual(input.house, snapshot, 'incoming house cusps must remain unchanged');
+  await assert.rejects(
+    CaseRender.renderAnelloCaseSinastria(input, 0, 1, 100, 120, 180, false, chartOptions, Infinity),
+    { name: 'TypeError', message: /rotation override must be finite/ },
+  );
+});
