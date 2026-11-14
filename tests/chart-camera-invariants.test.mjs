@@ -99,13 +99,13 @@ test('valid finite zoom values keep existing clamping behavior', () => {
   assert.equal(probe.requestedFrames, 4);
 });
 
-test('service focus of natal/transit axes and planets preserves camera state', () => {
+test('service focus of natal/transit/synastry axes and planets preserves camera state', () => {
   const probe = new CameraProbe();
   probe.setZoom(1.25);
   const projectionBefore = probe.projectionCalls;
   const framesBefore = probe.requestedFrames;
   const refs = ['AS','DS','MC','IC','Sun','Moon'].flatMap(name => [
-    {layer:'natal',name}, {layer:'transit',name}
+    {layer:'natal',name}, {layer:'transit',name}, {layer:'synastry',name}
   ]);
   for (const ref of refs) {
     probe.highlightPlanet(ref);
@@ -125,7 +125,9 @@ test('service focus of natal/transit axes and planets preserves camera state', (
 test('controller focus schedules paint but never adjusts zoom or projection', () => {
   const probe = new ControllerProbe();
   const initialCamera = JSON.stringify(probe.camera);
-  const refs = ['AS','DS','MC','IC'].map(name => ({layer:'natal',name}));
+  const refs = ['AS','DS','MC','IC'].flatMap(name => [
+    {layer:'natal',name}, {layer:'synastry',name}
+  ]);
   for (const ref of refs) probe.highlight(ref);
   assert.equal(probe.painted, refs.length);
   assert.equal(probe.frames, refs.length);
