@@ -24,8 +24,10 @@ then checks:
   synastry-override and latitude sections have required values. All configured
   palette colors use the currently supported CSS hex `#RGB` / `#RRGGBB`,
   `white` / `black` forms; the renderer-only `elementi` token is accepted
-  **only** for symbol color fields. New CSS color formats need explicit
-  renderer compatibility review and a corresponding test update.
+  **only** for zodiac-sign and house symbol colors, including their synastry
+  overrides. Planet glyph tints are sent directly to Three.js and must be
+  ordinary supported colors. New CSS color formats need explicit renderer
+  compatibility review and a corresponding test update.
 - The central resonator image is mandatory; dimensions/scale are finite and
   strictly positive, and opacity is finite in `[0, 1]`.
 - Declared image/texture references resolve under the host-owned
