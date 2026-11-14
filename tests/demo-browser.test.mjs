@@ -157,7 +157,7 @@ test('render waits for a slow skin texture and reports its failure', {timeout: 6
   } finally { release(); await browser.close(); }
 });
 
-test('partial synastry house-ring style renders like its explicit inherited equivalent', {timeout: 120000}, async () => {
+test('partial synastry house-line and texture tints render like explicit inherited styles', {timeout: 120000}, async () => {
   const bundle = await build({
     entryPoints: ['tests/fixtures/synastry-skin-harness.ts'],
     bundle: true, write: false, platform: 'browser', format: 'iife',
@@ -177,40 +177,44 @@ test('partial synastry house-ring style renders like its explicit inherited equi
       {timeout: 30000},
     );
     await page.addScriptTag({content: bundle.outputFiles[0].text});
-    const result = await page.evaluate(() => globalThis.probePartialSynastrySkin());
     async function readImage(dataUrl) {
       assert.match(dataUrl, /^data:image\/png;base64,/, 'expected a browser-generated PNG');
       return sharp(Buffer.from(dataUrl.split(',')[1], 'base64'))
         .removeAlpha().raw().toBuffer({resolveWithObject: true});
     }
-    const baseline = await readImage(result.baseline);
-    const partial = await readImage(result.partial);
-    const explicit = await readImage(result.explicit);
-    assert.equal(baseline.info.width, 500);
-    assert.equal(baseline.info.height, 500);
-    assert.deepEqual(partial.info, baseline.info);
-    assert.deepEqual(explicit.info, baseline.info);
+    // Pixel-based checks avoid PNG metadata and small antialiasing jitter.
+    // Verify both an untextured house-line override and a textured ring tint.
+    for (const scenario of ['line', 'texture']) {
+      const result = await page.evaluate(
+        value => globalThis.probePartialSynastrySkin(value), scenario,
+      );
+      const baseline = await readImage(result.baseline);
+      const partial = await readImage(result.partial);
+      const explicit = await readImage(result.explicit);
+      assert.equal(baseline.info.width, 500, scenario);
+      assert.equal(baseline.info.height, 500, scenario);
+      assert.deepEqual(partial.info, baseline.info, scenario);
+      assert.deepEqual(explicit.info, baseline.info, scenario);
 
-    // WebGL antialiasing can produce a few unstable edge pixels between
-    // exports. Count visibly different pixels, not exact PNG byte hashes.
-    function changedPixels(a, b) {
-      let changed = 0;
-      for (let offset = 0; offset < a.length; offset += baseline.info.channels) {
-        for (let channel = 0; channel < baseline.info.channels; channel++) {
-          if (Math.abs(a[offset + channel] - b[offset + channel]) > 12) {
-            changed++;
-            break;
+      function changedPixels(a, b) {
+        let changed = 0;
+        for (let offset = 0; offset < a.length; offset += baseline.info.channels) {
+          for (let channel = 0; channel < baseline.info.channels; channel++) {
+            if (Math.abs(a[offset + channel] - b[offset + channel]) > 12) {
+              changed++;
+              break;
+            }
           }
         }
+        return changed;
       }
-      return changed;
+      const changedFromBaseline = changedPixels(baseline.data, partial.data);
+      const mismatchWithExplicit = changedPixels(partial.data, explicit.data);
+      assert.ok(changedFromBaseline > 40,
+        `${scenario}: synastry override changed only ${changedFromBaseline} visible pixels`);
+      assert.ok(mismatchWithExplicit <= Math.ceil(500 * 500 * 0.0005),
+        `${scenario}: partial vs explicit fallback differed in ${mismatchWithExplicit} pixels`);
     }
-    const changedFromBaseline = changedPixels(baseline.data, partial.data);
-    const mismatchWithExplicit = changedPixels(partial.data, explicit.data);
-    assert.ok(changedFromBaseline > 40,
-      `Changing the synastry house-line color affected only ${changedFromBaseline} pixels`);
-    assert.ok(mismatchWithExplicit <= Math.ceil(500 * 500 * 0.0005),
-      `Partial vs explicit synastry fallback differed in ${mismatchWithExplicit} visible pixels`);
     assert.deepEqual(pageErrors, []);
   } finally { await browser.close(); }
 });
