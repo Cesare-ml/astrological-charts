@@ -9,27 +9,31 @@ contains `opzioni.settaggi.domificazione_selezionata`.
   'egizia'` threw when the renderer dereferenced `houses.egizia.ascendant`.
   The latitude chart and PNG export could fail even though planet positions
   were available.
-- **After:** the renderer checks only the **selected** house system. If it is
-  missing, it omits the house ring while retaining the background, zodiac ring,
-  and latitude planet markers. As in the existing completely house-less mode,
-  it uses the fallback zodiac rotation reference `as = 0`. It never silently
-  substitutes another house system or computes astronomical houses.
-- **Unchanged:** a present selected house system uses its original Ascendant
-  and house ring; the effemeridi mode still omits house divisions. No input
-  theme is modified. No public types, skin assets, or package exports change.
+- **After:** the renderer checks only the **selected** house system, requiring
+  a finite numeric Ascendant and an array of exactly 12 finite numeric cusp
+  angles. If the selection is absent, incomplete or has nonnumeric coordinates,
+  it omits the unsafe house ring while retaining the background, zodiac ring
+  and latitude planet markers. As in the existing house-less mode, it uses
+  the fallback zodiac rotation reference `as = 0`.
+- **Unchanged:** a complete selected house system, including a legitimate
+  `ascendant = 0`, keeps its original Ascendant and house ring. Ephemerides
+  mode still omits house divisions. No input theme is modified. No public
+  types, skin assets, or package exports change.
 
-This is a missing-system guard, **not** validation of a malformed selected
-house object. A selected system with incomplete cusps or invalid angular
-values requires a separate input-contract check. A 0° fallback rotation does
-not represent a computed Ascendant; consumers requiring actual house axes
-must supply the selected house system.
+These checks validate only **basic input completeness**: they do not verify
+the cusp sequence's astronomical consistency, house system provenance, or
+visual correctness. A malformed but finite 12-cusp sequence may still require
+validation by the shared house renderer. The 0° fallback does **not** represent
+a computed Ascendant; consumers requiring actual house axes must supply the
+requested house system. The renderer never silently substitutes another
+domification or calculates astronomical houses.
 
 ## Reproducible checks
 
 The fixture is synthetic, with `placido` house data and `egizia` selected.
 `tests/latitude-missing-houses.test.mjs` extracts and transpiles the actual
 `LatitudiniRender.creaScena` method, stubs only its render dependencies and
-checks missing, present, empty and absent houses plus the effemeridi override.
+checks missing, present, empty, absent and malformed house inputs (including\n0° Ascendant, NaN/Infinity, short and sparse cusps), plus the effemeridi override.
 It does **not** prove GPU output, asset fidelity or device compatibility.
 
 ```sh
