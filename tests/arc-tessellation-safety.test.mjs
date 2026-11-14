@@ -17,6 +17,8 @@ const output = ts.transpileModule(withoutImports, {
 const sampleCounts = [];
 const ellipseInputs = [];
 const textureRequests = [];
+const createdGeometries = [];
+const createdMaterials = [];
 
 const THREE = {
   MathUtils: { degToRad: angle => angle * Math.PI / 180 },
@@ -61,6 +63,8 @@ const THREE = {
   ShapeGeometry: class {
     constructor(shape) {
       this.points = shape.points;
+      this.disposed = false;
+      createdGeometries.push(this);
       this.attributes = {
         position: {
           count: this.points.length,
@@ -78,15 +82,24 @@ const THREE = {
       };
     }
     setAttribute(name, attribute) { this.attributes[name] = attribute; }
+    dispose() { this.disposed = true; }
   },
   Float32BufferAttribute: class {
     constructor(array, itemSize) { this.array = array; this.itemSize = itemSize; }
   },
   MeshBasicMaterial: class {
-    constructor(options) { this.options = options; }
+    constructor(options) {
+      this.options = options;
+      this.disposed = false;
+      createdMaterials.push(this);
+    }
+    dispose() { this.disposed = true; }
   },
   Mesh: class {
     constructor(geometry, material) {
+      if (material.options.color === '#throw-mesh') {
+        throw new Error('synthetic mesh construction error');
+      }
       this.geometry = geometry;
       this.material = material;
     }
@@ -95,6 +108,9 @@ const THREE = {
 const GestoreImmagini = {
   getImg(reference) {
     textureRequests.push(reference);
+    if (reference === 'synthetic/throw.png') {
+      throw new Error('synthetic texture loading error');
+    }
     const transform = () => ({ values: null, set(...values) { this.values = values; } });
     return {
       repeat: transform(),
@@ -299,4 +315,36 @@ test('huge angular inputs are reduced before entering Three.js loops', () => {
       assert.equal(ellipse.clockwise, end < start);
     }
   }
+});
+
+
+test('synchronous texture lookup failure disposes arc geometry without allocating material', () => {
+  const startGeometries = createdGeometries.length;
+  const startMaterials = createdMaterials.length;
+  assert.throws(
+    () => Renderer.getSemiArcoGrosso(0, 30, 1, 2, '#abc', 'synthetic/throw.png'),
+    {message: 'synthetic texture loading error'},
+  );
+  assert.equal(createdGeometries.length, startGeometries + 1);
+  assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdMaterials.length, startMaterials);
+});
+
+test('mesh construction failure releases arc geometry and its material', () => {
+  const startGeometries = createdGeometries.length;
+  const startMaterials = createdMaterials.length;
+  assert.throws(
+    () => Renderer.getSemiArcoGrosso(0, 30, 1, 2, '#throw-mesh'),
+    {message: 'synthetic mesh construction error'},
+  );
+  assert.equal(createdGeometries.length, startGeometries + 1);
+  assert.equal(createdMaterials.length, startMaterials + 1);
+  assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdMaterials.at(-1).disposed, true);
+});
+
+test('successful arc creation leaves geometry and material owned by the returned mesh', () => {
+  const mesh = Renderer.getSemiArcoGrosso(0, 30, 1, 2, '#abc');
+  assert.equal(mesh.geometry.disposed, false);
+  assert.equal(mesh.material.disposed, false);
 });
