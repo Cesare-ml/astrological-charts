@@ -4,6 +4,7 @@ export class TemaForm extends Tema{
   public stato?: string;
 
   constructor(obj?:any) {
-    super(obj)
+    super(obj);
+    this.stato = obj?.stato;
   }
 }
