@@ -7,7 +7,7 @@ The renderer uses `caseObj.house` (twelve ecliptic longitudes) to place house bo
 - Requires an array of exactly twelve finite numeric values. Sparse arrays, missing cusps, NaN and Infinity throw `TypeError` before WebGL geometry construction.
 - Preserves the first longitude's input frame, then adds the minimum nonnegative multiple of 360° required for a nondecreasing result. Never mutates the caller's array.
 - For conventional twelve cusps (including a single 360° wrap), returned values match the previous renderer; ring layout, labels, skin textures and camera remain unchanged.
-- Handles differently wrapped numerical input in a deterministic way. It does **not** independently validate astronomical house systems or guarantee strictly positive arc spans. Zero-width or physically inconsistent intervals still require upstream validation.
+- Handles differently wrapped numerical input in a deterministic way, but refuses unwrapped results spanning more than one 360° zodiac revolution or producing nonfinite angles (`RangeError`). It does **not** independently validate astronomical house systems or guarantee strictly positive arc spans; zero-width sectors and other physically inconsistent inputs still require upstream validation.
 
 ## Tests and release gates
 
@@ -20,3 +20,7 @@ npm run verify:angular
 The Node test loads the real TypeScript helper using `typescript.transpileModule`, exercises canonical and synthetic mixed-frame cusp sets, rejects malformed arrays and checks that all three rendering methods call the shared helper. Browser screenshot baselines (all chart modes/skins), Chromium/Firefox, host PNG export and actual Astrolabio headless rendering remain necessary before integration. These checks are not implied by a standalone helper test.
 
 No changes to astronomical ephemeris calculations, original artwork, assets, release rights, real user data, GitHub Actions, deployment or the shipped VirgoStars/Astrolabio code.
+
+## Additional regression gate (2026-11-14)
+
+The original helper accepted finite inputs that normalized to an impossible multi-revolution ring or overflowed to nonfinite output. The two new focused tests fail against the old helper and pass with the one-revolution guard. Verified on Node v22.16.0 / TypeScript v5.8.3 in a minimal workspace: **6/6 runnable helper tests PASS**, isolated strict TypeScript check PASS. The renderer-source wiring test and complete Angular/WebGL build were not run in that workspace.

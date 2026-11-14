@@ -46,3 +46,22 @@ test('each of the three house-ring renderers uses the shared cusp helper', () =>
   assert.equal((renderer.match(/const casePos = unwrapHouseCusps\(caseObj\.house\);/g) ?? []).length, 3);
   assert.doesNotMatch(renderer, /casePos\.push\(caseObj\.house\[0\]\)/);
 });
+
+
+test('rejects cusp arrays requiring more than one zodiac revolution', () => {
+  for (const house of [
+    [0, 355, 1, 4, 5, 7, 8, 9, 10, 11, 12, 13],
+    [0, 359, 0, 359, 0, 359, 0, 359, 0, 359, 0, 359],
+  ]) {
+    assert.throws(() => unwrapHouseCusps(house), { name: 'RangeError', message: /one finite 360-degree revolution/ });
+  }
+});
+
+test('rejects arithmetic overflow and never returns nonfinite angles', () => {
+  assert.throws(
+    () => unwrapHouseCusps([Number.MAX_VALUE, -Number.MAX_VALUE, ...Array(10).fill(0)]),
+    { name: 'RangeError' },
+  );
+  const cusp = unwrapHouseCusps(Array.from({ length: 12 }, (_, index) => (350 + index * 30) % 360));
+  assert.ok(cusp.every(Number.isFinite));
+});

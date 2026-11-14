@@ -13,7 +13,13 @@ export function unwrapHouseCusps(house: readonly number[]): number[] {
     // A caller may supply longitudes with a different 360-degree offset.
     // Adding only one revolution fails if the preceding cusp exceeds 720°.
     const revolutions = Math.max(0, Math.ceil((previous - house[index]) / 360));
-    result.push(house[index] + revolutions * 360);
+    const cusp = house[index] + revolutions * 360;
+    // An astrological wheel contains one revolution. Inputs requiring multiple
+    // revolutions or overflowing arithmetic cannot form valid house sectors.
+    if (!Number.isFinite(cusp) || cusp < previous || cusp - result[0] > 360) {
+      throw new RangeError('House cusps must fit within one finite 360-degree revolution.');
+    }
+    result.push(cusp);
   }
   return result;
 }
