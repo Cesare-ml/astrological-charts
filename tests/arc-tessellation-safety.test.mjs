@@ -15,6 +15,7 @@ const output = ts.transpileModule(withoutImports, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const sampleCounts = [];
+const ellipseInputs = [];
 const textureRequests = [];
 
 const THREE = {
@@ -23,16 +24,33 @@ const THREE = {
   ClampToEdgeWrapping: 1001,
   LinearFilter: 1002,
   EllipseCurve: class {
-    constructor(x, y, rx, ry, start, end) {
+    constructor(x, y, rx, ry, start, end, clockwise) {
       this.rx = rx;
       this.ry = ry;
       this.start = start;
       this.end = end;
+      this.clockwise = clockwise;
+      ellipseInputs.push({start, end, clockwise});
     }
     getSpacedPoints(count) {
       sampleCounts.push(count);
+      // Mirrors Three.js r170 EllipseCurve.getPoint() wrapping semantics.
+      // Assert bounded angles first, avoiding unbounded while-loops in a test.
+      assert.ok(this.start >= 0 && this.start <= 2 * Math.PI,
+        'Arc start should be normalized into one turn');
+      assert.ok(Math.abs(this.end) <= 4 * Math.PI + 1e-10,
+        'Arc end should be bounded to an adjacent turn');
+      const twoPi = 2 * Math.PI;
+      let delta = this.end - this.start;
+      const samePoints = Math.abs(delta) < Number.EPSILON;
+      while (delta < 0) delta += twoPi;
+      while (delta > twoPi) delta -= twoPi;
+      if (delta < Number.EPSILON) delta = samePoints ? 0 : twoPi;
+      if (this.clockwise && !samePoints) {
+        delta = delta === twoPi ? -twoPi : delta - twoPi;
+      }
       return Array.from({length: count + 1}, (_, index) => {
-        const angle = this.start + (this.end - this.start) * index / count;
+        const angle = this.start + delta * index / count;
         return { x: this.rx * Math.cos(angle), y: this.ry * Math.sin(angle) };
       });
     }
@@ -244,5 +262,38 @@ test('extreme valid radii and exact upper subdivision bound remain finite', () =
     const mesh = Renderer.getSemiArcoGrosso(start, end, inner, outer, '#abc');
     assert.deepEqual(Array.from(sampleCounts), [segments, segments]);
     assertFiniteUv(mesh);
+  }
+});
+
+
+test('tiny reversed arcs sweep clockwise, not almost a full circle', () => {
+  ellipseInputs.length = 0;
+  const arc = Renderer.getSemiArcoGrosso(10, 9.8, 1, 2, '#abc');
+  assertFiniteUv(arc);
+  assert.equal(ellipseInputs.length, 2);
+  for (const ellipse of ellipseInputs) {
+    assert.equal(ellipse.clockwise, true);
+    const deltaDegrees = (ellipse.end - ellipse.start) * 180 / Math.PI;
+    assert.ok(Math.abs(deltaDegrees + 0.2) < 1e-8);
+  }
+});
+
+test('huge angular inputs are reduced before entering Three.js loops', () => {
+  for (const [start, end] of [
+    [-1e8, 1e8],
+    [1e12, 1e12 + 30],
+    [-360e9 - 15, -360e9 + 15],
+    [0, 720],
+    [360, 0],
+  ]) {
+    ellipseInputs.length = 0;
+    const arc = Renderer.getSemiArcoGrosso(start, end, 1, 2, '#abc');
+    assertFiniteUv(arc);
+    assert.equal(ellipseInputs.length, 2);
+    for (const ellipse of ellipseInputs) {
+      assert.ok(ellipse.start >= 0 && ellipse.start <= 2 * Math.PI);
+      assert.ok(Math.abs(ellipse.end) <= 4 * Math.PI + 1e-10);
+      assert.equal(ellipse.clockwise, end < start);
+    }
   }
 });
