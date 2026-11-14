@@ -94,3 +94,25 @@ test('transit antiscia without a hover selection does not add markers', async ()
   }, 2, 2, 3, 4);
   assert.equal(group.children.filter((child) => child.kind === 'marker').length, 0);
 });
+
+test('unknown or missing skin IDs keep the legacy white fallback without crashing', async () => {
+  const theme = { planets: { Sun: { longitude: 42 } } };
+  const invalidSkin = await TransitiRender.getAntisci(theme, 0, {
+    settaggi: { skin_id: 'removed-legacy-skin' },
+    antisci: { Cardinale: true },
+    antisciTransitiHover: { nome: 'Sun' },
+  }, 2, 2, 3, 4);
+  const circles = invalidSkin.children.filter((child) => child.kind === 'marker');
+  assert.equal(invalidSkin.children.length, 8);
+  assert.equal(circles.length, 3);
+  for (const circle of circles) assert.equal(circle.color, '#ffffff');
+
+  // With no hover, the actual renderer does not need planet options at all.
+  for (const settaggi of [{}, null, undefined]) {
+    const axes = await TransitiRender.getAntisci({}, 0, {
+      settaggi, antisci: { Cardinale: true },
+    }, 2, 2, 3, 4);
+    assert.equal(axes.children.length, 1);
+    assert.equal(axes.children.filter((child) => child.kind === 'marker').length, 0);
+  }
+});
