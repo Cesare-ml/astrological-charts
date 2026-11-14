@@ -19,6 +19,7 @@ const ellipseInputs = [];
 const textureRequests = [];
 const createdGeometries = [];
 const createdMaterials = [];
+const acquiredTextures = [];
 
 const THREE = {
   MathUtils: { degToRad: angle => angle * Math.PI / 180 },
@@ -112,16 +113,20 @@ const GestoreImmagini = {
       throw new Error('synthetic texture loading error');
     }
     const transform = () => ({ values: null, set(...values) { this.values = values; } });
-    return {
+    const texture = {
       repeat: transform(),
       offset: transform(),
       center: transform(),
+      disposed: false,
+      dispose() { this.disposed = true; },
       wrapS: 0,
       wrapT: 0,
       minFilter: 0,
       magFilter: 0,
       rotation: 1,
     };
+    acquiredTextures.push(texture);
+    return texture;
   },
 };
 const context = { exports: {}, THREE, GestoreImmagini };
@@ -347,4 +352,23 @@ test('successful arc creation leaves geometry and material owned by the returned
   const mesh = Renderer.getSemiArcoGrosso(0, 30, 1, 2, '#abc');
   assert.equal(mesh.geometry.disposed, false);
   assert.equal(mesh.material.disposed, false);
+});
+
+
+test('synchronous mesh failure never disposes a host-owned texture', () => {
+  const previousGeometries = createdGeometries.length;
+  const previousMaterials = createdMaterials.length;
+  const previousTextures = acquiredTextures.length;
+  assert.throws(
+    () => Renderer.getSemiArcoGrosso(
+      0, 30, 1, 2, '#throw-mesh', 'synthetic/checkerboard.png',
+    ),
+    {message: 'synthetic mesh construction error'},
+  );
+  assert.equal(createdGeometries.length, previousGeometries + 1);
+  assert.equal(createdMaterials.length, previousMaterials + 1);
+  assert.equal(acquiredTextures.length, previousTextures + 1);
+  assert.equal(createdGeometries.at(-1).disposed, true);
+  assert.equal(createdMaterials.at(-1).disposed, true);
+  assert.equal(acquiredTextures.at(-1).disposed, false);
 });
