@@ -46,8 +46,17 @@ export class LatitudiniRender {
 
     // A nonempty houses collection does not guarantee the requested system
     // exists. Missing selected houses should not hide planets or signs.
-    const selectedHouses = !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
+    const candidateHouses = !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
       ? temaRender.houses?.[opzioni.settaggi.domificazione_selezionata]
+      : undefined;
+    // Only a complete numeric house ring can safely drive rotation and
+    // geometry. Array.every alone would miss holes in sparse cusp arrays.
+    const selectedHouses = candidateHouses
+      && Number.isFinite(candidateHouses.ascendant)
+      && Array.isArray(candidateHouses.house)
+      && candidateHouses.house.length === 12
+      && Array.from({length: 12}, (_, i) => candidateHouses.house[i]).every(Number.isFinite)
+      ? candidateHouses
       : undefined;
     const as = selectedHouses?.ascendant ?? 0;
 
