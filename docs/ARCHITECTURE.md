@@ -40,9 +40,11 @@ The new repository is a collaboration workspace only until a versioned integrati
 Astrolabio views or devices, use the additive public factory
 `createDefaultSettaggiAstrolabio()`. It reproduces the existing default values
 while cloning aspect toggles/orbs, individual celestial-body settings, and the
-local/manual position (including its city identifier). Every call returns new
-model instances, so modifying one chart's settings cannot mutate another
-chart or the legacy default object. The factory does **not** automatically
+local/manual position (including its city identifier). Its initial values are
+snapshotted once at module load, so even subsequent mutation of the legacy
+shared constant cannot contaminate future charts. Every call returns new
+model instances; changes to one chart cannot mutate another chart or the
+legacy default object. The factory does **not** automatically
 migrate existing callers or change the default values in production.
 
 Run `npm run test:astrolabio-defaults` for an isolated TypeScript-model regression.
