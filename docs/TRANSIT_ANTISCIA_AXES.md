@@ -196,3 +196,41 @@ Local `git ls-remote` still cannot resolve `github.com`, so
 `npm ci`, `npm run verify:angular`, and real Chromium/Firefox,
 PNG, and headless Astrolabio validations remain **NOT RUN**.
 The results do not certify integration or art asset parity.
+
+## Full transit renderer integration tests (2026-11-14)
+
+Reconstructed the **complete** `src/lib/renderers/moduli/transiti.renderer.ts`
+source in the temporary test workspace and verified its Git blob SHA-1 is
+identical to the current PR file:
+`622fc2fbec6cda35df21a5642c3a819caff6d8fa`.
+This supersedes the earlier method-only reconstruction evidence.
+The actual GitHub `antisci-marker-color.ts` and both committed test
+files are likewise checked by Git blob hash.
+
+The focused Node harness now exercises both public methods
+`getAnelloTransiti` and `getAntisci` using synthetic Three.js primitives
+and stubbed `getAnelloElementiCelesti`. Three new integration cases cover:
+
+- `mostraAntisci: false`: the planet ring stays visible and no antiscia
+  lookup occurs despite a stored hover selection.
+- `mostraAntisci: true` with an incomplete theme: the planet ring and
+  valid antiscia axes render independently of missing planet positions.
+- `mostraAntisci: true` with valid zero-degree hovered data and three
+  axes: 24 expected antiscia objects are created with one planet lookup.
+
+Local command:
+
+```bash
+node --test tests/transit-antiscia-axes.test.mjs tests/antisci-marker-contrast.test.mjs
+```
+
+**PASS 20/20, exit 0, Node v22.16.0 and TypeScript 5.8.3.**
+The combined suite now contains 16 axis/integration test definitions and
+four contrast tests. The reconstructed workspace uses the exact full
+transit renderer and current committed test files (SHA of the expanded
+axis suite: `1f1985a1ed929e04b6144580c49a68cf08597308`).
+It still replaces several imported dependencies, including most
+`SkinManager` configuration, with minimal fixtures. This **does not**
+establish a passing Angular typecheck/build, actual browser/WebGL
+geometry parity, PNG export, or Astrolabio support. These gates remain
+**NOT RUN** until a full checkout and approved local assets are available.
