@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectActiveAssetLines } from './active-asset-lines.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const srcRoot = join(root, 'src');
@@ -12,27 +13,9 @@ function walk(dir) {
 }
 const scannedFiles = walk(srcRoot).filter((path) => extname(path) === '.ts');
 const rows = [];
-const relevant = /(?:assets\/|assetsImgRef|fontFilename|\.(?:png|jpe?g|webp|svg|woff2?|ttf)|\.getImg\(|\.loadAsync\(|imgRisuonatoreSolare|texture\s*:)/i;
 for (const path of scannedFiles) {
-  const lines = readFileSync(path, 'utf8').split(/\r?\n/);
-  let insideBlockComment = false;
-  for (let i = 0; i < lines.length; i++) {
-    const source = lines[i].trim();
-    if (source.startsWith('/*')) insideBlockComment = true;
-    if (insideBlockComment) {
-      if (source.includes('*/')) insideBlockComment = false;
-      continue;
-    }
-    if (!source || source.startsWith('//') || source.startsWith('*')) continue;
-    const beforeLineComment = source.split(/\s+\/\//)[0];
-    if (!relevant.test(beforeLineComment)) continue;
-    rows.push({
-      file: relative(root, path).split(sep).join('/'),
-      line: i + 1,
-      expression: beforeLineComment.slice(0, 220),
-      kind: beforeLineComment.includes('${') || /\+\s*(?:opzioni|nome|pianeta|img|String|i\b)/.test(beforeLineComment) ? 'dynamic' : 'reference',
-    });
-  }
+  const relativePath = relative(root, path).split(sep).join('/');
+  rows.push(...collectActiveAssetLines(readFileSync(path, 'utf8'), relativePath));
 }
 const categories = {
   'zodiac symbols': 'simboli-bianchi/segni/{01..12}.png',
