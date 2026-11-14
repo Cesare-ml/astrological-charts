@@ -191,10 +191,14 @@ test('partial synastry house-line and texture tints render like explicit inherit
       const baseline = await readImage(result.baseline);
       const partial = await readImage(result.partial);
       const explicit = await readImage(result.explicit);
+      const natalBaseline = await readImage(result.natalBaseline);
+      const natalWithOverride = await readImage(result.natalWithOverride);
       assert.equal(baseline.info.width, 500, scenario);
       assert.equal(baseline.info.height, 500, scenario);
       assert.deepEqual(partial.info, baseline.info, scenario);
       assert.deepEqual(explicit.info, baseline.info, scenario);
+      assert.deepEqual(natalBaseline.info, baseline.info, scenario);
+      assert.deepEqual(natalWithOverride.info, natalBaseline.info, scenario);
 
       function changedPixels(a, b) {
         let changed = 0;
@@ -210,10 +214,13 @@ test('partial synastry house-line and texture tints render like explicit inherit
       }
       const changedFromBaseline = changedPixels(baseline.data, partial.data);
       const mismatchWithExplicit = changedPixels(partial.data, explicit.data);
+      const natalLeakPixels = changedPixels(natalBaseline.data, natalWithOverride.data);
       assert.ok(changedFromBaseline > 40,
         `${scenario}: synastry override changed only ${changedFromBaseline} visible pixels`);
       assert.ok(mismatchWithExplicit <= Math.ceil(500 * 500 * 0.0005),
         `${scenario}: partial vs explicit fallback differed in ${mismatchWithExplicit} pixels`);
+      assert.ok(natalLeakPixels <= Math.ceil(500 * 500 * 0.0005),
+        `${scenario}: partner-only style changed ${natalLeakPixels} natal-only pixels`);
     }
     // Reject a specific second sign load after natal construction (the nested
     // synastry ring), then require a fresh export and restored shared state.
