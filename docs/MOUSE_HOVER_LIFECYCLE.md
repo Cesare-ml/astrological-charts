@@ -140,7 +140,8 @@ output**. Those remain covered by separate browser acceptance proposals
 
 **Evidence and status:** The exact new browser test file (Git blob
 `cc647ecf4f1dd2a411a44209fe138dbbb74aaeef`) passed `node --check`
-locally on Node 22.16.0. The installed Chromium 144 binary did **not** start
-successfully within the test timeout in this container, so browser execution
-is **NOT PASSED**; the test is optional, not part of preflight. The 18 Node
+locally on Node 22.16.0. A separate Chromium 144 headless startup probe timed out in this
+container, and `playwright-core` was unavailable in the isolated local
+workspace. The newly committed browser test was therefore **NOT RUN** (not
+PASS); it is optional and deliberately excluded from preflight. The 18 Node
 mock tests passed separately, but do not replace browser acceptance.
