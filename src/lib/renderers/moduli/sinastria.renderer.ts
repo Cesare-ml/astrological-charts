@@ -90,7 +90,8 @@ export class SinastriaRender {
         diametroAnelloCase,
         false,//termini
         false, //australInversion
-        true
+        true,
+        -rotazioneRiferimentoSinastria // exact house rotation: no large-frame cancellation
       );
     } else {
       const texture = 
