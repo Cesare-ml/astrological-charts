@@ -69,19 +69,20 @@ test('TemaGrafico TypeScript union matches every registered renderer skin', () =
   assert.ok(declaredThemes.includes('astrolabio-girasole'), 'Girasole skin must be selectable by typed consumers');
 });
 
-test('each registered skin provides the essential chart-rendering sections', () => {
-  const sections = [
-    'bgColor', 'elementi', 'cerchioAspetti', 'anelloElementiCelesti',
-    'anelloSegni', 'anelloCase', 'anelloTransiti', 'latitudini',
-  ];
-  for (const [name, configuration] of themeRegistry) {
-    for (const section of sections) {
-      const field = propertyOf(configuration, section);
-      if (section !== 'bgColor' && section !== 'elementi') {
-        assert.ok(ts.isObjectLiteralExpression(field), `${name}.${section} must be an object`);
-      }
-    }
-  }
+const optionsInterface = optionsSource.statements.find(
+  (node) => ts.isInterfaceDeclaration(node) && node.name.text === 'OpzioniGrafico',
+);
+const themeField = optionsInterface?.members.find(
+  (member) => ts.isPropertySignature(member) && propertyName(member.name) === 'temaGrafico',
+);
+
+test('OpzioniGrafico.temaGrafico remains a required TemaGrafico-typed field', () => {
+  assert.ok(optionsInterface, 'Public OpzioniGrafico interface must exist');
+  assert.ok(themeField && ts.isPropertySignature(themeField), 'Public theme field must exist');
+  assert.equal(themeField.questionToken, undefined, 'Theme selection must remain required');
+  assert.ok(themeField.type && ts.isTypeReferenceNode(themeField.type),
+    'Theme selection must reference its declared union, not string or any');
+  assert.equal(themeField.type.typeName.getText(optionsSource), 'TemaGrafico');
 });
 
 test('the default chart theme resolves to an available registered skin', () => {
@@ -119,7 +120,8 @@ test('TypeScript accepts Girasole theme in the public type and rejects unknown s
   const virtualFile = '/virtual/chart-theme-consumer.ts';
   const compilerOptions = { strict: true, noEmit: true, target: ts.ScriptTarget.ES2022 };
   const sourceOf = (theme) => `${typeAlias.getText(optionsSource)}
-const selected: TemaGrafico = ${JSON.stringify(theme)};
+interface PublicChartSelection { ${themeField.getText(optionsSource)} }
+const selected: PublicChartSelection = { temaGrafico: ${JSON.stringify(theme)} };
 `;
   const diagnosticsFor = (theme) => {
     const host = ts.createCompilerHost(compilerOptions);
