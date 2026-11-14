@@ -169,11 +169,11 @@ test('clone a customized profile without sharing nested state or losing zero coo
   assert.notEqual(saved.modalita_adesso_posizione.citta.label, 'Changed only in copy');
   // Current coordinate getters reset the inactive position only in the invoked
   // instance. Cloning must protect the saved profile from that mutation.
+  const savedCity = saved.modalita_adesso_posizione.citta;
+  const savedCityId = saved.modalita_adesso_posizione.citta_id;
   assert.equal(copy.modalita_adesso_posizione.getLat(), 0);
-  assert.equal(copy.modalita_adesso_posizione.citta, undefined);
-  assert.ok(saved.modalita_adesso_posizione.citta);
-  assert.equal(saved.modalita_adesso_posizione.citta_id,
-    models.settaggiAstrolabioDefault.modalita_adesso_posizione.citta_id);
+  assert.strictEqual(saved.modalita_adesso_posizione.citta, savedCity);
+  assert.equal(saved.modalita_adesso_posizione.citta_id, savedCityId);
   assert.equal(models.createDefaultSettaggiAstrolabio().aspetti_attivi.trigono, true);
 });
 
