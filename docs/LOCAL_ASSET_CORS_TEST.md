@@ -35,3 +35,9 @@ Validation: GitHub commit and source reread only. Node 22 execution remains **NO
 ## Preview keyboard navigation (2026-11-14)
 
 The local asset gallery now provides a keyboard-visible skip link to the labelled `<main id="assets">` landmark. Its target uses `tabindex="-1"` for programmatic focus, while the existing VirgoStars attribution remains visible. The HTTP preview test asserts the link, target and focus CSS in the generated HTML. This is an accessibility markup improvement only: browser keyboard focus, screen-reader announcement and WebGL remain **NOT RUN** pending a full checkout and browser validation. No artwork, astronomical logic or production assets changed.
+
+## Unlisted asset HEAD regression (2026-11-14)
+
+The synthetic HTTP suite now verifies that an approved loopback `Origin` cannot use `HEAD` to access an asset path absent from the validated manifest. The expected response is HTTP 404, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, and an empty body, matching the existing GET denial. This checks method parity without reading or committing any real artwork.
+
+**Validation:** GitHub commit/readback only; executable Node test **NOT RUN** in this connector-only change. Run `node --test tests/local-asset-cors-preflight.test.mjs` in a complete Node 22 checkout before merge. Angular, browser WebGL, real approved-asset SHA-256 byte comparison and license clearance remain **NOT RUN**. The `astrological-assets` approved manifest metadata was inspected, not its image bytes. No production, CI, or rendering changes.
