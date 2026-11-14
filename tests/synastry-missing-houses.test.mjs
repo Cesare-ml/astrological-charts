@@ -18,6 +18,54 @@ const { outputText } = ts.transpileModule(source, {
   },
 });
 
+// Exercise the actual celestial selection logic, rather than inferring the
+// absence of phantom axes only from the shallow fallback chart's shape.
+const celestialSource = readFileSync(
+  new URL('../src/lib/renderers/moduli/elementi-celesti.renderer.ts', import.meta.url),
+  'utf8',
+);
+const celestialOutput = ts.transpileModule(celestialSource, {
+  fileName: 'elementi-celesti.renderer.ts',
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2022,
+    esModuleInterop: true,
+  },
+}).outputText;
+const celestialModule = { exports: {} };
+const celestialDependencies = new Set([
+  'three', 'gsap', '../oggetti-semplici.renderer', '../_colori.config',
+  '../@skin-manager', '../scene-animations',
+]);
+new Function('require', 'module', 'exports', celestialOutput)(
+  name => {
+    if (!celestialDependencies.has(name)) throw new Error('Unexpected celestial dependency: ' + name);
+    return {};
+  },
+  celestialModule,
+  celestialModule.exports,
+);
+const RealCelestialRender = celestialModule.exports.ElementiCelestiRender;
+function selectedCelestial(theme, selectedSystem) {
+  return RealCelestialRender.getElementiCelesti(
+    theme,
+    {
+      mostraEffemeridi: false,
+      effemeridiGrafiche: false,
+      mostraMonomeri: false,
+      settaggi: {
+        domificazione_selezionata: selectedSystem,
+        transaturniniSeCongiunti: false,
+        transaturnini_se_congiunti: false,
+        elementi_celesti: Object.fromEntries(
+          ['Sun', 'AS', 'DS', 'MC', 'IC'].map(name => [name, { att: true, orb: 5 }]),
+        ),
+      },
+    },
+    true,
+  );
+}
+
 function syntheticRenderer({ texture = 'local-test-texture', failHouses = false } = {}) {
   const calls = { houses: 0, planets: 0, signs: 0, visualTheme: null, selectedAngles: null, cleaned: 0 };
   class Group {
@@ -163,6 +211,33 @@ test('zero-degree ascendant, midheaven and cusp remain valid inputs', async () =
   assert.equal(calls.houses, 1);
   assert.strictEqual(calls.visualTheme, theme);
   assert.equal(calls.selectedAngles, 15);
+});
+
+test('actual celestial selector confirms why unrelated house systems must be hidden', async () => {
+  const theme = createTheme(otherHouses);
+  // Before the fix, the raw theme with only "placido" would produce invented
+  // axis values at 0° when the user selected "egizia".
+  const unguarded = selectedCelestial(theme, 'egizia');
+  assert.deepEqual(Object.keys(unguarded), ['Sun', 'AS', 'DS', 'MC', 'IC']);
+  assert.equal(unguarded.AS.longitude, 0);
+  assert.equal(unguarded.MC.longitude, 0);
+
+  const { renderer, calls } = syntheticRenderer();
+  await render(renderer, theme, 'egizia');
+  const safe = selectedCelestial(calls.visualTheme, 'egizia');
+  assert.deepEqual(Object.keys(safe), ['Sun']);
+  assert.deepEqual(theme.houses, otherHouses);
+});
+
+test('actual celestial selector retains authentic axes for a valid selected system', async () => {
+  const { renderer, calls } = syntheticRenderer();
+  await render(renderer, createTheme(otherHouses), 'placido');
+  const axes = selectedCelestial(calls.visualTheme, 'placido');
+  assert.deepEqual(Object.keys(axes), ['Sun', 'AS', 'DS', 'MC', 'IC']);
+  assert.equal(axes.AS.longitude, 55);
+  assert.equal(axes.DS.longitude, 235);
+  assert.equal(axes.MC.longitude, 150);
+  assert.equal(axes.IC.longitude, 330);
 });
 
 test('theme without any houses uses the existing texture fallback', async () => {
