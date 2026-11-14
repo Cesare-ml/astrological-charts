@@ -186,6 +186,10 @@ export class CaseRender {
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
     const casePos = unwrapHouseCusps(caseObj.house);
+    // A missing or nonfinite Ascendant would make every rotation NaN.
+    if (!Number.isFinite(caseObj.ascendant)) {
+      throw new TypeError('House ascendant must be a finite longitude.');
+    }
 
     if ( !SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
       group.add(OggettiSempliciRender.getCerchio(diametroEsterno/2, coloreLinea));
@@ -288,6 +292,10 @@ export class CaseRender {
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
     const casePos = unwrapHouseCusps(caseObj.house);
+    // A missing or nonfinite Ascendant would make every rotation NaN.
+    if (!Number.isFinite(caseObj.ascendant)) {
+      throw new TypeError('House ascendant must be a finite longitude.');
+    }
 
     const texture = 
       SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.sinastria?.texture ??
@@ -393,6 +401,10 @@ export class CaseRender {
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
     const casePos = unwrapHouseCusps(caseObj.house);
+    // A missing or nonfinite Ascendant would make every rotation NaN.
+    if (!Number.isFinite(caseObj.ascendant)) {
+      throw new TypeError('House ascendant must be a finite longitude.');
+    }
 
     if ( !SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
       group.add(OggettiSempliciRender.getCerchio(diametroEsterno/2, coloreLinea));
