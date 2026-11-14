@@ -24,7 +24,7 @@ const helperExports = {};
 vm.runInNewContext(helperCompiled, { exports: helperExports });
 const { getAntisciMarkerColor } = helperExports;
 
-function createHarness() {
+function createHarness(longitude = 10) {
   const objects = [];
   class Group {
     children = [];
@@ -62,7 +62,7 @@ function createHarness() {
     '../oggetti-semplici.renderer': { OggettiSempliciRender: primitives },
     './elementi-celesti.renderer': {
       ElementiCelestiRender: {
-        async getElementiCelesti() { return { Sun: { longitude: 10 } }; },
+        async getElementiCelesti() { return { Sun: { longitude } }; },
       },
     },
     '../_colori.config': { Colori: { elementiCelesti: { Sun: '#ffcc00' } } },
@@ -92,8 +92,8 @@ function isFiniteObject(object) {
   return coordinates.every(Number.isFinite);
 }
 
-async function render(options) {
-  const h = createHarness();
+async function render(options, longitude = 10) {
+  const h = createHarness(longitude);
   const group = await h.TransitiRender.getAntisci(
     {}, 90, { settaggi: { skin_id: 'light' }, ...options },
     4, 4, 5, 6,
@@ -161,4 +161,25 @@ test('missing and null antiscia option maps are empty, not exceptions', async ()
     assert.equal(result.group.children.length, 0);
     assert.equal(result.objects.length, 0);
   }
+});
+
+test('invalid hovered longitudes retain the valid axis but never draw NaN relations', async () => {
+  for (const longitude of [NaN, Infinity, -Infinity, null, '10']) {
+    const result = await render({
+      antisci: { Cardinale: true }, antisciTransitiHover: { nome: 'Sun' },
+    }, longitude);
+    assert.equal(result.group.children.length, 1, `invalid longitude: ${String(longitude)}`);
+    assert.equal(result.objects.filter((x) => x.kind === 'circle').length, 0);
+    assert.equal(result.objects.filter((x) => x.kind === 'dashed-line').length, 0);
+    assert.ok(result.objects.every(isFiniteObject));
+  }
+});
+
+test('a real planet at zero degrees still renders all hover markers and links', async () => {
+  const result = await render({
+    antisci: { Cardinale: true }, antisciTransitiHover: { nome: 'Sun' },
+  }, 0);
+  assert.equal(result.group.children.length, 8);
+  assert.equal(result.objects.filter((x) => x.kind === 'circle').length, 3);
+  assert.ok(result.objects.every(isFiniteObject));
 });
