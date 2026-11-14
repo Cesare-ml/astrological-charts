@@ -130,3 +130,22 @@ test('hovering an unavailable planet draws axes but no triangular relation', asy
   assert.equal(result.group.children.length, 1);
   assert.equal(result.objects.length, 1);
 });
+
+test('inherited recognized axis flags are ignored unless explicitly owned', async () => {
+  const inherited = Object.create({ Cardinale: true, Mutevole: true });
+  inherited.Fissa = true;
+  const result = await render({ antisci: inherited, antisciTransitiHover: { nome: 'Sun' } });
+  assert.equal(result.group.children.length, 8, 'only the owned Fissa axis and its hover links');
+  const axis = result.group.children[0];
+  assert.equal(axis.kind, 'thick-line');
+  assert.ok(Math.abs(axis.rotation.z - Math.PI * 5 / 3) < 1e-12);
+  assert.ok(result.objects.every(isFiniteObject));
+});
+
+test('missing and null antiscia option maps are empty, not exceptions', async () => {
+  for (const antisci of [undefined, null]) {
+    const result = await render({ antisci, antisciTransitiHover: { nome: 'Sun' } });
+    assert.equal(result.group.children.length, 0);
+    assert.equal(result.objects.length, 0);
+  }
+});
