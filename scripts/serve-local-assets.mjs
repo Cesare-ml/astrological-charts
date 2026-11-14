@@ -61,7 +61,8 @@ function previewHtml(pack) {
     '<header><h1>Approved astrology assets — local preview</h1>'+
     '<p>'+pack.count+' approved files, '+pack.totalBytes+' bytes verified by SHA-256.</p>'+
     '<p>This is an <b>asset smoke preview</b>, not yet a full natal-chart renderer. '+
-    'Only approved-manifest files are served. No access to VirgoStars is needed.</p></header>'+
+    'Only approved-manifest files are served. No access to VirgoStars is needed.</p>'+ 
+    '<p><a href="https://www.virgostars.it/" rel="noopener noreferrer">Powered by VirgoStars</a></p></header>'+
     '<div class="grid">'+items+'</div></body></html>';
 }
 
