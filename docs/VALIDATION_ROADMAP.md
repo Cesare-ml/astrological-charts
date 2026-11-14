@@ -33,6 +33,26 @@ This document is a planning checklist, **not** evidence of completed validation.
 - [ ] Preserve visible VirgoStars credits and a project link in the demo.
 - [ ] Obtain explicit owner approval before merge, deployment, npm publication or production/device integration.
 
+
+## Reproducible local execution (no CI)
+
+Run from the repository root with Node 22.12+ and the pinned lockfile. The following are **commands to execute**, not previously completed checks:
+
+```sh
+node --version
+npm --version
+git rev-parse HEAD
+npm ci
+npm run verify:angular
+npm run demo:generate-synthetic
+npm run test:demo
+npm run test:offline
+```
+
+The two browser test commands require their documented local browser and server prerequisites; consult [Angular demo](ANGULAR_DEMO.md) before interpreting failures. The synthetic asset generator writes to ignored `.local/`, not the source tree. Use the separate approved asset pack only after its manifest and bytes have been verified; never copy it into this repository.
+
+For every command capture the **actual exit code** and the tested commit. A GitHub commit/readback, a static assertion or a synthetic-only screenshot must not be reported as a successful Angular build, original-artwork comparison, or Astrolabio acceptance.
+
 ## Evidence log template
 
 For each gate record: commit SHA, command, environment, PASS/FAIL/NOT RUN, exit code, screenshot or artifact reference, blocker and next action. Do not mark a gate complete on static code inspection alone.
