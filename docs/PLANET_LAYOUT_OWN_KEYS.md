@@ -46,3 +46,23 @@ Astrolabio/e-ink parity.
 Callers must still validate incoming chart data and any other intermediate
 object maps; it is not a general sanitation or prototype-pollution audit.
 The parent PR is not merged into production.
+
+## Collision-gap input guard
+
+The legacy collision helper also accepted non-finite or negative custom
+`minSeparation` values. `Infinity` could turn an otherwise finite
+planet longitude into `NaN` during glyph separation; a negative gap
+silently disabled separation. Both `relaxChartGlyphCycle` and
+`layoutChartGlyphLongitudes` now reject gaps outside **0–360 degrees**
+or any non-finite/nonnumeric value with `RangeError`.
+
+Validation happens before sorting/mutating a working array, and before
+building the output mapping. Valid numeric gaps, including the established
+**7° default**, preserve the existing two-pass angular algorithm and
+results. This validates the *visual layout parameter*, not upstream
+astronomical longitudes or aspects.
+
+The shared `test:planet-layout` command runs two extra regression cases:
+invalid inputs must not mutate working coordinates, and permitted gaps
+must reproduce the historical two-pass outputs. The special-key and
+prototype-inheritance tests continue to apply unchanged.
