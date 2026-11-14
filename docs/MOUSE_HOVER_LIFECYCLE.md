@@ -112,3 +112,35 @@ rendering, or device/e-ink acceptance.
 An exploratory headless Chromium DOM harness was attempted locally but its
 browser process timed out in this environment; no browser acceptance PASS is
 claimed and the unverified harness was not committed to the repository.
+
+## Optional Chromium DOM smoke (2026-11-14)
+
+A standalone real-browser DOM regression is available without starting the
+Angular demo, connecting to a network, or distributing any real chart assets:
+
+```bash
+npm ci
+npm run test:mouse-dom
+```
+
+Set `CHROME_PATH` to Chrome/Chromium when its executable is not at a standard
+path. Only in a controlled Linux container that requires it, set
+`CHART_BROWSER_NO_SANDBOX=1`; never disable the browser sandbox by default
+on contributor desktops.
+
+The test compiles the actual TypeScript internal mouse adapter, launches
+Chromium, uses real browser canvas rectangles and dispatched DOM events, and
+checks pointer coordinates before/after resizing, hover enter/leave, window
+blur, out-of-bounds clicks, teardown, two independent canvases, and unchanged
+camera zoom. Three.js raycasting is deliberately replaced by deterministic
+synthetic hits. Consequently it **does not verify WebGL picking, AS/DS/MC/IC
+glyph pixels, natal/transit aspect geometry, Angular integration, or hardware
+output**. Those remain covered by separate browser acceptance proposals
+#54/#64 on the independent interactive controller PR #22.
+
+**Evidence and status:** The exact new browser test file (Git blob
+`cc647ecf4f1dd2a411a44209fe138dbbb74aaeef`) passed `node --check`
+locally on Node 22.16.0. The installed Chromium 144 binary did **not** start
+successfully within the test timeout in this container, so browser execution
+is **NOT PASSED**; the test is optional, not part of preflight. The 18 Node
+mock tests passed separately, but do not replace browser acceptance.
