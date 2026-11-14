@@ -94,6 +94,7 @@ test('CORS preflight only authorizes configured local origins', async () => {
       headers: { Origin: 'http://localhost:4200' },
     });
     assert.equal(previewGet.status, 200);
+    assert.equal(previewGet.headers.get('referrer-policy'), 'no-referrer');
     assert.match(previewGet.headers.get('content-type') ?? '', /^text\/html/);
     assert.match(previewGet.headers.get('content-security-policy') ?? '', /default-src 'none'/);
     const previewBody = await previewGet.text();
@@ -146,6 +147,7 @@ test('CORS preflight only authorizes configured local origins', async () => {
       headers: { Origin: 'http://localhost:4200' },
     });
     assert.equal(unlisted.status, 404);
+    assert.equal(unlisted.headers.get('referrer-policy'), 'no-referrer');
     assert.equal(unlisted.headers.get('cache-control'), 'no-store');
     assert.equal(unlisted.headers.get('x-content-type-options'), 'nosniff');
 
@@ -168,6 +170,7 @@ test('CORS preflight only authorizes configured local origins', async () => {
         headers: { Origin: 'http://localhost:4200' },
       });
       assert.equal(tampered.status, 409, method);
+      assert.equal(tampered.headers.get('referrer-policy'), 'no-referrer', method);
       assert.equal(tampered.headers.get('cache-control'), 'no-store', method);
       assert.equal(tampered.headers.get('x-content-type-options'), 'nosniff', method);
     }
