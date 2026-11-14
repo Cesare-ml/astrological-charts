@@ -164,3 +164,35 @@ lookup count). This is *not* an execution of the committed Node test files,
 Angular typechecking, or browser WebGL regression. The updated branch
 contains 13 axis cases and 3 marker contrast cases for future full-checkout
 execution.
+
+## Focused Node runner verification in isolated reconstruction (2026-11-14)
+
+A temporary local workspace at `/tmp/astro-pr85-qa` on **Node
+v22.16.0**, **npm 10.9.2** and TypeScript **5.8.3** executed:
+
+```bash
+node --test tests/transit-antiscia-axes.test.mjs tests/antisci-marker-contrast.test.mjs
+```
+
+**Exit 0; PASS 17/17, FAIL 0.** Both test files are byte-identical to
+their actual GitHub PR #85 blobs (Git blob SHAs:
+`b917d0c9b882a532b0400c197d1832caa2bb57d0` for 13 axis cases
+and `a9de6d9631f3a18c7bedf56b6934b6e57eaa071a` for four color
+cases). The color helper is also byte-identical (SHA
+`dcffd954b6bd848e1dd24e098c940d310b9da2af`).
+
+The renderer in the local fixture contains **the exact GitHub
+`getAntisci` method**, independently compared for length and
+FNV-1a checksum (3814 UTF-16 code units, checksum 2504128235),
+but not the full original module; its other renderer methods are
+excluded. The local `SkinManager` fixture contains only the seven
+`bgColor` values (not the complete original palette/asset metadata).
+Mocked Three.js objects and celestial input are supplied by the
+committed tests. Therefore these are **actual Node test executions
+with reconstructed inputs**, *not* a clean repository checkout or
+full-production rendering acceptance.
+
+Local `git ls-remote` still cannot resolve `github.com`, so
+`npm ci`, `npm run verify:angular`, and real Chromium/Firefox,
+PNG, and headless Astrolabio validations remain **NOT RUN**.
+The results do not certify integration or art asset parity.
