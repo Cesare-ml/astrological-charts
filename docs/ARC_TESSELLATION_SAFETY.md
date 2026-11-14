@@ -27,6 +27,7 @@ to divide by zero, producing NaN texture coordinates.
 - When UV bounding-box width/height is zero or nonfinite, use the neutral
   normalized UV coordinate `0.5` for that axis instead of NaN.
 - On a **synchronous** texture lookup or mesh-construction failure, release the newly created arc geometry and material before rethrowing. Leave textures returned by the shared `GestoreImmagini` cache alone; asynchronous loader errors require the caller's existing wait/error handling.
+- Apply the same geometry disposal to synchronous **bounding-box** and **UV attribute** initialization failures, before any texture is requested. A successful arc retains ownership of its own buffers for the normal renderer lifecycle.
 
 This patch does **not** alter astrology, the chart's zoom, the skin asset URLs,
 planet/house positions or public TypeScript APIs. For unusual fractional spans,
@@ -65,6 +66,10 @@ The package's `preflight` script now runs both line-stroke and arc regression su
 **Integration coordination:** this PR additionally changes `package.json`, which is also edited by open PRs #19, #22, #57, #59 and #66. Re-check their scripts and preserve all intended preflight checks when rebasing/merging. Do not auto-resolve such conflicts by taking one side wholesale.
 
 ## Validation performed (2026-11-14)
+
+- **PASS, Node.js 22.16.0:** three offline Node files run together using `node --test`, **13/13 passed (exit 0)**, covering 72 zodiac wedges, edge inputs, texture/material failures, bounding-box/UV errors, and recovery after an error. The checked code is a recreated TypeScript method excerpt from the branch, not a checked-out full repository; synthetic Three.js objects were used.
+- **PASS, TypeScript transpilation diagnostics:** `ts.transpileModule` of the offline method excerpt reported no diagnostics. This is not a full Angular type-check.
+
 
 - **PASS, Node.js 22.16.0 / TypeScript 5.8.3:** an **offline focused smoke harness** was actually executed with `node --test`, using the manually reconstructed, functionally identical arc method excerpt read from GitHub (not a complete checkout). Six Node test blocks passed, including 72 synthetic zodiac wedges at six ascendant offsets, full/reversed/zero/huge angles, a reversed-radius center-disc fill, Float32-overflow rejection and large Float32-representable radii. Lightweight Three.js behavior was simulated; no real WebGL or production textures were loaded. The local test file is not part of this PR.
 - **PASS, source-level isolation:** six new Float32-focused checks executed against the exact GitHub-readback methods in the connected JavaScript runtime with synthetic geometry stubs. Includes three nonfinite/overflow cases plus valid large and zero radii.
