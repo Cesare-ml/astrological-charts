@@ -190,6 +190,9 @@ export class CaseRender {
     if (!Number.isFinite(caseObj.ascendant)) {
       throw new TypeError('House ascendant must be a finite longitude.');
     }
+    if (!Number.isFinite(degOffs)) {
+      throw new TypeError('House rotation offset must be a finite number.');
+    }
 
     if ( !SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
       group.add(OggettiSempliciRender.getCerchio(diametroEsterno/2, coloreLinea));
@@ -295,6 +298,9 @@ export class CaseRender {
     // A missing or nonfinite Ascendant would make every rotation NaN.
     if (!Number.isFinite(caseObj.ascendant)) {
       throw new TypeError('House ascendant must be a finite longitude.');
+    }
+    if (!Number.isFinite(degOffs)) {
+      throw new TypeError('House rotation offset must be a finite number.');
     }
 
     const texture = 
@@ -404,6 +410,9 @@ export class CaseRender {
     // A missing or nonfinite Ascendant would make every rotation NaN.
     if (!Number.isFinite(caseObj.ascendant)) {
       throw new TypeError('House ascendant must be a finite longitude.');
+    }
+    if (!Number.isFinite(degOffs)) {
+      throw new TypeError('House rotation offset must be a finite number.');
     }
 
     if ( !SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
