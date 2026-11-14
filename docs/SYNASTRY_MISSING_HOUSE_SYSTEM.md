@@ -8,7 +8,7 @@ Simply skipping the house ring is insufficient: the inner planet renderer checks
 
 ## Behavior
 
-Resolve `houses[settaggi.domificazione_selezionata]` once. Accept it only if `ascendant` and `mc` are finite numbers and `house` contains exactly twelve finite cusp angles (including 0°). When valid, preserve the existing house ring, angles, and exact chart reference passed downstream. When absent, incomplete or nonfinite, use the existing no-houses synastry fallback and pass a shallow rendering-only theme with `houses: {}` to the planet renderer. Original planetary data and the input theme are left untouched. No guessed house system or 0° axes are used.
+Resolve `houses[settaggi.domificazione_selezionata]` once. Accept it only if `ascendant` and `mc` are finite numbers and `house` contains exactly twelve *present* finite cusp angles (including 0°). Sparse arrays must be rejected: `Array.prototype.every()` alone skips holes. Index-by-index materialization mirrors the fail-closed cusp validation in PR #83. When valid, preserve the existing house ring, angles, and exact chart reference passed downstream. When absent, incomplete or nonfinite, use the existing no-houses synastry fallback and pass a shallow rendering-only theme with `houses: {}` to the planet renderer. Original planetary data and the input theme are left untouched. No guessed house system or 0° axes are used.
 
 Synthetic example: `houses = { placido: {...} }` and selected `egizia` now yields the signs/planet ring and optional empty-house texture, without case divisions or synthetic AS/DS/MC/IC. A valid `placido` selection remains unchanged.
 
