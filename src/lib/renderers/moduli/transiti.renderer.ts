@@ -6,6 +6,7 @@ import {ElementiCelestiRender} from './elementi-celesti.renderer';
 
 import {Colori} from '../_colori.config';
 import {SkinManager} from '../@skin-manager';
+import {getAntisciMarkerColor} from '../antisci-marker-color';
 
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
@@ -86,44 +87,57 @@ export class TransitiRender {
 
   public static async getAntisci(temaRender, ascRef, opzioni, diametroAnelloCase, diametroAnelloSegni, diametroInternoAnelloAntisci, diametroEsternoAnelloAntisci) {
     var group = new THREE.Group();
+    // An invalid origin angle or zodiac diameter cannot produce finite axis geometry.
+    // Skip the antiscia overlay instead of putting NaN/Infinity into Three.js transforms.
+    if (!Number.isFinite(ascRef) || !Number.isFinite(diametroAnelloSegni)) {
+      return group;
+    }
     var assi = {
       'Cardinale': 270, // Capricorno-Cancro
       'Fissa':     300, // Acquario-Leone
       'Mutevole':  330 // Pesci-Vergine
     };
     var ascendente = ascRef;
-    var elementiCelesti = await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false);
+    // Resolving planets clones the theme data; do it only when a drawable
+    // antiscia axis is enabled AND a planet hover relation is requested.
+    const assiAttivi = Object.keys(assi).filter(
+      c => Object.hasOwn(opzioni.antisci ?? {}, c) && opzioni.antisci[c]
+    );
+    const nomeHover = opzioni.antisciTransitiHover?.nome;
+    // getElementiCelesti JSON-clones temaRender.planets. An unfinished theme
+    // without a planet map must still be able to draw its valid antiscia axes.
+    const hasPlanets = temaRender?.planets != null && typeof temaRender.planets === 'object';
+    const elementiCelesti = assiAttivi.length > 0 && nomeHover && hasPlanets && Number.isFinite(diametroAnelloCase)
+      ? await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false)
+      : null;
 
-    var coloreCerchio = '#ffffff';
-    if(opzioni.settaggi.skin_id == 'light'){
-      coloreCerchio = '#000000'
-    }
+    const coloreCerchio = getAntisciMarkerColor(
+      SkinManager.skins[opzioni?.settaggi?.skin_id]?.bgColor ?? ''
+    );
+    const hoverLongitude = elementiCelesti?.[nomeHover]?.longitude;
 
     //Disegno gli assi
-    for(let c of Object.keys(opzioni.antisci)) {
-      if(opzioni.antisci[c]) {
-        var asse = await OggettiSempliciRender.getLineaGrossa({x:0,y:-diametroAnelloSegni/2,z:0},{x:0,y:diametroAnelloSegni/2,z:0},"yellow",0.6);
-        asse.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15 + assi[c]
-        ));
-        group.add(asse);
-      }
+    // Iterate the supported axes only: legacy option payloads may contain unknown keys.
+    for(const c of assiAttivi) {
+      const asse = await OggettiSempliciRender.getLineaGrossa(
+        {x:0,y:-diametroAnelloSegni/2,z:0},
+        {x:0,y:diametroAnelloSegni/2,z:0},
+        "yellow",0.6
+      );
+      asse.rotateZ(THREE.MathUtils.degToRad(
+        75-ascendente+15 + assi[c]
+      ));
+      group.add(asse);
     }
 
     // Se antisciTransitiHover allora traccio le linee
-    for (let c in opzioni.antisci) {
-      if(
-        opzioni.antisci[c]
-        && opzioni.antisciTransitiHover
-        && elementiCelesti[opzioni.antisciTransitiHover.nome]
-      ) {
-        var pianeta = elementiCelesti[opzioni.antisciTransitiHover.nome];
-
-        var lngantisci = 2*assi[c] - elementiCelesti[opzioni.antisciTransitiHover.nome].longitude;
+    for (const c of assiAttivi) {
+      if(Number.isFinite(hoverLongitude) && Number.isFinite(diametroAnelloCase)) {
+        var lngantisci = 2*assi[c] - hoverLongitude;
 
         var pianeta = OggettiSempliciRender.getCerchio(0.025,coloreCerchio);
         pianeta.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15 + elementiCelesti[opzioni.antisciTransitiHover.nome].longitude
+          75-ascendente+15 + hoverLongitude
         ));
         pianeta.translateY(diametroAnelloCase/2);
 
