@@ -1,3 +1,4 @@
+import { unwrapHouseCusps } from './house-cusps';
 import * as THREE from 'three';
 import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import { SkinManager } from '../@skin-manager';
@@ -184,15 +185,7 @@ export class CaseRender {
     //le texture hanno sistemi di render diversi, cerchio inizio 90 gradi dopo
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
-    var casePos = [];
-    casePos.push(caseObj.house[0]);
-    for(var i=0; i<11; i++) {
-      if(caseObj.house[i+1] < casePos[i]) {
-        casePos.push(caseObj.house[i+1]+360);
-      } else {
-        casePos.push(caseObj.house[i+1]);
-      }
-    }
+    const casePos = unwrapHouseCusps(caseObj.house);
 
     if ( !SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
       group.add(OggettiSempliciRender.getCerchio(diametroEsterno/2, coloreLinea));
@@ -294,15 +287,7 @@ export class CaseRender {
     //le texture hanno sistemi di render diversi, cerchio inizio 90 gradi dopo
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
-    var casePos = [];
-    casePos.push(caseObj.house[0]);
-    for(var i=0; i<11; i++) {
-      if(caseObj.house[i+1] < casePos[i]) {
-        casePos.push(caseObj.house[i+1]+360);
-      } else {
-        casePos.push(caseObj.house[i+1]);
-      }
-    }
+    const casePos = unwrapHouseCusps(caseObj.house);
 
     const texture = 
       SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.sinastria?.texture ??
@@ -407,15 +392,7 @@ export class CaseRender {
     //le texture hanno sistemi di render diversi, cerchio inizio 90 gradi dopo
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
-    var casePos = [];
-    casePos.push(caseObj.house[0]);
-    for(var i=0; i<11; i++) {
-      if(caseObj.house[i+1] < casePos[i]) {
-        casePos.push(caseObj.house[i+1]+360);
-      } else {
-        casePos.push(caseObj.house[i+1]);
-      }
-    }
+    const casePos = unwrapHouseCusps(caseObj.house);
 
     if ( !SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
       group.add(OggettiSempliciRender.getCerchio(diametroEsterno/2, coloreLinea));
