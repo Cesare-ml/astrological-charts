@@ -1,6 +1,6 @@
 import {Settaggi} from './settaggi.model'
 
-type TemaGrafico = 'dark' | 'light' | 'astrolabio' | 'sun' | 'light-bn' | 'dark-bn';
+type TemaGrafico = 'dark' | 'light' | 'astrolabio' | 'sun' | 'light-bn' | 'dark-bn' | 'astrolabio-girasole';
 type Pianeta =
   | 'Moon'
   | 'Mercury'
