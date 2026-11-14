@@ -232,7 +232,15 @@ test('partial synastry house-line and texture tints render like explicit inherit
       'failure injection did not reach partner sign-ring construction');
     assert.equal(cleanup.skinRestored, true, 'a failed export leaked the shared synastry override');
     assert.equal(cleanup.loaderRestored, true, 'a failed export leaked the injected asset loader');
-    assert.equal(cleanup.recoveryIsPng, true, 'normal rendering did not recover after failure');
+    const recoveredPng = await readImage(cleanup.recoveryPng);
+    assert.equal(recoveredPng.info.width, 400, 'recovered PNG width');
+    assert.equal(recoveredPng.info.height, 400, 'recovered PNG height');
+    const recoveredColors = new Set();
+    for (let i = 0; i < recoveredPng.data.length; i += recoveredPng.info.channels) {
+      recoveredColors.add(`${recoveredPng.data[i]},${recoveredPng.data[i + 1]},${recoveredPng.data[i + 2]}`);
+      if (recoveredColors.size > 10) break;
+    }
+    assert.ok(recoveredColors.size > 10, 'recovered synastry PNG appears blank');
     assert.deepEqual(pageErrors, []);
   } finally { await browser.close(); }
 });
