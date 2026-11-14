@@ -6,7 +6,7 @@ This draft PR updates its synastry renderer to preserve the **PR #22** interacti
 
 The `getAnelloElementiCelesti` call must receive both the rendering-only fallback theme (`houses: {}` when the selected system is missing/invalid) **and** the trailing `'synastry'` interaction layer. Otherwise a future integration could reintroduce 0° ghost axes or register synastry planets as natal planets. After the async planet layer resolves, its group is still adopted immediately by the parent for animation cleanup.
 
-For now this branch includes the same `house-cusps.ts` validator as PR #83 so it can typecheck independently. During subsequent integration of the stacked #83 → #88 → #90 chain, **deduplicate the identical helper** rather than introducing parallel algorithms. #22 is still independently based on `main` and has outstanding merge conflicts; this patch is **not a merge or a retarget** of #22.
+For now this branch includes the same `house-cusps.ts` validator as PR #83 so it can typecheck independently. During subsequent integration of the stacked #83 → #88 → #90 chain, **deduplicate the identical helper** rather than introducing parallel algorithms. On 2026-11-14, current `main` was merged **into the #22 feature branch only** (commit `9018190`); its nine upstream changed files were retained, and `package.json` preflight was reconciled so that the `verify-local` and `pr-overlap` gates run alongside every existing #22 interaction gate. GitHub then reported `mergeable_state: clean` for #22 against `main`. This does **not** integrate #83/#88/#90 into main or approve this large feature PR.
 
 ## Test gate
 
@@ -23,6 +23,6 @@ The tests transpile the actual source files with the pinned TypeScript dependenc
 
 ## Status, visual checks and risks
 
-No claim of full build, Node test completion or visual parity is made until the commands have run on a checkout. Before merge, run `npm ci`, `npm run verify:angular`, browser pointer/keyboard tests (AS/DS/MC/IC, natal/transit/synastry), PNG exports, mobile sizes and Astrolabio headless/e-ink tests. Focus must never change zoom or camera scale. Test real assets only in a separately authorized workspace, following `AGENTS.md`. Do not merge #22 directly: its larger PR branch has unresolved conflicts with `main` and needs a separate reconciliation and manual review.
+No claim of full build, Node test completion or visual parity is made until the commands have run on a checkout. Before merge, run `npm ci`, `npm run verify:angular`, browser pointer/keyboard tests (AS/DS/MC/IC, natal/transit/synastry), PNG exports, mobile sizes and Astrolabio headless/e-ink tests. Focus must never change zoom or camera scale. Test real assets only in a separately authorized workspace, following `AGENTS.md`. Although #22 is now mechanically mergeable against current `main`, keep it **draft** and do not merge before complete Node/Angular/browser QA, review of its extensive code changes, and reconciliation with the still-open #83/#88/#90 chain.
 
 No runtime change is intended for valid charts beyond preserving the already implemented interactive layer. No code was merged into `main`, no deployment, no new dependencies or public API.
