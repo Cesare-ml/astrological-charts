@@ -21,14 +21,18 @@ then checks:
 
 - The seven currently supported skin identifiers remain present.
 - Four element colors and the natal/aspect, planet, zodiac, house, transit,
-  synastry-override and latitude sections have required values.
+  synastry-override and latitude sections have required values. All configured
+  palette colors use the currently supported CSS hex `#RGB` / `#RRGGBB`,
+  `white` / `black` forms; the renderer-only `elementi` token is accepted
+  **only** for symbol color fields. New CSS color formats need explicit
+  renderer compatibility review and a corresponding test update.
 - The central resonator image is mandatory; dimensions/scale are finite and
   strictly positive, and opacity is finite in `[0, 1]`.
 - Declared image/texture references resolve under the host-owned
   `/assets/img/` root and cannot silently switch to external URLs.
 - Glyph image-folder selectors, when provided, use the available `bianco` and
   `nero` folders. Negative cases demonstrate the check catches missing artwork,
-  unsafe/remote URLs and unsupported folder names.
+  unsafe/remote URLs, unsupported color tokens and folder names.
 
 Optional textures and null synastry overrides are permitted. When adding a
 new supported skin, update the expected IDs and confirm that the demo offers it.
