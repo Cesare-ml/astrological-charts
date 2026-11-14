@@ -30,3 +30,7 @@ The original helper accepted finite inputs that normalized to an impossible mult
 All three house-ring entrypoints also reject an absent, non-numeric, infinite or NaN `caseObj.ascendant` before creating line/texture/glyph geometry. A finite longitude (including numerically equivalent wrapped values) keeps the exact legacy chart placement. This prevents malformed upstream input from generating NaN angles passed to Three.js. The guard intentionally does not change astrological calculations or select a canonical 0–360° frame.
 
 Source-level regression coverage checks that each renderer invokes the cusp helper and validates the Ascendant. Behavioral checks for each renderer live in the stacked synastry integration PR #88. A complete Angular/browser integration run remains a separate gate.
+
+## Finite rotation offsets
+
+The natal and synastry renderers receive `degOffs` from the caller; latitude mode uses a fixed zero offset. All three shared ring methods now require this value to be a finite JavaScript number (`TypeError` for undefined, numeric strings, NaN, and Infinity). This prevents an invalid offset from silently producing NaN or coerced string angles passed to Three.js. Valid finite offsets retain the previous positional formula. The source-wiring test checks guards in all three methods; the stacked synastry integration PR #88 supplies actual renderer behavior tests for the external offsets.
