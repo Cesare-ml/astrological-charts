@@ -31,3 +31,7 @@ This test does **not** replace the approved-manifest gate, actual SHA-256 byte v
 The synthetic-pack HTTP suite now compares `/__preview` GET and HEAD. It asserts status 200, HTML content type, a restrictive `default-src 'none'` Content-Security-Policy, matching Content-Type/Content-Length/CSP headers, and an empty HEAD body. The GET body is checked for the approved-asset preview heading. This is a non-visual HTTP contract check; it does not prove browser rendering, approved artwork byte hashes, or production compatibility.
 
 Validation: GitHub commit and source reread only. Node 22 execution remains **NOT RUN** in the connector environment; run `node --test tests/local-asset-cors-preflight.test.mjs` in a full checkout before merging.
+
+## Preview keyboard navigation (2026-11-14)
+
+The local asset gallery now provides a keyboard-visible skip link to the labelled `<main id="assets">` landmark. Its target uses `tabindex="-1"` for programmatic focus, while the existing VirgoStars attribution remains visible. The HTTP preview test asserts the link, target and focus CSS in the generated HTML. This is an accessibility markup improvement only: browser keyboard focus, screen-reader announcement and WebGL remain **NOT RUN** pending a full checkout and browser validation. No artwork, astronomical logic or production assets changed.
