@@ -25,3 +25,9 @@ The same Node test file also checks that `createAssetServer` rejects non-loopbac
 The same Node suite now directly exercises `resolveAssetRequest` against a generated synthetic pack. A normal manifest-shaped PNG path must resolve; parent-directory traversal, percent-encoded traversal, encoded slash/backslash, double encoding, malformed percent escapes, a NUL byte, and an alternate-data-stream-like suffix must return `null`. Direct resolver calls intentionally avoid client-side URL normalization, so the test covers raw paths a future HTTP adapter might pass to the resolver.
 
 This test does **not** replace the approved-manifest gate, actual SHA-256 byte verification, browser WebGL tests, or a full Angular build. The source and documentation were updated through GitHub; runtime result is **NOT RUN** until `node --test tests/local-asset-cors-preflight.test.mjs` executes on a checkout. No asset files were copied or changed.
+
+## Preview GET/HEAD parity regression (2026-11-14)
+
+The synthetic-pack HTTP suite now compares `/__preview` GET and HEAD. It asserts status 200, HTML content type, a restrictive `default-src 'none'` Content-Security-Policy, matching Content-Type/Content-Length/CSP headers, and an empty HEAD body. The GET body is checked for the approved-asset preview heading. This is a non-visual HTTP contract check; it does not prove browser rendering, approved artwork byte hashes, or production compatibility.
+
+Validation: GitHub commit and source reread only. Node 22 execution remains **NOT RUN** in the connector environment; run `node --test tests/local-asset-cors-preflight.test.mjs` in a full checkout before merging.
