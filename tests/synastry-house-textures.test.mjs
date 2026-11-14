@@ -238,3 +238,24 @@ test('all three house-ring entrypoints reject nonfinite or absent Ascendants', a
   }
   assert.deepEqual(house.house, original);
 });
+
+test('natal and synastry reject nonfinite rotation offsets, while zero retains layout', async () => {
+  skin.anelloCase.texture = null;
+  delete skin.anelloCase.sinastria;
+  for (const badOffset of [undefined, null, NaN, Infinity, -Infinity, '10']) {
+    await assert.rejects(
+      CaseRender.renderAnelloCase(house, badOffset, 1, 100, 120, 180, false, options),
+      { name: 'TypeError', message: /rotation offset must be a finite number/ },
+    );
+    await assert.rejects(
+      CaseRender.renderAnelloCaseSinastria(house, badOffset, 1, 100, 120, 180, false, options),
+      { name: 'TypeError', message: /rotation offset must be a finite number/ },
+    );
+  }
+  const natal = await CaseRender.renderAnelloCase(house, 0, 1, 100, 120, 180, false, options);
+  const synastry = await CaseRender.renderAnelloCaseSinastria(house, 0, 1, 100, 120, 180, false, options);
+  assert.deepEqual(
+    natal.children.filter(child => child.kind === 'line').map(child => child.angle),
+    synastry.children.filter(child => child.kind === 'line').map(child => child.angle),
+  );
+});
