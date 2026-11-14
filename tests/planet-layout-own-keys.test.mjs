@@ -122,6 +122,7 @@ test('valid gaps preserve existing two-pass glyph positions and finite angles', 
   assert.deepEqual(bodies, original);
 });
 
+
 test('render angles reject nonfinite and nonnumeric source coordinates', () => {
   const values = [NaN, Infinity, -Infinity, undefined, null, '12'];
   const defaults = [12, 19, 20, 2];
