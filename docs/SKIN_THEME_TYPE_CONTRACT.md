@@ -22,8 +22,8 @@ opzioni.settaggi.skin_id = 'astrolabio-girasole';
 1. `TemaGrafico` contains exactly one literal for each theme in `SkinManager.skins`, including `astrolabio-girasole`.
 2. The public `OpzioniGrafico.temaGrafico` property remains required and typed as `TemaGrafico` rather than a wide `string` or `any`.
 3. The default `temaGrafico` refers to a registered theme.
-4. Both the `Settaggi.skin_id` class initializer and the persisted `settaggiDefault.skin_id` refer to the same registered skin.
-5. The TypeScript compiler accepts `astrolabio-girasole` through the **actual public property signature** and rejects an unknown skin with diagnostic TS2322.
+4. The `Settaggi.skin_id` constructor initializer and persisted `settaggiDefault.skin_id` each independently refer to a registered skin. They need not match: distinct defaults are permitted where a consumer deliberately chooses a different skin.
+5. The TypeScript compiler accepts **every registered theme**, including `astrolabio-girasole`, through the public property signature, and rejects an unknown skin with diagnostic TS2322.
 
 The test is also included in `npm run preflight`. A standalone semantic checker probe of the extracted `TemaGrafico` union passed under Node.js 22.16.0 and TypeScript 5.8.3 (accepted the real `astrolabio-girasole` literal; rejected `invalid-chart-skin` with TS2322). The full committed Node suite and Angular/WebGL build have not run in this environment. This is a source/type-contract regression, not proof of WebGL pixels, production asset rights, skin art parity or Astrolabio hardware compatibility.
 
