@@ -46,7 +46,7 @@ npm run test:planet-interactions
 
 `tests/planet-window-blur.test.mjs` transpiles the **actual** TypeScript
 controller in memory and uses minimal Three.js and canvas/window event stubs.
-It checks twenty-two cases: six window-blur cases (clearing hover, preserving
+It checks thirty-three cases: six window-blur cases (clearing hover, preserving
 pinned DS, nested blur, independent owner windows, blur during pointer enter,
 windowless Node construction) and five document-visibility cases (hidden
 versus visible, pinned MC, nested hidden event during leave, detached
@@ -60,18 +60,26 @@ Four extra cases prove that becoming visible without document focus does not
 resume mouse input, a premature focus event during a hidden tab cannot
 clear the suspended-input latch, and synthetic/repeated window `focus`
 events cannot bypass `document.hasFocus() === false`.
+Seven new raycast regressions verify that a stale click/hover cannot be
+emitted after a synchronous window blur, hidden-document transition,
+controller destruction, or scene replacement during `pick()`. Four
+additional regressions cover nested pointerleave/click, scene replacement,
+controller destruction and a newer pointermove winning during hit testing.
+A stable click remains selectable in the positive control. The implementation
+checks the owner-window/scene/pointer revisions **after** `pick()`, not only
+before starting the raycast.
 The usual `test:planet-interactions` command includes this
 new file. Synthetic axes are only identifiers; no real natal charts,
 personal birth data or private assets are used.
 
-**Validation status (2026-11-14): PASS, 22/22 dedicated Node tests.**
+**Validation status (2026-11-14): PASS, 33/33 dedicated Node tests.**
 The exact controller and test files were reconstructed from the GitHub branch
 and each local file's `git hash-object` matches its GitHub blob:
-`d7e01dcafbebc8bd7d94b055a988a52ff092a516` (controller) and
-`25a043a8d7feae3b011aab5330eb23e43bfaacf6` (test).
+`148df6fcd5a51a52f90e677be86abf8c755c12d8` (controller) and
+`bb79b310499d9dc91bdc7083b18b4a562558f87c` (test).
 Running `node --test tests/planet-window-blur.test.mjs` with Node.js
-**22.16.0** and TypeScript **5.8.3** yielded **22 pass, 0 fail, 0 skip**
-(TAP duration ~565 ms). TypeScript `transpileModule` also returned **zero
+**22.16.0** and TypeScript **5.8.3** yielded **33 pass, 0 fail, 0 skip**
+(TAP duration ~571 ms). TypeScript `transpileModule` also returned **zero
 diagnostics**. This test intentionally uses its committed Three.js/DOM event
 stubs, so it is *not* an actual WebGL or Angular integration test.
 
