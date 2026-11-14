@@ -69,3 +69,10 @@ Validation: GitHub source update and readback only; executable Node 22 test, Ang
 After verifying that changed fixture bytes cause HTTP 409 for both GET and HEAD, the test restores the **exact original synthetic PNG bytes** and checks that GET returns HTTP 200 with byte-for-byte equality and HEAD returns HTTP 200 with the original Content-Length and no body. This catches accidental permanent rejection or stale invalid-state caching after a transient file change. The fixture is disposable; no approved image is edited or copied.
 
 **Validation:** GitHub source readback is a static check only. Run `node --test tests/local-asset-cors-preflight.test.mjs` with Node 22 on a complete checkout; full Angular builds, Chromium/Firefox WebGL and real approved-asset SHA-256 byte verification are still **NOT RUN** in this connector-only change. The separate `astrological-assets/manifests/approved-assets.json` manifest metadata was inspected; artwork licensing and production parity remain separate gates. No GitHub Actions, deployment, merge or production changes.
+
+
+## Integrity rejection GET/HEAD body contract (2026-11-14)
+
+The synthetic tampering scenario now checks that HTTP 409 GET returns the exact diagnostic `Pack file changed since verification`, while HTTP 409 HEAD has no response body. Both methods retain the allowed loopback CORS origin and security headers. The assertions follow the current `createAssetServer` implementation; they are not an independent browser or real-artwork integrity check.
+
+**Validation:** reviewed server source and GitHub readback; executable Node test, Angular build and browser/WebGL suite **NOT RUN** in this connector-only change. Run `node --test tests/local-asset-cors-preflight.test.mjs` on Node 22 before merge. No asset copies, astronomical calculations, CI, deploy or production changes.
