@@ -266,3 +266,34 @@ seven-color `SkinManager` fixture remain synthetic. This
 is **not** a full `npm ci`, Angular build, browser/WebGL
 pixel comparison, PNG export, Astrolabio headless or release
 signoff. Keep the PR draft until real consumer validation.
+
+## Angle and periodicity regression gate (2026-11-14)
+
+The synthetic axis suite previously checked geometry counts and finite
+coordinates but did not assert the exact antiscion/contra-antiscion angle
+or the 360° periodicity of planet longitudes. Two new regression tests
+check the **actual `getAntisci` renderer method**:
+
+- For a 10° planet longitude and the Cardinal 270° antiscia axis
+  (`ascRef=90°`), the planet marker is at 10°, its antiscion at
+  `2 × 270° - 10° = 530°` (170° mod 360), and the
+  contra-antiscion at 710° (350° mod 360). Tests assert marker positions
+  on the inner circle and that connecting lines reuse the correct
+  endpoint objects.
+- With all three axes enabled, the nine marker positions for
+  longitudes `-45°, 0°, 10°, 180°, 359.999°, 720°` are equal,
+  within a small floating-point tolerance, to the positions after a
+  full 360° longitude shift.
+
+In the same temporary local Node/TypeScript reconstruction, the command
+`node --test tests/transit-antiscia-axes.test.mjs tests/antisci-marker-contrast.test.mjs`
+returned **25 PASS / 0 FAIL, exit 0**. Both test suites and the entire
+transit renderer were verified against their exact GitHub blobs:
+`8ad7a2d3f425edd827810bff0aa3cb54fb9d2a78` (21 axis tests),
+`a9de6d9631f3a18c7bedf56b6934b6e57eaa071a` (four
+contrast tests), and `2202562c35dfd584f756228edda903b5d6360ed3`
+(renderer). The real production Three.js and Angular dependency tree
+are **not** loaded; synthetic stubs still supply scene primitives,
+planet selection, and the seven skin backgrounds. Therefore
+`npm run verify:angular`, actual browser/PNG visual checks and
+Astrolabio integration remain **NOT RUN**.
