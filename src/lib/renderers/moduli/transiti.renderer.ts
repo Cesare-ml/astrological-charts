@@ -6,6 +6,7 @@ import {ElementiCelestiRender} from './elementi-celesti.renderer';
 
 import {Colori} from '../_colori.config';
 import {SkinManager} from '../@skin-manager';
+import {getAntisciMarkerColor} from '../antisci-marker-color';
 
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
@@ -94,10 +95,7 @@ export class TransitiRender {
     var ascendente = ascRef;
     var elementiCelesti = await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false);
 
-    var coloreCerchio = '#ffffff';
-    if(opzioni.settaggi.skin_id == 'light'){
-      coloreCerchio = '#000000'
-    }
+    const coloreCerchio = getAntisciMarkerColor(SkinManager.skins[opzioni.settaggi.skin_id].bgColor);
 
     //Disegno gli assi
     for(let c of Object.keys(opzioni.antisci)) {
