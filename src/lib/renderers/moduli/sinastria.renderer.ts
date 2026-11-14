@@ -31,9 +31,12 @@ export class SinastriaRender {
     var as = 0;
     var mc = 0;
     if(!temaRender) return null;
-    if(temaRender.houses && Object.keys(temaRender.houses).length) {
-      as = temaRender.houses[stato.opzioni.settaggi.domificazione_selezionata].ascendant;
-      mc = temaRender.houses[stato.opzioni.settaggi.domificazione_selezionata].mc;
+    const selectedHouses = temaRender.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
+    // Without the selected house system, suppress axes derived from other systems.
+    const temaPerElementi = selectedHouses ? temaRender : { ...temaRender, houses: {} };
+    if(selectedHouses) {
+      as = selectedHouses.ascendant;
+      mc = selectedHouses.mc;
       //diametroAnelloElementiCelesti = diametroAnelloCase;
     }
 
@@ -54,7 +57,7 @@ export class SinastriaRender {
     }*/
 
     var anelloCase;
-    if(temaRender.houses && Object.keys(temaRender.houses).length) {
+    if(selectedHouses) {
       anelloCase = await CaseRender.getAnelloCaseCartaAstrale(
         temaRender.houses,
         -(ascendenteTemaDiRiferimento-as) + offsSinastriaDeflettiva,//degOffs
@@ -92,7 +95,7 @@ export class SinastriaRender {
     }
 
     var anelloElementiCelesti = await ElementiCelestiRender.getAnelloElementiCelesti(
-      temaRender,
+      temaPerElementi,
       as + (ascendenteTemaDiRiferimento-as) - offsSinastriaDeflettiva,
       pianetiDaColorare,
       0.8,
