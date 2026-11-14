@@ -60,3 +60,15 @@ test('finite boundary values preserve references and do not mutate input', async
   }
   assert.notStrictEqual(result, planets, 'return a filtered collection rather than the input map');
 });
+
+test('null-prototype planet and option maps retain zero latitude without mutating inputs', async () => {
+  const sun = Object.freeze({ latitude: 0, longitude: 42 });
+  const planets = Object.assign(Object.create(null), { Sun: sun });
+  const elementi_celesti = Object.assign(Object.create(null), { Sun: Object.freeze({ att: true }) });
+  Object.freeze(planets);
+  Object.freeze(elementi_celesti);
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti } });
+  assert.deepEqual(Object.keys(result), ['Sun']);
+  assert.strictEqual(result.Sun, sun);
+  assert.equal(Object.getPrototypeOf(planets), null);
+});
