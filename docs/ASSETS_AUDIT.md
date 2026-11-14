@@ -33,7 +33,18 @@ npm run check:assets
 node scripts/inventory-assets.mjs --json
 ```
 
-It scans asset-related lines in the extracted source. It does not fetch/copy assets, confirm their existence, or check copyright.
+It scans asset-related lines in the extracted source. TypeScript comments are
+masked without changing original line numbers, and live code on the same line
+as a comment is still reported. Literal URLs, regular expressions and
+interpolated template strings are left intact. Use
+`node --test tests/asset-inventory-comments.test.mjs` for this scanner's
+regression tests.
+
+This inventory is **line-oriented and heuristic**: it does not guarantee
+complete runtime coverage, resolve dynamic paths, fetch/copy assets, confirm
+file existence or check copyright. Use
+`scripts/derive-chart-asset-selection.mjs` for the AST-based candidate
+selection and the approved-pack manifest integrity gates before integration.
 
 ## Release requirements
 
