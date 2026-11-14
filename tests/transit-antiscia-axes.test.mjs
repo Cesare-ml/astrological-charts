@@ -27,6 +27,7 @@ const { getAntisciMarkerColor } = helperExports;
 function createHarness(longitude = 10, { failOnCelestial = false } = {}) {
   const objects = [];
   let celestialCalls = 0;
+  const ringCalls = [];
   class Group {
     children = [];
     add(child) { this.children.push(child); }
@@ -68,10 +69,14 @@ function createHarness(longitude = 10, { failOnCelestial = false } = {}) {
           if (failOnCelestial) throw new Error('Celestial computation must be skipped');
           return { Sun: { longitude } };
         },
+        async getAnelloElementiCelesti(...args) {
+          ringCalls.push(args);
+          return { kind: 'planet-ring' };
+        },
       },
     },
     '../_colori.config': { Colori: { elementiCelesti: { Sun: '#ffcc00' } } },
-    '../@skin-manager': { SkinManager: { skins: { light: { bgColor: '#fefefe' } } } },
+    '../@skin-manager': { SkinManager: { skins: { light: { bgColor: '#fefefe', anelloTransiti: { texture: null } } } } },
     '../antisci-marker-color': { getAntisciMarkerColor },
   };
   const context = {
@@ -82,7 +87,7 @@ function createHarness(longitude = 10, { failOnCelestial = false } = {}) {
     },
   };
   vm.runInNewContext(compiled, context, { filename: 'transiti.renderer.js' });
-  return { TransitiRender: context.exports.TransitiRender, objects, getCelestialCalls: () => celestialCalls };
+  return { TransitiRender: context.exports.TransitiRender, objects, getCelestialCalls: () => celestialCalls, ringCalls };
 }
 const axisPositions = {
   Cardinale: 270,
@@ -251,4 +256,57 @@ test('active axes remain visible when hovered theme planets have not loaded', as
     assert.equal(result.objects.filter(x => x.kind === 'circle').length, 0);
     assert.ok(result.objects.every(isFiniteObject));
   }
+});
+
+test('transit ring skips antiscia geometry when the feature toggle is off', async () => {
+  const h = createHarness(18, { failOnCelestial: true });
+  const options = {
+    settaggi: { skin_id: 'light' },
+    mostraAntisci: false,
+    antisci: { Cardinale: true, Fissa: true },
+    antisciTransitiHover: { nome: 'Sun' },
+  };
+  const chart = await h.TransitiRender.getAnelloTransiti(
+    { planets: { Sun: { longitude: 18 } }, australInversion: false },
+    90, ['Sun'], options, 4, 6, 3, false,
+  );
+  assert.equal(chart.children.length, 1);
+  assert.equal(chart.children[0].kind, 'planet-ring');
+  assert.equal(h.ringCalls.length, 1, 'the celestial transit ring remains rendered');
+  assert.equal(h.getCelestialCalls(), 0, 'no antiscia hover work when the feature is off');
+});
+
+test('transit ring retains enabled antiscia axes while planet data is loading', async () => {
+  const h = createHarness(18, { failOnCelestial: true });
+  const chart = await h.TransitiRender.getAnelloTransiti(
+    { australInversion: false },
+    90, [], {
+      settaggi: { skin_id: 'light' }, mostraAntisci: true,
+      antisci: { Cardinale: true, Fissa: true },
+      antisciTransitiHover: { nome: 'Sun' },
+    }, 4, 6, 3, false,
+  );
+  assert.equal(chart.children.length, 2);
+  assert.equal(chart.children[0].kind, 'planet-ring');
+  assert.equal(chart.children[1].children.length, 2, 'only two valid axis lines');
+  assert.equal(h.ringCalls.length, 1);
+  assert.equal(h.getCelestialCalls(), 0);
+  assert.ok(h.objects.every(isFiniteObject));
+});
+
+test('transit ring enables a single finite hover lookup for all three axes', async () => {
+  const h = createHarness(0);
+  const chart = await h.TransitiRender.getAnelloTransiti(
+    { planets: { Sun: { longitude: 0 } }, australInversion: false },
+    90, ['Sun'], {
+      settaggi: { skin_id: 'light' }, mostraAntisci: true,
+      antisci: { Cardinale: true, Fissa: true, Mutevole: true },
+      antisciTransitiHover: { nome: 'Sun' },
+    }, 4, 6, 3, false,
+  );
+  assert.equal(chart.children.length, 2);
+  assert.equal(chart.children[1].children.length, 24, '3 axes with 7 hover objects per axis');
+  assert.equal(h.getCelestialCalls(), 1);
+  assert.equal(h.objects.filter(x => x.kind === 'circle').length, 9);
+  assert.ok(h.objects.every(isFiniteObject));
 });
