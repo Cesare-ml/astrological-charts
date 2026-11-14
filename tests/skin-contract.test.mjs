@@ -31,6 +31,17 @@ function nonemptyString(value, description) {
   assert.ok(value.trim().length > 0, description + ' must not be blank');
 }
 
+// The shipped skin palette uses CSS hex and explicit color tokens. Reject typos
+// rather than letting Three.js silently substitute black for an unknown color.
+function assertSkinColor(value, description, { allowElementi = false } = {}) {
+  nonemptyString(value, description);
+  const isHex = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value);
+  const isNamed = value === 'white' || value === 'black';
+  const isPaletteToken = allowElementi && value === 'elementi';
+  assert.ok(isHex || isNamed || isPaletteToken,
+    description + ' must be a CSS hex color or a supported skin color token');
+}
+
 function imagePath(value, description, { required = false } = {}) {
   if (value == null) {
     assert.ok(!required, description + ' is required for every skin');
@@ -63,11 +74,11 @@ test('each skin has a usable natal, transit, synastry and latitude configuration
     const context = 'skin ' + id;
     assert.ok(skin && typeof skin === 'object', context);
 
-    nonemptyString(skin.bgColor, context + '.bgColor');
+    assertSkinColor(skin.bgColor, context + '.bgColor');
     assert.ok(Array.isArray(skin.elementi), context + '.elementi must be an array');
     assert.equal(skin.elementi.length, 4, context + '.elementi must contain four colors');
     for (const [index, color] of skin.elementi.entries()) {
-      nonemptyString(color, context + '.elementi[' + index + ']');
+      assertSkinColor(color, context + '.elementi[' + index + ']');
     }
 
     for (const section of [
@@ -79,7 +90,10 @@ test('each skin has a usable natal, transit, synastry and latitude configuration
 
     const aspects = skin.cerchioAspetti;
     for (const key of ['coloreTexture', 'imgRisuonatoreColore']) {
-      nonemptyString(aspects[key], context + '.cerchioAspetti.' + key);
+      assertSkinColor(aspects[key], context + '.cerchioAspetti.' + key);
+    }
+    if (aspects.monocoloreLineeAspetti != null) {
+      assertSkinColor(aspects.monocoloreLineeAspetti, context + '.cerchioAspetti.monocoloreLineeAspetti');
     }
     for (const key of ['imgRisuonatoreSolareWidth', 'imgRisuonatoreSolareHeight', 'imgRisuonatoreScale']) {
       assert.ok(Number.isFinite(aspects[key]) && aspects[key] > 0,
@@ -91,23 +105,26 @@ test('each skin has a usable natal, transit, synastry and latitude configuration
     context + '.cerchioAspetti.imgRisuonatoreSolareOpacity must be between 0 and 1');
 
     for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase']) {
-      nonemptyString(skin[section].coloreLinea, context + '.' + section + '.coloreLinea');
-      nonemptyString(skin[section].coloreSimboli, context + '.' + section + '.coloreSimboli');
+      assertSkinColor(skin[section].coloreLinea, context + '.' + section + '.coloreLinea');
+      assertSkinColor(skin[section].coloreSimboli, context + '.' + section + '.coloreSimboli', { allowElementi: true });
     }
-    nonemptyString(skin.anelloTransiti.coloreLinea, context + '.anelloTransiti.coloreLinea');
-    nonemptyString(skin.anelloSegni.coloreTexture, context + '.anelloSegni.coloreTexture');
+    assertSkinColor(skin.anelloTransiti.coloreLinea, context + '.anelloTransiti.coloreLinea');
+    assertSkinColor(skin.anelloSegni.coloreTexture, context + '.anelloSegni.coloreTexture');
 
     const latitude = skin.latitudini?.elementiCelesti;
     assert.ok(latitude && typeof latitude === 'object', context + '.latitudini.elementiCelesti');
-    nonemptyString(latitude.coloreGriglia, context + '.latitudini.elementiCelesti.coloreGriglia');
-    nonemptyString(latitude.coloreEclittica, context + '.latitudini.elementiCelesti.coloreEclittica');
+    assertSkinColor(latitude.coloreGriglia, context + '.latitudini.elementiCelesti.coloreGriglia');
+    assertSkinColor(latitude.coloreEclittica, context + '.latitudini.elementiCelesti.coloreEclittica');
 
     for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase']) {
       const override = skin[section].sinastria;
       if (override == null) continue;
       assert.equal(typeof override, 'object', context + '.' + section + '.sinastria');
-      nonemptyString(override.coloreLinea, context + '.' + section + '.sinastria.coloreLinea');
-      nonemptyString(override.coloreSimboli, context + '.' + section + '.sinastria.coloreSimboli');
+      assertSkinColor(override.coloreLinea, context + '.' + section + '.sinastria.coloreLinea');
+      assertSkinColor(override.coloreSimboli, context + '.' + section + '.sinastria.coloreSimboli', { allowElementi: true });
+      if (override.coloreTexture != null) {
+        assertSkinColor(override.coloreTexture, context + '.' + section + '.sinastria.coloreTexture');
+      }
       assertImageFolder(override.coloreImgFolder, context + '.' + section + '.sinastria.coloreImgFolder');
     }
     for (const section of ['anelloElementiCelesti', 'anelloSegni', 'anelloCase', 'anelloTransiti']) {
@@ -145,6 +162,16 @@ test('the contract rejects missing artwork, foreign URLs and unknown glyph direc
     () => assertImageFolder('missing-folder', 'test.coloreImgFolder'),
     /must use an existing white\/black glyph directory/,
   );
+  assert.throws(
+    () => assertSkinColor('blurple', 'test.bgColor'),
+    /must be a CSS hex color or a supported skin color token/,
+  );
+  assert.throws(
+    () => assertSkinColor('elementi', 'test.bgColor'),
+    /must be a CSS hex color or a supported skin color token/,
+  );
+  assert.doesNotThrow(() => assertSkinColor('elementi', 'test.coloreSimboli', { allowElementi: true }));
+  assert.doesNotThrow(() => assertSkinColor('#abc', 'test.coloreLinea'));
   assert.doesNotThrow(() => imagePath(null, 'test.optionalTexture'));
   assert.doesNotThrow(() => assertImageFolder(null, 'test.optionalFolder'));
 });
