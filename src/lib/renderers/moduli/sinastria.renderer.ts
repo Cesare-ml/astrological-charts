@@ -4,6 +4,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
 import {ElementiCelestiRender} from './elementi-celesti.renderer';
 import {CaseRender} from './case.renderer';
+import { unwrapHouseCusps } from './house-cusps';
 import {SegniRender} from './segni.renderer';
 import { SkinManager } from '../@skin-manager';
 import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer';
@@ -34,14 +35,17 @@ export class SinastriaRender {
     const candidateHouses = temaRender.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
     // Partial offline records can have a selected key without usable angles or cusps.
     // Treat those like an unknown birth time rather than rendering NaN geometry.
-    const selectedHouses = candidateHouses
-      && Number.isFinite(candidateHouses.ascendant)
-      && Number.isFinite(candidateHouses.mc)
-      && Array.isArray(candidateHouses.house)
-      && candidateHouses.house.length === 12
-      && Array.from({ length: 12 }, (_, index) => candidateHouses.house[index])
-        .every((cusp) => Number.isFinite(cusp))
-        ? candidateHouses : null;
+    let selectedHouses = null;
+    if(candidateHouses && Number.isFinite(candidateHouses.ascendant) && Number.isFinite(candidateHouses.mc)) {
+      try {
+        // Use the same full-revolution validation as the house-ring renderer.
+        // Finite but inconsistent cusp sequences must not crash synastry.
+        unwrapHouseCusps(candidateHouses.house);
+        selectedHouses = candidateHouses;
+      } catch (error) {
+        if (!(error instanceof TypeError || error instanceof RangeError)) throw error;
+      }
+    }
     // Without the selected house system, suppress axes derived from other systems.
     const temaPerElementi = selectedHouses ? temaRender : { ...temaRender, houses: {} };
     if(selectedHouses) {
