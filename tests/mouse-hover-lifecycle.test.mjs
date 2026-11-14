@@ -33,10 +33,11 @@ class FakeEvents {
   }
 }
 
-function harness(onLeave = null, onEnter = null) {
-  const fakeWindow = new FakeEvents();
+function harness(onLeave = null, onEnter = null, sharedWindow = null) {
+  const fakeWindow = sharedWindow ?? new FakeEvents();
   const canvas = new FakeEvents();
-  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 300, height: 300 });
+  let rect = { left: 0, top: 0, width: 300, height: 300 };
+  canvas.getBoundingClientRect = () => rect;
   const scene = { children: [], hits: [] };
   const camera = { zoom: 1, position: { z: 3 } };
   class Raycaster {
@@ -69,7 +70,7 @@ function harness(onLeave = null, onEnter = null) {
   });
 
   const move = () => canvas.emit('mousemove', { clientX: 150, clientY: 150 });
-  return { manager, canvas, fakeWindow, scene, camera, events, move };
+  return { manager, canvas, fakeWindow, scene, camera, events, move, setRect(next) { rect = next; } };
 }
 
 test('mouseleave clears highlighted glyph and permits entering it again', () => {
@@ -231,4 +232,82 @@ test('AS/DS/MC/IC pointer transitions do not modify the camera or trigger zoom',
   assert.equal(ctx.camera.zoom, 1);
   assert.equal(ctx.camera.position.z, 3);
   ctx.manager.distruggi();
+});
+
+
+test('two charts sharing one window maintain independent hover and teardown', () => {
+  const win = new FakeEvents();
+  const a = harness(null, null, win);
+  const b = harness(null, null, win);
+  const asc = { name: 'AS' };
+  const ic = { name: 'IC' };
+  a.scene.hits = [asc];
+  b.scene.hits = [ic];
+
+  a.move();
+  b.move();
+  assert.deepEqual(a.events, [['enter', asc]]);
+  assert.deepEqual(b.events, [['enter', ic]]);
+  assert.equal(win.listenerCount('blur'), 2);
+
+  a.manager.distruggi();
+  assert.equal(win.listenerCount('blur'), 1);
+  win.emit('blur');
+  b.move();
+
+  assert.deepEqual(a.events, [['enter', asc], ['leave', asc]]);
+  assert.deepEqual(b.events, [['enter', ic], ['leave', ic], ['enter', ic]]);
+  assert.equal(a.camera.zoom, 1);
+  assert.equal(b.camera.zoom, 1);
+  b.manager.distruggi();
+  assert.equal(win.listenerCount('blur'), 0);
+  assert.equal(win.listenerCount('resize'), 0);
+});
+
+test('invalid canvas geometry prevents raycast and clears the previous highlight', () => {
+  const ctx = harness();
+  const sun = { name: 'Sun' };
+  ctx.scene.hits = [sun];
+  ctx.move();
+  ctx.setRect({ left: 0, top: 0, width: 0, height: 300 });
+  ctx.move();
+  ctx.canvas.emit('click', { clientX: 10, clientY: 10 });
+  ctx.setRect({ left: 0, top: 0, width: 300, height: 300 });
+  ctx.move();
+
+  assert.deepEqual(ctx.events, [
+    ['enter', sun], ['leave', sun], ['enter', sun]
+  ]);
+  ctx.manager.distruggi();
+});
+
+test('teardown during an enter callback emits exactly one balancing leave', () => {
+  let ctx;
+  ctx = harness(null, () => ctx.manager.distruggi());
+  const glyph = { name: 'DS' };
+  ctx.scene.hits = [glyph];
+  ctx.move();
+  ctx.move();
+
+  assert.deepEqual(ctx.events, [['enter', glyph], ['leave', glyph]]);
+  assert.equal(ctx.canvas.listenerCount('mousemove'), 0);
+  assert.equal(ctx.fakeWindow.listenerCount('blur'), 0);
+});
+
+test('teardown during leave prevents stale next-glyph enter', () => {
+  let ctx;
+  let shouldDestroy = false;
+  ctx = harness(() => {
+    if (shouldDestroy) ctx.manager.distruggi();
+  });
+  const first = { name: 'Sun' }, next = { name: 'Moon' };
+  ctx.scene.hits = [first];
+  ctx.move();
+  shouldDestroy = true;
+  ctx.scene.hits = [next];
+  ctx.move();
+
+  assert.deepEqual(ctx.events, [['enter', first], ['leave', first]]);
+  assert.equal(ctx.canvas.listenerCount('mousemove'), 0);
+  assert.equal(ctx.fakeWindow.listenerCount('resize'), 0);
 });
