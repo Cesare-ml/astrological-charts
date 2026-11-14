@@ -19,3 +19,9 @@ Validation status for this change: source reviewed through GitHub; Node test **N
 ## CORS allowlist configuration regression (2026-11-13)
 
 The same Node test file also checks that `createAssetServer` rejects non-loopback origins, deceptive localhost suffixes, origins with path/trailing slash or userinfo, and the opaque `null` origin at server construction. A canonical `http://localhost:4200` allowlist remains accepted. The fixture pack is generated locally and contains no approved artwork. This is a source-level regression test, **not** evidence of a successful runtime execution until the Node 22 command above is run in a complete checkout. The separate `astrological-assets/manifests/approved-assets.json` records SHA-256 metadata; actual asset-byte verification remains pending.
+
+## Asset URL path boundary regression (2026-11-14)
+
+The same Node suite now directly exercises `resolveAssetRequest` against a generated synthetic pack. A normal manifest-shaped PNG path must resolve; parent-directory traversal, percent-encoded traversal, encoded slash/backslash, double encoding, malformed percent escapes, a NUL byte, and an alternate-data-stream-like suffix must return `null`. Direct resolver calls intentionally avoid client-side URL normalization, so the test covers raw paths a future HTTP adapter might pass to the resolver.
+
+This test does **not** replace the approved-manifest gate, actual SHA-256 byte verification, browser WebGL tests, or a full Angular build. The source and documentation were updated through GitHub; runtime result is **NOT RUN** until `node --test tests/local-asset-cors-preflight.test.mjs` executes on a checkout. No asset files were copied or changed.
