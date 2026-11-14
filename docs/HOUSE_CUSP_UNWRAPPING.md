@@ -24,3 +24,9 @@ No changes to astronomical ephemeris calculations, original artwork, assets, rel
 ## Additional regression gate (2026-11-14)
 
 The original helper accepted finite inputs that normalized to an impossible multi-revolution ring or overflowed to nonfinite output. The two new focused tests fail against the old helper and pass with the one-revolution guard. Verified on Node v22.16.0 / TypeScript v5.8.3 in a minimal workspace: **6/6 runnable helper tests PASS**, isolated strict TypeScript check PASS. The renderer-source wiring test and complete Angular/WebGL build were not run in that workspace.
+
+## Ascendant input validation
+
+All three house-ring entrypoints also reject an absent, non-numeric, infinite or NaN `caseObj.ascendant` before creating line/texture/glyph geometry. A finite longitude (including numerically equivalent wrapped values) keeps the exact legacy chart placement. This prevents malformed upstream input from generating NaN angles passed to Three.js. The guard intentionally does not change astrological calculations or select a canonical 0–360° frame.
+
+Source-level regression coverage checks that each renderer invokes the cusp helper and validates the Ascendant. Behavioral checks for each renderer live in the stacked synastry integration PR #88. A complete Angular/browser integration run remains a separate gate.
