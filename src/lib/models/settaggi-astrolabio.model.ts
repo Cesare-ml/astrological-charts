@@ -260,14 +260,12 @@ export const settaggiAstrolabioDefault:SettaggiAstrolabio = {
 
 
 /**
- * Return a fresh Astrolabio configuration without sharing nested mutable defaults.
- *
- * The existing exported settaggiAstrolabioDefault object remains unchanged for
- * backwards compatibility. Callers managing multiple charts/devices should use
- * this factory instead of mutating the shared constant. The initial values are
- * captured at module load, so later legacy mutations cannot contaminate charts.
+ * Clone an existing, complete Astrolabio settings object into independent model
+ * instances. The input is read-only for this operation: changing the clone's
+ * aspect toggles/orbs, celestial options or city/manual position won't mutate it.
+ * Suitable for editable copies of a saved configuration or independent views.
  */
-function cloneAstrolabioSettings(defaults: SettaggiAstrolabio): SettaggiAstrolabio {
+export function cloneAstrolabioSettings(defaults: SettaggiAstrolabio): SettaggiAstrolabio {
   const result = Object.assign(new SettaggiAstrolabio(), defaults);
 
   result.aspetti_attivi = Object.assign(new SettaggiAspettiAttivi(), defaults.aspetti_attivi);
@@ -301,6 +299,11 @@ function cloneAstrolabioSettings(defaults: SettaggiAstrolabio): SettaggiAstrolab
  */
 const initialAstrolabioDefaults = cloneAstrolabioSettings(settaggiAstrolabioDefault);
 
+/**
+ * Return fresh Astrolabio defaults from the original module-load snapshot.
+ * Unlike the legacy mutable settaggiAstrolabioDefault, these values do not
+ * change when another consumer edits the shared object.
+ */
 export function createDefaultSettaggiAstrolabio(): SettaggiAstrolabio {
   return cloneAstrolabioSettings(initialAstrolabioDefaults);
 }
