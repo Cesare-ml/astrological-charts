@@ -88,6 +88,23 @@ The isolated test specifically **FAILS with the pre-fix selection guard**
 (exit 1) and PASSES with the corrected guard. Full Angular/WebGL suites remain
 NOT RUN; see the release gates above.
 
+## Selected house systems must be explicit (2026-11-14)
+
+The selected house system is now read only from an **own** key of
+`temaRender.houses`. A prototype-inherited `egizia` (or any other selected
+system) must not accidentally supply a house ring or rotate the chart.
+The check still accepts legitimate own keys on null-prototype lookup maps,
+and preserves the normal 12-number cusp contract verified against
+`demo/fixtures.ts` and `CaseRender.renderAnelloCaseLatitudini`.
+
+The new regression tests exercise both cases. On the exact committed
+`LatitudiniRender.creaScena` body, a source-backed isolated V8 harness
+recorded **14/14 passing test bodies** (0 failed); its TypeScript AST/transpile
+and Three.js dependencies are mocked. The inherited-system case was also
+confirmed to **draw the wrong ring before** this correction and **skip it
+afterward**. These results are not a fresh `node --test`, full Angular
+build or Chromium/Firefox run, and do not replace those validation gates.
+
 ## Browser PNG regression
 
 The existing `tests/fixtures/latitude-transits-harness.ts` now accepts an
@@ -97,8 +114,13 @@ data while the graph explicitly selects `egizia`.
 
 The `latitude charts with transits` case in `tests/demo-browser.test.mjs`
 exports both variants for all **seven skins**, checks PNG contents are not
-blank, and compares decoded pixel buffers to ensure the missing house ring is
-visibly omitted. It is included in the existing `npm run test:demo` command;
+blank, and compares decoded pixel buffers to detect a visual difference.
+The missing-selected-house variant also uses the established 0° rotation
+fallback; therefore a pixel difference **alone does not prove** that the
+house ring was removed. The isolated scene assertions separately verify
+that `CaseRender.getAnelloCaseLatitudini` is not called. The browser test
+allows 180 seconds for all 14 exports and remains part of
+`npm run test:demo`;
 the Angular demo and manifest-verified asset server must both be running.
 
 ```sh
