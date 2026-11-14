@@ -132,7 +132,7 @@ import { demoBodies, makeDemoTheme } from '../../demo/fixtures';
       injectedAtPartnerSign,
       skinRestored,
       loaderRestored,
-      recoveryIsPng: png.startsWith('data:image/png;base64,'),
+      recoveryPng: png,
     };
   } finally {
     recoveredRenderer.ngOnDestroy();
