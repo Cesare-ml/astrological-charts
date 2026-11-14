@@ -84,6 +84,7 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
   return createServer((req,res)=>{
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
+    res.setHeader('Referrer-Policy','no-referrer');
     const origin=req.headers.origin;
     if(origin&&!allowed.has(origin)){res.writeHead(403);res.end('Forbidden origin');return;}
     if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
