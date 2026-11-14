@@ -53,3 +53,7 @@ The regression now reads the generated fixture PNG directly and compares **all G
 The loopback-only asset server now sets `Referrer-Policy: no-referrer` on every response, including `/__preview`, unlisted assets (404), and tampered assets (409). This reduces accidental disclosure of local preview paths when navigating to the visible VirgoStars credit link. The synthetic HTTP regression asserts the header for these response classes. The credit link remains `https://www.virgostars.it/`; no artwork or ephemeris logic is changed.
 
 **Validation:** GitHub commit and source readback only; `node --test tests/local-asset-cors-preflight.test.mjs` is **NOT RUN** until a full Node 22 checkout is available. Full Angular builds, Chromium/Firefox WebGL and approved real-file SHA-256 verification remain **NOT RUN**. This header is defense-in-depth, not proof of browser behavior or license clearance.
+
+## Denied HEAD privacy regression (2026-11-14)
+
+The synthetic HTTP test additionally asserts that a cross-origin denied `HEAD` response carries `Referrer-Policy: no-referrer` and returns an empty body. This closes a small method-specific gap in the response-header regression without changing the renderer, asset server or approved assets. This is a source assertion only: `node --test tests/local-asset-cors-preflight.test.mjs` has **NOT RUN** in this connector-only session. Angular builds, browser WebGL, and actual approved asset byte-hash checks are also **NOT RUN**. No production changes, Actions or merge.
