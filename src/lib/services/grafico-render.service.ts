@@ -92,6 +92,9 @@ export class GraficoRenderService implements OnDestroy {
 
   // ### ZOOM ###
   public setZoom(zoom: number): void {
+    // Reject invalid runtime values before NaN reaches the Three.js camera.
+    // Valid numeric zooms keep the historical [minZoom, maxZoom] clamping.
+    if (!Number.isFinite(zoom)) return;
     this.zoomValue = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
     if (this.camera) {
       this.camera.zoom = this.zoomValue;
