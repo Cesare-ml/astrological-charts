@@ -106,7 +106,9 @@ export class TransitiRender {
       ? await ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,false)
       : null;
 
-    const coloreCerchio = getAntisciMarkerColor(SkinManager.skins[opzioni.settaggi.skin_id].bgColor);
+    const coloreCerchio = getAntisciMarkerColor(
+      SkinManager.skins[opzioni?.settaggi?.skin_id]?.bgColor ?? ''
+    );
     const hoverLongitude = elementiCelesti?.[nomeHover]?.longitude;
 
     //Disegno gli assi
