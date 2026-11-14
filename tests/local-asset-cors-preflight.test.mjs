@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -121,6 +121,14 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.equal(allowedGet.headers.get('cache-control'), 'no-store');
     assert.equal(allowedGet.headers.get('x-content-type-options'), 'nosniff');
 
+    // GET must return the exact validated synthetic bytes, while HEAD advertises
+    // their size without transmitting the body. This checks actual HTTP payloads.
+    const expectedBytes = readFileSync(join(root, 'img/simboli-bianchi/segni/01.png'));
+    const payloadGet = await fetch(url, { headers: { Origin: 'http://localhost:4200' } });
+    assert.equal(payloadGet.status, 200);
+    assert.equal(Number(payloadGet.headers.get('content-length')), expectedBytes.length);
+    assert.deepEqual(Buffer.from(await payloadGet.arrayBuffer()), expectedBytes);
+
     const allowedHead = await fetch(url, {
       method: 'HEAD',
       headers: { Origin: 'http://localhost:4200' },
@@ -129,6 +137,7 @@ test('CORS preflight only authorizes configured local origins', async () => {
     assert.equal(allowedHead.headers.get('access-control-allow-origin'), 'http://localhost:4200');
     assert.equal(allowedHead.headers.get('content-type'), allowedGet.headers.get('content-type'));
     assert.equal(allowedHead.headers.get('content-length'), allowedGet.headers.get('content-length'));
+    assert.equal(Number(allowedHead.headers.get('content-length')), expectedBytes.length);
     assert.equal(await allowedHead.text(), '');
 
     // A file outside the approved manifest must remain inaccessible even when
