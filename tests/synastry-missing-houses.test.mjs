@@ -111,7 +111,7 @@ function syntheticRenderer({ texture = 'local-test-texture', failHouses = false,
           calls.planets++;
           calls.visualTheme = theme;
           calls.selectedAngles = angle;
-          return { kind: 'planets' };
+          return { kind: 'planets', children: [{ kind: 'animated-marker' }] };
         },
       },
     },
@@ -437,12 +437,12 @@ test('cleans completed house ring and planet animation descendants when sign ren
     if (selection === 'placido') {
       assert.equal(calls.houses, 1);
       assert.deepEqual(calls.cleanedNodes,
-        ['root', 'planets', 'houses', 'case-image'],
+        ['root', 'planets', 'animated-marker', 'houses', 'case-image'],
         'even the not-yet-attached house ring must be traversed for cleanup');
     } else {
       assert.equal(calls.houses, 0);
       assert.deepEqual(calls.cleanedNodes,
-        ['root', 'fallback-texture', 'planets'],
+        ['root', 'fallback-texture', 'planets', 'animated-marker'],
         'missing-house fallback must not create a phantom case ring');
     }
     assert.deepEqual(theme, before, 'failed render must not mutate the source chart');
