@@ -11,6 +11,7 @@ From a full repository checkout with Node 22 and `npm ci`:
 
 ```bash
 npm run test:skin-contract
+npm run test:demo-pack
 npm run verify:angular
 ```
 
@@ -31,6 +32,12 @@ then checks:
 
 Optional textures and null synastry overrides are permitted. When adding a
 new supported skin, update the expected IDs and confirm that the demo offers it.
+
+The existing `test:demo-pack` check also ensures the synthetic demo manifest includes
+every active literal skin texture and resonator image discovered by the TypeScript
+AST selection helper. This guards against a newly declared skin resource being
+absent from local browser fixtures. It does not confirm that the original
+host-owned asset exists or that a runtime-generated path resolves.
 
 This test is **not** a screenshot, a WebGL render, an asset-manifest integrity
 check or a demonstration of visual parity with VirgoStars or Astrolabio.
