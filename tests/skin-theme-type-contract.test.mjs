@@ -26,6 +26,20 @@ const settingsSource = ts.createSourceFile(
   ts.ScriptKind.TS,
 );
 
+const publicApiSource = ts.createSourceFile(
+  'public-api.ts',
+  readFileSync(new URL('../src/public-api.ts', import.meta.url), 'utf8'),
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
+
+const modelBarrelExport = publicApiSource.statements.find(
+  (node) => ts.isExportDeclaration(node)
+    && node.exportClause === undefined
+    && ts.isStringLiteral(node.moduleSpecifier)
+    && node.moduleSpecifier.text === './lib/models/opzioni-grafico.model',
+);
 function propertyName(name) {
   if (name && (ts.isIdentifier(name) || ts.isStringLiteral(name))) return name.text;
   return undefined;
@@ -85,6 +99,11 @@ test('OpzioniGrafico.temaGrafico remains a required TemaGrafico-typed field', ()
   assert.equal(themeField.type.typeName.getText(optionsSource), 'TemaGrafico');
 });
 
+test('TemaGrafico is exportable via the existing public Angular library barrel', () => {
+  assert.ok(typeAlias.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword),
+    'The TemaGrafico alias must be exported from its model module');
+  assert.ok(modelBarrelExport, 'Public API must re-export the entire options model module');
+});
 test('the default chart theme resolves to an available registered skin', () => {
   const defaults = optionsSource.statements
     .filter(ts.isVariableStatement)
@@ -116,26 +135,43 @@ test('Settaggi constructor and saved defaults select a registered skin', () => {
   assert.ok(themeRegistry.has(persistedSkinId.text), 'Saved renderer skin must exist');
 });
 
-test('TypeScript accepts Girasole theme in the public type and rejects unknown skins', () => {
+test('TypeScript can import all seven themes through the public barrel and rejects unknown skins', () => {
+  const virtualModelFile = '/virtual/lib/models/opzioni-grafico.model.ts';
+  const virtualPublicFile = '/virtual/public-api.ts';
   const virtualFile = '/virtual/chart-theme-consumer.ts';
-  const compilerOptions = { strict: true, noEmit: true, target: ts.ScriptTarget.ES2022 };
-  const sourceOf = (theme) => `${typeAlias.getText(optionsSource)}
-interface PublicChartSelection { ${themeField.getText(optionsSource)} }
-const selected: PublicChartSelection = { temaGrafico: ${JSON.stringify(theme)} };
-`;
+  const compilerOptions = {
+    strict: true,
+    noEmit: true,
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.CommonJS,
+    moduleResolution: ts.ModuleResolutionKind.Node10,
+  };
   const diagnosticsFor = (theme) => {
+    const virtualSources = new Map([
+      [virtualModelFile, `${typeAlias.getText(optionsSource)}\nexport interface PublicChartSelection { ${themeField.getText(optionsSource)} }\n`],
+      [virtualPublicFile, `${modelBarrelExport.getText(publicApiSource)}\n`],
+      [virtualFile, `import type { TemaGrafico, PublicChartSelection } from './public-api';\nconst direct: TemaGrafico = ${JSON.stringify(theme)};\nconst selected: PublicChartSelection = { temaGrafico: ${JSON.stringify(theme)} };\n`],
+    ]);
     const host = ts.createCompilerHost(compilerOptions);
     const originalGetSourceFile = host.getSourceFile.bind(host);
+    const originalFileExists = host.fileExists.bind(host);
+    const originalReadFile = host.readFile.bind(host);
+    const originalDirectoryExists = host.directoryExists.bind(host);
+    host.directoryExists = (name) =>
+      name === '/virtual' || name === '/virtual/lib' || name === '/virtual/lib/models'
+      || originalDirectoryExists(name);
+    host.fileExists = (name) => virtualSources.has(name) || originalFileExists(name);
+    host.readFile = (name) => virtualSources.get(name) ?? originalReadFile(name);
     host.getSourceFile = (name, version, onError, shouldCreateNewSourceFile) =>
-      name === virtualFile
-        ? ts.createSourceFile(name, sourceOf(theme), version, true, ts.ScriptKind.TS)
+      virtualSources.has(name)
+        ? ts.createSourceFile(name, virtualSources.get(name), version, true, ts.ScriptKind.TS)
         : originalGetSourceFile(name, version, onError, shouldCreateNewSourceFile);
     const program = ts.createProgram([virtualFile], compilerOptions, host);
     return ts.getPreEmitDiagnostics(program).filter((diagnostic) => diagnostic.file?.fileName === virtualFile);
   };
   for (const theme of declaredThemes) {
-    assert.deepEqual(diagnosticsFor(theme), [], `Public type must accept registered skin ${theme}`);
+    assert.deepEqual(diagnosticsFor(theme), [], `Public type import must accept registered skin ${theme}`);
   }
-  assert.ok(diagnosticsFor('invalid-chart-skin').some((diagnostic) => diagnostic.code === 2322));
-
+  assert.ok(diagnosticsFor('invalid-chart-skin').some((diagnostic) => diagnostic.code === 2322),
+    'An unknown theme must be rejected by the imported public type');
 });
