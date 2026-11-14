@@ -23,6 +23,7 @@ to divide by zero, producing NaN texture coordinates.
   equal to a whole number of turns remains one full 360-degree rotation.
 - Reject nonfinite angles or overflowed angular spans with `RangeError`.
 - Reject nonfinite or negative inner/outer radii **before** Three.js curve sampling. Preserve reversed radial bands (including outer radius zero), which are intentionally used by the aspect-center fill.
+- Reject radii which are finite JavaScript doubles but overflow the Float32 position buffers used by Three.js (for example `1e39`). Preserve representable large radii and the existing reversed-center band.
 - When UV bounding-box width/height is zero or nonfinite, use the neutral
   normalized UV coordinate `0.5` for that axis instead of NaN.
 
@@ -45,7 +46,7 @@ npm run verify:angular          # preflight now invokes test:render-primitives t
 
 The focused Node test evaluates the actual TypeScript renderer with instrumented
 Three.js geometry stubs, checking normal/short/reversed/degenerate/oversized arcs,
-invalid radii, **synthetic texture material configuration**, and normalized UVs.
+invalid radii (including `Float32` overflow), **synthetic texture material configuration**, and normalized UVs.
 The suite also exercises all 12 zodiac wedges at six synthetic ascendant offsets
 (72 cases, including negative and greater-than-360-degree positions), plus four
 edge-radius/upper-bound cases. Its ellipse stub now follows the Three.js r170
