@@ -15,7 +15,7 @@ For synthetic diameters 100 / 120 / 180, the expected radii are:
 
 ## Verification
 
-`node --test tests/synastry-house-textures.test.mjs` runs twelve deterministic geometry checks against the real TypeScript `CaseRender` method, using test doubles for Three.js primitives and synthetic house cusps. The harness compiles and injects the **real** `house-cusps.ts` helper introduced by parent PR #83. Extra checks verify mixed-frame cusp sectors, invalid data, unchanged source longitudes, continued natal/latitude rendering, identical cusp-line angles in all three chart modes, and rejection of invalid cusps in all three entrypoints.
+`node --test tests/synastry-house-textures.test.mjs` runs thirteen deterministic geometry checks against the real TypeScript `CaseRender` method, using test doubles for Three.js primitives and synthetic house cusps. The harness compiles and injects the **real** `house-cusps.ts` helper introduced by parent PR #83. Extra checks verify mixed-frame cusp sectors, invalid data, unchanged source longitudes, continued natal/latitude rendering, identical cusp-line angles in all three chart modes, and rejection of invalid cusps in all three entrypoints.
 
 This tests the radius contract and inversion depth but **does not** verify screenshot parity, pixel rendering, antialiasing or host asset rights. Before integrating into VirgoStars or Astrolabio, check textured synastry on a browser canvas and e-ink/headless output, including the inverted southern setting. No assets or real natal records are included.
 
@@ -53,3 +53,7 @@ All three render modes use the parent #83's finite Ascendant guard, rejecting mi
 ## External rotation offset gate
 
 Natal and synastry renderer entrypoints now validate `degOffs` (a finite JavaScript number). The latitude renderer always uses a literal zero. This integration branch includes a dedicated behavioral regression to reject undefined, null, NaN, infinite and string offsets in both externally offset renderers while preserving matching natal/synastry line rotations for zero offset. The parent PR #83 has the same guards and a source-wiring assertion. This does not constitute a browser screenshot or production integration test.
+
+### Incoming mixed *higher* angular frames
+
+The parent cusp helper now adjusts an incoming longitude that already includes a positive multiple of 360° (e.g. `[0, 390, 60, ...]`): it subtracts unnecessary full revolutions so chart rings produce the same house-line angles as `[0, 30, 60, ...]`. A thirteenth regression exercises the **real three renderer methods** through the mocked Three.js test harness and verifies the corrected synastry mini-annulus, all line angles, and input immutability. The standalone focused helper test failed (RED control) before this normalization fix and passed afterward. Actual browser rendering is still required.
