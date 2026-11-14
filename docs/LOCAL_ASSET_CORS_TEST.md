@@ -57,3 +57,9 @@ The loopback-only asset server now sets `Referrer-Policy: no-referrer` on every 
 ## Denied HEAD privacy regression (2026-11-14)
 
 The synthetic HTTP test additionally asserts that a cross-origin denied `HEAD` response carries `Referrer-Policy: no-referrer` and returns an empty body. This closes a small method-specific gap in the response-header regression without changing the renderer, asset server or approved assets. This is a source assertion only: `node --test tests/local-asset-cors-preflight.test.mjs` has **NOT RUN** in this connector-only session. Angular builds, browser WebGL, and actual approved asset byte-hash checks are also **NOT RUN**. No production changes, Actions or merge.
+
+## Preview HEAD origin isolation (2026-11-14)
+
+The HTTP regression also checks that an untrusted `HEAD /__preview` request returns 403, does not grant `Access-Control-Allow-Origin`, retains `Referrer-Policy: no-referrer` and `Cache-Control: no-store`, and sends no response body. This complements the existing rejected preview GET and approved GET/HEAD parity checks. It uses generated synthetic files only; no original artwork or astronomical computation is involved.
+
+Validation: GitHub source update and readback only; executable Node 22 test, Angular builds, Chromium/Firefox WebGL and real approved-asset byte SHA-256 checks remain **NOT RUN**. Run `node --test tests/local-asset-cors-preflight.test.mjs` before considering integration. VirgoStars: https://www.virgostars.it/.
