@@ -63,6 +63,39 @@ The separate `test:demo-pack` coverage check verifies that the declared
 non-null resource paths appear in the generated synthetic manifest. Neither
 check proves that private, real artwork has been approved or is present.
 
+## Browser sinastria fallback probe
+
+A separate browser regression in `tests/demo-browser.test.mjs` bundles
+`tests/fixtures/synastry-skin-harness.ts`. It renders the same illustrative
+natal/sinastria themes three times using the actual renderer, with the
+`light` skin and the host-verified **synthetic** asset pack:
+
+1. Normal house-ring styling, with no `sinastria` override.
+2. A partial override setting **only** `anelloCase.sinastria.coloreLinea`.
+3. An explicit override setting the same line color and repeating the
+   inherited glyph-color and texture defaults.
+
+The test asserts a visible change between 1 and 2, and compares decoded PNG
+pixels for 2 and 3 with a small WebGL antialiasing tolerance. It restores
+the skin configuration after the probe. It does not change the Angular demo,
+ship assets or create approved screenshot baselines.
+
+Run in a complete checkout after `npm ci` and `npm run demo:pack`. Keep
+`npm run demo:assets` and `npm run demo` running in separate terminals,
+then run:
+
+```sh
+npm run test:demo
+CHART_TEST_BROWSER=firefox npm run test:demo
+```
+
+The second command uses POSIX environment syntax; on PowerShell set
+`$env:CHART_TEST_BROWSER = 'firefox'` before `npm run test:demo`.
+Configure the appropriate browser binaries as described in
+[ANGULAR_DEMO.md](ANGULAR_DEMO.md). The new probe is part of the existing
+browser suite; it is **not** part of `npm run verify:angular`. An isolated
+JavaScript assertion pass is not evidence that this visual test passed.
+
 This test is **not** a screenshot, a WebGL render, an asset-manifest integrity
 check or a demonstration of visual parity with VirgoStars or Astrolabio.
 Still run the Chromium/Firefox synthetic chart suite for all four modes,
