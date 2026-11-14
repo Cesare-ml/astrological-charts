@@ -148,3 +148,25 @@ npm run verify:angular
 
 Chromium and Firefox should additionally verify transitions across windows
 and tabs while a natal axis is hovered, with camera/zoom invariants inspected.
+
+## Initial focus at controller construction (2026-11-14)
+
+A canvas can be created **after** the owner window has already lost focus.
+In that situation the browser need not send a new `window.blur` event, so
+initializing `windowBlurred=false` could allow stale synthetic pointer
+moves/clicks. The constructor now reads `ownerDocument.hasFocus()` when the
+owner document has a live `defaultView`, and initializes the latch accordingly.
+Detached owners with `defaultView=null` and windowless Node probes remain
+usable without assuming a global browser window.
+
+One focused regression was added to
+`tests/planet-window-blur.test.mjs`, bringing the branch's current declared
+total to **34 tests** (the earlier documented 22-test result reflects a
+prior commit; other concurrent changes added further cases). The actual
+constructor assignment was checked separately in four isolated conditions:
+unfocused owner, focused owner, detached owner and no owner document;
+**4/4 checks passed** against source blob
+`00b191346c9af95594d404e60aca1fb6fbf0e3e4`.
+This is **not** evidence that the full 34-case suite or browser/WebGL tests
+pass. Run `npm run test:planet-window-blur` against the new branch head before
+marking the PR ready.
