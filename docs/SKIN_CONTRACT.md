@@ -21,10 +21,13 @@ then checks:
 - The seven currently supported skin identifiers remain present.
 - Four element colors and the natal/aspect, planet, zodiac, house, transit,
   synastry-override and latitude sections have required values.
-- Resonator dimensions/scale are finite and strictly positive, and opacity is
-  finite in `[0, 1]`.
+- The central resonator image is mandatory; dimensions/scale are finite and
+  strictly positive, and opacity is finite in `[0, 1]`.
 - Declared image/texture references resolve under the host-owned
   `/assets/img/` root and cannot silently switch to external URLs.
+- Glyph image-folder selectors, when provided, use the available `bianco` and
+  `nero` folders. Negative cases demonstrate the check catches missing artwork,
+  unsafe/remote URLs and unsupported folder names.
 
 Optional textures and null synastry overrides are permitted. When adding a
 new supported skin, update the expected IDs and confirm that the demo offers it.
