@@ -84,7 +84,7 @@ function selectedCelestial(theme, selectedSystem) {
 }
 
 function syntheticRenderer({ texture = 'local-test-texture', failHouses = false, validateCusps = unwrapHouseCusps } = {}) {
-  const calls = { houses: 0, planets: 0, signs: 0, visualTheme: null, selectedAngles: null, cleaned: 0 };
+  const calls = { houses: 0, planets: 0, signs: 0, visualTheme: null, selectedAngles: null, signAngle: null, cleaned: 0 };
   class Group {
     children = [];
     add(child) { this.children.push(child); }
@@ -120,8 +120,9 @@ function syntheticRenderer({ texture = 'local-test-texture', failHouses = false,
     },
     './segni.renderer': {
       SegniRender: {
-        getAnelloSegniSinastria: async () => {
+        getAnelloSegniSinastria: async (angle) => {
           calls.signs++;
+          calls.signAngle = angle;
           return { kind: 'signs' };
         },
       },
@@ -386,4 +387,28 @@ test('zero reference ascendant preserves selected and fallback synastry geometry
         : ['fallback-texture', 'planets', 'signs'],
     );
   }
+});
+
+
+test('keeps exact reference angle when selected house frame is unusually large', async () => {
+  // Angular frames from upstream providers are finite but not always normalized.
+  // The previous as + (reference - as) cancellation rounded 13° to 12° here.
+  const theme = createTheme({
+    placido: {
+      ascendant: 1e16,
+      mc: 150,
+      house: Array.from({ length: 12 }, (_, i) => i * 30),
+    },
+  });
+  const before = structuredClone(theme);
+  const { renderer, calls } = syntheticRenderer();
+  const result = await renderer.getAnelloSinastria(
+    theme, 13, [], state('placido'), 160, 140, 120, 110, 100, 130,
+  );
+  assert.deepEqual(result.children.map(child => child.kind), ['planets', 'signs', 'houses']);
+  assert.equal(calls.selectedAngles, 13, 'planet ring must keep the exact reference angle');
+  assert.equal(calls.signAngle, 13, 'zodiac ring must use the same exact reference angle');
+  assert.equal(calls.houses, 1);
+  assert.equal(calls.cleaned, 0);
+  assert.deepEqual(theme, before, 'input chart must not be mutated');
 });
