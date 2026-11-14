@@ -153,6 +153,9 @@ test('CORS preflight only authorizes configured local origins', async () => {
 
     // A file outside the approved manifest must remain inaccessible even when
     // the request has a permitted CORS origin. No filesystem fallback is allowed.
+    // Create a real file under the served root after pack verification. A 404
+    // must come from the manifest allowlist, not merely a missing disk file.
+    writeFileSync(join(root, 'img/not-approved.png'), expectedBytes);
     const unlisted = await fetch(new URL('/assets/img/not-approved.png', url), {
       headers: { Origin: 'http://localhost:4200' },
     });
