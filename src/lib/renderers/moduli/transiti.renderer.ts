@@ -102,7 +102,7 @@ export class TransitiRender {
     //Disegno gli assi
     // Iterate the supported axes only: legacy option payloads may contain unknown keys.
     for(const c of Object.keys(assi)) {
-      if(opzioni.antisci[c]) {
+      if(Object.hasOwn(opzioni.antisci ?? {}, c) && opzioni.antisci[c]) {
         var asse = await OggettiSempliciRender.getLineaGrossa({x:0,y:-diametroAnelloSegni/2,z:0},{x:0,y:diametroAnelloSegni/2,z:0},"yellow",0.6);
         asse.rotateZ(THREE.MathUtils.degToRad(
           75-ascendente+15 + assi[c]
@@ -114,7 +114,8 @@ export class TransitiRender {
     // Se antisciTransitiHover allora traccio le linee
     for (const c of Object.keys(assi)) {
       if(
-        opzioni.antisci[c]
+        Object.hasOwn(opzioni.antisci ?? {}, c)
+        && opzioni.antisci[c]
         && opzioni.antisciTransitiHover
         && elementiCelesti[opzioni.antisciTransitiHover.nome]
       ) {
