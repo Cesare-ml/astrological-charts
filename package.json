@@ -39,7 +39,7 @@
     "verify:angular": "npm run preflight && npm run build:library && npm run build:demo",
     "test:demo-interactions": "node --test tests/demo-interactions.browser.test.mjs",
     "test:planet-interactions": "node --test tests/planet-interactions.test.mjs tests/natal-palette-reentrancy.test.mjs tests/pointer-transition-reentrancy.test.mjs",
-    "test:planet-layout": "node --test tests/planet-layout.test.mjs",
+    "test:planet-layout": "node --test tests/planet-layout.test.mjs tests/planet-layout-own-keys.test.mjs",
     "test:planet-body-groups": "node --test tests/planet-body-groups.test.mjs",
     "test:coordinate-plan": "node --test tests/chart-coordinate-plan.test.mjs",
     "test:coordinate-isolated": "node --test tests/chart-coordinate-isolated-preview.test.mjs",
