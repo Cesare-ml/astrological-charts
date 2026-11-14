@@ -44,6 +44,7 @@ npm --version
 git rev-parse HEAD
 npm ci
 npm run verify:angular
+node --test tests/validation-roadmap.test.mjs
 npm run demo:generate-synthetic
 npm run test:demo
 npm run test:offline
@@ -51,7 +52,7 @@ npm run test:offline
 
 The two browser test commands require their documented local browser and server prerequisites; consult [Angular demo](ANGULAR_DEMO.md) before interpreting failures. The synthetic asset generator writes to ignored `.local/`, not the source tree. Use the separate approved asset pack only after its manifest and bytes have been verified; never copy it into this repository.
 
-For every command capture the **actual exit code** and the tested commit. A GitHub commit/readback, a static assertion or a synthetic-only screenshot must not be reported as a successful Angular build, original-artwork comparison, or Astrolabio acceptance.
+The roadmap contract test checks that referenced npm scripts exist and that release-evidence warnings remain visible; it does not run Angular, WebGL, or approved-asset checksum verification.\n\nFor every command capture the **actual exit code** and the tested commit. A GitHub commit/readback, a static assertion or a synthetic-only screenshot must not be reported as a successful Angular build, original-artwork comparison, or Astrolabio acceptance.
 
 ## Evidence log template
 
