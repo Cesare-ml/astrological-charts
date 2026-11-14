@@ -67,14 +67,18 @@ The package's `preflight` script now runs both line-stroke and arc regression su
 
 ## Validation performed (2026-11-14)
 
-- **PASS, Node.js 22.16.0:** three offline Node files run together using `node --test`, **13/13 passed (exit 0)**, covering 72 zodiac wedges, edge inputs, texture/material failures, bounding-box/UV errors, and recovery after an error. The checked code is a recreated TypeScript method excerpt from the branch, not a checked-out full repository; synthetic Three.js objects were used.
-- **PASS, TypeScript transpilation diagnostics:** `ts.transpileModule` of the offline method excerpt reported no diagnostics. This is not a full Angular type-check.
+**Latest: PASS 25/25 (exit 0), Node.js 22.16.0 / TypeScript 5.8.3.**
+Executed both **exact committed Node test files** in a single local `node --test` run:
 
+- `tests/arc-tessellation-safety.test.mjs` (#87): **19/19 PASS**. Git blob SHA-1 matched `6328436fd773236df6fd33af79190427feae5ada`.
+- `tests/line-stroke-safety.test.mjs` (parent #62): **6/6 PASS**. Git blob SHA-1 matched `667ed3551e2271d6b7842b159a5de5f1d362e082`.
+- Source: reconstructed a minimal TypeScript class containing exact **copied method bodies** from the #87 branch, not an approximation. Verified FNV-1a checksums against GitHub readback: arc methods `627ed5e0` (4,595 chars); stroke-count `a9f96b88` (692); dashed stroke `3b3adf8c` (787); line-and-dot stroke `cfdb0742` (2,964). The auxiliary class omits unrelated methods and imports.
+- Exact local command: `node --test tests/line-stroke-safety.test.mjs tests/arc-tessellation-safety.test.mjs`.
+- TAP result: **25 pass, 0 fail, 0 skipped, exit 0**. Local output log SHA-256: `2ab910581c247d17c00056fce6d8a29fa7af9875df28ce4777225e90a0986bba` (elapsed timing may vary).
 
-- **PASS, Node.js 22.16.0 / TypeScript 5.8.3:** an **offline focused smoke harness** was actually executed with `node --test`, using the manually reconstructed, functionally identical arc method excerpt read from GitHub (not a complete checkout). Six Node test blocks passed, including 72 synthetic zodiac wedges at six ascendant offsets, full/reversed/zero/huge angles, a reversed-radius center-disc fill, Float32-overflow rejection and large Float32-representable radii. Lightweight Three.js behavior was simulated; no real WebGL or production textures were loaded. The local test file is not part of this PR.
-- **PASS, source-level isolation:** six new Float32-focused checks executed against the exact GitHub-readback methods in the connected JavaScript runtime with synthetic geometry stubs. Includes three nonfinite/overflow cases plus valid large and zero radii.
-- **PASS, local offline regression harness:** Node.js 22.16.0, ten Node test blocks (10 passed, 0 failed, exit 0) using the reconstructed arc-method excerpt and synthetic geometry stubs. This additionally checks failed texture lookup, failed mesh construction, successful ownership and that a shared texture is never disposed when only the arc's geometry/material belong to this call. The first run caught a shadowed `material` declaration (8/9 tests); it was fixed in the GitHub branch and the rerun passed 10/10. This offline harness is **not the committed Node test suite**.
-- **NOT RUN:** the **committed** `npm run test:render-primitives` scripts, actual `npm ci`, complete `npm run verify:angular`, Chromium/Firefox WebGL/PNG benchmarks, or VirgoStars/Astrolabio compatibility. The full repository/dependency checkout cannot be accessed from the execution shell due DNS/network limits. Neither offline smoke nor source-level isolation satisfies those release gates.
+Earlier smaller offline runs (6/6, 10/10, 13/13) preceded this result; an initial 8/9 failure caught a shadowed material variable, which was fixed in the branch before the latest passing run.
+
+**Scope limitation:** the *committed test files* were executed against the exact GitHub-readback methods in a local extracted-method workspace, **not a complete Git checkout**. The standard `npm run test:render-primitives` script, `npm ci`, `npm run verify:angular`, Chromium/Firefox rendering, and PNG visual baselines remain **NOT RUN** from a clean checkout. GitHub DNS/network access is blocked from the execution shell; the tests simulate Three.js geometry. This does **not** prove Angular build success, pixel parity, real texture loading, or Astrolabio compatibility.
 
 Keep the PR as a draft stacked on #62 until that parent is reviewed. No
 GitHub Actions, license changes, asset publication or production changes.
