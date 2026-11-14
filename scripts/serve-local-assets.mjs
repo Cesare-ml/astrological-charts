@@ -57,12 +57,15 @@ function previewHtml(pack) {
     '.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(154px,1fr));gap:12px;max-width:1150px;margin:auto}'+
     'article{background:#202d3e;border:1px solid #3d4b5f;border-radius:10px;padding:12px;overflow-wrap:anywhere}'+
     'img,.font{height:110px;max-width:100%;object-fit:contain;display:block;margin:0 auto 8px}'+
-    'p{min-height:42px}small{color:#afbdce}a{color:#b8d7ff}</style></head><body>'+
+    'p{min-height:42px}small{color:#afbdce}a{color:#b8d7ff}'+
+    '.skip{position:absolute;left:-10000px}.skip:focus{position:static;display:inline-block;padding:8px}</style></head><body>'+
+    '<a class="skip" href="#assets">Skip to asset gallery</a>'+
     '<header><h1>Approved astrology assets — local preview</h1>'+
     '<p>'+pack.count+' approved files, '+pack.totalBytes+' bytes verified by SHA-256.</p>'+
     '<p>This is an <b>asset smoke preview</b>, not yet a full natal-chart renderer. '+
-    'Only approved-manifest files are served. No access to VirgoStars is needed.</p></header>'+
-    '<div class="grid">'+items+'</div></body></html>';
+    'Only approved-manifest files are served. No access to VirgoStars is needed.</p>'+ 
+    '<p><a href="https://www.virgostars.it/" rel="noopener noreferrer">Powered by VirgoStars</a></p></header>'+
+    '<main id="assets" class="grid" tabindex="-1" aria-label="Approved asset gallery">'+items+'</main></body></html>';
 }
 
 export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
@@ -75,12 +78,13 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
   const allowed=new Set(origins);
   for(const origin of allowed) {
     const url=new URL(origin);
-    if(url.origin!==origin||!['localhost','127.0.0.1'].includes(url.hostname))
+    if(url.protocol!=='http:'||url.origin!==origin||!['localhost','127.0.0.1'].includes(url.hostname))
       throw new Error('Only local development origins may be allowed: '+origin);
   }
   return createServer((req,res)=>{
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
+    res.setHeader('Referrer-Policy','no-referrer');
     const origin=req.headers.origin;
     if(origin&&!allowed.has(origin)){res.writeHead(403);res.end('Forbidden origin');return;}
     if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
@@ -88,6 +92,10 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
       res.writeHead(405,{Allow:'GET, HEAD, OPTIONS'});res.end();return;
     }
     if(req.method==='OPTIONS'){
+      const requestedMethod=req.headers['access-control-request-method'];
+      if(requestedMethod&&!['GET','HEAD','OPTIONS'].includes(requestedMethod)){
+        res.writeHead(405,{Allow:'GET, HEAD, OPTIONS'});res.end();return;
+      }
       res.writeHead(204,{'Access-Control-Allow-Methods':'GET, HEAD, OPTIONS'});res.end();return;
     }
     let pathname;

@@ -38,6 +38,7 @@ Il generatore si rifiuta di sovrascrivere una directory già esistente. Il wrapp
 - Il server verifica l'intero manifest **all'avvio**; a ogni richiesta ricontrolla i byte del file richiesto.
 - La galleria locale è `/__preview`; gli URL sono `/assets/img/...`. Il server serve solamente i percorsi contenuti nel manifest, niente directory listing, metodi di scrittura o condivisione pubblica.
 - Bind soltanto su `127.0.0.1:4177`, con CORS limitato a `http://localhost:4200` e `http://127.0.0.1:4200`. Non è un servizio esponibile a Internet.
+- Le richieste preflight `OPTIONS` con `Access-Control-Request-Method` diverso da `GET`, `HEAD` o `OPTIONS` ricevono HTTP 405 e non vengono autorizzate; anche i metodi HTTP effettivi non supportati sono rifiutati. Il test copre inoltre GET senza `Origin` (nessuna intestazione CORS) e il rifiuto di origini esterne anche sulla pagina `/__preview`, non soltanto sui file immagine. Verifica di regressione: `node --test tests/local-asset-cors-preflight.test.mjs` (da eseguire in checkout completo; non eseguito durante questa modifica GitHub-only).
 
 Questo test è utile per verificare struttura dei nomi, disponibilità degli asset, MIME, percorso e autorizzazioni, **ma non** certifica le scene Three.js o l'aspetto originale dei grafici.
 
@@ -107,3 +108,30 @@ Sono stati eseguiti su Windows test con fixture sintetiche per il generatore PNG
 ## Successivo gate
 
 Confrontare la demo con baseline visive approvate e verificare le opzioni avanzate e l'Astrolabio. Non considerare questa galleria o i test browser come sostitutivi delle prove hardware.
+
+### Regressione CORS per richieste HEAD
+
+`node --test tests/local-asset-cors-preflight.test.mjs` usa esclusivamente un pacchetto sintetico temporaneo e controlla anche che `HEAD` su un asset restituisca gli stessi `Content-Type` e `Content-Length` di `GET`, senza corpo, autorizzando solo le origini locali configurate. Il test non legge immagini originali, non verifica la demo Three.js e non sostituisce `npm run verify:pack` nel checkout separato di `astrological-assets`. Il suo risultato deve essere registrato come **NOT RUN** finché non viene eseguito in un ambiente Node.js completo.
+
+## CORS regression coverage (2026-11-13)
+
+The synthetic-pack HTTP regression in `tests/local-asset-cors-preflight.test.mjs` now checks `OPTIONS` requests for both permitted `GET` and `HEAD`, rejects unsupported `POST` and lowercase `post` preflight methods, and covers allowed/denied origins, `GET`, `HEAD`, and `POST`. Run `node --test tests/local-asset-cors-preflight.test.mjs` on Node.js 22 with loopback access. These are test assertions committed for later execution, **not** a claim that the test has passed. This check does not validate Angular builds, browser WebGL output, artwork rights or actual image-file SHA-256 hashes; run `npm run verify:pack` in the separate `astrological-assets` checkout for the last check.
+
+## HTTP-only development origin policy (2026-11-14)
+
+`createAssetServer` explicitly accepts only canonical `http://localhost:<port>` or `http://127.0.0.1:<port>` origins in its allowlist. Other schemes, including `ftp:` and `file:`, are rejected at server construction; this is defense in depth even where URL normalization would already reject a non-HTTP origin. The synthetic regression covers both cases in `tests/local-asset-cors-preflight.test.mjs`. This change does not enable HTTPS, expose the server beyond loopback, or affect production asset resolution. **NOT RUN:** Node test execution, Angular builds, Chromium/Firefox WebGL and real approved-pack byte checks. Run the Node test on Node 22 and validate the separate asset checkout before merge.
+
+## Post-startup integrity regression (2026-11-14)
+
+The CORS HTTP regression now changes one **temporary synthetic** PNG after the server has validated its manifest. Both `GET` and `HEAD` must then return HTTP 409 rather than exposing modified bytes, while retaining `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. This specifically checks the per-request SHA-256 gate, not just the startup check. It never edits or redistributes the separate approved image pack.
+
+**Validation status: NOT RUN** in this GitHub-only change. Run `node --test tests/local-asset-cors-preflight.test.mjs` with Node 22 and localhost binding; subsequently run `npm run verify:angular` and browser tests in a complete checkout. For actual approved assets, separately run `npm run verify:pack` in `astrological-assets`. The manifest was inspected but its recorded hashes were not compared against image bytes during this change.
+
+## Local preview attribution (2026-11-14)
+
+The standalone `/__preview` gallery now displays a visible **Powered by VirgoStars** link to `https://www.virgostars.it/`. The synthetic HTTP regression checks the rendered HTML for the exact external link and `rel="noopener noreferrer"`. This is a gallery-only attribution improvement: it does not modify the Angular Three.js renderer, approved assets, astronomical calculations, or production. **NOT RUN in a complete checkout:** `node --test tests/local-asset-cors-preflight.test.mjs`, `npm run verify:angular`, browser WebGL and `astrological-assets` `npm run verify:pack`.
+
+
+## Unlisted asset HTTP regression (2026-11-14)
+
+The synthetic-pack test now requests `/assets/img/not-approved.png` using an otherwise permitted localhost CORS origin and asserts HTTP 404 plus `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. This guards against accidentally treating CORS permission as permission to serve files absent from the SHA-256 manifest. The fixture contains no real artwork. **NOT RUN:** the Node test, Angular build, browser WebGL tests and SHA-256 verification of the actual `astrological-assets` files. Execute `node --test tests/local-asset-cors-preflight.test.mjs` in a Node 22 checkout, followed by `npm run verify:angular` and `npm run verify:pack` in the separate assets repository. No release or production changes are implied.
