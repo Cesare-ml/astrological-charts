@@ -52,7 +52,12 @@ const axis = name => ({layer:'natal',name});
 function harness(windowTarget = new FakeTarget(), onEvent = null, hasDocument = true) {
   const canvas = new FakeTarget();
   canvas.style={cursor:'crosshair'};
-  if (hasDocument) canvas.ownerDocument={defaultView:windowTarget};
+  const ownerDocument = hasDocument ? new FakeTarget() : null;
+  if (ownerDocument) {
+    ownerDocument.defaultView = windowTarget;
+    ownerDocument.visibilityState = 'visible';
+    canvas.ownerDocument = ownerDocument;
+  }
   const camera={zoom:1,position:{z:3}};
   const events=[]; let paints=0, renders=0;
   const controller=new PlanetInteractionController(canvas,camera,event=>{
@@ -66,7 +71,7 @@ function harness(windowTarget = new FakeTarget(), onEvent = null, hasDocument = 
     canvas.style.cursor='pointer';
   };
   const state=()=>({paints,renders});
-  return {canvas,camera,controller,windowTarget,events,hover,state};
+  return {canvas,camera,controller,windowTarget,ownerDocument,events,hover,state};
 }
 
 test('window blur clears AS hover, emits one leave and keeps camera unchanged',()=>{
@@ -151,5 +156,87 @@ test('controller also works without ownerDocument or global window in Node probe
   p.hover('IC');
   p.canvas.emit('pointerleave');
   assert.deepEqual(p.events,['leave:IC']);
+  p.controller.destroy();
+});
+
+test('hidden document clears hover without requiring window blur, and visible never fabricates enter',()=>{
+  const p=harness();
+  p.hover('AS');
+  assert.equal(p.ownerDocument.count('visibilitychange'),1);
+  p.ownerDocument.emit('visibilitychange'); // Still visible.
+  assert.deepEqual(p.events,[]);
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.emit('visibilitychange');
+  p.windowTarget.emit('blur'); // Browsers may deliver both events.
+  p.ownerDocument.emit('visibilitychange');
+  assert.deepEqual(p.events,['leave:AS']);
+  assert.equal(p.controller.hovered,null);
+  assert.equal(p.canvas.style.cursor,'crosshair');
+  assert.deepEqual(p.state(),{paints:1,renders:1});
+  p.ownerDocument.visibilityState='visible';
+  p.ownerDocument.emit('visibilitychange');
+  assert.deepEqual(p.events,['leave:AS']);
+  p.controller.destroy();
+  assert.equal(p.ownerDocument.count('visibilitychange'),0);
+  assert.equal(p.windowTarget.count('blur'),0);
+});
+
+test('hiding a document keeps pinned MC and avoids extra GPU repaint',()=>{
+  const p=harness();
+  p.hover('MC');
+  p.controller.pinned=axis('MC');
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.emit('visibilitychange');
+  assert.deepEqual(p.events,['leave:MC']);
+  assert.deepEqual(p.controller.pinned,{layer:'natal',name:'MC'});
+  assert.deepEqual(p.state(),{paints:0,renders:0});
+  assert.equal(p.camera.zoom,1);
+  p.controller.destroy();
+});
+
+test('visibility loss triggered by a leave callback does not starve the final repaint',()=>{
+  let once=false;
+  let p;
+  p=harness(new FakeTarget(),(event)=>{
+    if (event.type==='leave' && !once) {
+      once=true;
+      p.ownerDocument.visibilityState='hidden';
+      p.ownerDocument.emit('visibilitychange');
+    }
+  });
+  p.hover('DS');
+  p.windowTarget.emit('blur');
+  assert.deepEqual(p.events,['leave:DS']);
+  assert.deepEqual(p.state(),{paints:1,renders:1});
+  p.controller.destroy();
+});
+
+test('a detached owner document never registers against an unrelated global window',()=>{
+  const p=harness(null);
+  assert.equal(p.controller.hostWindow,null);
+  assert.equal(p.ownerDocument.count('visibilitychange'),1);
+  p.hover('IC');
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.emit('visibilitychange');
+  assert.deepEqual(p.events,['leave:IC']);
+  assert.deepEqual(p.state(),{paints:1,renders:1});
+  p.controller.destroy();
+  assert.equal(p.ownerDocument.count('visibilitychange'),0);
+});
+
+test('visibility loss during enter callback balances leave and cancels stale pointer focus',()=>{
+  let p;
+  p=harness(new FakeTarget(), event=>{
+    if(event.type==='enter') {
+      p.ownerDocument.visibilityState='hidden';
+      p.ownerDocument.emit('visibilitychange');
+    }
+  });
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.canvas.emit('pointermove',{ref:axis('MC')});
+  assert.deepEqual(p.events,['enter:MC','leave:MC']);
+  assert.equal(p.controller.hovered,null);
+  assert.deepEqual(p.state(),{paints:1,renders:1});
   p.controller.destroy();
 });
