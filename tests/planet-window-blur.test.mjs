@@ -240,3 +240,52 @@ test('visibility loss during enter callback balances leave and cancels stale poi
   assert.deepEqual(p.state(),{paints:1,renders:1});
   p.controller.destroy();
 });
+
+test('hidden document ignores stale pointer moves until visibility is restored',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.emit('visibilitychange');
+  p.canvas.emit('pointermove',{ref:axis('AS')});
+  assert.deepEqual(p.events,[],'a hidden tab must not create fresh hover');
+  assert.equal(p.controller.hovered,null);
+  p.ownerDocument.visibilityState='visible';
+  p.ownerDocument.emit('visibilitychange');
+  p.canvas.emit('pointermove',{ref:axis('AS')});
+  assert.deepEqual(p.events,['enter:AS']);
+  assert.equal(p.controller.hovered.name,'AS');
+  assert.equal(p.camera.zoom,1);
+  p.controller.destroy();
+});
+
+test('synthetic clicks on a hidden document cannot select an axis',()=>{
+  const p=harness();
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.ownerDocument.visibilityState='hidden';
+  p.canvas.emit('click',{ref:axis('DS')});
+  assert.deepEqual(p.events,[],'background click must not notify the host');
+  p.ownerDocument.visibilityState='visible';
+  p.canvas.emit('click',{ref:axis('DS')});
+  assert.deepEqual(p.events,['click:DS']);
+  p.controller.destroy();
+});
+
+test('hidden-document reentrant pointermove cannot revive a retiring glyph',()=>{
+  let p;
+  p=harness(new FakeTarget(),event=>{
+    if(event.type==='leave') {
+      p.canvas.emit('pointermove',{ref:axis('IC')});
+    }
+  });
+  p.controller.scene={};
+  p.controller.pick=event=>event.ref;
+  p.hover('MC');
+  p.ownerDocument.visibilityState='hidden';
+  p.ownerDocument.emit('visibilitychange');
+  assert.deepEqual(p.events,['leave:MC']);
+  assert.equal(p.controller.hovered,null);
+  assert.deepEqual(p.state(),{paints:1,renders:1});
+  p.controller.destroy();
+});
