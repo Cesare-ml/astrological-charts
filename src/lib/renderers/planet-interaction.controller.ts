@@ -79,6 +79,11 @@ export class PlanetInteractionController {
     this.hostWindow = this.hostDocument
       ? this.hostDocument.defaultView
       : (typeof window === 'undefined' ? null : window);
+    // A controller mounted in an already-unfocused tab receives no initial
+    // blur event. Refuse its synthetic pointer hits until real focus returns.
+    // Detached documents and windowless probes have no active Window to blur.
+    this.windowBlurred = !!this.hostWindow &&
+      !!this.hostDocument && !this.hostDocument.hasFocus();
     canvas.addEventListener('pointermove', this.move);
     canvas.addEventListener('pointerleave', this.leave);
     canvas.addEventListener('pointerup', this.finishPointer);
