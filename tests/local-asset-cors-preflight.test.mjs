@@ -181,6 +181,8 @@ test('CORS preflight only authorizes configured local origins', async () => {
     });
     assert.equal(deniedHead.status, 403);
     assert.equal(deniedHead.headers.get('access-control-allow-origin'), null);
+    assert.equal(deniedHead.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(await deniedHead.text(), '');
 
     const deniedGet = await fetch(url, {
       headers: { Origin: 'https://untrusted.example' },
