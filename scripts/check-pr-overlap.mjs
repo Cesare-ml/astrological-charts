@@ -104,6 +104,13 @@ export function resolveReportOutputPath(outPath, cwd = process.cwd()) {
       outPath.includes('..')) {
     throw new Error('Report output must be .local/<filename>.json');
   }
+  // Device basenames are reserved on Windows even with extensions
+  // (CON.json, con.backup.json, COM1.json, etc.). Reject them on every OS so
+  // an offline audit cannot write to a device or fail in an obscure way.
+  const stem = outPath.slice('.local/'.length).split('.')[0];
+  if (/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(stem)) {
+    throw new Error('Report filename uses a reserved Windows device name: ' + stem);
+  }
   const folder = resolve(cwd, '.local');
   const destination = resolve(cwd, outPath);
   // lstat also sees dangling links, unlike existsSync (which follows them).
