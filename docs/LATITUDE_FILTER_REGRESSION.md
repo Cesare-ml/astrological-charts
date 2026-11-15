@@ -1,8 +1,8 @@
 # Latitude planet selection regression
 
-`LatitudiniRender.getElementiCelesti` filters **precomputed** planet data; it does not calculate astronomical positions. Only enabled **own** entries of `opzioni.settaggi.elementi_celesti` are considered. A planet must exist in `temaRender.planets` and have a finite numeric `latitude`, including `0` and `-0`. The returned map preserves the original planet object references and does not mutate inputs.
+`LatitudiniRender.getElementiCelesti` filters **precomputed** planet data; it does not calculate astronomical positions. Only enabled **own** entries of `opzioni.settaggi.elementi_celesti` and **own** records in `temaRender.planets` are considered; inherited planet data must not appear in the rendered result. A planet must exist in `temaRender.planets` and have a finite numeric `latitude`, including `0` and `-0`. The returned map preserves the original planet object references and does not mutate inputs.
 
-The focused synthetic suite is `npm run test:latitude` (`node --test tests/latitude-zero.test.mjs`). It covers zero latitude, missing/disabled planets, nonnumeric values, finite boundaries, null-prototype maps, and inherited option keys. This suite extracts the real method body from its TypeScript source; it is **not** an Angular or WebGL integration test.
+The focused synthetic suite is `npm run test:latitude` (`node --test tests/latitude-zero.test.mjs`). It covers zero latitude, missing/disabled planets, nonnumeric values, finite boundaries, null-prototype maps, inherited option keys, and inherited planet records. This suite extracts the real method body from its TypeScript source; it is **not** an Angular or WebGL integration test.
 
 ## Validation and release gates
 
