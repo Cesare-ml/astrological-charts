@@ -130,3 +130,14 @@ test('missing selection settings yield an empty chart without touching precomput
   }
   assert.equal(planets.Sun.latitude, 0);
 });
+
+test('missing or malformed precomputed planet maps fail closed without enabling bodies', async () => {
+  const options = Object.freeze({ settaggi: { elementi_celesti: { Sun: { att: true } } } });
+  for (const chart of [undefined, null, {}, { planets: null }, { planets: undefined }, { planets: 42 }]) {
+    const result = await getElementiCelesti(chart, options);
+    assert.deepEqual(result, {}, 'absent planet data must yield an empty selection');
+  }
+  const planets = Object.freeze({ Sun: Object.freeze({ latitude: -0 }) });
+  const result = await getElementiCelesti({ planets }, options);
+  assert.strictEqual(result.Sun, planets.Sun, 'valid data still preserves object identity');
+});
