@@ -72,3 +72,16 @@ test('null-prototype planet and option maps retain zero latitude without mutatin
   assert.strictEqual(result.Sun, sun);
   assert.equal(Object.getPrototypeOf(planets), null);
 });
+
+test('inherited chart option keys cannot enable extra planets', async () => {
+  const inherited = { Hidden: { att: true } };
+  const elementi_celesti = Object.assign(Object.create(inherited), { Sun: { att: true } });
+  const planets = Object.freeze({
+    Sun: Object.freeze({ latitude: 0, longitude: 15 }),
+    Hidden: Object.freeze({ latitude: 1, longitude: 30 }),
+  });
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti } });
+  assert.deepEqual(Object.keys(result), ['Sun']);
+  assert.strictEqual(result.Sun, planets.Sun);
+  assert.equal(Object.hasOwn(elementi_celesti, 'Hidden'), false);
+});
