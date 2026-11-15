@@ -100,3 +100,24 @@ test('inherited planet records cannot be rendered even when explicitly enabled',
   assert.strictEqual(result.Sun, planets.Sun);
   assert.equal(Object.hasOwn(planets, 'Ghost'), false);
 });
+
+
+test('malformed enablement entries do not crash or enable planets', async () => {
+  const planets = Object.freeze({
+    Sun: Object.freeze({ latitude: 0 }),
+    Moon: Object.freeze({ latitude: -0 }),
+    Mars: Object.freeze({ latitude: 1 }),
+    Venus: Object.freeze({ latitude: -1 }),
+    Jupiter: Object.freeze({ latitude: 2 }),
+  });
+  const elementi_celesti = Object.freeze({
+    Sun: null,
+    Moon: undefined,
+    Mars: false,
+    Venus: { att: 'true' },
+    Jupiter: Object.freeze({ att: true }),
+  });
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti } });
+  assert.deepEqual(Object.keys(result), ['Jupiter']);
+  assert.strictEqual(result.Jupiter, planets.Jupiter);
+});
