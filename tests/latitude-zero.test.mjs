@@ -228,3 +228,23 @@ test('non-enumerable and symbol option keys cannot silently enable planets', asy
   assert.deepEqual(Object.getOwnPropertySymbols(result), []);
   assert.equal(Object.getOwnPropertyDescriptor(enabled, 'Moon').enumerable, false);
 });
+
+test('truthy own enablement values preserve legacy compatibility without coercing latitude', async () => {
+  const planets = Object.freeze({
+    Sun: Object.freeze({ latitude: 0 }),
+    Moon: Object.freeze({ latitude: -0 }),
+    Mars: Object.freeze({ latitude: 1 }),
+    Venus: Object.freeze({ latitude: 2 }),
+  });
+  const enabled = Object.freeze({
+    Sun: Object.freeze({ att: 1 }),
+    Moon: Object.freeze({ att: 'yes' }),
+    Mars: Object.freeze({ att: 0 }),
+    Venus: Object.freeze({ att: '' }),
+  });
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti: enabled } });
+  assert.deepEqual(Object.keys(result), ['Sun', 'Moon']);
+  assert.strictEqual(result.Sun, planets.Sun);
+  assert.strictEqual(result.Moon, planets.Moon);
+  assert.ok(Object.is(result.Moon.latitude, -0));
+});
