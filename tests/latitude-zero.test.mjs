@@ -189,3 +189,23 @@ test('an explicit disabled flag overrides inherited enablement and remains exclu
   assert.equal(Object.hasOwn(disabled, 'att'), true);
   assert.equal(disabled.att, false, 'input enablement must remain unchanged');
 });
+
+test('constructor and toString planet names remain own data properties', async () => {
+  const planets = Object.create(null);
+  const enabled = Object.create(null);
+  for (const name of ['constructor', 'toString']) {
+    Object.defineProperty(planets, name, {
+      value: Object.freeze({ latitude: 0, longitude: 10 }), enumerable: true
+    });
+    Object.defineProperty(enabled, name, {
+      value: Object.freeze({ att: true }), enumerable: true
+    });
+  }
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti: enabled } });
+  assert.deepEqual(Object.keys(result), ['constructor', 'toString']);
+  assert.equal(Object.getPrototypeOf(result), Object.prototype);
+  for (const name of Object.keys(planets)) {
+    assert.equal(Object.hasOwn(result, name), true);
+    assert.strictEqual(result[name], planets[name]);
+  }
+});
