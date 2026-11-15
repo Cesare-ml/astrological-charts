@@ -1,4 +1,5 @@
 import {Settaggi} from './settaggi.model'
+import type { ZodiacProjectionSelection } from '../renderers/moduli/zodiacal-projections';
 
 type TemaGrafico = 'dark' | 'light' | 'astrolabio' | 'sun' | 'light-bn' | 'dark-bn';
 type Pianeta =
@@ -59,6 +60,9 @@ export interface OpzioniGrafico {
 
   dodecatemoriAttivi: boolean;
   dodecatemore?: any;
+
+  /** Optional to preserve compatibility with older host option payloads. */
+  proiezioneZodiacale?: ZodiacProjectionSelection;
 
   chakramAttivi: boolean;
   chakram?: any;
@@ -160,6 +164,7 @@ export const defaultOpzioniGrafico: OpzioniGrafico = {
 
   dodecatemoriAttivi: false,
   dodecatemore: undefined,
+  proiezioneZodiacale: { tipo: undefined, asse: 'Cardinale', pianeta: undefined },
 
   chakramAttivi: false,
   chakram: undefined,
