@@ -141,3 +141,16 @@ test('missing or malformed precomputed planet maps fail closed without enabling 
   const result = await getElementiCelesti({ planets }, options);
   assert.strictEqual(result.Sun, planets.Sun, 'valid data still preserves object identity');
 });
+
+
+test('special own planet keys do not mutate the result prototype', async () => {
+  const planet = Object.freeze({ latitude: 0, longitude: 45 });
+  const planets = Object.create(null);
+  const enabled = Object.create(null);
+  Object.defineProperty(planets, '__proto__', { value: planet, enumerable: true });
+  Object.defineProperty(enabled, '__proto__', { value: { att: true }, enumerable: true });
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti: enabled } });
+  assert.equal(Object.getPrototypeOf(result), Object.prototype);
+  assert.deepEqual(Object.keys(result), ['__proto__']);
+  assert.strictEqual(Object.getOwnPropertyDescriptor(result, '__proto__').value, planet);
+});
