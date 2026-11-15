@@ -37,3 +37,7 @@ The fourteenth focused regression covers explicitly enabled planet keys `constru
 ## Non-enumerable selection entries (2026-11-15)
 
 The fifteenth focused regression ensures a non-enumerable own option entry does not accidentally enable a precomputed planet. Symbol-keyed entries also remain outside the string-keyed selection contract. The test confirms that an enumerable zero-latitude planet is still selected by reference, and the input descriptor is unchanged. This is test-only; no astronomical calculations, rendering assets or public API were changed. Runtime execution of the Node suite, Angular builds, browser tests and actual image-byte SHA-256 verification remain **NOT RUN**.
+
+## Legacy truthy flags (2026-11-15)
+
+The sixteenth focused regression checks the existing truthiness contract for **own** `att` flags: numeric `1` and nonempty string `'yes'` enable valid precomputed zero-latitude planets, while `0` and `''` disable them. The test checks input reference identity and negative zero. This intentionally does not introduce strict Boolean-only validation, which would be a separate compatibility decision. No renderer source, asset, ephemeris or public API was changed. Node/Angular/browser execution and real approved asset SHA-256 checks remain NOT RUN because a full checkout is unavailable.
