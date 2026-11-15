@@ -174,3 +174,18 @@ test('inherited att flags cannot enable planets without an explicit own flag', a
   assert.strictEqual(result.Mars, planets.Mars);
   assert.equal(Object.hasOwn(inheritedEnabled, 'att'), false);
 });
+
+test('an explicit disabled flag overrides inherited enablement and remains excluded', async () => {
+  const planets = Object.freeze({
+    Sun: Object.freeze({ latitude: 0 }),
+    Moon: Object.freeze({ latitude: -0 }),
+  });
+  const disabled = Object.assign(Object.create({ att: true }), { att: false });
+  const enabled = Object.assign(Object.create({ att: false }), { att: true });
+  const options = { settaggi: { elementi_celesti: { Sun: disabled, Moon: enabled } } };
+  const result = await getElementiCelesti({ planets }, options);
+  assert.deepEqual(Object.keys(result), ['Moon']);
+  assert.strictEqual(result.Moon, planets.Moon);
+  assert.equal(Object.hasOwn(disabled, 'att'), true);
+  assert.equal(disabled.att, false, 'input enablement must remain unchanged');
+});
