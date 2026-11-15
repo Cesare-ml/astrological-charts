@@ -21,3 +21,7 @@ The selection method now returns an empty map when the chart itself or its `plan
 ## Special own keys (2026-11-15)
 
 An explicitly enabled own planet key named `__proto__` is now copied with `Object.defineProperty` instead of bracket assignment. This prevents a crafted precomputed map from changing the filtered result object's prototype while preserving normal enumerable own keys and input object identity. The eleventh synthetic regression checks the prototype, key visibility and original reference. This is defensive input handling, not astronomical calculation. Full Node, Angular, browser and real asset-byte SHA-256 checks remain NOT RUN; the separate approved manifest is metadata only until its bytes are hashed.
+
+## Explicit enablement flags (2026-11-15)
+
+An enabled planet must have its own `att` property on the option entry. A truthy `att` inherited through an option-entry prototype no longer enables a planet; an own `att: true` still works even if the prototype has `att: false`. The twelfth synthetic regression covers both cases with precomputed zero-latitude planets. This change does not alter ephemeris calculations, image assets, public exports, or production. Node/Angular/browser execution and approved asset-byte checksums remain NOT RUN until validated in a complete checkout.
