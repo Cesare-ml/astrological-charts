@@ -169,7 +169,7 @@ export class SegniRender {
             //let imgFolder = coloreImgFolder ? coloreImgFolder + '/' : '';
             const segno = await OggettiSempliciRender.getImg(
                 `simboli-bianchi/segni/${String(i + 1).padStart(2, '0')}.png`,
-                100, 69, 1 / 69, australInversion, colore
+                100, 69, 1 / 69, australInversion, colore, true
             );
             segno.scale.set(0.16, 0.16, 1);
             segno.rotateZ(THREE.MathUtils.degToRad(i * 30 + 15 + degOffsAscendente));
@@ -293,7 +293,7 @@ export class SegniRender {
             //let imgFolder = coloreImgFolder ? coloreImgFolder + '/' : '';
             const segno = await OggettiSempliciRender.getImg(
                 `simboli-bianchi/segni/${String(i + 1).padStart(2, '0')}.png`,
-                100, 69, 1 / 69, false, colore
+                100, 69, 1 / 69, false, colore, true
             );
             segno.scale.set(0.08, 0.08, 1);
             segno.rotateZ(THREE.MathUtils.degToRad(i * 30 + 15 + degOffsAscendente));
