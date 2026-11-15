@@ -159,7 +159,10 @@ test('natal zodiacal controls stay on one row and Regolo modes render separately
     await page.getByRole('button', {name: 'Sole'}).click(); await ready();
     assert.match(await page.locator('[data-testid=status]').textContent(), /Rendered/);
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', {name: 'Export PNG'}).click()]);
-    const meta = await sharp(await download.createReadStream()).metadata();
+    mkdirSync(output, {recursive: true});
+    const exportedFile = join(output, 'zodiacal-projection-export.png');
+    await download.saveAs(exportedFile);
+    const meta = await sharp(exportedFile).metadata();
     assert.equal(meta.format, 'png');
     assert.equal(meta.width, 1600);
 
