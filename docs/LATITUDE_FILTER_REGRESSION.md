@@ -29,3 +29,7 @@ An enabled planet must have its own `att` property on the option entry. A truthy
 ## Explicit disablement precedence (2026-11-15)
 
 The thirteenth synthetic regression checks an option with an **own** `att: false` shadowing inherited `att: true`, alongside a valid `att: true` shadowing inherited `att: false`. Only the explicitly enabled zero-latitude planet should be selected; the original option and planet references must remain unchanged. This adds test coverage only, without changing rendering geometry, asset references or astronomical calculations. GitHub commit acceptance does not constitute a Node test run; `node --test tests/latitude-zero.test.mjs` and Angular/browser validation remain **NOT RUN** in this environment.
+
+## Own keys that shadow Object.prototype (2026-11-15)
+
+The fourteenth focused regression covers explicitly enabled planet keys `constructor` and `toString` in null-prototype input maps. Both must survive as enumerable own data properties on the filtered result, retaining their original precomputed planet object references and the standard result prototype. This is a test-only addition; it does not introduce astronomical calculations, assets or public API changes. Full Node/Angular/WebGL validation and actual approved-asset SHA-256 verification remain NOT RUN.
