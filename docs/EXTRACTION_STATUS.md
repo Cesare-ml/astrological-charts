@@ -34,3 +34,16 @@
 ## Rollback policy
 
 Until explicit sign-off, production continues using `shared/grafici-astrologici` in VirgoStars; reverting a branch or closing a PR in this repository cannot affect the live service.
+
+## Public API barrel regression guard
+
+The public package entry point `src/public-api.ts` must retain its established
+renderer, model and asset URL re-exports without repeating a module path.
+`tests/public-api-surface.test.mjs` checks both invariants and runs as part of
+`npm run test:extraction` (included in `npm run preflight`).
+
+Run this focused, dependency-free test with
+`node --test tests/public-api-surface.test.mjs`. The check is a static
+entry-point contract smoke test; it does **not** substitute for TypeScript
+compilation, Angular/browser builds, visual parity, production integration or
+source-rights approval.
