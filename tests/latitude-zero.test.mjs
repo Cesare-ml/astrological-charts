@@ -154,3 +154,23 @@ test('special own planet keys do not mutate the result prototype', async () => {
   assert.deepEqual(Object.keys(result), ['__proto__']);
   assert.strictEqual(Object.getOwnPropertyDescriptor(result, '__proto__').value, planet);
 });
+
+test('inherited att flags cannot enable planets without an explicit own flag', async () => {
+  const inheritedEnabled = Object.create({ att: true });
+  const ownEnabled = Object.assign(Object.create({ att: false }), { att: true });
+  const planets = Object.freeze({
+    Sun: Object.freeze({ latitude: 0 }),
+    Moon: Object.freeze({ latitude: -0 }),
+    Mars: Object.freeze({ latitude: 1 }),
+  });
+  const elementi_celesti = {
+    Sun: inheritedEnabled,
+    Moon: ownEnabled,
+    Mars: { att: true },
+  };
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti } });
+  assert.deepEqual(Object.keys(result), ['Moon', 'Mars']);
+  assert.strictEqual(result.Moon, planets.Moon);
+  assert.strictEqual(result.Mars, planets.Mars);
+  assert.equal(Object.hasOwn(inheritedEnabled, 'att'), false);
+});
