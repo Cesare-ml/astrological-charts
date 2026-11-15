@@ -121,3 +121,12 @@ test('malformed enablement entries do not crash or enable planets', async () => 
   assert.deepEqual(Object.keys(result), ['Jupiter']);
   assert.strictEqual(result.Jupiter, planets.Jupiter);
 });
+
+test('missing selection settings yield an empty chart without touching precomputed planets', async () => {
+  const planets = Object.freeze({ Sun: Object.freeze({ latitude: 0 }) });
+  for (const options of [undefined, null, {}, { settaggi: null }, { settaggi: {} }]) {
+    const result = await getElementiCelesti({ planets }, options);
+    assert.deepEqual(result, {}, 'missing selection must not enable planets by default');
+  }
+  assert.equal(planets.Sun.latitude, 0);
+});
