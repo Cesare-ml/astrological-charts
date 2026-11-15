@@ -1,5 +1,5 @@
-import { PosizioneLocalDB } from './posizione-localdb.model';
-import {SettaggiAspettiAttivi,SettaggiAspettiOrbite, SettaggiElementiCelesti} from './settaggi.model';
+import { CittaLocalDB, PosizioneLocalDB } from './posizione-localdb.model';
+import { SettaggiAspettiAttivi, SettaggiAspettiOrbite, SettaggiElementoCeleste, SettaggiElementiCelesti } from './settaggi.model';
 
 
 export class SettaggiAstrolabio {
@@ -257,3 +257,53 @@ export const settaggiAstrolabioDefault:SettaggiAstrolabio = {
         }
     })
   };
+
+
+/**
+ * Clone an existing, complete Astrolabio settings object into independent model
+ * instances. The input is read-only for this operation: changing the clone's
+ * aspect toggles/orbs, celestial options or city/manual position won't mutate it.
+ * Suitable for editable copies of a saved configuration or independent views.
+ */
+export function cloneAstrolabioSettings(defaults: SettaggiAstrolabio): SettaggiAstrolabio {
+  const result = Object.assign(new SettaggiAstrolabio(), defaults);
+
+  result.aspetti_attivi = Object.assign(new SettaggiAspettiAttivi(), defaults.aspetti_attivi);
+  result.aspetti_orbite = Object.assign(new SettaggiAspettiOrbite(), defaults.aspetti_orbite);
+
+  const celestial = new SettaggiElementiCelesti();
+  for (const key of Object.keys(defaults.elementi_celesti)) {
+    celestial[key] = Object.assign(
+      new SettaggiElementoCeleste(),
+      defaults.elementi_celesti[key]
+    );
+  }
+  result.elementi_celesti = celestial;
+
+  const position = defaults.modalita_adesso_posizione;
+  result.modalita_adesso_posizione = Object.assign(new PosizioneLocalDB(), position, {
+    posizione_manuale: position.posizione_manuale
+      ? { ...position.posizione_manuale }
+      : undefined,
+    citta: position.citta
+      ? Object.assign(new CittaLocalDB(), position.citta)
+      : undefined
+  });
+
+  return result;
+}
+
+/**
+ * Snapshot the original defaults once: legacy users may mutate the exported
+ * constant, but those mutations must not leak into future independent charts.
+ */
+const initialAstrolabioDefaults = cloneAstrolabioSettings(settaggiAstrolabioDefault);
+
+/**
+ * Return fresh Astrolabio defaults from the original module-load snapshot.
+ * Unlike the legacy mutable settaggiAstrolabioDefault, these values do not
+ * change when another consumer edits the shared object.
+ */
+export function createDefaultSettaggiAstrolabio(): SettaggiAstrolabio {
+  return cloneAstrolabioSettings(initialAstrolabioDefaults);
+}

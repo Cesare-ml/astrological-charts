@@ -33,3 +33,33 @@ The library does not independently calculate the full astronomical ephemeris or 
 ## Source of truth
 
 The new repository is a collaboration workspace only until a versioned integration is approved. The live site and sold Astrolabio devices continue to depend on the original `virgo-stars` code. Never silently switch imports, publish npm releases, or ship hardware updates.
+
+## Independent Astrolabio defaults
+
+`settaggiAstrolabioDefault` is a legacy exported **mutable object**. For independent
+Astrolabio views or devices, use the additive public factory
+`createDefaultSettaggiAstrolabio()`. It reproduces the existing default values
+while cloning aspect toggles/orbs, individual celestial-body settings, and the
+local/manual position (including its city identifier). Its initial values are
+snapshotted once at module load, so even subsequent mutation of the legacy
+shared constant cannot contaminate future charts. Every call returns new
+model instances; changes to one chart cannot mutate another chart or the
+legacy default object. The factory does **not** automatically
+migrate existing callers or change the default values in production.
+
+To create an independently editable copy of an *existing complete* settings
+profile (instead of creating the defaults), call
+`cloneAstrolabioSettings(existingSettings)`. It copies top-level fields and
+creates new model instances for aspect flags/orbs, each celestial-body option,
+and the local position, city and manual-location object. The source is not
+mutated. In particular, the existing position getters may clear inactive data
+on the instance they inspect: invoking a getter on the clone does not alter
+the saved source configuration. This additive API is exported by the same
+`settaggi-astrolabio.model` barrel; it does not import or change any host
+account records. A complete input object is required, and this is not a
+validation/migration API for arbitrary or malformed persisted JSON.
+
+Run `npm run test:astrolabio-defaults` for an isolated TypeScript-model regression.
+The test compiles the actual model with the project's TypeScript compiler; full
+`npm run verify:angular`, Chromium/Firefox renderer checks, Astrolabio hardware,
+and offline/headless compatibility remain separate acceptance gates.
