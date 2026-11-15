@@ -5,6 +5,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
 import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
+import { storedDodecatemorion } from './zodiacal-projections';
 
 
 export class ElementiCelestiRender {
@@ -67,6 +68,17 @@ export class ElementiCelestiRender {
       coloreImgFolder =  SkinManager.skins[opzioni.settaggi.skin_id].anelloElementiCelesti.sinastria?.coloreImgFolder ??
         coloreImgFolder;
     }
+
+    // Projection focus is only applied to the primary natal ring.
+    const transitRing = Array.isArray(eventiMouse) && eventiMouse.includes('aspetti-transiti');
+    const singularDodeca = Boolean(opzioni.dodecatemoriAttivi &&
+      opzioni.dodecatemore && opzioni.dodecatemore !== 'tutti' &&
+      !calcolaPartiArabe && !isElementiSinastria && !transitRing);
+    const singularMirror = Boolean(opzioni.proiezioneZodiacale?.tipo &&
+      opzioni.proiezioneZodiacale?.pianeta &&
+      opzioni.proiezioneZodiacale.pianeta !== 'tutti' &&
+      !opzioni.dodecatemoriAttivi && !calcolaPartiArabe && !isElementiSinastria && !transitRing);
+    const neutralNatal = singularDodeca || singularMirror;
 
     var elementiCelestiRenderPos = this.getRenderPosPianeti(elementiCelesti,parametroDiRender);
 
@@ -172,8 +184,9 @@ export class ElementiCelestiRender {
       ));
       el.translateY(raggioEclittica);
 
-      if(opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') {
-        el.material.opacity = 0.3;
+      if (neutralNatal) {
+        el.material.color.set('#999999');
+        el.material.opacity = 0.42;
       }
 
       if(calcolaPartiArabe && opzioni.partiArabe.modalita != 'crea') {
@@ -269,7 +282,7 @@ export class ElementiCelestiRender {
         const p2 = { x: 0, y: raggioConfineAnelloPianeti };
         const p1 = accorciaLinea(p2, el.position, accorciamento, false);
 
-        var lineaB = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
+        var lineaB = OggettiSempliciRender.getLinea(p1,p2,neutralNatal ? '#777777' : coloreLinea);
         lineaB.rotateZ(THREE.MathUtils.degToRad(
           75-ascendente+15
           + elementiCelesti[nome][parametroDiRender]
@@ -281,7 +294,7 @@ export class ElementiCelestiRender {
       const p2 = {x:0,y:diametroCerchioInterno/2};
       const p1 = accorciaLinea(p2, el.position, accorciamento, false);
 
-      var lineaA = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
+      var lineaA = OggettiSempliciRender.getLinea(p1,p2,neutralNatal ? '#777777' : coloreLinea);
       lineaA.rotateZ(THREE.MathUtils.degToRad(
         75-ascendente+15
         + elementiCelesti[nome][parametroDiRender]
@@ -305,62 +318,41 @@ export class ElementiCelestiRender {
         );
       }*/
 
-      //Dodecatemoria tutti
-      if(elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == 'tutti' && !calcolaPartiArabe) {
-        var raggioEclitticaDodecatemore =
-          (diametroCerchioEsterno/2 - diametroCerchioDodecatemori/2)/2 + diametroCerchioDodecatemori/2;
-
-        var eld = await OggettiSempliciRender.getImg('simboli/elementi-celesti/'+opzioni.settaggi.skin_id+'/cerchio/'+nome+'.png',1,1,0.6);
-        eld.scale.set(0.1,0.1,1);
-        var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'] + degOffs;
-        eld.rotateZ(THREE.MathUtils.degToRad(dodecatemoreDegDiRender));
-        eld.translateY(raggioEclitticaDodecatemore);
-        eld.rotation.z = 0;
-
-        group.add(eld);
-/*
-        if(eventiMouseDodecatemori) {
-          GestoreEventiMouse.gem.aggiungiOggetto(
-            eventiMouseDodecatemori[k],
-            eld,
-            {'id': nome+'-dodecatemore', 'nome': nome, "info": elementiCelesti[nome].dodecatemoria, "object": el}
+      // Render only a host-provided ×13 value; never calculate an ephemeris.
+      const longitudeDodeca = storedDodecatemorion(elementiCelesti[nome]);
+      if (opzioni.dodecatemoriAttivi && !isElementiSinastria && !transitRing &&
+          !calcolaPartiArabe && longitudeDodeca !== null) {
+        const at = 90 - ascendente + longitudeDodeca + degOffs;
+        const color = Colori.elementiCelesti[nome] ?? '#ffffff';
+        if (opzioni.dodecatemore === 'tutti') {
+          // Small solid planet-colored disk tangent inside the outer ring.
+          const radius = 0.034;
+          const disk = new THREE.Mesh(
+            new THREE.CircleGeometry(radius, 28),
+            new THREE.MeshBasicMaterial({color, side: THREE.DoubleSide})
           );
-        }*/
-
-      }
-      // Dodecatemoria singola
-      else if(elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == nome && !calcolaPartiArabe) {
-        var eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion);
-        var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'];
-
-        eld.scale.set(0.23*simboliScale,0.23*simboliScale,1);
-        eld.rotateZ(THREE.MathUtils.degToRad(
-          dodecatemoreDegDiRender + degOffs
-        ));
-        eld.translateY(raggioEclittica);
-        eld.rotation.z = 0;
-
-        group.add(eld);
-/*
-        if(eventiMouseDodecatemori) {
-          GestoreEventiMouse.gem.aggiungiOggetto(
-            eventiMouseDodecatemori[k],
-            eld,
-            {'id': nome+'-dodecatemore', 'nome': nome, "info": elementiCelesti[nome].dodecatemoria, "object": el}
+          disk.rotateZ(THREE.MathUtils.degToRad(at));
+          disk.translateY(Math.max(0, raggioConfineAnelloPianeti - radius));
+          disk.rotation.z = 0;
+          disk.position.z = 0.025;
+          group.add(disk);
+        } else if (opzioni.dodecatemore === nome) {
+          const targetGlyph = await OggettiSempliciRender.getImg(
+            elRef, 875, 605, 1 / 875, australInversion, color
           );
-        }*/
-
-        //animazione
-        var tl = gsap.timeline({repeat: -1, repeatDelay: 0, yoyo: true});
-        registerSceneAnimation(group, tl);
-        tl.to(eld.material, {opacity: 0});
-
-        var frecciaAdArco = OggettiSempliciRender.lanciaFrecciaAdArco(
-          elDegDiRender,dodecatemoreDegDiRender,
-          Colori.elementiCelesti[nome],"#aaa",
-          diametroCerchioInterno,diametroCerchioEsterno
-        );
-        group.add(frecciaAdArco);
+          targetGlyph.scale.set(0.23 * simboliScale, 0.23 * simboliScale, 1);
+          targetGlyph.rotateZ(THREE.MathUtils.degToRad(at));
+          targetGlyph.translateY(raggioEclittica);
+          targetGlyph.rotation.z = 0;
+          targetGlyph.position.z = 0.035;
+          // The service starts a cancellable RAF only on the interactive canvas.
+          targetGlyph.userData.pulseZodiacalProjection = true;
+          group.add(targetGlyph);
+          group.add(OggettiSempliciRender.lanciaFrecciaAdArco(
+            elDegDiRender, at, color, '#888888',
+            diametroCerchioInterno, diametroCerchioEsterno
+          ));
+        }
       }
     };
 /*
