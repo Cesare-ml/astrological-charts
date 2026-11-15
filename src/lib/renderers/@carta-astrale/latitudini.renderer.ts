@@ -131,7 +131,8 @@ export class LatitudiniRender {
       var elOpt = opzioni.settaggi.elementi_celesti[nome];
 
       if(
-        temaRender.planets[nome]
+        Object.prototype.hasOwnProperty.call(temaRender.planets, nome)
+        && temaRender.planets[nome]
         && Number.isFinite(temaRender.planets[nome].latitude)
         && elOpt.att
       ) {
