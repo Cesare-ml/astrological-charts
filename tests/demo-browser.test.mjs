@@ -157,6 +157,94 @@ test('render waits for a slow skin texture and reports its failure', {timeout: 6
   } finally { release(); await browser.close(); }
 });
 
+test('partial synastry house-line and texture tints render like explicit inherited styles', {timeout: 120000}, async () => {
+  const bundle = await build({
+    entryPoints: ['tests/fixtures/synastry-skin-harness.ts'],
+    bundle: true, write: false, platform: 'browser', format: 'iife',
+    target: 'es2022', tsconfig: 'tsconfig.json',
+  });
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('response', response => {
+    if (response.status() >= 400) pageErrors.push(`${response.status()} ${response.url()}`);
+  });
+  try {
+    await page.goto('http://127.0.0.1:4200/');
+    await page.waitForFunction(
+      () => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered'),
+      {timeout: 30000},
+    );
+    await page.addScriptTag({content: bundle.outputFiles[0].text});
+    async function readImage(dataUrl) {
+      assert.match(dataUrl, /^data:image\/png;base64,/, 'expected a browser-generated PNG');
+      return sharp(Buffer.from(dataUrl.split(',')[1], 'base64'))
+        .removeAlpha().raw().toBuffer({resolveWithObject: true});
+    }
+    // Pixel-based checks avoid PNG metadata and small antialiasing jitter.
+    // Verify both an untextured house-line override and a textured ring tint.
+    for (const scenario of ['line', 'texture']) {
+      const result = await page.evaluate(
+        value => globalThis.probePartialSynastrySkin(value), scenario,
+      );
+      const baseline = await readImage(result.baseline);
+      const partial = await readImage(result.partial);
+      const explicit = await readImage(result.explicit);
+      const natalBaseline = await readImage(result.natalBaseline);
+      const natalWithOverride = await readImage(result.natalWithOverride);
+      assert.equal(baseline.info.width, 500, scenario);
+      assert.equal(baseline.info.height, 500, scenario);
+      assert.deepEqual(partial.info, baseline.info, scenario);
+      assert.deepEqual(explicit.info, baseline.info, scenario);
+      assert.deepEqual(natalBaseline.info, baseline.info, scenario);
+      assert.deepEqual(natalWithOverride.info, natalBaseline.info, scenario);
+
+      function changedPixels(a, b) {
+        let changed = 0;
+        for (let offset = 0; offset < a.length; offset += baseline.info.channels) {
+          for (let channel = 0; channel < baseline.info.channels; channel++) {
+            if (Math.abs(a[offset + channel] - b[offset + channel]) > 12) {
+              changed++;
+              break;
+            }
+          }
+        }
+        return changed;
+      }
+      const changedFromBaseline = changedPixels(baseline.data, partial.data);
+      const mismatchWithExplicit = changedPixels(partial.data, explicit.data);
+      const natalLeakPixels = changedPixels(natalBaseline.data, natalWithOverride.data);
+      assert.ok(changedFromBaseline > 40,
+        `${scenario}: synastry override changed only ${changedFromBaseline} visible pixels`);
+      assert.ok(mismatchWithExplicit <= Math.ceil(500 * 500 * 0.0005),
+        `${scenario}: partial vs explicit fallback differed in ${mismatchWithExplicit} pixels`);
+      assert.ok(natalLeakPixels <= Math.ceil(500 * 500 * 0.0005),
+        `${scenario}: partner-only style changed ${natalLeakPixels} natal-only pixels`);
+    }
+    // Reject a specific second sign load after natal construction (the nested
+    // synastry ring), then require a fresh export and restored shared state.
+    const cleanup = await page.evaluate(() => globalThis.probeSynastryFailureCleanup());
+    assert.match(cleanup.failure, /Injected failure: second synastry sign 06\.png/);
+    assert.equal(cleanup.matchingSignLoads, 2,
+      'failure must occur on the second sign-06 asset, after the natal ring');
+    assert.equal(cleanup.injectedAtPartnerSign, true,
+      'failure injection did not reach partner sign-ring construction');
+    assert.equal(cleanup.skinRestored, true, 'a failed export leaked the shared synastry override');
+    assert.equal(cleanup.loaderRestored, true, 'a failed export leaked the injected asset loader');
+    const recoveredPng = await readImage(cleanup.recoveryPng);
+    assert.equal(recoveredPng.info.width, 400, 'recovered PNG width');
+    assert.equal(recoveredPng.info.height, 400, 'recovered PNG height');
+    const recoveredColors = new Set();
+    for (let i = 0; i < recoveredPng.data.length; i += recoveredPng.info.channels) {
+      recoveredColors.add(`${recoveredPng.data[i]},${recoveredPng.data[i + 1]},${recoveredPng.data[i + 2]}`);
+      if (recoveredColors.size > 10) break;
+    }
+    assert.ok(recoveredColors.size > 10, 'recovered synastry PNG appears blank');
+    assert.deepEqual(pageErrors, []);
+  } finally { await browser.close(); }
+});
+
 test('latitude charts with transits use the circular and ring assets for every skin', {timeout:90000}, async () => {
   const bundle = await build({entryPoints:['tests/fixtures/latitude-transits-harness.ts'], bundle:true,
     write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
