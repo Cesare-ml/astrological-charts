@@ -133,11 +133,15 @@ export class OggettiSempliciRender {
   public static getLineaGrossaTratteggiata(da,a,colore,spessore,passo) {
     var group = new THREE.Group();
 
-    var distanza = da.distanceTo(a);
-    var segmenti = Math.trunc(distanza/passo);
-
-    var xDelta = (a.x - da.x)/segmenti;
-    var yDelta = (a.y - da.y)/segmenti;
+    const distanza = da.distanceTo(a);
+    if (!Number.isFinite(distanza) || distanza <= 0 || !Number.isFinite(passo) || passo <= 0) {
+      return group;
+    }
+    // Never divide by zero for short radial segments. The dash count is even
+    // so that the endpoint remains predictable at every chart scale.
+    const segmenti = Math.max(2, Math.ceil(distanza / passo / 2) * 2);
+    const xDelta = (a.x - da.x) / segmenti;
+    const yDelta = (a.y - da.y) / segmenti;
 
     for(var i=0; i<segmenti; i+=2) {
       var daI = new THREE.Vector3(
