@@ -17,3 +17,7 @@ Missing `opzioni`, `settaggi`, or `elementi_celesti` now produces an empty selec
 ## Missing precomputed chart data (2026-11-15)
 
 The selection method now returns an empty map when the chart itself or its `planets` map is missing, null or not an object. This is a defensive boundary for partially loaded chart inputs, **not** a replacement for validating precomputed astronomical data upstream. The tenth synthetic regression checks these malformed inputs and confirms a valid zero-latitude record still retains its original reference. No image, manifest, ephemeris algorithm, public API, or production consumer was changed. Runtime Node, Angular and WebGL verification remains **NOT RUN** until a complete checkout is available.
+
+## Special own keys (2026-11-15)
+
+An explicitly enabled own planet key named `__proto__` is now copied with `Object.defineProperty` instead of bracket assignment. This prevents a crafted precomputed map from changing the filtered result object's prototype while preserving normal enumerable own keys and input object identity. The eleventh synthetic regression checks the prototype, key visibility and original reference. This is defensive input handling, not astronomical calculation. Full Node, Angular, browser and real asset-byte SHA-256 checks remain NOT RUN; the separate approved manifest is metadata only until its bytes are hashed.
