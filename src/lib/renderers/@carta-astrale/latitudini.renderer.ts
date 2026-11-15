@@ -139,7 +139,10 @@ export class LatitudiniRender {
         && Number.isFinite(planets[nome].latitude)
         && elOpt?.att
       ) {
-        elementiCelesti[nome]=planets[nome];
+        // Define an own data property: a planet named '__proto__' must not alter the result prototype.
+        Object.defineProperty(elementiCelesti, nome, {
+          value: planets[nome], enumerable: true, writable: true, configurable: true
+        });
       }
     }
 
