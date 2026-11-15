@@ -10,6 +10,7 @@ const aspects = source('src/lib/renderers/moduli/aspetti.renderer.ts');
 const mirror = source('src/lib/renderers/moduli/zodiacal-projections.renderer.ts');
 const scene = source('src/lib/renderers/@carta-astrale/carta-astrale.renderer.ts');
 const service = source('src/lib/services/grafico-render.service.ts');
+const primitives = source('src/lib/renderers/oggetti-semplici.renderer.ts');
 const model = source('src/lib/models/opzioni-grafico.model.ts');
 
 test('demo hosts three exclusive buttons on a single row', () => {
@@ -56,4 +57,10 @@ test('one cancellable animation loop, motion reduction and static export', () =>
   assert.match(service, /requestAnimationFrame\(tick\)/);
   assert.match(service, /prefers-reduced-motion: reduce/);
   assert.match(service, /generaImmagineInterna\(/);
+});
+
+test('short dashed radial segments cannot divide by zero', () => {
+  assert.match(primitives, /distanza <= 0/);
+  assert.match(primitives, /passo <= 0/);
+  assert.match(primitives, /Math\.max\(2, Math\.ceil\(distanza \/ passo \/ 2\) \* 2\)/);
 });
