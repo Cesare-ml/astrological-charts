@@ -134,7 +134,7 @@ export class LatitudiniRender {
         Object.prototype.hasOwnProperty.call(temaRender.planets, nome)
         && temaRender.planets[nome]
         && Number.isFinite(temaRender.planets[nome].latitude)
-        && elOpt?.att === true
+        && elOpt?.att
       ) {
         elementiCelesti[nome]=temaRender.planets[nome];
       }
