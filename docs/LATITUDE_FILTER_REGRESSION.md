@@ -25,3 +25,7 @@ An explicitly enabled own planet key named `__proto__` is now copied with `Objec
 ## Explicit enablement flags (2026-11-15)
 
 An enabled planet must have its own `att` property on the option entry. A truthy `att` inherited through an option-entry prototype no longer enables a planet; an own `att: true` still works even if the prototype has `att: false`. The twelfth synthetic regression covers both cases with precomputed zero-latitude planets. This change does not alter ephemeris calculations, image assets, public exports, or production. Node/Angular/browser execution and approved asset-byte checksums remain NOT RUN until validated in a complete checkout.
+
+## Explicit disablement precedence (2026-11-15)
+
+The thirteenth synthetic regression checks an option with an **own** `att: false` shadowing inherited `att: true`, alongside a valid `att: true` shadowing inherited `att: false`. Only the explicitly enabled zero-latitude planet should be selected; the original option and planet references must remain unchanged. This adds test coverage only, without changing rendering geometry, asset references or astronomical calculations. GitHub commit acceptance does not constitute a Node test run; `node --test tests/latitude-zero.test.mjs` and Angular/browser validation remain **NOT RUN** in this environment.
