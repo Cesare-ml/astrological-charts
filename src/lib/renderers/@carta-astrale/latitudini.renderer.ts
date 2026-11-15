@@ -127,7 +127,7 @@ export class LatitudiniRender {
   public async getElementiCelesti(temaRender, opzioni) {
     var elementiCelesti = {};
 
-    for(const nome of Object.keys(opzioni.settaggi.elementi_celesti)) {
+    for(const nome of Object.keys(opzioni?.settaggi?.elementi_celesti ?? {})) {
       var elOpt = opzioni.settaggi.elementi_celesti[nome];
 
       if(
