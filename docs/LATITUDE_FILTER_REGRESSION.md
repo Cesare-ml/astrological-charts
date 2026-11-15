@@ -41,3 +41,7 @@ The fifteenth focused regression ensures a non-enumerable own option entry does 
 ## Legacy truthy flags (2026-11-15)
 
 The sixteenth focused regression checks the existing truthiness contract for **own** `att` flags: numeric `1` and nonempty string `'yes'` enable valid precomputed zero-latitude planets, while `0` and `''` disable them. The test checks input reference identity and negative zero. This intentionally does not introduce strict Boolean-only validation, which would be a separate compatibility decision. No renderer source, asset, ephemeris or public API was changed. Node/Angular/browser execution and real approved asset SHA-256 checks remain NOT RUN because a full checkout is unavailable.
+
+## Disabled special-key regression (2026-11-15)
+
+The seventeenth focused synthetic regression ensures an explicitly disabled own `__proto__` planet option cannot enter the result map or change its prototype, while an enabled `Sun` with precomputed `-0` latitude retains object identity. This is test-only; no new assets or astronomical calculations. GitHub accepted the test commit, but Node, Angular, browser and real asset-byte SHA-256 checks are **NOT RUN** in this environment. Run `npm run test:latitude` and `npm run verify:angular` in a complete checkout before review.
