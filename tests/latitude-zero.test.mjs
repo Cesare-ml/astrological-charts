@@ -209,3 +209,22 @@ test('constructor and toString planet names remain own data properties', async (
     assert.strictEqual(result[name], planets[name]);
   }
 });
+
+test('non-enumerable and symbol option keys cannot silently enable planets', async () => {
+  const hidden = Symbol('hidden');
+  const planets = Object.freeze({
+    Sun: Object.freeze({ latitude: 0 }),
+    Moon: Object.freeze({ latitude: -0 }),
+  });
+  const enabled = { Sun: Object.freeze({ att: true }) };
+  Object.defineProperty(enabled, 'Moon', {
+    value: Object.freeze({ att: true }), enumerable: false
+  });
+  enabled[hidden] = Object.freeze({ att: true });
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti: enabled } });
+  assert.deepEqual(Object.keys(result), ['Sun']);
+  assert.strictEqual(result.Sun, planets.Sun);
+  assert.equal(Object.hasOwn(result, 'Moon'), false);
+  assert.deepEqual(Object.getOwnPropertySymbols(result), []);
+  assert.equal(Object.getOwnPropertyDescriptor(enabled, 'Moon').enumerable, false);
+});
