@@ -126,6 +126,50 @@ test('Angular demo renders every chart and skin, exports PNG and reports missing
   } finally { await browser.close(); }
 });
 
+test('natal zodiacal controls stay on one row and Regolo modes render separately', {timeout: 90000}, async () => {
+  const browser = await launchBrowser();
+  const page = await browser.newPage({viewport: {width: 950, height: 850}});
+  async function ready() {
+    await page.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendered')
+      && !document.querySelector('#mode')?.disabled, {timeout: 30000});
+  }
+  try {
+    await page.goto('http://127.0.0.1:4200/', {waitUntil: 'domcontentloaded'});
+    await ready();
+    const labels = ['Dodecatemori ×13', 'Antisci', 'Contrantisci'];
+    const positions = await Promise.all(labels.map(async name => page.getByRole('button', {name}).boundingBox()));
+    assert.ok(positions.every(Boolean));
+    assert.ok(positions.every(p => Math.abs(p.y - positions[0].y) < 2),
+      'projection buttons must be on one row');
+
+    await page.getByRole('button', {name: 'Dodecatemori ×13'}).click(); await ready();
+    await page.getByRole('button', {name: 'Sole'}).click(); await ready();
+
+    await page.getByRole('button', {name: 'Antisci'}).click(); await ready();
+    await page.selectOption('#zodiac-axis', 'Fissa'); await ready();
+    await page.getByRole('button', {name: 'Tutti'}).click(); await ready();
+    const antisciaImage = await page.locator('canvas').screenshot();
+
+    await page.getByRole('button', {name: 'Contrantisci'}).click(); await ready();
+    await page.selectOption('#zodiac-axis', 'Mutevole'); await ready();
+    const contraImage = await page.locator('canvas').screenshot();
+    assert.notDeepEqual(antisciaImage, contraImage,
+      'antiscia triangles/filled points and contra-antiscion dashed/hollow points must differ');
+
+    await page.getByRole('button', {name: 'Sole'}).click(); await ready();
+    assert.match(await page.locator('[data-testid=status]').textContent(), /Rendered/);
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', {name: 'Export PNG'}).click()]);
+    const meta = await sharp(await download.createReadStream()).metadata();
+    assert.equal(meta.format, 'png');
+    assert.equal(meta.width, 1600);
+
+    await page.setViewportSize({width: 390, height: 844});
+    await page.waitForTimeout(200);
+    const mobile = await Promise.all(labels.map(name => page.getByRole('button', {name}).boundingBox()));
+    assert.ok(mobile.every(p => Math.abs(p.y - mobile[0].y) < 2));
+  } finally { await browser.close(); }
+});
+
 test('render waits for a slow skin texture and reports its failure', {timeout: 60000}, async () => {
   const browser = await launchBrowser();
   const page = await browser.newPage();
