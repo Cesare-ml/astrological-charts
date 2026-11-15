@@ -13,3 +13,7 @@ Run the focused suite and Angular/browser checks in a clean Node 22 checkout bef
 ## Incremental hardening (2026-11-15)
 
 Missing `opzioni`, `settaggi`, or `elementi_celesti` now produces an empty selection rather than throwing. This is a fail-closed renderer guard: it does not infer astronomical data, enable planets implicitly, or change the public chart-input contract. A synthetic regression test covers each missing configuration layer. Full Node/Angular/WebGL validation remains required; do not infer runtime PASS from GitHub commits.
+
+## Missing precomputed chart data (2026-11-15)
+
+The selection method now returns an empty map when the chart itself or its `planets` map is missing, null or not an object. This is a defensive boundary for partially loaded chart inputs, **not** a replacement for validating precomputed astronomical data upstream. The tenth synthetic regression checks these malformed inputs and confirms a valid zero-latitude record still retains its original reference. No image, manifest, ephemeris algorithm, public API, or production consumer was changed. Runtime Node, Angular and WebGL verification remains **NOT RUN** until a complete checkout is available.
