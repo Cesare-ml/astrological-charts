@@ -85,3 +85,18 @@ test('inherited chart option keys cannot enable extra planets', async () => {
   assert.strictEqual(result.Sun, planets.Sun);
   assert.equal(Object.hasOwn(elementi_celesti, 'Hidden'), false);
 });
+
+test('inherited planet records cannot be rendered even when explicitly enabled', async () => {
+  const inheritedPlanet = Object.freeze({ latitude: 0, longitude: 180 });
+  const planets = Object.assign(Object.create({ Ghost: inheritedPlanet }), {
+    Sun: Object.freeze({ latitude: -0, longitude: 15 }),
+  });
+  const elementi_celesti = Object.freeze({
+    Ghost: Object.freeze({ att: true }),
+    Sun: Object.freeze({ att: true }),
+  });
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti } });
+  assert.deepEqual(Object.keys(result), ['Sun']);
+  assert.strictEqual(result.Sun, planets.Sun);
+  assert.equal(Object.hasOwn(planets, 'Ghost'), false);
+});
