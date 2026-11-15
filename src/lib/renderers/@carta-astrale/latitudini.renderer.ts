@@ -8,6 +8,7 @@ import {TransitiRender} from '../moduli/transiti.renderer';
 import { SkinManager } from '../@skin-manager';
 import { AspettiRender } from '../moduli/aspetti.renderer';
 import { latitudePlanetAsset } from './latitude-asset-paths';
+import { disposeSceneResources } from '../scene-resources';
 
 
 export class LatitudiniRender {
@@ -55,7 +56,7 @@ export class LatitudiniRender {
     }
 
     var disegno = new THREE.Group();
-
+    try {
     if(
       !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
       && temaRender.houses && Object.keys(temaRender.houses).length
@@ -122,6 +123,12 @@ export class LatitudiniRender {
       disegno.rotation.y = Math.PI;
 
     return disegno;
+    } catch (error) {
+      // Partial latitude charts own already-built subgroups just as circular
+      // charts do. Do not retain their GPU objects if the next asset fails.
+      disposeSceneResources(disegno);
+      throw error;
+    }
   }
 
   public async getElementiCelesti(temaRender, opzioni) {

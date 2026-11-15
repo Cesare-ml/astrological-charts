@@ -1,0 +1,249 @@
+import * as THREE from 'three';
+import { PlanetInteractionController } from '../../src/lib/renderers/planet-interaction.controller';
+import type { ChartPlanetInteractionEvent } from '../../src/lib/renderers/planet-interaction.types';
+
+interface PickingProbe {
+  nearerRightSelected: boolean;
+  nearerLeftSelected: boolean;
+  zoomedRightSelected: boolean;
+  outsideCanvasClearsHover: boolean;
+  outsideClickIgnored: boolean;
+  noStaleUpdateDuringLeave: boolean;
+  frontLayerWins: boolean;
+  hiddenFrontFallsThrough: boolean;
+  hiddenAncestorFallsThrough: boolean;
+  showingAncestorRestoresPick: boolean;
+  hiddenMaterialFallsThrough: boolean;
+  hiddenMaterialClickFallsThrough: boolean;
+  cameraExcludedLayerIgnored: boolean;
+  cameraEnabledLayerSelected: boolean;
+  cameraLayerSwitchSelected: boolean;
+  cameraLayerSwitchClick: boolean;
+  cameraLayerResetRestoresSelection: boolean;
+  attachedNewGlyphSelected: boolean;
+  detachedGlyphFallsThrough: boolean;
+  detachedGlyphClickFallsThrough: boolean;
+  reparentedGlyphClickFallsThrough: boolean;
+  reattachedGlyphRestoresPick: boolean;
+  dynamicSceneMembershipKeepsCache: boolean;
+  pickTargetCacheStable: boolean;
+  pickTargetCacheReindexed: boolean;
+  pickTargetCacheReleased: boolean;
+  resourcesRestored: boolean;
+}
+
+declare global {
+  interface Window { runPlanetPickingProbe?: () => PickingProbe; }
+}
+
+/** Explicit geometry fixture: overlapping glyphs at equal depth and one foreground glyph. */
+window.runPlanetPickingProbe = (): PickingProbe => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 400; canvas.height = 400;
+  Object.assign(canvas.style, {
+    position: 'fixed', left: '0px', top: '0px',
+    width: '400px', height: '400px', zIndex: '99999'
+  });
+  document.body.appendChild(canvas);
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  camera.position.z = 3;
+  camera.updateProjectionMatrix();
+  const scene = new THREE.Scene();
+  const glyph = (name: string, x: number, depth = 0) => {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.4, 0.4),
+      new THREE.MeshBasicMaterial({side: THREE.DoubleSide})
+    );
+    mesh.position.set(x, 0, depth);
+    mesh.userData['chartPlanet'] = {layer: 'natal', name};
+    scene.add(mesh);
+    return mesh;
+  };
+  // The left glyph is inserted first, intentionally reproducing the earlier
+  // first-intersection bias when the two hit rectangles overlap.
+  const left = glyph('Sun', -0.08);
+  const right = glyph('Moon', 0.08);
+  const offscreen = glyph('Mars', 1.05);
+  const events: ChartPlanetInteractionEvent[] = [];
+  let replaceAspectsOnLeave = false;
+  const controller = new PlanetInteractionController(canvas, camera, event => {
+    events.push(event);
+    if (replaceAspectsOnLeave && event.type === 'leave') controller.setRelations([]);
+  }, () => {});
+  const pointer = (worldX: number, type: 'pointermove' | 'click' = 'pointermove') => {
+    camera.updateMatrixWorld(true);
+    const projected = new THREE.Vector3(worldX, 0, 0).project(camera);
+    const rect = canvas.getBoundingClientRect();
+    const init = {
+      clientX: rect.left + (projected.x + 1) * rect.width / 2,
+      clientY: rect.top + (1 - projected.y) * rect.height / 2,
+      bubbles: true
+    };
+    canvas.dispatchEvent(type === 'click' ? new MouseEvent(type, init) : new PointerEvent(type, init));
+  };
+  try {
+    controller.setScene(scene);
+    // Private performance invariant: the same indexed mesh array is reused
+    // across mouse moves; no flatten/allocation on the hot path.
+    const initialTargets = (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets;
+    pointer(0.09);
+    const nearerRightSelected = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    pointer(-0.09);
+    const nearerLeftSelected = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Sun';
+    for (let i = 0; i < 250; i++) {
+      pointer(i % 2 === 0 ? 0.09 : -0.09);
+    }
+    const pickTargetCacheStable = initialTargets ===
+      (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets
+      && initialTargets.length === 3;
+    camera.zoom = 1.5;
+    camera.updateProjectionMatrix();
+    pointer(0.09);
+    const zoomedRightSelected = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    const beforeLeave = events.length;
+    replaceAspectsOnLeave = true;
+    pointer(1.05);
+    replaceAspectsOnLeave = false;
+    const leavingEvents = events.slice(beforeLeave);
+    const outsideCanvasClearsHover = leavingEvents.length === 1
+      && leavingEvents[0].type === 'leave'
+      && leavingEvents[0].planet.name === 'Moon';
+    const noStaleUpdateDuringLeave = leavingEvents.every(event => event.type !== 'update');
+    const beforeClick = events.length;
+    pointer(1.05, 'click');
+    const outsideClickIgnored = events.length === beforeClick;
+    // A clearly nearer camera-depth mesh must win even if its center is
+    // farther in 2D than another overlapping back-layer glyph.
+    camera.zoom = 1;
+    camera.updateProjectionMatrix();
+    const front = glyph('Venus', -0.10, 0.12);
+    // Index the new glyph. A fresh pointer ray should prioritize its depth.
+    controller.setScene(scene);
+    const updatedTargets = (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets;
+    const pickTargetCacheReindexed = updatedTargets !== initialTargets
+      && updatedTargets.length === 4 && updatedTargets.includes(front)
+      && !initialTargets.includes(front);
+    pointer(0.08);
+    const frontLayerWins = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Venus';
+
+    // Three.js can raycast hidden glyph meshes. A retired/filtered layer
+    // must never steal mouse focus from the underlying visible Moon.
+    front.visible = false;
+    pointer(0.08);
+    const hiddenFrontFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    // A parent wheel/group may be hidden without modifying child meshes.
+    const group = new THREE.Group();
+    scene.add(group);
+    const grouped = glyph('Jupiter', 0.08, 0.25);
+    group.add(grouped);
+    group.visible = false;
+    controller.setScene(scene);
+    pointer(0.08);
+    const hiddenAncestorFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    group.visible = true;
+    pointer(0.08);
+    const showingAncestorRestoresPick = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Jupiter';
+    (grouped.material as THREE.Material).visible = false;
+    pointer(0.08);
+    const hiddenMaterialFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    pointer(0.08, 'click');
+    const hiddenMaterialClickFallsThrough = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Moon';
+
+    // Camera layers are independent from Raycaster layers. The pointer
+    // must follow the camera's CURRENT visibility mask after toggling.
+    const outer = glyph('Neptune', 0.08, 0.3);
+    outer.layers.set(1);
+    controller.setScene(scene);
+    pointer(0.08);
+    const cameraExcludedLayerIgnored = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    camera.layers.enable(1);
+    pointer(0.08);
+    const cameraEnabledLayerSelected = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Neptune';
+    camera.layers.disable(0);
+    pointer(-0.09);
+    const cameraLayerSwitchSelected = events.at(-1)?.planet.name === 'Neptune';
+    pointer(0.08, 'click');
+    const cameraLayerSwitchClick = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Neptune';
+    camera.layers.enable(0);
+    camera.layers.disable(1);
+    pointer(0.08);
+    const cameraLayerResetRestoresSelection = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+
+    // A host can detach/reparent a glyph while keeping the same scene and
+    // without calling setScene(). Cached raycaster targets must follow
+    // current scene ancestry, not an obsolete mesh reference.
+    const dynamic = glyph('Uranus', 0.08, 0.40);
+    controller.setScene(scene);
+    const cachedWithDynamic =
+      (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets;
+    pointer(0.08);
+    const attachedNewGlyphSelected = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Uranus';
+    scene.remove(dynamic);
+    pointer(0.08);
+    const detachedGlyphFallsThrough = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Moon';
+    pointer(0.08, 'click');
+    const detachedGlyphClickFallsThrough = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Moon';
+
+    const differentScene = new THREE.Scene();
+    differentScene.add(dynamic);
+    pointer(0.08, 'click');
+    const reparentedGlyphClickFallsThrough = events.at(-1)?.type === 'click'
+      && events.at(-1)?.planet.name === 'Moon';
+
+    scene.add(dynamic);
+    pointer(0.08);
+    const reattachedGlyphRestoresPick = events.at(-1)?.type === 'enter'
+      && events.at(-1)?.planet.name === 'Uranus';
+    const dynamicSceneMembershipKeepsCache =
+      cachedWithDynamic ===
+      (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets;
+    scene.remove(dynamic);
+    dynamic.geometry.dispose();
+    (dynamic.material as THREE.Material).dispose();
+    controller.destroy();
+    const pickTargetCacheReleased =
+      (controller as unknown as {pickTargets: THREE.Mesh[]}).pickTargets.length === 0;
+    const resourcesRestored = left.scale.x === 1 && right.scale.x === 1
+      && front.scale.x === 1 && offscreen.scale.x === 1
+      && grouped.scale.x === 1 && outer.scale.x === 1;
+    return {
+      nearerRightSelected, nearerLeftSelected, zoomedRightSelected,
+      outsideCanvasClearsHover, outsideClickIgnored, noStaleUpdateDuringLeave,
+      frontLayerWins, hiddenFrontFallsThrough, hiddenAncestorFallsThrough,
+      showingAncestorRestoresPick, hiddenMaterialFallsThrough,
+      hiddenMaterialClickFallsThrough, cameraExcludedLayerIgnored,
+      cameraEnabledLayerSelected, cameraLayerSwitchSelected,
+      cameraLayerSwitchClick, cameraLayerResetRestoresSelection,
+      attachedNewGlyphSelected, detachedGlyphFallsThrough,
+      detachedGlyphClickFallsThrough, reparentedGlyphClickFallsThrough,
+      reattachedGlyphRestoresPick, dynamicSceneMembershipKeepsCache,
+      pickTargetCacheStable, pickTargetCacheReindexed,
+      pickTargetCacheReleased, resourcesRestored
+    };
+  } finally {
+    controller.destroy();
+    scene.traverse(obj => {
+      if (obj instanceof THREE.Mesh) {
+        obj.geometry.dispose();
+        (obj.material as THREE.Material).dispose();
+      }
+    });
+    canvas.remove();
+  }
+};

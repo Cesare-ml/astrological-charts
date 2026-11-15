@@ -7,7 +7,7 @@ import { TransitiRender } from '../moduli/transiti.renderer';
 import { SkinManager } from '../@skin-manager';
 import { SinastriaRender } from '../moduli/sinastria.renderer';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
-import { stopSceneAnimations } from '../scene-animations';
+import { disposeSceneResources } from '../scene-resources';
 
 // ---------------------------
 // Stato globale per tutti i renderer
@@ -459,7 +459,9 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
     if (!stato) return null;
 
     const disegno = new THREE.Group();
-
+    // Geometry-only metadata for transient natal/transit aspect overlays.
+    // No impact on the existing aspect-rendering or exported PNG pixels.
+    disegno.userData['chartAspectRadius'] = stato.diametri.diametroCerchioAspetti / 2;
 
     // Aggiungi tutti i moduli principali
     const moduli = [
@@ -479,8 +481,10 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
           disegno.rotation.y = Math.PI;
         return disegno;
     } catch (error) {
-        // A partial drawing is never returned to the service on failure.
-        disegno.traverse(stopSceneAnimations);
+        // A partially constructed chart is never returned to the service.
+        // Its completed subgroups must release geometry, materials, textures
+        // and registered animations even if a later async module rejects.
+        disposeSceneResources(disegno);
         throw error;
     }
 }

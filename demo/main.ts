@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, ViewChild, inject, provideZonelessChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { defaultOpzioniGrafico, GestoreImmagini, GraficoRenderService, SkinManager } from '../src/public-api';
+import { defaultOpzioniGrafico, GestoreImmagini, GraficoRenderService, SkinManager, relatedChartAspects, sameChartPlanet } from '../src/public-api';
+import type { ChartAspectRelation, ChartPlanetInteractionEvent, ChartPlanetLayer, ChartPlanetRef } from '../src/public-api';
 import { demoBodies, makeDemoTheme } from './fixtures';
+import { demoCrossChartAspects } from './interaction-fixtures';
 
 type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
 
@@ -31,7 +33,50 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <label for="base">Asset base URL</label>
         <input id="base" [value]="assetBase" (change)="changeBase($event)" [disabled]="busy">
         <p class="muted">Manifest: {{manifestLabel}}</p>
-        <p class="status" [class.error]="error" role="status" data-testid="status">{{error || status}}</p>
+        <p class="status" [class.error]="error" role="status" data-testid="status"
+          [attr.data-render-revision]="renderRevision">{{error || status}}</p>
+        <section class="planet-panel" aria-labelledby="planet-panel-title">
+          <h2 id="planet-panel-title">Interactive planet focus</h2>
+          <p class="muted">Point to a planet to select it persistently; selecting another planet changes the focus. Transit links are illustrative fixture data.</p>
+          <label *ngIf="mode === 'natal'" class="focus-toggle">
+            <input type="checkbox" id="focus-aspects" [checked]="focusNatalAspects" [disabled]="busy" (change)="changeFocusNatalAspects($event)">
+            Focus aspects
+          </label>
+          <label for="planet-layer">Chart layer</label>
+          <select id="planet-layer" [value]="planetLayer" [disabled]="busy" (change)="changePlanetLayer($event)">
+            <option value="natal">Natal chart</option>
+            <option *ngIf="mode === 'transits'" value="transit">Transits</option>
+            <option *ngIf="mode === 'synastry'" value="synastry">Synastry</option>
+          </select>
+          <div class="planet-list" role="group" aria-label="Choose a planet to highlight">
+            <button *ngFor="let body of bodies" type="button" class="planet-button"
+              [disabled]="busy" [attr.aria-label]="'Highlight ' + planetLayer + ' ' + body"
+              [attr.aria-pressed]="selectedPlanet?.layer === planetLayer && selectedPlanet?.name === body"
+              (click)="selectPlanet(body)">{{body}}</button>
+          </div>
+          <button type="button" class="clear-focus" id="clear-focus" [disabled]="busy || !selectedPlanet"
+            (click)="clearPlanet()">Clear selection</button>
+          <div class="planet-readout">
+            <p>Selected: <strong data-testid="planet-selection">{{selectedPlanet ? selectedPlanet.layer + ':' + selectedPlanet.name : 'None'}}</strong></p>
+            <p>Hovered: <strong data-testid="planet-hover">{{hoveredPlanet ? hoveredPlanet.layer + ':' + hoveredPlanet.name : 'None'}}</strong></p>
+            <p>Last chart event: <span data-testid="planet-event">{{lastPlanetEvent ? lastPlanetEvent.type + ' ' + lastPlanetEvent.planet.layer + ':' + lastPlanetEvent.planet.name : 'None'}}</span></p>
+          </div>
+          <div class="aspect-readout" *ngIf="mode === 'transits'">
+            <label for="aspect-filter">Example transit aspect filter</label>
+            <select id="aspect-filter" [value]="aspectFilter" [disabled]="busy" (change)="changeAspectFilter($event)">
+              <option value="all">All supplied aspects</option>
+              <option value="hard">Squares and oppositions only</option>
+            </select>
+            <h2>Related transit aspects <span class="aspect-count" data-testid="aspect-count">{{focusedAspects.length}}</span></h2>
+            <ul *ngIf="focusedAspects.length; else noAspects" class="aspect-list">
+              <li *ngFor="let link of focusedAspects" data-testid="aspect-match">
+                {{link.from.layer}} {{link.from.name}} — {{link.type}} — {{link.to.layer}} {{link.to.name}}
+                <span *ngIf="link.orb !== undefined"> (orb {{link.orb}}°)</span>
+              </li>
+            </ul>
+            <ng-template #noAspects><p class="muted">Select or hover a planet to see its example transit aspects.</p></ng-template>
+          </div>
+        </section>
       </aside>
       <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart"></canvas></section>
     </section>
@@ -43,10 +88,55 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   private readonly renderer = new GraficoRenderService();
   private readonly changes = inject(ChangeDetectorRef);
   readonly skins = Object.keys(SkinManager.skins);
+  // Angles are genuine house-derived points in each illustrative chart,
+  // not synthetic planetary longitudes. Make them keyboard-selectable too.
+  readonly bodies = [...demoBodies, 'AS', 'DS', 'MC', 'IC'];
+  planetLayer: ChartPlanetLayer = 'natal';
+  aspectFilter: 'all' | 'hard' = 'all';
+  focusNatalAspects = false;
+  selectedPlanet: ChartPlanetRef | null = null;
+  hoveredPlanet: ChartPlanetRef | null = null;
+  lastPlanetEvent: ChartPlanetInteractionEvent | null = null;
+
+  private get visibleCrossChartAspects(): readonly ChartAspectRelation[] {
+    return this.aspectFilter === 'hard'
+      ? demoCrossChartAspects.filter(link => link.type === 'quadrato' || link.type === 'opposizione')
+      : demoCrossChartAspects;
+  }
+
+  get focusedAspects(): ChartAspectRelation[] {
+    const focus = this.hoveredPlanet ?? this.selectedPlanet;
+    return focus && this.mode === 'transits'
+      ? relatedChartAspects(focus, this.visibleCrossChartAspects) : [];
+  }
+
+  private readonly onPlanetInteraction = (event: ChartPlanetInteractionEvent): void => {
+    this.lastPlanetEvent = event;
+    if (event.type === 'enter' || (event.type === 'update'
+      && sameChartPlanet(this.hoveredPlanet, event.planet))) this.hoveredPlanet = event.planet;
+    if (event.type === 'enter') {
+      // Owner-specified latch: hovering a planet chooses it until the
+      // next hover, button selection or an explicit clear/mode switch.
+      this.selectedPlanet = { ...event.planet };
+      this.planetLayer = event.planet.layer;
+      this.renderer.highlightPlanet(this.selectedPlanet);
+    }
+    if (event.type === 'leave' && sameChartPlanet(this.hoveredPlanet, event.planet)) this.hoveredPlanet = null;
+    if (event.type === 'click') {
+      this.selectedPlanet = event.planet;
+      this.planetLayer = event.planet.layer;
+      this.renderer.highlightPlanet(event.planet);
+    }
+    this.changes.markForCheck();
+  };
   mode: Mode = 'natal';
   skin = 'light';
   busy = false;
   status = 'Preparing renderer…';
+  /** Increments only after successful scene construction; the browser
+   * harness awaits a *new* revision after changing the mode or skin.
+   */
+  renderRevision = 0;
   error = '';
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
@@ -57,12 +147,72 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     try {
       GestoreImmagini.configurePublicAssetsBase(this.assetBase);
+      this.renderer.setPlanetInteractionListener(this.onPlanetInteraction);
+      this.renderer.setCrossChartAspects([]);
       this.renderer.inizializzaGraficoRender(this.canvas, {x: 800, y: 800});
       void this.draw();
     } catch (error) { this.showError(error); }
   }
-  ngOnDestroy(): void { this.renderer.ngOnDestroy(); }
-  changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.draw(); }
+  ngOnDestroy(): void {
+    this.renderer.setPlanetInteractionListener(null);
+    this.renderer.ngOnDestroy();
+  }
+  changeMode(event: Event): void {
+    this.mode = (event.target as HTMLSelectElement).value as Mode;
+    // Natal focus is a mode-scoped view preference. Leaving the natal
+    // chart turns it off; returning starts with the normal full palette.
+    if (this.mode !== 'natal') this.focusNatalAspects = false;
+    this.planetLayer = 'natal';
+    this.aspectFilter = 'all';
+    this.hoveredPlanet = null;
+    this.selectedPlanet = null;
+    this.lastPlanetEvent = null;
+    this.renderer.highlightPlanet(null);
+    this.renderer.setCrossChartAspects(this.mode === 'transits' ? this.visibleCrossChartAspects : []);
+    this.renderer.setNatalAspectPresentation(this.mode === 'transits' ? 'muted'
+      : this.focusNatalAspects && this.mode === 'natal' ? 'focused' : 'all');
+    if (this.mode === 'natal' && this.focusNatalAspects) {
+      this.selectPlanet('Sun');
+    }
+    void this.draw();
+  }
+
+  changeFocusNatalAspects(event: Event): void {
+    this.focusNatalAspects = (event.target as HTMLInputElement).checked;
+    this.renderer.setNatalAspectPresentation(this.focusNatalAspects ? 'focused' : 'all');
+    if (this.focusNatalAspects && (!this.selectedPlanet || this.selectedPlanet.layer !== 'natal')) {
+      this.planetLayer = 'natal';
+      this.selectPlanet('Sun');
+    }
+    this.changes.markForCheck();
+  }
+
+  changePlanetLayer(event: Event): void {
+    this.planetLayer = (event.target as HTMLSelectElement).value as ChartPlanetLayer;
+    this.changes.markForCheck();
+  }
+
+  changeAspectFilter(event: Event): void {
+    if (this.mode !== 'transits' || this.busy) return;
+    this.aspectFilter = (event.target as HTMLSelectElement).value === 'hard' ? 'hard' : 'all';
+    // Replace only the display links. The renderer never recomputes ephemerides
+    // or aspect orbs; stationary hovers receive an explicit 'update' event.
+    this.renderer.setCrossChartAspects(this.visibleCrossChartAspects);
+    this.changes.markForCheck();
+  }
+
+  selectPlanet(name: string): void {
+    if (this.busy) return;
+    this.selectedPlanet = {layer: this.planetLayer, name};
+    this.renderer.highlightPlanet(this.selectedPlanet);
+    this.changes.markForCheck();
+  }
+
+  clearPlanet(): void {
+    this.selectedPlanet = null;
+    this.renderer.highlightPlanet(null);
+    this.changes.markForCheck();
+  }
   changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.draw(); }
   changeBase(event: Event): void {
     try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.draw(); }
@@ -75,7 +225,13 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     opts.temaGrafico = this.skin;
     opts.mostraTransiti = this.mode === 'transits';
     opts.mostraSinastria = this.mode === 'synastry';
-    for (const body of demoBodies) { opts.settaggi.elementi_celesti[body].att = true; opts.settaggi.elementi_celesti[body].aspVerso = true; }
+    for (const body of this.bodies) {
+      // Native AspettiRender only draws an axis relationship when it
+      // is explicitly included among the allowed aspect endpoints.
+      // .att also exposes its existing house-derived glyph for hover.
+      opts.settaggi.elementi_celesti[body].att = true;
+      opts.settaggi.elementi_celesti[body].aspVerso = true;
+    }
     return opts;
   }
   async draw(): Promise<void> {
@@ -84,6 +240,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
       await this.renderer.disegnaScena(this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
       this.status = 'Rendered with the configured asset server.';
+      this.renderRevision++;
     } catch (error) { this.showError(error); }
     finally { this.busy = false; this.changes.markForCheck(); }
   }
