@@ -248,3 +248,22 @@ test('truthy own enablement values preserve legacy compatibility without coercin
   assert.strictEqual(result.Moon, planets.Moon);
   assert.ok(Object.is(result.Moon.latitude, -0));
 });
+
+
+test('disabled special planet key cannot be selected through prototype inheritance', async () => {
+  const planets = Object.create(null);
+  const enabled = Object.create(null);
+  const ghost = Object.freeze({ latitude: 0, longitude: 90 });
+  const sun = Object.freeze({ latitude: -0, longitude: 45 });
+  Object.defineProperty(planets, '__proto__', { value: ghost, enumerable: true });
+  Object.defineProperty(enabled, '__proto__', { value: { att: false }, enumerable: true });
+  planets.Sun = sun;
+  enabled.Sun = { att: true };
+
+  const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti: enabled } });
+  assert.deepEqual(Object.keys(result), ['Sun']);
+  assert.equal(Object.getPrototypeOf(result), Object.prototype);
+  assert.equal(Object.hasOwn(result, '__proto__'), false);
+  assert.strictEqual(result.Sun, sun);
+  assert.ok(Object.is(result.Sun.latitude, -0));
+});
