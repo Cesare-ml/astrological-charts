@@ -546,6 +546,20 @@ test('cached picking respects current scene ancestry when glyphs are moved', () 
   assert.equal(probe.visiblePlanetHit(hit),false, 'hidden material prevents hits');
   mesh.material.visible = true;
   assert.equal(probe.visiblePlanetHit(hit),true, 'restoring material visibility restores hit');
+  mesh.material.transparent = true;
+  mesh.material.opacity = 0;
+  assert.equal(probe.visiblePlanetHit(hit),false,
+    'fully transparent glyph must not intercept pointer events');
+  mesh.material.opacity = Number.NaN;
+  assert.equal(probe.visiblePlanetHit(hit),false,
+    'invalid transparent opacity must fail closed');
+  mesh.material.opacity = 0.3;
+  assert.equal(probe.visiblePlanetHit(hit),true,
+    'partially transparent glyph remains selectable');
+  mesh.material.transparent = false;
+  mesh.material.opacity = 0;
+  assert.equal(probe.visiblePlanetHit(hit),true,
+    'non-blended material remains pickable; opacity alone is not enough');
 
   // Three.js multi-material mesh faces carry a materialIndex. A raycast hit
   // on an invisible submesh must NEVER be accepted merely because a different
@@ -563,6 +577,14 @@ test('cached picking respects current scene ancestry when glyphs are moved', () 
   assert.equal(probe.visiblePlanetHit(hit),false,
     'visibility changes are checked on every pointer event');
   mesh.material[1].visible = true;
+  shown.transparent = true;
+  shown.opacity = 0;
+  assert.equal(probe.visiblePlanetHit(hit),false,
+    'fully transparent hit face must not borrow a different visible material');
+  shown.opacity = 0.5;
+  assert.equal(probe.visiblePlanetHit(hit),true,
+    'partially transparent hit face is pickable');
+  shown.transparent = false;
 
   for (const index of [-1, 2, 0.5, Number.NaN, Number.POSITIVE_INFINITY, '1']) {
     hit.face = {materialIndex:index};
