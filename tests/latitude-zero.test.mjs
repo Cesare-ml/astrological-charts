@@ -114,7 +114,7 @@ test('malformed enablement entries do not crash or enable planets', async () => 
     Sun: null,
     Moon: undefined,
     Mars: false,
-    Venus: { att: 'true' },
+    Venus: { att: '' },
     Jupiter: Object.freeze({ att: true }),
   });
   const result = await getElementiCelesti({ planets }, { settaggi: { elementi_celesti } });
