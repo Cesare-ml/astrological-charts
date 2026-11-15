@@ -33,3 +33,7 @@ The thirteenth synthetic regression checks an option with an **own** `att: false
 ## Own keys that shadow Object.prototype (2026-11-15)
 
 The fourteenth focused regression covers explicitly enabled planet keys `constructor` and `toString` in null-prototype input maps. Both must survive as enumerable own data properties on the filtered result, retaining their original precomputed planet object references and the standard result prototype. This is a test-only addition; it does not introduce astronomical calculations, assets or public API changes. Full Node/Angular/WebGL validation and actual approved-asset SHA-256 verification remain NOT RUN.
+
+## Non-enumerable selection entries (2026-11-15)
+
+The fifteenth focused regression ensures a non-enumerable own option entry does not accidentally enable a precomputed planet. Symbol-keyed entries also remain outside the string-keyed selection contract. The test confirms that an enumerable zero-latitude planet is still selected by reference, and the input descriptor is unchanged. This is test-only; no astronomical calculations, rendering assets or public API were changed. Runtime execution of the Node suite, Angular builds, browser tests and actual image-byte SHA-256 verification remain **NOT RUN**.
