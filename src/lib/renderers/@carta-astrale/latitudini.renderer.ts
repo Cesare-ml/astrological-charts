@@ -137,7 +137,9 @@ export class LatitudiniRender {
         Object.prototype.hasOwnProperty.call(planets, nome)
         && planets[nome]
         && Number.isFinite(planets[nome].latitude)
-        && elOpt?.att
+        && elOpt != null
+        && Object.prototype.hasOwnProperty.call(elOpt, 'att')
+        && elOpt.att
       ) {
         // Define an own data property: a planet named '__proto__' must not alter the result prototype.
         Object.defineProperty(elementiCelesti, nome, {
