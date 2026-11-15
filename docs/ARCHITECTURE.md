@@ -33,3 +33,9 @@ The library does not independently calculate the full astronomical ephemeris or 
 ## Source of truth
 
 The new repository is a collaboration workspace only until a versioned integration is approved. The live site and sold Astrolabio devices continue to depend on the original `virgo-stars` code. Never silently switch imports, publish npm releases, or ship hardware updates.
+
+## Optional model metadata when hydrating saved charts
+
+The `Tema` and `TemaLocalDB` constructors retain the declared optional `sesso` value from a saved record. `TemaForm` also retains its optional form-only `stato` field while inheriting `Tema` hydration. Missing fields remain `undefined`, and empty strings are not replaced by defaults. This applies to web and offline LocalDB records; it does not change calculation inputs, timezone conversion or WebGL drawing.
+
+Run `npm run test:model-hydration` to exercise these constructors using synthetic records. The test does not replace browser, original-artwork, or Astrolabio hardware verification.

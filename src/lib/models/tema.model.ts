@@ -20,6 +20,7 @@ export class Tema {
     this.nome = obj?.nome ?? '';
     this.data = obj?.data ?? '';
     this.ora = obj?.ora ?? '';
+    this.sesso = obj?.sesso;
     this.orario_sconosciuto = obj?.orario_sconosciuto ?? false;
     this.img_nome = obj?.img_nome;
     this.utente_id = obj?.utente_id ?? -1;
