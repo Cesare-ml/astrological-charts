@@ -68,3 +68,74 @@ test('contributor instructions use the full Angular verification command', () =>
   assert.equal(pkg.scripts['verify:angular'], 'npm run preflight && npm run build:library && npm run build:demo');
   assert.match(guide, /PASS, FAIL or NOT RUN/);
 });
+
+
+test('agent guidance distinguishes public asset access from redistribution rights', () => {
+  const agents = readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
+  assert.match(agents, /astrological-assets.*publicly readable/i);
+  assert.match(agents, /not cleared for public redistribution/i);
+  assert.match(agents, /manifests\/approved-assets\.json/);
+  assert.match(agents, /per-file SHA-256/);
+  assert.match(agents, /npm run verify:pack/);
+  assert.match(agents, /manifest-gated local server/);
+  assert.match(agents, /original font is not included/);
+  assert.doesNotMatch(agents, /The private `Cesare-ml\/astrological-assets` repository/);
+});
+
+test('agent asset policy keeps artwork outside the renderer and blocks production hotlinks', () => {
+  const agents = readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(agents, /Never copy them into this renderer repository, package output or demo/i);
+  assert.match(agents, /Do not silently hotlink the production website/i);
+  assert.match(agents, /Repository visibility and a passing integrity check do not establish redistribution rights/i);
+  assert.match(pkg.scripts['demo:assets:repo'], /\.\.\/astrological-assets\/public\/assets/);
+  assert.match(pkg.scripts['demo:assets:repo'], /\.\.\/astrological-assets\/manifests\/approved-assets\.json/);
+  assert.doesNotMatch(pkg.scripts['demo:assets:repo'], /https?:\/\//i);
+});
+
+
+test('README quickstart covers both Angular builds and approved sibling assets', () => {
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(readme, /npm run verify:angular/);
+  assert.equal(pkg.scripts['verify:angular'], 'npm run preflight && npm run build:library && npm run build:demo');
+  assert.match(readme, /npm run verify:pack/);
+  assert.match(readme, /npm run demo:assets:repo/);
+  assert.match(readme, /per-file SHA-256/);
+  assert.match(readme, /do not grant artwork redistribution rights/i);
+  assert.match(readme, /Chromium and Firefox/);
+  assert.match(readme, /VirgoStars/);
+});
+
+
+test('independent asset checkout guide reflects public access and byte verification', () => {
+  const guide = readFileSync(new URL('../docs/INDEPENDENT_ASSETS_REPOSITORY.md', import.meta.url), 'utf8');
+  assert.match(guide, /pubblicamente leggibile/i);
+  assert.match(guide, /npm run verify:pack/);
+  assert.match(guide, /SHA-256/);
+  assert.match(guide, /redistribuzione/);
+  assert.match(guide, /Font originale escluso/);
+  assert.doesNotMatch(guide, /repository privato degli asset|archivio privato/i);
+});
+
+test('extraction status keeps asset visibility separate from redistribution and hash verification', () => {
+  const status = readFileSync(new URL('../docs/EXTRACTION_STATUS.md', import.meta.url), 'utf8');
+  assert.match(status, /astrological-assets.*publicly readable/i);
+  assert.match(status, /SHA-256/);
+  assert.match(status, /npm run verify:pack/);
+  assert.match(status, /verify actual file bytes/i);
+  assert.match(status, /original font is excluded/i);
+  assert.match(status, /do not authorize artwork redistribution/i);
+  assert.doesNotMatch(status, /private original images|owner authorized private sharing/i);
+});
+
+
+test('local asset preview documents public checkout without granting artwork rights', () => {
+  const guide = readFileSync(new URL('../docs/LOCAL_ASSET_PREVIEW.md', import.meta.url), 'utf8');
+  assert.match(guide, /repository pubblicamente leggibile/i);
+  assert.match(guide, /npm run verify:pack/);
+  assert.match(guide, /SHA-256/);
+  assert.match(guide, /font originale.*escluso/i);
+  assert.match(guide, /non autorizza automaticamente la redistribuzione/i);
+  assert.doesNotMatch(guide, /repository privato `astrological-assets`|secondo repository privato/i);
+});
