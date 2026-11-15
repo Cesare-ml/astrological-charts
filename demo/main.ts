@@ -1,10 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, ViewChild, inject, provideZonelessChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { defaultOpzioniGrafico, GestoreImmagini, GraficoRenderService, SkinManager } from '../src/public-api';
+import {
+  defaultOpzioniGrafico, GestoreImmagini, GraficoRenderService, SkinManager,
+  type ZodiacReflectionAxis, type ZodiacalSelection
+} from '../src/public-api';
 import { demoBodies, makeDemoTheme } from './fixtures';
 
 type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
+type ProjectionMode = 'off' | 'dodecatemori' | 'antisci' | 'contrantisci';
 
 @Component({
   selector: 'chart-demo', standalone: true, imports: [CommonModule],
@@ -23,6 +27,33 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <select id="skin" [value]="skin" [disabled]="busy" (change)="changeSkin($event)">
           <option *ngFor="let item of skins" [value]="item" [selected]="item === skin">{{item}}</option>
         </select>
+
+        <div class="zodiac-controls" *ngIf="mode === 'natal'">
+          <h2>Zodiacal projections</h2>
+          <div class="zodiac-toolbar" role="toolbar" aria-label="Zodiacal projection functions">
+            <button type="button" *ngFor="let item of zodiacModes" [disabled]="busy"
+              [class.active]="projectionMode === item.id"
+              [attr.aria-pressed]="projectionMode === item.id"
+              (click)="chooseProjection(item.id)">{{item.title}}</button>
+          </div>
+          <div *ngIf="projectionMode !== 'off'">
+            <label *ngIf="projectionMode === 'antisci' || projectionMode === 'contrantisci'" for="zodiac-axis">Reflection axis</label>
+            <select *ngIf="projectionMode === 'antisci' || projectionMode === 'contrantisci'"
+              id="zodiac-axis" [value]="reflectionAxis" [disabled]="busy" (change)="changeAxis($event)">
+              <option *ngFor="let a of zodiacAxes" [value]="a">{{a}}</option>
+            </select>
+            <div class="zodiac-planets" role="group" aria-label="Select planet or all">
+              <button type="button" [disabled]="busy" [class.active]="selectedZodiacPlanet === 'tutti'"
+                [attr.aria-pressed]="selectedZodiacPlanet === 'tutti'"
+                (click)="selectZodiacPlanet('tutti')">Tutti</button>
+              <button type="button" *ngFor="let p of zodiacPlanets"
+                [disabled]="busy" [class.active]="selectedZodiacPlanet === p.id"
+                [attr.aria-pressed]="selectedZodiacPlanet === p.id"
+                [attr.title]="p.name" [attr.aria-label]="p.name"
+                (click)="selectZodiacPlanet(p.id)">{{p.glyph}}</button>
+            </div>
+          </div>
+        </div>
         <div class="buttons"><button (click)="zoom(-1)" [disabled]="busy" aria-label="Zoom out">−</button>
           <button (click)="zoom(1)" [disabled]="busy" aria-label="Zoom in">+</button>
           <button class="primary" (click)="exportPng()" [disabled]="busy">Export PNG</button></div>
@@ -43,6 +74,24 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   private readonly renderer = new GraficoRenderService();
   private readonly changes = inject(ChangeDetectorRef);
   readonly skins = Object.keys(SkinManager.skins);
+  readonly zodiacModes = [
+    {id: 'dodecatemori', title: 'Dodecatemori ×13'},
+    {id: 'antisci', title: 'Antisci'},
+    {id: 'contrantisci', title: 'Contrantisci'}
+  ] as const;
+  readonly zodiacAxes = ['Cardinale', 'Fissa', 'Mutevole'] as const;
+  readonly zodiacPlanets = [
+    {id: 'Sun', name: 'Sole', glyph: '☉'},
+    {id: 'Moon', name: 'Luna', glyph: '☽'},
+    {id: 'Mercury', name: 'Mercurio', glyph: '☿'},
+    {id: 'Venus', name: 'Venere', glyph: '♀'},
+    {id: 'Mars', name: 'Marte', glyph: '♂'},
+    {id: 'Jupiter', name: 'Giove', glyph: '♃'},
+    {id: 'Saturn', name: 'Saturno', glyph: '♄'}
+  ] as const;
+  projectionMode: ProjectionMode = 'off';
+  selectedZodiacPlanet: ZodiacalSelection = 'tutti';
+  reflectionAxis: ZodiacReflectionAxis = 'Cardinale';
   mode: Mode = 'natal';
   skin = 'light';
   busy = false;
@@ -63,6 +112,19 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   }
   ngOnDestroy(): void { this.renderer.ngOnDestroy(); }
   changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.draw(); }
+  chooseProjection(mode: Exclude<ProjectionMode, 'off'>): void {
+    this.projectionMode = this.projectionMode === mode ? 'off' : mode;
+    this.selectedZodiacPlanet = 'tutti';
+    void this.draw();
+  }
+  selectZodiacPlanet(planet: ZodiacalSelection): void {
+    this.selectedZodiacPlanet = planet;
+    void this.draw();
+  }
+  changeAxis(event: Event): void {
+    this.reflectionAxis = (event.target as HTMLSelectElement).value as ZodiacReflectionAxis;
+    void this.draw();
+  }
   changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.draw(); }
   changeBase(event: Event): void {
     try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.draw(); }
@@ -75,6 +137,14 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     opts.temaGrafico = this.skin;
     opts.mostraTransiti = this.mode === 'transits';
     opts.mostraSinastria = this.mode === 'synastry';
+    // Overlay UI is an example host integration, not baked into the library.
+    if (this.mode === 'natal') {
+      opts.dodecatemoriAttivi = this.projectionMode === 'dodecatemori';
+      opts.dodecatemore = opts.dodecatemoriAttivi ? this.selectedZodiacPlanet : undefined;
+      opts.proiezioneZodiacale = this.projectionMode === 'antisci' || this.projectionMode === 'contrantisci'
+        ? {tipo: this.projectionMode, asse: this.reflectionAxis, pianeta: this.selectedZodiacPlanet}
+        : {tipo: undefined, asse: this.reflectionAxis, pianeta: undefined};
+    }
     for (const body of demoBodies) { opts.settaggi.elementi_celesti[body].att = true; opts.settaggi.elementi_celesti[body].aspVerso = true; }
     return opts;
   }

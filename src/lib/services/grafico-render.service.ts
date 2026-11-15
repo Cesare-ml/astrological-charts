@@ -76,6 +76,7 @@ export class GraficoRenderService implements OnDestroy {
   public scale = 1;
 
   private frameId: number = null;
+  private pulseGlyph: THREE.Mesh | null = null;
   private renderRequestedBeforeInit = false;
   private drawGeneration = 0;
   public isInizializzato = false;
@@ -113,7 +114,7 @@ export class GraficoRenderService implements OnDestroy {
 
   public ngOnDestroy(): void {
     ++this.drawGeneration;
-    if (this.frameId != null) cancelAnimationFrame(this.frameId);
+    this.stopGlyphPulse();
     
     if(this.resizeSub) {
       this.resizeSub.unsubscribe();
@@ -237,6 +238,38 @@ export class GraficoRenderService implements OnDestroy {
     });
   }
   
+  private stopGlyphPulse(): void {
+    if (this.frameId !== null) cancelAnimationFrame(this.frameId);
+    this.frameId = null;
+    this.pulseGlyph = null;
+  }
+
+  private startGlyphPulse(drawing: THREE.Object3D, options: any): void {
+    const dodeca = options.dodecatemoriAttivi &&
+      options.dodecatemore && options.dodecatemore !== 'tutti';
+    const reflected = !dodeca && options.proiezioneZodiacale?.tipo &&
+      options.proiezioneZodiacale?.pianeta !== 'tutti';
+    if (!dodeca && !reflected) return;
+    if (typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+    drawing.traverse(object => {
+      if (object.userData?.pulseZodiacalProjection) this.pulseGlyph = object as THREE.Mesh;
+    });
+    const glyph = this.pulseGlyph;
+    if (!glyph) return;
+    const baseX = glyph.scale.x;
+    const baseY = glyph.scale.y;
+    const tick = () => {
+      if (this.pulseGlyph !== glyph || !this.isInizializzato) return;
+      const factor = 1 + 0.045 * Math.sin(performance.now() / 480);
+      glyph.scale.set(baseX * factor, baseY * factor, glyph.scale.z);
+      this.render();
+      this.frameId = requestAnimationFrame(tick);
+    };
+    this.frameId = requestAnimationFrame(tick);
+  }
+
   public async disegnaScena(
     temaRender:TemaRender,
     temaRenderTransiti:TemaRender,
@@ -247,6 +280,7 @@ export class GraficoRenderService implements OnDestroy {
     if(temaRender == null)
       return;
     const generation = ++this.drawGeneration;
+    this.stopGlyphPulse();
     return GraficoRenderService.runExclusive(async () => {
       if (generation !== this.drawGeneration) return;
       if (this.dimensioni) OggettiSempliciRender.setDimensioniCanvas(this.dimensioni);
@@ -276,7 +310,10 @@ export class GraficoRenderService implements OnDestroy {
       const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
       this.scene.background = new THREE.Color(bgColor);
       if (this.camera) this.scene.add(this.camera);
-      if (disegno) this.scene.add(disegno);
+      if (disegno) {
+        this.scene.add(disegno);
+        if (grafico === 'carta-astrale') this.startGlyphPulse(disegno, opzioni);
+      }
       this.render();
     });
   }

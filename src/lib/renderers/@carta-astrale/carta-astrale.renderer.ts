@@ -4,6 +4,7 @@ import { CaseRender } from '../moduli/case.renderer';
 import {ElementiCelestiRender} from '../moduli/elementi-celesti.renderer'
 import {AspettiRender} from '../moduli/aspetti.renderer'
 import { TransitiRender } from '../moduli/transiti.renderer';
+import { ZodiacalProjectionsRenderer } from '../moduli/zodiacal-projections.renderer';
 import { SkinManager } from '../@skin-manager';
 import { SinastriaRender } from '../moduli/sinastria.renderer';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
@@ -31,6 +32,7 @@ export interface StatoCartaAstrale {
     gruppoSegni?: THREE.Group;
     gruppoCase?: THREE.Group;
     gruppoElementiCelesti?: THREE.Group;
+    gruppoZodiacalProjections?: THREE.Group;
     gruppoAspetti?: THREE.Group;
     gruppoTransiti?: THREE.Group;
     // altri gruppi modulari come transiti, sinastria, ecc.
@@ -357,6 +359,21 @@ async function creaElementiCelesti(stato: StatoCartaAstrale) {
 }
 
 
+async function creaZodiacalProjections(stato: StatoCartaAstrale) {
+    if (stato.opzioni.dodecatemoriAttivi || !stato.opzioni.proiezioneZodiacale?.tipo) return null;
+    const group = await ZodiacalProjectionsRenderer.create(
+        stato.temaRender, stato.opzioni, stato.asc,
+        stato.diametri.diametroAnelloSegni,
+        stato.diametri.diametroAnelloCase,
+        stato.diametri.diametroInternoAnelloElementoCelesti,
+        stato.diametri.diametroAnelloElementiCelesti,
+        stato.simboliScale.AnelloElementiCelesti,
+        Boolean(stato.temaRender.australInversion && !stato.opzioni.mostraSinastria)
+    );
+    stato.gruppoZodiacalProjections = group;
+    return group;
+}
+
 async function creaAspetti(stato: StatoCartaAstrale) {
     if (!stato.opzioni.mostraAspetti) return null;
 
@@ -469,6 +486,7 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
         creaElementiCelesti,
         creaCase,
         creaAspetti,
+        creaZodiacalProjections,
         creaSinastria
         // puoi aggiungere altre funzioni come direzioni, lunazioni, ecc.
     ];

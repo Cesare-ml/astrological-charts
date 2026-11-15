@@ -8,6 +8,8 @@ export function makeDemoTheme(offset: number): TemaRender {
   const mc = (290 + offset) % 360;
   const planets = Object.fromEntries(demoBodies.map((name, i) => [name, {
     longitude: (longitudes[i] + offset) % 360,
+    // Synthetic illustration: the production host supplies this ×13 result.
+    dodecatemoria: {longitude: ((longitudes[i] + offset) * 13) % 360},
     latitude: (i % 2 ? -1 : 1) * (0.5 + i * 0.28),
     longitudeSpeed: i === 7 ? -0.04 : 0.2,
     latitudeSpeed: i % 2 ? -0.02 : 0.03,

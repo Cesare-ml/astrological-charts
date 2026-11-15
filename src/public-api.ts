@@ -13,6 +13,7 @@ export * from './lib/models/settaggi-astrolabio.model';
 export * from './lib/models/posizione.model';
 export * from './lib/models/posizione-localdb.model';
 export * from './lib/models/opzioni-grafico.model';
+export * from './lib/renderers/moduli/zodiacal-projections';
 
 
 export * from './lib/renderers/_colori.config';

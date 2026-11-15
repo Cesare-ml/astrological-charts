@@ -26,6 +26,7 @@ The library does not independently calculate the full astronomical ephemeris or 
 - `src/public-api.ts` exports render service, models, skin manager and basic Three.js primitives.
 - `GraficoRenderService` is a root Angular singleton that owns WebGL resources, canvas, camera and scene.
 - Scene composition uses `CartaAstraleCreaScena`, `LatitudiniRender`, and modular ring renderers.
+- The **optional natal projection** module owns Regolo-style Antisci/Contrantisci reflection geometry and three-axis selection. Dodecatemoria is a separate overlay using precomputed ×13 longitudes; only that mode adds nodes to natal aspects. Both reuse host-owned planet images, and the example menu belongs to the Angular demo rather than the public library. See [zodiacal projections](ZODIACAL_PROJECTIONS.md).
 - Some visual configuration and dimensions are global. `GraficoRenderService` serializes scene construction and export across its instances, restores the dimensions at the start of each operation, and waits for its scene textures. Direct calls to lower-level renderer functions and concurrent changes to global configuration remain outside this protection.
 - Symbols, textures and resonator images currently live outside this package in VirgoStars `public/assets/`.
 - Astrolabio uses a separate headless bundling/resolution path and must be regression-tested before updates.

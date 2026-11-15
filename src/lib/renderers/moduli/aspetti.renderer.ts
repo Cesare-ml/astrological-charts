@@ -8,6 +8,7 @@ import {Settaggi} from '../../models/settaggi.model';
 import {Colori} from '../_colori.config';
 
 import {SkinManager} from '../@skin-manager';
+import { storedDodecatemorion } from './zodiacal-projections';
 
 export class AspettiRender {
 
@@ -145,6 +146,8 @@ export class AspettiRender {
       opzioni,
       0, //rotateOffs,
       diametroCerchio/2, //y
+      'longitude',
+      true // Only the natal aspect circle may receive a dodecatemorion node.
     );
 
     for(var i=0; i<nodi.length; i++) {
@@ -293,14 +296,14 @@ export class AspettiRender {
       for(let k=0; k<aspetti.length; k++) {
         let tipoAspetto = Settaggi.aspetti[aspetti[k]].g;
         for(let i=0; i<nodi.length; i++) {
-          if(aspettiVerso.indexOf(nodi[i].name) != -1 || nodi[i].name.indexOf('-dodecatemoria')>=0) {
+          if(aspettiVerso.indexOf(nodi[i].name) != -1 || nodi[i].name.endsWith('-dodecatemoria')) {
             for(var j=i+1; j<nodi.length; j++) {
               var orb = nodi[j].orb;
               if(spetti_orbite[aspetti[k]] && spetti_orbite[aspetti[k]]<orb) {
                 orb = spetti_orbite[aspetti[k]];
               }
               if(
-                aspettiVerso.indexOf(nodi[j].name) != -1
+                (aspettiVerso.indexOf(nodi[j].name) != -1 || nodi[j].name.endsWith('-dodecatemoria'))
                 &&(
                   !(aspetti[k] == 'phisolare' || aspetti[k] == "philunare")
                   &&(
@@ -367,7 +370,7 @@ export class AspettiRender {
     return archi;
   }
 
-  public static getNodi(elementiCelesti,opzioni,rotateOffs,y,parametroDiRender="longitude") {
+  public static getNodi(elementiCelesti,opzioni,rotateOffs,y,parametroDiRender="longitude",allowDodeca=false) {
     var nodi = [];
 
     //aggiungo i nodi
@@ -387,13 +390,14 @@ export class AspettiRender {
       }
       nodi.push(n);
 
-      if(opzioni.dodecatemore) {
-        if(opzioni.dodecatemore == nome && elementiCelesti[nome]['dodecatemoria']) {
+      if (allowDodeca && opzioni.dodecatemoriAttivi && opzioni.dodecatemore === nome) {
+        const longitude = storedDodecatemorion(elementiCelesti[nome]);
+        if (longitude !== null) {
           nodi.push({
-            name: nome+'-dodecatemoria',
-            longitude: (elementiCelesti[nome]['dodecatemoria']['longitude'] + rotateOffs) % 360,
+            name: nome + '-dodecatemoria',
+            longitude: (longitude + rotateOffs) % 360,
             orb: opzioni.settaggi.elementi_celesti[nome].orb,
-            y: y
+            y
           });
         }
       }
@@ -442,19 +446,24 @@ export class AspettiRender {
 
             var coloreAspetto = Colori.aspetti[aspetti[k]];
             var colore = coloreAspetto;
-            //console.log(opzioni,opzioni.kleros);
-            if(monocolore){
+            const nameA = nodi[archi[tipoAspetto][i][0]].name;
+            const nameB = nodi[archi[tipoAspetto][i][1]].name;
+            const focusedDodeca = opzioni.dodecatemoriAttivi
+              && opzioni.dodecatemore && opzioni.dodecatemore !== 'tutti';
+            const focusedMirror = !focusedDodeca && opzioni.proiezioneZodiacale?.tipo
+              && opzioni.proiezioneZodiacale?.pianeta !== 'tutti';
+            if (focusedDodeca) {
+              const markerName = opzioni.dodecatemore + '-dodecatemoria';
+              colore = nameA === markerName || nameB === markerName ? coloreAspetto : '#777777';
+            } else if (focusedMirror) {
+              // Regolo antisci/contra-antisci have NO derived natal aspects.
+              colore = '#777777';
+            } else if (monocolore) {
               colore = monocolore;
-            } else {
-              //per esempio quando nel radix viene messo in evidenza un pianeta ed i suoi aspetti
-              if(nomeElementoCelesteInEvidenza) {
-                if(!(
-                    nodi[archi[tipoAspetto][i][0]].name == nomeElementoCelesteInEvidenza
-                  || nodi[archi[tipoAspetto][i][1]].name == nomeElementoCelesteInEvidenza
-                )) {
-                  colore = '#444444';
-                }
-              }
+            } else if (nomeElementoCelesteInEvidenza
+              && nameA !== nomeElementoCelesteInEvidenza
+              && nameB !== nomeElementoCelesteInEvidenza) {
+              colore = '#444444';
             }
             if(
               (

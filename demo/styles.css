@@ -21,3 +21,16 @@ h2 { font-size: 16px; margin: 0; } .muted, footer { color: #a3a8b8; font-size: 1
 canvas { width: min(100%, 800px); aspect-ratio: 1; display: block; }
 footer { margin-top: 20px; }
 @media (max-width: 700px) { main { padding: 20px 14px; } .workspace { grid-template-columns: 1fr; } .stage { grid-row: 1; padding: 10px; } header { align-items: start; } }
+
+/* Host-side example: one fixed toolbar row for the three distinct functions. */
+.zodiac-controls { margin: 18px 0 12px; }
+.zodiac-controls h2 { margin: 0 0 9px; }
+.zodiac-toolbar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; width: 100%; }
+.zodiac-toolbar button { min-width: 0; padding: 9px 3px; font-size: .68rem; letter-spacing: -.02em; white-space: nowrap; }
+.zodiac-controls button.active { background: #a4b8ff; color: #101523; border-color: #a4b8ff; font-weight: 750; }
+.zodiac-planets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.zodiac-planets button { min-width: 37px; padding: 6px 8px; background: white; color: #101010; font: 700 20px/1.15 "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif; }
+.zodiac-planets button:first-child { font: 600 12px/1.15 system-ui, sans-serif; }
+.zodiac-planets button.active { background: #dce5ff; color: #101010; border-color: #637ad4; }
+.zodiac-planets button:focus-visible, .zodiac-toolbar button:focus-visible { outline: 2px solid #d0c2ff; outline-offset: 2px; }
+@media (max-width: 350px) { .zodiac-toolbar button { font-size: .6rem; letter-spacing: -.04em; } }
