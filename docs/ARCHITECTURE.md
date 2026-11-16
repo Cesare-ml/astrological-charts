@@ -26,6 +26,7 @@ The library does not independently calculate the full astronomical ephemeris or 
 - `src/public-api.ts` exports render service, models, skin manager and basic Three.js primitives.
 - `GraficoRenderService` is a root Angular singleton that owns WebGL resources, canvas, camera and scene.
 - Scene composition uses `CartaAstraleCreaScena`, `LatitudiniRender`, and modular ring renderers.
+- Scene-local GSAP timelines are deduplicated and stopped with reentrancy-safe cleanup; see [scene animation lifecycle](SCENE_ANIMATION_LIFECYCLE.md).
 - Some visual configuration and dimensions are global. `GraficoRenderService` serializes scene construction and export across its instances, restores the dimensions at the start of each operation, and waits for its scene textures. Direct calls to lower-level renderer functions and concurrent changes to global configuration remain outside this protection.
 - Symbols, textures and resonator images currently live outside this package in VirgoStars `public/assets/`.
 - Astrolabio uses a separate headless bundling/resolution path and must be regression-tested before updates.
