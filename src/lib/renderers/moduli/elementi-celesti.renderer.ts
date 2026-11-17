@@ -394,6 +394,7 @@ export class ElementiCelestiRender {
       raggioEsterno - raggioInterno > 0.06 ? {
         maxAngularDisplacement: largeDegreeLabels ? 5 : 3,
         fixedTwoLanes: largeDegreeLabels,
+        isolatedScale: largeDegreeLabels ? 0.22 / 0.17 : 1,
         labelWidth: (largeDegreeLabels ? 0.13 : 0.12) * simboliScale,
         labelHeight: (largeDegreeLabels ? 0.075 : 0.06) * simboliScale,
         labelTangentOffset: (largeDegreeLabels ? 0 : 0.17) * simboliScale,

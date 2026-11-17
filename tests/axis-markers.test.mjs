@@ -88,7 +88,7 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   const markers = Object.fromEntries(group.children.filter(child => child.userData.axisMarker)
     .map(child => [child.userData.axisMarker, child]));
   assert.ok(markers.ASC.isLineSegments, 'ASC is a simple two-stroke open arrow');
-  assert.ok(markers.DS.isLine && !markers.DS.isLineLoop);
+  assert.ok(markers.DS.isPoints, 'DS ends in a small filled dot');
   assert.ok(markers.MC.isLineSegments, 'MC is a simple two-stroke open arrow');
   assert.ok(markers.IC.isPoints, 'IC ends in a quiet point');
   assert.ok(markers['MC-motion'].isMesh, 'MC direction is a filled triangle');
@@ -124,12 +124,22 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
       `${stem.userData.axisStem}: line must finish just beyond the chart`);
   }
   const ascDegree = group.children.find(child => child.userData.axis === 'ASC');
+  const planetaryHour = group.children.find(child => child.userData.axis === 'planetary-hour-glyph');
   const mcDegree = group.children.find(child => child.userData.axis === 'MC');
-  assert.ok(ascDegree && mcDegree);
-  assert.ok(ascDegree.position.y > 0.03 && ascDegree.position.y < 0.06,
-    'ASC degree must rest directly on its horizontal arrow line');
+  assert.ok(ascDegree && mcDegree && planetaryHour);
+  const expectedAscMidpoint = -(radius + (0.47 - 0.095) / 2);
+  assert.ok(Math.abs(ascDegree.position.x - expectedAscMidpoint) < 1e-6,
+    'ASC degree must be midway between the zodiac and the beginning of the arrowhead');
+  assert.ok(Math.abs(planetaryHour.position.x - ascDegree.position.x) < 1e-6,
+    'planetary-hour glyph must be centred on the same ASC arrow segment');
+  assert.ok(planetaryHour.position.y > ascDegree.position.y + 0.12,
+    'planetary hour must sit above the degree, without overlapping it');
+  assert.ok(ascDegree.position.y > 0.02 && ascDegree.position.y < 0.05,
+    'ASC degree must sit close above its shaft');
   assert.equal(group.children.find(child => child.userData.axisMarker === 'IC').material.size, 6,
     'terminal IC dot must be large enough to see');
+  assert.equal(group.children.find(child => child.userData.axisMarker === 'DS').material.size, 6,
+    'DS dot must match the IC dot');
   const mcAngle = (90 - 20.7 + 298.94) * Math.PI / 180;
   const mcStemX = -Math.sin(mcAngle) * (radius + 0.36);
   assert.ok(mcDegree.position.x < mcStemX - 0.25,

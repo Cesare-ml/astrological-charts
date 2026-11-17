@@ -182,6 +182,47 @@ test('five close planets keep full identical glyph sizes on at most two radii wi
   }
 });
 
+test('isolated planets are enlarged while a five-body conjunction keeps uniform smaller glyphs', async () => {
+  const natalInner = 4.5723 * 67.1 / 120 / 2;
+  const natalOuter = 4.5723 * 103 / 120 / 2;
+  const source = {
+    Sun: 358.4, Moon: 359.1, Mercury: 0.3, Venus: 1.2, Mars: 2.4,
+    Jupiter: 85, Saturn: 170,
+  };
+  for (const offset of [0, 45, 90, 150, 225, 300]) {
+    const { group } = await makeScene(true, offset, 1, natalOuter, natalInner, source);
+    const glyphs = Object.fromEntries(group.children.filter(child => child.userData.ref)
+      .map(child => [Object.keys(source).find(name => child.userData.ref.endsWith(`/${name}.png`)), child]));
+    const size = name => glyphs[name].scale.x;
+    assert.ok(Math.abs(size('Jupiter') - 0.22) < 1e-8, 'isolated Jupiter must have the larger size');
+    assert.ok(Math.abs(size('Saturn') - 0.22) < 1e-8, 'isolated Saturn must have the larger size');
+    for (const name of ['Sun','Moon','Mercury','Venus','Mars']) {
+      assert.ok(Math.abs(size(name) - 0.17) < 1e-8,
+        `${name} in the conjunction must retain the compact size`);
+    }
+    const allGlyphs = Object.values(glyphs);
+    assert.ok(new Set(allGlyphs.map(mesh => Math.hypot(mesh.position.x, mesh.position.y).toFixed(6))).size <= 2,
+      'larger isolated glyphs must not introduce extra planet orbits');
+    for (const [name, longitude] of Object.entries(source)) {
+      const glyph = glyphs[name];
+      const display = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;
+      const discrepancy = Math.abs(((display - (longitude + offset) % 360 + 540) % 360) - 180);
+      assert.ok(discrepancy <= 5 + 1e-8, `${name}: exceeds ±5°`);
+    }
+    const meshes = [];
+    let owner = '';
+    for (const child of group.children) {
+      if (child.userData.ref) { owner = child.userData.ref; meshes.push({owner, box: visibleRectangle(child)}); }
+      else if (child.material?.map?.isCanvasTexture) meshes.push({owner, box: visibleRectangle(child)});
+    }
+    for (let i = 0; i < meshes.length; i++) for (let j = i + 1; j < meshes.length; j++) {
+      if (meshes[i].owner === meshes[j].owner) continue;
+      assert.ok(overlapArea(meshes[i].box, meshes[j].box) < 0.00001,
+        `isolated vs crowded: overlapping glyph/badge at rotation ${offset}`);
+    }
+  }
+});
+
 test('the degree display is optional and defaults to on for legacy callers', async () => {
   const hidden = await makeScene(false);
   const omitted = await makeScene(undefined);

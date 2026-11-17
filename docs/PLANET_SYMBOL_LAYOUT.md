@@ -9,16 +9,18 @@ placement modes used by the rendered celestial glyphs:
 
 1. unwraps zodiac positions at their largest empty arc (so 359° and 0° are neighbours);
 2. allows up to **±5°** in the wide natal band and searches one main orbit first, adding **only one fixed inner orbit** when necessary;
-3. keeps each glyph at the same standard scale in ordinary conjunctions, with the degree label radially inward, toward the houses;
+3. draws truly isolated bodies larger (`0.22 × symbolScale`), while planets in a nearby conjunction retain their equal compact size (`0.17 × symbolScale`) and degree labels radially inward, toward the houses;
 4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions;
 5. retains an emergency adaptive fallback for groups that are mathematically impossible in two lanes while respecting the angular bound;
 6. anchors the one retained outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed.
 
 For ordinary natal conjunctions, the two-track solver tests multiple insertion
 orders and half-degree steps within ±5°. The default five-body Aries-point
-fixture fits at a uniform standard glyph size (`0.17 × symbolScale`) on only
-two radii; isolated planets use the same size. The labels sit `0.15` world
-units inward from their glyphs, on the same radial bearing. A pathologically
+fixture fits at a uniform compact glyph size (`0.17 × symbolScale`) on only
+two radii; **isolated** planets are instead enlarged to `0.22 × symbolScale`
+while sharing exactly the same primary orbit. Nearby planets keep their
+compact glyphs even if their group fits on the main orbit. The labels sit
+`0.15 × glyph scale` world units inward from their glyphs, on the same radial bearing. A pathologically
 dense arrangement (e.g. eight exactly coincident planets) may be impossible
 with full-size symbols, just two tracks and the ±5° limit simultaneously.
 The renderer currently uses the previous collision-safe adaptive scaling
@@ -74,11 +76,11 @@ legacy callers omitting them also see the requested markers:
 | Option | Effect |
 | --- | --- |
 | `mostraFrecciaAscendente` | Thin orange axis ending in a small two-stroke open arrow |
-| `mostraRetroFrecciaDiscendente` | Plain green descending line, without the former gate |
+| `mostraRetroFrecciaDiscendente` | Plain green descending line with a small terminal dot, without the former gate |
 | `mostraFrecciaMC` | Thin violet axis ending in a small two-stroke open arrow |
 | `mostraRetroFrecciaIC` | Plain lavender line with a visibly enlarged terminal point |
-| `mostraGradiAssi` | ASC: compact degree + two arcsecond digits on its arrow shaft; MC: full zodiacal DMS to the left of its arrow, both upright sans-serif |
-| `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour beside ASC, if source data exists (no “Ora” caption) |
+| `mostraGradiAssi` | ASC: compact degree + two arcsecond digits centred over the free arrow shaft between the outer zodiac rim and the start of its arrowhead; MC: full zodiacal DMS to the left of its arrow, both upright sans-serif |
+| `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour directly **above the ASC degree**, centred on the same shaft, if source data exists (no “Ora” caption) |
 | `mostraDirezioneMotoMC` | Filled lilac triangle with its base on the MC shaft halfway along the external arrow; points left or right according to signed `mcSpeed` |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 

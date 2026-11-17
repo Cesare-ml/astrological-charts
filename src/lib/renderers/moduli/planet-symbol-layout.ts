@@ -23,6 +23,8 @@ export interface BoundedSymbolOptions {
   fixedTwoLanes?: boolean;
   /** Inward radial offset of the degree annotation from its planet. */
   labelRadialOffset?: number;
+  /** Enlargement reserved for genuinely isolated bodies, not conjunctions. */
+  isolatedScale?: number;
 }
 
 interface Body {
@@ -78,19 +80,23 @@ function layoutTwoFixedLanes(
   const labelHeight = options.labelHeight ?? 0.075;
   const radialOffset = options.labelRadialOffset ?? 0.15;
   const tangentOffset = options.labelTangentOffset ?? 0;
-  const outerLane = outerRadius - symbolWidth / 2 - 0.01;
+  const isolatedScale = Math.max(1, options.isolatedScale ?? 1);
+  // Keep one primary orbit for every glyph, including enlarged isolated
+  // planets: their larger footprint must still fit inside the planet band.
+  const outerLane = outerRadius - symbolWidth * isolatedScale / 2 - 0.01;
   const innerLane = innerRadius + (showDegrees ? radialOffset + labelWidth / 2 : symbolWidth / 2) + 0.01;
   if (innerLane >= outerLane - symbolWidth - 0.015) return undefined;
 
   function boxes(position: SymbolPosition) {
+    const scale = position.scale ?? 1;
     const theta = (chartRotation + position.displayDegree) * Math.PI / 180;
     const x = -Math.sin(theta) * position.radius;
     const y = Math.cos(theta) * position.radius;
-    const objects = [{x, y, w: symbolWidth, h: symbolHeight}];
+    const objects = [{x, y, w: symbolWidth * scale, h: symbolHeight * scale}];
     if (showDegrees) objects.push({
-      x: x + Math.sin(theta) * radialOffset - Math.cos(theta) * tangentOffset,
-      y: y - Math.cos(theta) * radialOffset - Math.sin(theta) * tangentOffset,
-      w: labelWidth, h: labelHeight,
+      x: x + Math.sin(theta) * radialOffset * scale - Math.cos(theta) * tangentOffset * scale,
+      y: y - Math.cos(theta) * radialOffset * scale - Math.sin(theta) * tangentOffset * scale,
+      w: labelWidth * scale, h: labelHeight * scale,
     });
     return objects;
   }
@@ -127,6 +133,9 @@ function layoutTwoFixedLanes(
   if (deltas.every(delta => Math.abs(delta) < driftLimit - 1e-8)) deltas.push(-driftLimit, driftLimit);
 
   for (const group of groups) {
+    // Every truly solitary body is larger. Neighbours in a conjunction keep
+    // the compact uniform footprint, whether they occupy one or two lanes.
+    const groupScale = group.length === 1 ? isolatedScale : 1;
     const fixed = Object.values(placed);
     const center = (group[0].unwrapped + group[group.length - 1].unwrapped) / 2;
     const centerFirst = [...group].sort((a, b) =>
@@ -144,7 +153,7 @@ function layoutTwoFixedLanes(
           if (++explored > maxSearchNodes) return false;
           const body = order[i];
           for (const delta of deltas) for (const radius of radii) {
-            const candidate = {displayDegree: normalizeDegree(body.degree + delta), radius};
+            const candidate = {displayDegree: normalizeDegree(body.degree + delta), radius, scale: groupScale};
             if (fixed.some(other => collides(candidate, other)) ||
                 Object.values(chosen).some(other => collides(candidate, other))) continue;
             chosen[body.key] = candidate;

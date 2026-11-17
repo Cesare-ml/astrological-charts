@@ -115,10 +115,15 @@ export class MarcatoriAssiRender {
       group.add(pointer);
     };
 
-    // The descending axis is a plain, uncapped line in the reference.
+    // The descending axis has the same visible terminal dot as the IC.
     const makeDsLine = () => {
-      const line = addStem('DS', dsAngle, zodiacRadius + 0.38, AXIS_PALETTE.ds);
-      line.userData.axisMarker = 'DS';
+      const tip = pointOnRing(dsAngle, zodiacRadius + 0.38);
+      addStem('DS', dsAngle, zodiacRadius + 0.38, AXIS_PALETTE.ds);
+      const dot = new THREE.Points(new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(tip.x, tip.y, 0.024),
+      ]), new THREE.PointsMaterial({ color: AXIS_PALETTE.ds, size: 6, sizeAttenuation: false }));
+      dot.userData.axisMarker = 'DS';
+      group.add(dot);
     };
 
     // MC repeats the same simple arrow vocabulary as ASC.
@@ -148,8 +153,9 @@ export class MarcatoriAssiRender {
 
     if (opzioni.mostraGradiAssi !== false) {
       for (const [key, longitude, angle, color, radialOffset, tangentOffset] of [
-        // ASC: the degree sits directly over the horizontal arrow shaft.
-        ['ASC', asc, ascAngle, AXIS_PALETTE.asc, 0.25, -0.045],
+        // Centre the degree between the zodiac's outer edge and the base of
+        // the arrowhead, slightly above the shaft (clear of the line).
+        ['ASC', asc, ascAngle, AXIS_PALETTE.asc, 0.1875, -0.035],
         // MC: the degree is beside the *left* of the rising MC arrow.
         ['MC', mc, mcAngle, AXIS_PALETTE.mc, 0.36, 0.315],
       ] as const) {
@@ -167,8 +173,10 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraOraPlanetariaAscendente !== false) {
       const name = planetaryHourAt(temaRender?.orePlanetarie);
       if (name) {
-        const position = pointOnRing(ascAngle, zodiacRadius + 0.25)
-          .add(pointOnRing(ascAngle + 90, 0.27));
+        // Share the degree's radial midpoint so both are centred over the
+        // arrow shaft. Stack the planetary ruler *above* the ASC degree.
+        const position = pointOnRing(ascAngle, zodiacRadius + 0.1875)
+          .add(pointOnRing(ascAngle + 90, -0.18));
         // Use the owner's real, skin-tinted chart asset. Unicode planet
         // characters vary by font and don't match the chart's glyph family.
         const glyph = await OggettiSempliciRender.getImg(
