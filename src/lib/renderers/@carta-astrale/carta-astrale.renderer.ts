@@ -8,6 +8,7 @@ import { SkinManager } from '../@skin-manager';
 import { SinastriaRender } from '../moduli/sinastria.renderer';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
 import { stopSceneAnimations } from '../scene-animations';
+import { MarcatoriAssiRender } from '../moduli/marcatori-assi.renderer';
 
 // ---------------------------
 // Stato globale per tutti i renderer
@@ -154,7 +155,8 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
         diametroAnelloTransiti: 146.64 / 120,
         diametroAssi: 138 / 120,
         diametroGrigliaTransiti: 120/120, //122.56 / 120,
-        diametroAnelloElementiCelesti: 95.82 / 120,
+        // Extra room for two glyph lanes and a separate inner degree band.
+        diametroAnelloElementiCelesti: 103 / 120,
         diametroCerchioDodecatemori: 91.66 / 120,
         diametroCerchioDodecatemori2: 87.5 / 120,
         diametroInternoMiniArcoCase: 75.1 / 120,
@@ -389,6 +391,16 @@ async function creaAspetti(stato: StatoCartaAstrale) {
     return group;
 }
 
+async function creaMarcatoriAssi(stato: StatoCartaAstrale) {
+    const caseTema = stato.temaRender?.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
+    if (!caseTema || !Number.isFinite(caseTema.ascendant) ||
+        !Number.isFinite(caseTema.mc) || stato.opzioni.mostraEffemeridi) return null;
+    return MarcatoriAssiRender.creaMarcatori(
+        stato.asc, stato.mc, stato.diametri.diametroAnelloSegni / 2,
+        stato.opzioni, stato.temaRender,
+    );
+}
+
 
 
 async function creaTransiti(stato: StatoCartaAstrale) {
@@ -469,6 +481,7 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
         creaElementiCelesti,
         creaCase,
         creaAspetti,
+        creaMarcatoriAssi,
         creaSinastria
         // puoi aggiungere altre funzioni come direzioni, lunazioni, ecc.
     ];

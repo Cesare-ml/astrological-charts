@@ -24,6 +24,12 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
           <option *ngFor="let item of skins" [value]="item" [selected]="item === skin">{{item}}</option>
         </select>
         <label class="check-setting" for="show-degrees"><input id="show-degrees" type="checkbox" [checked]="showDegrees" [disabled]="busy" (change)="changeDegrees($event)"> Show celestial degrees</label>
+        <h2>Axis annotations</h2>
+        <label class="check-setting" *ngFor="let item of axisSettings" [for]="item.key">
+          <input [id]="item.key" type="checkbox" [checked]="axisOptions[item.key]" [disabled]="busy" (change)="changeAxisOption(item.key,$event)"> {{item.label}}
+        </label>
+        <label for="house-size">House numeral size: {{houseSize.toFixed(2)}}×</label>
+        <input id="house-size" type="range" min="0.8" max="1.7" step="0.05" [value]="houseSize" [disabled]="busy" (input)="changeHouseSize($event)">
         <label class="check-setting" for="dense"><input id="dense" type="checkbox" [checked]="dense" [disabled]="busy" (change)="changeDense($event)"> Conjunction stress-test (synthetic)</label>
         <div class="buttons"><button (click)="zoom(-1)" [disabled]="busy" aria-label="Zoom out">−</button>
           <button (click)="zoom(1)" [disabled]="busy" aria-label="Zoom in">+</button>
@@ -48,6 +54,17 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   mode: Mode = 'natal';
   skin = 'light';
   showDegrees = true;
+  readonly axisSettings = [
+    {key: 'mostraFrecciaAscendente', label: 'ASC · orange arrow'},
+    {key: 'mostraRetroFrecciaDiscendente', label: 'DS · green tail'},
+    {key: 'mostraFrecciaMC', label: 'MC · violet arrow'},
+    {key: 'mostraRetroFrecciaIC', label: 'IC · lavender tail'},
+    {key: 'mostraGradiAssi', label: 'ASC & MC · degrees / minutes / seconds'},
+    {key: 'mostraOraPlanetariaAscendente', label: 'Planetary hour by ASC'},
+    {key: 'mostraDirezioneMotoMC', label: 'MC movement indicator'},
+  ];
+  axisOptions: Record<string, boolean> = Object.fromEntries(this.axisSettings.map(item => [item.key, true]));
+  houseSize = 1.25;
   dense = false;
   busy = false;
   status = 'Preparing renderer…';
@@ -69,6 +86,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.draw(); }
   changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.draw(); }
   changeDegrees(event: Event): void { this.showDegrees = (event.target as HTMLInputElement).checked; void this.draw(); }
+  changeAxisOption(key: string, event: Event): void { this.axisOptions[key] = (event.target as HTMLInputElement).checked; void this.draw(); }
+  changeHouseSize(event: Event): void { this.houseSize = Number((event.target as HTMLInputElement).value); void this.draw(); }
   changeDense(event: Event): void { this.dense = (event.target as HTMLInputElement).checked; void this.draw(); }
   changeBase(event: Event): void {
     try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.draw(); }
@@ -82,6 +101,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     opts.mostraTransiti = this.mode === 'transits';
     opts.mostraSinastria = this.mode === 'synastry';
     opts.mostraGradiElementiCelesti = this.showDegrees;
+    Object.assign(opts, this.axisOptions);
+    opts.dimensioneNumeriCase = this.houseSize;
     for (const body of demoBodies) { opts.settaggi.elementi_celesti[body].att = true; opts.settaggi.elementi_celesti[body].aspVerso = true; }
     return opts;
   }

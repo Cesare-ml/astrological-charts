@@ -50,7 +50,7 @@ function overlapArea(a, b) {
   return Math.max(0, width) * Math.max(0, height);
 }
 
-async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1) {
+async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1, outerRingRadius = outerRadius) {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -104,7 +104,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1) {
     };
     const initial = structuredClone(theme);
     const group = await ElementiCelestiRender.getAnelloElementiCelesti(
-      theme, 0, [], symbolScale, options, [], [], innerRadius * 2, outerRadius * 2,
+      theme, 0, [], symbolScale, options, [], [], innerRadius * 2, outerRingRadius * 2,
       innerRadius * 2, true, false,
     );
     assert.deepEqual(theme, initial, 'renderer must not mutate original positions');
@@ -178,6 +178,39 @@ test('no celestial glyph or degree badge covers a neighbouring glyph or badge in
       if (a.owner === b.owner) continue;
       assert.ok(overlapArea(a.box, b.box) < 0.00001,
         `scale ${symbolScale}, offset ${offset}: ${a.owner} ${a.name} overlaps ${b.owner} ${b.name} by ${overlapArea(a.box, b.box).toFixed(5)}`);
+    }
+  }
+});
+
+test('wider natal planet ring keeps the degrees in a separate strip toward houses', async () => {
+  const natalOuterRadius = 4.5723 * 103 / 120 / 2;
+  const scene = await makeScene(true, 0, 1, natalOuterRadius);
+  const glyphs = scene.group.children.filter(child => child.userData.ref);
+  const badges = scene.group.children.filter(child => child.material?.map?.isCanvasTexture);
+  assert.equal(glyphs.length, badges.length);
+  for (const label of badges) {
+    const radius = Math.hypot(label.position.x, label.position.y);
+    assert.ok(radius > innerRadius + 0.03 && radius < innerRadius + 0.10,
+      'label must be on the inner band, immediately outside the house ring');
+  }
+  for (const glyph of glyphs) {
+    const radius = Math.hypot(glyph.position.x, glyph.position.y);
+    assert.ok(radius > innerRadius + 0.15 && radius < natalOuterRadius,
+      'glyph must occupy a separate radial orbit outside the degree band');
+  }
+
+  for (const offset of [0, 27, 91, 135, 198, 276, 331]) {
+    const { group } = await makeScene(true, offset, 1, natalOuterRadius);
+    let owner = '';
+    const objects = [];
+    for (const child of group.children) {
+      if (child.userData.ref) { owner = child.userData.ref; objects.push({owner, box: visibleRectangle(child)}); }
+      else if (child.material?.map?.isCanvasTexture) objects.push({owner, box: visibleRectangle(child)});
+    }
+    for (let i = 0; i < objects.length; i++) for (let j = i + 1; j < objects.length; j++) {
+      if (objects[i].owner === objects[j].owner) continue;
+      assert.ok(overlapArea(objects[i].box, objects[j].box) < 0.00001,
+        `wider natal layout must not overlap, offset ${offset}, ${objects[i].owner} ${JSON.stringify(objects[i].box)} vs ${objects[j].owner} ${JSON.stringify(objects[j].box)}, ${overlapArea(objects[i].box, objects[j].box)}`);
     }
   }
 });

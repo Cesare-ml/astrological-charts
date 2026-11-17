@@ -94,11 +94,24 @@ export class ElementiCelestiRender {
 
     var raggioEclittica = (raggioConfineAnelloPianeti - diametroCerchioInterno/2)/2 + diametroCerchioInterno/2;
     const mostraGradi = opzioni.mostraGradiElementiCelesti !== false;
+    const innerRingRadius = diametroCerchioInterno / 2;
+    // Transit/synastry rings may be considerably thinner. Preserve their
+    // compact tangential labels instead of squeezing symbols past the rim.
+    const useDegreeStrip = raggioConfineAnelloPianeti - innerRingRadius >= 0.45;
     const elementiCelestiRenderPos = this.getRenderPosPianeti(
       elementiCelesti, parametroDiRender,
-      diametroCerchioInterno / 2, raggioConfineAnelloPianeti,
-      simboliScale, mostraGradi, 90 - ascendente + degOffs,
+      innerRingRadius + (useDegreeStrip ? 0.15 * simboliScale : 0), raggioConfineAnelloPianeti,
+      simboliScale, mostraGradi && !useDegreeStrip, 90 - ascendente + degOffs,
     );
+    // Badges have their own collision layout on a narrow orbit next to the
+    // house ring; they never take space beside or over the planetary glyphs.
+    const badgeRadius = innerRingRadius + 0.045 * simboliScale;
+    const badgeLongitudes = Object.fromEntries(Object.entries(elementiCelesti)
+      .map(([name, body]) => [name, body[parametroDiRender]]));
+    const badgePositions = mostraGradi && useDegreeStrip ? layoutPlanetSymbols(
+      badgeLongitudes, badgeRadius, badgeRadius,
+      0.12 * simboliScale, 0.06 * simboliScale, false, 90 - ascendente + degOffs,
+    ) : {};
 
     //parti arabe render freccia+elemento in evidenza
     var partiArabeNomePianetaHighlight = undefined;
@@ -269,15 +282,18 @@ export class ElementiCelestiRender {
       group.add( el );
       if (mostraGradi) {
         const label = this.makeDegreeLabel(trueDegree, coloreSimboli, simboliScale);
-        // Offset tangentially, not radially: both inner- and outer-lane badges
-        // remain within the narrow planet ring, even near the left/right axes.
-        const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);
-        const labelOffset = 0.17 * simboliScale;
-        label.position.set(
-          glyphPosition.x - Math.cos(tangentAngle) * labelOffset,
-          glyphPosition.y - Math.sin(tangentAngle) * labelOffset,
-          0.002,
-        );
+        if (useDegreeStrip) {
+          const badgeDegree = 90 - ascendente + badgePositions[nome].displayDegree + degOffs;
+          const badgePosition = this.pointOnRing(badgeDegree, badgeRadius);
+          label.position.set(badgePosition.x, badgePosition.y, 0.002);
+        } else {
+          const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);
+          const labelOffset = 0.17 * simboliScale;
+          label.position.set(
+            glyphPosition.x - Math.cos(tangentAngle) * labelOffset,
+            glyphPosition.y - Math.sin(tangentAngle) * labelOffset, 0.002,
+          );
+        }
         label.material.opacity = el.material.opacity;
         group.add(label);
       }

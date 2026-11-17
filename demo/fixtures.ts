@@ -13,13 +13,25 @@ export function makeDemoTheme(offset: number): TemaRender {
     latitudeSpeed: i % 2 ? -0.02 : 0.03,
     equatoriale: { declination: -12 + i * 2.4 },
   }]));
+  const dayHours = Array.from({length: 12}, (_, i) => ({
+    dataora: `2000-01-01 ${String(i + 6).padStart(2, '0')}:00:00`,
+    pianeta: ['Saturn', 'Jupiter', 'Mars', 'Sun', 'Venus', 'Mercury', 'Moon'][i % 7],
+  }));
+  const nightHours = Array.from({length: 12}, (_, i) => ({
+    dataora: `2000-01-${i < 6 ? '01' : '02'} ${String((i + 18) % 24).padStart(2, '0')}:00:00`,
+    pianeta: ['Venus', 'Mercury', 'Moon', 'Saturn', 'Jupiter', 'Mars', 'Sun'][i % 7],
+  }));
   return {
     dataora: '2000-01-01T12:00:00Z', as: ascendant, ds: (ascendant + 180) % 360,
     mc, ic: (mc + 180) % 360, planets,
-    houses: { egizia: { ascendant, mc, vertex: (ascendant + 140) % 360,
+    houses: { egizia: { ascendant, mc, mcSpeed: 1, vertex: (ascendant + 140) % 360,
       house: Array.from({ length: 12 }, (_, i) => (ascendant + i * 30) % 360) } },
     australInversion: false, fasiSinodiche: {}, fasiSinodicheLatitudinali: {},
-    lunazioniErmetiche: {}, astrologiaOraria: {}, orePlanetarie: {}, partiArabe: {},
+    lunazioniErmetiche: {}, astrologiaOraria: {}, orePlanetarie: {
+      dataora: '2000-01-01 12:00:00', alba: '2000-01-01 06:00:00',
+      tramonto: '2000-01-01 18:00:00', albaSucc: '2000-01-02 06:00:00',
+      dh: {diurne: dayHours, notturne: nightHours},
+    }, partiArabe: {},
   };
 }
 

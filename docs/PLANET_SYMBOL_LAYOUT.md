@@ -13,6 +13,13 @@ crowded up at 0°/360°. The new `planet-symbol-layout.ts`:
 5. anchors every thin connector to the **original longitude** at the ring boundary, rather than to the displaced glyph;
 6. keeps the symbol and small degree label horizontal even where the radial connector bends.
 
+The natal chart's planet ring has more space (`103/120` of the zodiac outer diameter).
+When its radial width is at least `0.45` world units, glyphs occupy the outer
+two-lane area, while degree badges get their **own collision-spread orbit next
+to the house ring**, between the glyphs and house numerals. Thinner transit and
+synastry bands retain the preceding tangential badge layout. This avoids
+incorrectly moving glyphs outside a narrow band.
+
 The on-screen glyph *can* move to improve readability. The underlying `TemaRender`
 planet longitudes, cusp positions, aspect calculations and other chart math are
 unchanged. The badge reports the original degree within the zodiac sign,
@@ -21,7 +28,7 @@ unchanged. The badge reports the original degree within the zodiac sign,
 ## Public option
 
 `OpzioniGrafico.mostraGradiElementiCelesti?: boolean` controls degree labels
-beside each celestial glyph. It is `true` in `defaultOpzioniGrafico`, and
+for each celestial glyph. It is `true` in `defaultOpzioniGrafico`, and
 omitting the property also enables it for older callers. Set it to `false`
 to hide the labels and permit slightly tighter angular spacing. This affects
 radix, transit and synastry symbol rings, not latitude markers or astrological
@@ -34,8 +41,45 @@ const options = structuredClone(defaultOpzioniGrafico);
 options.mostraGradiElementiCelesti = false;
 ```
 
-The Angular demo exposes a **Show celestial degrees** checkbox and a
-**Conjunction stress-test (synthetic)** checkbox. Its stress fixture uses only
+### Natal axis annotations
+
+Each of the following optional `OpzioniGrafico` flags defaults to `true`;
+legacy callers omitting them also see the requested markers:
+
+| Option | Effect |
+| --- | --- |
+| `mostraFrecciaAscendente` | Orange, outward-pointing ASC marker |
+| `mostraRetroFrecciaDiscendente` | Green ring/tail on DS |
+| `mostraFrecciaMC` | Violet, outward-pointing MC marker |
+| `mostraRetroFrecciaIC` | Lavender ring/tail on IC |
+| `mostraGradiAssi` | Zodiacal degree/minute/second captions at ASC and MC |
+| `mostraOraPlanetariaAscendente` | Ruler of the planetary hour beside ASC, if source data exists |
+| `mostraDirezioneMotoMC` | Small golden direction tip within the MC arrow |
+| `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
+
+Axis positions always use the house system selected in `settaggi.domificazione_selezionata`;
+the layout does not change actual ecliptic longitude. Degree captions show
+*degree within the current sign*, with minutes and seconds rounded correctly.
+The planetary-hour label consumes the **computed** `TemaRender.orePlanetarie`
+object already returned by the VirgoStars backend (`dataora`, `alba`,
+`tramonto`, `albaSucc`, `dh.diurne[]`, `dh.notturne[]`, each entry containing
+`dataora` and `pianeta`). If missing or inconsistent, it omits the label;
+it never invents the ruler.
+
+The MC movement indicator points toward increasing ecliptic longitude for an
+ordinary instant in the sky. To override it for a chart calculated through
+directions/progressions, supply a signed `mcSpeed` under
+`TemaRender.houses[selectedHouseSystem]` (or `TemaRender.mcSpeed`). A negative
+value reverses the small arrow; zero or nonfinite data hides it. Its option
+can independently hide the tip without hiding the MC arrow.
+
+The service adjusts the interactive **and PNG-export cameras** to fit these
+external annotations. All artwork is native Three.js geometry or disposable
+canvas-textured text, with no extra asset files or remote fetches.
+
+The Angular demo exposes **Show celestial degrees**, per-axis controls,
+the house numeral scale, and a **Conjunction stress-test (synthetic)** checkbox.
+Its stress fixture uses only
 illustrative positions around 359°/0° and no user's birth data.
 
 ## Verification / integration gate
@@ -44,6 +88,9 @@ illustrative positions around 359°/0° and no user's birth data.
   collision algorithm and a Three.js scene assembled without WebGL using
   synthetic symbol meshes. It checks true-longitude anchors, glyph ring bounds,
   badge placement, original input immutability and default/disabled degree labels.
+  Additional headless tests verify the wide band, axis geometry, independent
+  toggles, degree/minute/second boundaries, real interval selection for planetary
+  hours and signed MC motion.
   Collision checks include 25 chart rotations at two glyph scales and 30 mixed
   synthetic 18-body configurations; they are still not a pixel-render baseline.
 - Library/demo build: `npm run verify:angular` on a clean install.
@@ -58,3 +105,8 @@ illustrative positions around 359°/0° and no user's birth data.
   native mobile PNG and Astrolabio still requires its own visual validation
   against approved artwork and headless/e-ink devices; this PR does not ship
   those consumers or alter the live website.
+- A real reference birth chart must be loaded in the **host application** using
+  its own ephemeris, coordinates and time-zone conversion. The synthetic demo
+  cannot calculate positions from date/place fields, and real birth details
+  must not be committed to this public repository. The manual host verification
+  therefore remains separate from the WebGL-free geometry tests.

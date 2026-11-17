@@ -90,6 +90,18 @@ export class GraficoRenderService implements OnDestroy {
 
   public constructor() {}
 
+  private chartCameraDistance(grafico: string, temaRender: TemaRender, opzioni: any): number {
+    if (grafico === 'latitudini' || !temaRender?.houses ||
+      !Object.keys(temaRender.houses).length || opzioni?.mostraEffemeridi) return 2.98;
+    const markers = [
+      'mostraFrecciaAscendente', 'mostraRetroFrecciaDiscendente',
+      'mostraFrecciaMC', 'mostraRetroFrecciaIC',
+      'mostraGradiAssi', 'mostraOraPlanetariaAscendente',
+    ];
+    // Keep the arrowheads and their degree/hour captions within the viewport.
+    return markers.some(option => opzioni?.[option] !== false) ? 3.98 : 2.98;
+  }
+
   // ### ZOOM ###
   public setZoom(zoom: number): void {
     this.zoomValue = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
@@ -275,7 +287,11 @@ export class GraficoRenderService implements OnDestroy {
       this.scene.clear();
       const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
       this.scene.background = new THREE.Color(bgColor);
-      if (this.camera) this.scene.add(this.camera);
+      if (this.camera) {
+        this.camera.position.z = this.chartCameraDistance(grafico, temaRender, opzioni);
+        this.camera.updateProjectionMatrix();
+        this.scene.add(this.camera);
+      }
       if (disegno) this.scene.add(disegno);
       this.render();
     });
@@ -325,7 +341,7 @@ export class GraficoRenderService implements OnDestroy {
       offRenderer.setPixelRatio(scala);
       offRenderer.setSize(dimensioni.x, dimensioni.y, false);
       const camera = new THREE.PerspectiveCamera(75, dimensioni.x / dimensioni.y, 0.1, 1000);
-      camera.position.z = 3;
+      camera.position.z = this.chartCameraDistance(grafico, temaRender, opzioni);
       const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
       scene.background = new THREE.Color(bgColor);
       scene.add(camera);
