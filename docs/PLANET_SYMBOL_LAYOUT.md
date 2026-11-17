@@ -9,8 +9,9 @@ crowded up at 0°/360°. The new `planet-symbol-layout.ts`:
 1. unwraps zodiac positions at their largest empty arc (so 359° and 0° are neighbours);
 2. uses two radial lanes when the available ring width allows it, with a single-lane fallback for narrow charts;
 3. spreads glyphs within each lane by minimum-squared angular displacement, based on the actual glyph/label footprint;
-4. anchors every thin connector to the **original longitude** at the ring boundary, rather than to the displaced glyph;
-5. keeps the symbol and small degree label horizontal even where the radial connector bends.
+4. resolves remaining two-dimensional bounding-box collisions after chart rotation, including collisions between a glyph and another body's degree badge;
+5. anchors every thin connector to the **original longitude** at the ring boundary, rather than to the displaced glyph;
+6. keeps the symbol and small degree label horizontal even where the radial connector bends.
 
 The on-screen glyph *can* move to improve readability. The underlying `TemaRender`
 planet longitudes, cusp positions, aspect calculations and other chart math are
@@ -43,6 +44,8 @@ illustrative positions around 359°/0° and no user's birth data.
   collision algorithm and a Three.js scene assembled without WebGL using
   synthetic symbol meshes. It checks true-longitude anchors, glyph ring bounds,
   badge placement, original input immutability and default/disabled degree labels.
+  Collision checks include 25 chart rotations at two glyph scales and 30 mixed
+  synthetic 18-body configurations; they are still not a pixel-render baseline.
 - Library/demo build: `npm run verify:angular` on a clean install.
 - Visual smoke: with the generated local demo pack and both servers running,
   `npm run test:demo` in Chromium and Firefox; inspect

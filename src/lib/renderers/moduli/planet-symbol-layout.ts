@@ -56,6 +56,7 @@ export function layoutPlanetSymbols(
   symbolWidth: number,
   symbolHeight: number,
   showDegrees: boolean,
+  chartRotation = 0,
 ): Record<string, SymbolPosition> {
   const bodies: Body[] = Object.entries(longitudes)
     .filter(([, longitude]) => Number.isFinite(longitude))
@@ -122,5 +123,49 @@ export function layoutPlanetSymbols(
       }
     });
   }
+
+  // Radial separation alone is insufficient around the diagonal quadrants:
+  // horizontal glyphs in different lanes may still overlap in screen X/Y.
+  // Resolve the remaining real bounding-box collisions with small, symmetric
+  // angular nudges. The rotation is the same one used by the Three.js scene.
+  function rectangles(body: SymbolPosition) {
+    const radians = (chartRotation + body.displayDegree) * Math.PI / 180;
+    const x = -Math.sin(radians) * body.radius;
+    const y = Math.cos(radians) * body.radius;
+    const output = [{ x, y, width: symbolWidth, height: symbolHeight }];
+    if (showDegrees) {
+      const offset = symbolWidth * (0.17 / 0.22);
+      output.push({
+        x: x - Math.cos(radians) * offset,
+        y: y - Math.sin(radians) * offset,
+        width: symbolWidth * (0.12 / 0.22),
+        height: symbolWidth * (0.06 / 0.22),
+      });
+    }
+    return output;
+  }
+  function collides(first: SymbolPosition, second: SymbolPosition): boolean {
+    for (const a of rectangles(first)) for (const b of rectangles(second)) {
+      const dx = (a.width + b.width) / 2 - Math.abs(a.x - b.x);
+      const dy = (a.height + b.height) / 2 - Math.abs(a.y - b.y);
+      if (dx > 0 && dy > 0) return true;
+    }
+    return false;
+  }
+  const keys = circular.map(body => body.key);
+  for (let iteration = 0; iteration < 400; iteration++) {
+    let adjusted = false;
+    for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
+      const a = result[keys[i]], b = result[keys[j]];
+      if (!collides(a, b)) continue;
+      const separation = ((b.displayDegree - a.displayDegree + 540) % 360) - 180;
+      const direction = separation < 0 ? -1 : 1;
+      a.displayDegree -= 0.35 * direction;
+      b.displayDegree += 0.35 * direction;
+      adjusted = true;
+    }
+    if (!adjusted) break;
+  }
+  for (const key of keys) result[key].displayDegree = normalizeDegree(result[key].displayDegree);
   return result;
 }

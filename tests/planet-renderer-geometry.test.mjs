@@ -34,7 +34,23 @@ function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-async function makeScene(showDegrees) {
+function visibleRectangle(mesh) {
+  const { width, height } = mesh.geometry.parameters;
+  return {
+    x: mesh.position.x,
+    y: mesh.position.y,
+    width: width * mesh.scale.x,
+    height: height * mesh.scale.y,
+  };
+}
+
+function overlapArea(a, b) {
+  const width = (a.width + b.width) / 2 - Math.abs(a.x - b.x);
+  const height = (a.height + b.height) / 2 - Math.abs(a.y - b.y);
+  return Math.max(0, width) * Math.max(0, height);
+}
+
+async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1) {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -83,12 +99,12 @@ async function makeScene(showDegrees) {
     const theme = {
       planets: Object.fromEntries(
         Object.entries(planetLongitudes).map(([name, longitude]) =>
-          [name, { longitude, longitudeSpeed: 0 }]),
+          [name, { longitude: (longitude + longitudeOffset) % 360, longitudeSpeed: 0 }]),
       ),
     };
     const initial = structuredClone(theme);
     const group = await ElementiCelestiRender.getAnelloElementiCelesti(
-      theme, 0, [], 1, options, [], [], innerRadius * 2, outerRadius * 2,
+      theme, 0, [], symbolScale, options, [], [], innerRadius * 2, outerRadius * 2,
       innerRadius * 2, true, false,
     );
     assert.deepEqual(theme, initial, 'renderer must not mutate original positions');
@@ -141,4 +157,27 @@ test('the degree display is optional and defaults to on for legacy callers', asy
   assert.equal(degreeMeshes(hidden).length, 0);
   assert.equal(degreeMeshes(omitted).length, Object.keys(planetLongitudes).length);
   assert.deepEqual(hidden.labels, []);
+});
+
+test('no celestial glyph or degree badge covers a neighbouring glyph or badge in a tight conjunction', async () => {
+  const orientations = [...Array.from({ length: 24 }, (_, i) => i * 15), 12];
+  for (const symbolScale of [1, 0.8]) for (const offset of orientations) {
+    const { group } = await makeScene(true, offset, symbolScale);
+    let owner = '';
+    const objects = [];
+    for (const child of group.children) {
+      if (child.userData.ref) {
+        owner = child.userData.ref;
+        objects.push({ owner, name: 'glyph', box: visibleRectangle(child) });
+      } else if (child.material?.map?.isCanvasTexture) {
+        objects.push({ owner, name: 'degree', box: visibleRectangle(child) });
+      }
+    }
+    for (let i = 0; i < objects.length; i++) for (let j = i + 1; j < objects.length; j++) {
+      const a = objects[i], b = objects[j];
+      if (a.owner === b.owner) continue;
+      assert.ok(overlapArea(a.box, b.box) < 0.00001,
+        `scale ${symbolScale}, offset ${offset}: ${a.owner} ${a.name} overlaps ${b.owner} ${b.name} by ${overlapArea(a.box, b.box).toFixed(5)}`);
+    }
+  }
 });

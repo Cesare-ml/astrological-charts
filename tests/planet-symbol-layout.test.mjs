@@ -67,3 +67,32 @@ test('omitting labels permits more compact angular spacing', () => {
   const maxDrift = positions => Math.max(...Object.values(positions).map(p => angularDistance(p.displayDegree, 20)));
   assert.ok(maxDrift(withoutLabels) < maxDrift(withLabels));
 });
+
+test('mixed planetary distributions remain collision-free across deterministic chart rotations', () => {
+  for (let seed = 1; seed <= 30; seed++) {
+    const source = Object.fromEntries(Array.from({ length: 18 }, (_, i) => [
+      `body${i}`,
+      (i < 7 ? seed * 11 + i * 1.3 : seed * 11 + i * 137.5) % 360,
+    ]));
+    const chartRotation = seed * 19;
+    const positions = layoutPlanetSymbols(source, inner, outer, width, height, true, chartRotation);
+    const rectangles = Object.entries(positions).flatMap(([name, placement]) => {
+      const theta = (chartRotation + placement.displayDegree) * Math.PI / 180;
+      const x = -Math.sin(theta) * placement.radius;
+      const y = Math.cos(theta) * placement.radius;
+      return [
+        { name, x, y, w: width, h: height },
+        { name, x: x - Math.cos(theta) * 0.17, y: y - Math.sin(theta) * 0.17,
+          w: 0.12, h: 0.06 },
+      ];
+    });
+    for (let i = 0; i < rectangles.length; i++) for (let j = i + 1; j < rectangles.length; j++) {
+      const a = rectangles[i], b = rectangles[j];
+      if (a.name === b.name) continue;
+      const overlapX = (a.w + b.w) / 2 - Math.abs(a.x - b.x);
+      const overlapY = (a.h + b.h) / 2 - Math.abs(a.y - b.y);
+      assert.ok(overlapX <= 0 || overlapY <= 0,
+        `seed ${seed}: ${a.name}/${b.name} overlap`);
+    }
+  }
+});

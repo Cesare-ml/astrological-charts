@@ -97,7 +97,7 @@ export class ElementiCelestiRender {
     const elementiCelestiRenderPos = this.getRenderPosPianeti(
       elementiCelesti, parametroDiRender,
       diametroCerchioInterno / 2, raggioConfineAnelloPianeti,
-      simboliScale, mostraGradi,
+      simboliScale, mostraGradi, 90 - ascendente + degOffs,
     );
 
     //parti arabe render freccia+elemento in evidenza
@@ -369,13 +369,13 @@ export class ElementiCelestiRender {
   public static getRenderPosPianeti(
     elementiCelesti, parametroDiRender,
     raggioInterno = 1.4, raggioEsterno = 1.8,
-    simboliScale = 1, mostraGradi = true,
+    simboliScale = 1, mostraGradi = true, chartRotation = 0,
   ) {
     const longitudes: Record<string, number> = {};
     for (const nome in elementiCelesti) longitudes[nome] = elementiCelesti[nome][parametroDiRender];
     const positions = layoutPlanetSymbols(
       longitudes, raggioInterno, raggioEsterno,
-      0.22 * simboliScale, 0.22 * simboliScale * 605 / 875, mostraGradi,
+      0.22 * simboliScale, 0.22 * simboliScale * 605 / 875, mostraGradi, chartRotation,
     );
     const result = {};
     for (const nome in positions) {
