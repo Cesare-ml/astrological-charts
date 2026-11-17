@@ -48,8 +48,9 @@ planet longitudes, cusp positions, aspect calculations and other chart math are
 unchanged. The badge reports the original integer degree within the zodiac sign,
 **not** the glyph angle. Any fractional digits have been removed: for example,
 358°30′44″ is shown simply as **`28°`**. The underlying precise longitude
-remains intact. The ASC retains its compact degree/arcsecond annotation; the
-MC now shows its sign degree **rounded to one decimal place** (e.g. `28,9°`).
+remains intact. Both ASC and MC labels show the true degree and the nearest
+whole arcminute within their signs (e.g. `20° 0′`, or `28° 56′`), with no
+decimal-degree notation or seconds.
 
 ## Public option
 
@@ -75,20 +76,20 @@ legacy callers omitting them also see the requested markers:
 | Option | Effect |
 | --- | --- |
 | `mostraFrecciaAscendente` | Thin orange axis ending in a small two-stroke open arrow |
-| `mostraRetroFrecciaDiscendente` | Plain green descending line with a small terminal dot, without the former gate |
+| `mostraRetroFrecciaDiscendente` | Plain green descending line with a smooth circular terminal disc, without the former gate |
 | `mostraFrecciaMC` | Thin violet axis ending in a small two-stroke open arrow |
-| `mostraRetroFrecciaIC` | Plain lavender line with a visibly enlarged terminal point |
-| `mostraGradiAssi` | ASC: compact degree + two arcsecond digits centred over the free arrow shaft between the outer zodiac rim and the start of its arrowhead; MC: degree + one decimal tenth to the left of its arrow, both upright sans-serif |
+| `mostraRetroFrecciaIC` | Plain lavender line with a smooth circular terminal disc of the same enlarged size as DS |
+| `mostraGradiAssi` | ASC and MC: degree + whole arcminutes (e.g. `20° 0′`), both upright sans-serif; ASC is centred above its free shaft and MC remains left of its arrow |
 | `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour directly **above the ASC degree**, centred on the same shaft, if source data exists (no “Ora” caption) |
 | `mostraDirezioneMotoMC` | Filled lilac triangle with its base on the MC shaft halfway along the external arrow; points left or right according to signed `mcSpeed` |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
 Axis positions always use the house system selected in `settaggi.domificazione_selezionata`;
-the layout does not change actual ecliptic longitude. MC captions show one
-decimal place within the sign (e.g. `20,7°`); the original precision is retained
-in the input data. For the more compact ASC caption, only
-the degree and two arcsecond digits are printed; minutes are intentionally
-omitted visually, but the actual longitude remains unchanged.
+the layout does not change actual ecliptic longitude. The ASC and MC show the
+degree and whole arcminutes within the sign, rounded to the nearest minute;
+the original seconds and fractions are retained in the input data. DS and IC
+now use small `THREE.CircleGeometry` discs rather than square `THREE.Points`,
+with slightly enlarged radius and stable shape at any display resolution.
 The external ASC/DS/MC/IC strokes now terminate at their **true zodiacal
 degree tick**, i.e. the inner radius of the sign ring passed to the marker
 renderer. They never cross the celestial-body band to reach the house circle;

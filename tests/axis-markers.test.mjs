@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 const bundle = await build({
   stdin: {
     contents: [
-      "export { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, formatAxisDegreeTenths, planetaryHourAt } from './src/lib/renderers/moduli/marcatori-assi.renderer';",
+      "export { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, formatAxisDegreeTenths, formatAxisDegreeMinutes, planetaryHourAt } from './src/lib/renderers/moduli/marcatori-assi.renderer';",
       "export { defaultOpzioniGrafico } from './src/lib/models/opzioni-grafico.model';",
       "export { OggettiSempliciRender } from './src/lib/renderers/oggetti-semplici.renderer';",
       "export * as THREE from 'three';",
@@ -14,7 +14,7 @@ const bundle = await build({
   },
   bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022',
 });
-const { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, formatAxisDegreeTenths, planetaryHourAt, defaultOpzioniGrafico, OggettiSempliciRender, THREE } =
+const { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, formatAxisDegreeTenths, formatAxisDegreeMinutes, planetaryHourAt, defaultOpzioniGrafico, OggettiSempliciRender, THREE } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
 const hourly = names => names.map((pianeta, i) => ({
@@ -68,6 +68,11 @@ test('axis longitude labels show degree, minute and second within the actual sig
   assert.equal(formatAxisDegreeTenths(328.94), '28,9°');
   assert.equal(formatAxisDegreeTenths(29.96), '0,0°');
   assert.equal(formatAxisDegreeTenths(-1.24), '28,8°');
+  assert.equal(formatAxisDegreeMinutes(20), '20° 0′');
+  assert.equal(formatAxisDegreeMinutes(20.7), '20° 42′');
+  assert.equal(formatAxisDegreeMinutes(328.94), '28° 56′');
+  assert.equal(formatAxisDegreeMinutes(29.999), '0° 0′');
+  assert.equal(formatAxisDegreeMinutes(-1.24), '28° 46′');
 });
 
 test('planetary hour comes from the matching time interval, not a guessed weekday', () => {
@@ -82,8 +87,8 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   const { group, texts, assets, fonts } = await makeMarkers();
   const ids = group.children.map(child => child.userData.axisMarker).filter(Boolean);
   assert.deepEqual(ids.sort(), ['ASC','DS','MC','IC','MC-motion'].sort());
-  assert.ok(texts.includes('20°00″'));
-  assert.ok(texts.includes('28,9°'));
+  assert.ok(texts.includes('20° 42′'));
+  assert.ok(texts.includes('28° 56′'));
   assert.ok(!texts.includes('Ora'), 'planetary hour must use its glyph alone');
   assert.ok(fonts.every(font => !font.includes('italic')),
     'axis degrees use an upright, non-italic face');
@@ -92,9 +97,11 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   const markers = Object.fromEntries(group.children.filter(child => child.userData.axisMarker)
     .map(child => [child.userData.axisMarker, child]));
   assert.ok(markers.ASC.isLineSegments, 'ASC is a simple two-stroke open arrow');
-  assert.ok(markers.DS.isPoints, 'DS ends in a small filled dot');
+  assert.ok(markers.DS.isMesh && markers.DS.geometry.type === 'CircleGeometry',
+    'DS ends in a properly round disc, not a square point');
   assert.ok(markers.MC.isLineSegments, 'MC is a simple two-stroke open arrow');
-  assert.ok(markers.IC.isPoints, 'IC ends in a quiet point');
+  assert.ok(markers.IC.isMesh && markers.IC.geometry.type === 'CircleGeometry',
+    'IC ends in a properly round disc, not a square point');
   assert.ok(markers['MC-motion'].isMesh, 'MC direction is a filled triangle');
   assert.equal(markers['MC-motion'].material.color.getHexString(), 'b58bd8');
   for (const label of group.children.filter(child => ['ASC','MC'].includes(child.userData.axis))) {
@@ -140,10 +147,17 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
     'planetary hour must sit above the degree, without overlapping it');
   assert.ok(ascDegree.position.y > 0.02 && ascDegree.position.y < 0.05,
     'ASC degree must sit close above its shaft');
-  assert.equal(group.children.find(child => child.userData.axisMarker === 'IC').material.size, 6,
-    'terminal IC dot must be large enough to see');
-  assert.equal(group.children.find(child => child.userData.axisMarker === 'DS').material.size, 6,
-    'DS dot must match the IC dot');
+  for (const axis of ['DS', 'IC']) {
+    const terminal = group.children.find(child => child.userData.axisMarker === axis);
+    assert.equal(terminal.geometry.parameters.radius, 0.033,
+      `${axis} must have the slightly larger circular terminal`);
+    assert.equal(terminal.geometry.parameters.segments, 32,
+      `${axis} must have a smooth rounded edge`);
+    const stem = stems.find(child => child.userData.axisStem === axis);
+    const vertex = stem.geometry.attributes.position.array;
+    assert.ok(Math.hypot(terminal.position.x - vertex[3], terminal.position.y - vertex[4]) < 1e-6,
+      `${axis} disc must be centred exactly on its line endpoint`);
+  }
   const mcAngle = (90 - 20.7 + 298.94) * Math.PI / 180;
   const mcStemX = -Math.sin(mcAngle) * (radius + 0.36);
   assert.ok(mcDegree.position.x < mcStemX - 0.25,

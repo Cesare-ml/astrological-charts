@@ -29,6 +29,12 @@ export function formatAxisDegreeTenths(longitude: number): string {
   return `${Math.floor(tenths / 10)},${tenths % 10}°`;
 }
 
+/** Readable axis caption: sign degrees and whole arcminutes, without padding. */
+export function formatAxisDegreeMinutes(longitude: number): string {
+  const minutes = Math.round(((((longitude % 30) + 30) % 30) * 60)) % (30 * 60);
+  return `${Math.floor(minutes / 60)}° ${minutes % 60}′`;
+}
+
 /** Compact ASC annotation: sign degrees and the two arcsecond digits only. */
 export function formatAxisDegreeSeconds(longitude: number): string {
   const arcseconds = Math.round(((((longitude % 30) + 30) % 30) * 3600)) % (30 * 3600);
@@ -69,6 +75,15 @@ function openArrowhead(angle: number, radius: number, color: string): THREE.Line
   const geometry = new THREE.BufferGeometry().setFromPoints(
     sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
   return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color }));
+}
+
+/** Three.js points render as squares without a texture; a real disc stays round. */
+function circularTerminal(angle: number, radius: number, color: string): THREE.Mesh {
+  const position = pointOnRing(angle, radius);
+  const marker = new THREE.Mesh(new THREE.CircleGeometry(0.033, 32),
+    new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+  marker.position.set(position.x, position.y, 0.024);
+  return marker;
 }
 
 function textLabel(value: string, color: string, width: number, height: number): THREE.Mesh {
@@ -123,11 +138,8 @@ export class MarcatoriAssiRender {
 
     // The descending axis has the same visible terminal dot as the IC.
     const makeDsLine = () => {
-      const tip = pointOnRing(dsAngle, zodiacRadius + 0.38);
       addStem('DS', dsAngle, zodiacRadius + 0.38, AXIS_PALETTE.ds);
-      const dot = new THREE.Points(new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(tip.x, tip.y, 0.024),
-      ]), new THREE.PointsMaterial({ color: AXIS_PALETTE.ds, size: 6, sizeAttenuation: false }));
+      const dot = circularTerminal(dsAngle, zodiacRadius + 0.38, AXIS_PALETTE.ds);
       dot.userData.axisMarker = 'DS';
       group.add(dot);
     };
@@ -143,11 +155,8 @@ export class MarcatoriAssiRender {
 
     // A small terminal point, as in the photographed Imum Coeli axis.
     const makeIcLine = () => {
-      const tip = pointOnRing(icAngle, zodiacRadius + 0.39);
       addStem('IC', icAngle, zodiacRadius + 0.39, AXIS_PALETTE.ic);
-      const marker = new THREE.Points(new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(tip.x, tip.y, 0.024),
-      ]), new THREE.PointsMaterial({ color: AXIS_PALETTE.ic, size: 6, sizeAttenuation: false }));
+      const marker = circularTerminal(icAngle, zodiacRadius + 0.39, AXIS_PALETTE.ic);
       marker.userData.axisMarker = 'IC';
       group.add(marker);
     };
@@ -165,7 +174,7 @@ export class MarcatoriAssiRender {
         // MC: the degree is beside the *left* of the rising MC arrow.
         ['MC', mc, mcAngle, AXIS_PALETTE.mc, 0.36, 0.315],
       ] as const) {
-        const label = textLabel(key === 'ASC' ? formatAxisDegreeSeconds(longitude) : formatAxisDegreeTenths(longitude),
+        const label = textLabel(formatAxisDegreeMinutes(longitude),
           color, key === 'ASC' ? 0.32 : 0.47, key === 'ASC' ? 0.10 : 0.12);
         const position = pointOnRing(angle, zodiacRadius + radialOffset)
           .add(pointOnRing(angle + 90, tangentOffset));
