@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 const bundle = await build({
   stdin: {
     contents: [
-      "export { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, planetaryHourAt } from './src/lib/renderers/moduli/marcatori-assi.renderer';",
+      "export { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, formatAxisDegreeTenths, planetaryHourAt } from './src/lib/renderers/moduli/marcatori-assi.renderer';",
       "export { defaultOpzioniGrafico } from './src/lib/models/opzioni-grafico.model';",
       "export { OggettiSempliciRender } from './src/lib/renderers/oggetti-semplici.renderer';",
       "export * as THREE from 'three';",
@@ -14,7 +14,7 @@ const bundle = await build({
   },
   bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022',
 });
-const { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, planetaryHourAt, defaultOpzioniGrafico, OggettiSempliciRender, THREE } =
+const { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, formatAxisDegreeTenths, planetaryHourAt, defaultOpzioniGrafico, OggettiSempliciRender, THREE } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
 const hourly = names => names.map((pianeta, i) => ({
@@ -64,6 +64,10 @@ test('axis longitude labels show degree, minute and second within the actual sig
   assert.equal(formatAxisDms(-0.00001), '0°00′00″');
   assert.equal(formatAxisDms(29 + 59 / 60 + 59.6 / 3600), '0°00′00″');
   assert.equal(formatAxisDegreeSeconds(20 + 42 / 60 + 46 / 3600), '20°46″');
+  assert.equal(formatAxisDegreeTenths(20 + 42 / 60 + 46 / 3600), '20,7°');
+  assert.equal(formatAxisDegreeTenths(328.94), '28,9°');
+  assert.equal(formatAxisDegreeTenths(29.96), '0,0°');
+  assert.equal(formatAxisDegreeTenths(-1.24), '28,8°');
 });
 
 test('planetary hour comes from the matching time interval, not a guessed weekday', () => {
@@ -79,7 +83,7 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   const ids = group.children.map(child => child.userData.axisMarker).filter(Boolean);
   assert.deepEqual(ids.sort(), ['ASC','DS','MC','IC','MC-motion'].sort());
   assert.ok(texts.includes('20°00″'));
-  assert.ok(texts.includes('28°56′24″'));
+  assert.ok(texts.includes('28,9°'));
   assert.ok(!texts.includes('Ora'), 'planetary hour must use its glyph alone');
   assert.ok(fonts.every(font => !font.includes('italic')),
     'axis degrees use an upright, non-italic face');

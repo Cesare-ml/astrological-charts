@@ -128,8 +128,8 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
   assert.equal(glyphs.length, names.length);
   assert.equal(lines.length, names.length, 'only the true-degree outer connector remains');
   assert.equal(numberLabels.length, names.length);
-  assert.deepEqual(labels.sort(), ['0', '1', '2', '28', '29', '3', '4', '44', ...Array(6).fill('00')].sort());
-  assert.ok(fonts.includes('bold 62px Arial, sans-serif'), 'two-digit arcseconds must remain legible');
+  assert.deepEqual(labels.sort(), ['0°', '1°', '2°', '28°', '29°', '3°', '4°'].sort());
+  assert.ok(fonts.includes('bold 90px Arial, sans-serif'), 'integer planet degrees must remain legible');
   for (const label of numberLabels) {
     const radius = Math.hypot(label.position.x, label.position.y);
     assert.ok(radius > innerRadius + 0.03 && radius < outerRadius - 0.03,

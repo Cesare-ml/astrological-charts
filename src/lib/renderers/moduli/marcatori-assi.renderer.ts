@@ -23,6 +23,12 @@ export function formatAxisDms(longitude: number): string {
   return `${degrees}°${String(minutes).padStart(2, '0')}′${String(seconds % 60).padStart(2, '0')}″`;
 }
 
+/** MC caption in decimal degrees, rounded to one tenth within its sign. */
+export function formatAxisDegreeTenths(longitude: number): string {
+  const tenths = Math.round(((((longitude % 30) + 30) % 30) * 10)) % 300;
+  return `${Math.floor(tenths / 10)},${tenths % 10}°`;
+}
+
 /** Compact ASC annotation: sign degrees and the two arcsecond digits only. */
 export function formatAxisDegreeSeconds(longitude: number): string {
   const arcseconds = Math.round(((((longitude % 30) + 30) % 30) * 3600)) % (30 * 3600);
@@ -159,7 +165,7 @@ export class MarcatoriAssiRender {
         // MC: the degree is beside the *left* of the rising MC arrow.
         ['MC', mc, mcAngle, AXIS_PALETTE.mc, 0.36, 0.315],
       ] as const) {
-        const label = textLabel(key === 'ASC' ? formatAxisDegreeSeconds(longitude) : formatAxisDms(longitude),
+        const label = textLabel(key === 'ASC' ? formatAxisDegreeSeconds(longitude) : formatAxisDegreeTenths(longitude),
           color, key === 'ASC' ? 0.32 : 0.47, key === 'ASC' ? 0.10 : 0.12);
         const position = pointOnRing(angle, zodiacRadius + radialOffset)
           .add(pointOnRing(angle + 90, tangentOffset));

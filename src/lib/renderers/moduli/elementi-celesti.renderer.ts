@@ -23,18 +23,13 @@ export class ElementiCelestiRender {
     if (!context) throw new Error('Impossibile creare le etichette dei gradi');
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.fillStyle = color;
-    const arcseconds = Math.round((normalizeDegree(longitude) % 30) * 3600) % (30 * 3600);
-    const degree = Math.floor(arcseconds / 3600);
-    const seconds = String(arcseconds % 60).padStart(2, '0');
-    context.font = 'bold 81px Arial, sans-serif';
-    context.textAlign = 'right';
+    // The displayed position may move to avoid conjunctions, but the degree
+    // caption always reports the original integer degree within its sign.
+    const degree = Math.floor(normalizeDegree(longitude) % 30);
+    context.font = 'bold 90px Arial, sans-serif';
+    context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText(`${degree}`, 98, 58);
-    // Two small arcsecond digits replace the degree sign. The label keeps the
-    // exact, unshifted longitude even if its visual position was separated.
-    context.font = 'bold 62px Arial, sans-serif';
-    context.textAlign = 'left';
-    context.fillText(seconds, 104, 51);
+    context.fillText(`${degree}°`, canvas.width / 2, canvas.height / 2);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
