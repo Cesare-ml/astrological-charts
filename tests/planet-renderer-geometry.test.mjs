@@ -51,7 +51,7 @@ function overlapArea(a, b) {
 }
 
 async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
-  outerRingRadius = outerRadius, innerRingRadius = innerRadius) {
+  outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes) {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -94,13 +94,13 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     const options = structuredClone(defaultOpzioniGrafico);
     options.settaggi.skin_id = 'light';
     options.settaggi.elementi_celesti = Object.fromEntries(
-      Object.keys(planetLongitudes).map(name => [name, { att: true }]),
+      Object.keys(source).map(name => [name, { att: true }]),
     );
     if (showDegrees !== undefined) options.mostraGradiElementiCelesti = showDegrees;
     else delete options.mostraGradiElementiCelesti;
     const theme = {
       planets: Object.fromEntries(
-        Object.entries(planetLongitudes).map(([name, longitude]) =>
+        Object.entries(source).map(([name, longitude]) =>
           [name, { longitude: (longitude + longitudeOffset) % 360, longitudeSpeed: 0 }]),
       ),
     };
@@ -149,6 +149,36 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
     const drawnAngle = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;
     const discrepancy = Math.abs(((drawnAngle - longitude + 540) % 360) - 180);
     assert.ok(discrepancy <= 3 + 1e-7, `${name}: glyph displaced ${discrepancy.toFixed(3)}°`);
+  }
+});
+
+test('five close planets keep full identical glyph sizes on at most two radii within five degrees', async () => {
+  const natalInner = 4.5723 * 67.1 / 120 / 2;
+  const natalOuter = 4.5723 * 103 / 120 / 2;
+  const close = { Sun: 358.4, Moon: 359.1, Mercury: 0.3, Venus: 1.2, Mars: 2.4 };
+  for (const offset of [0, 30, 60, 90, 120, 165, 210, 270, 315]) {
+    const { group } = await makeScene(true, offset, 1, natalOuter, natalInner, close);
+    const glyphs = group.children.filter(child => child.userData.ref);
+    const labels = group.children.filter(child => child.material?.map?.isCanvasTexture);
+    assert.equal(glyphs.length, 5);
+    assert.equal(labels.length, 5);
+    assert.equal(new Set(glyphs.map(mesh => mesh.scale.x.toFixed(6))).size, 1,
+      'every glyph in the conjunction must have exactly the same dimensions');
+    assert.ok(Math.abs(glyphs[0].scale.x - 0.17) < 1e-8,
+      'conjunction does not shrink individual planets');
+    assert.ok(new Set(glyphs.map(mesh => Math.hypot(mesh.position.x, mesh.position.y).toFixed(6))).size <= 2,
+      'planet glyphs use one main orbit and at most one inner orbit');
+    for (let i = 0; i < glyphs.length; i++) {
+      const glyph = glyphs[i], label = labels[i];
+      const positionAngle = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;
+      const trueDegree = (Object.values(close)[i] + offset) % 360;
+      const drift = Math.abs(((positionAngle - trueDegree + 540) % 360) - 180);
+      assert.ok(drift <= 5 + 1e-8, `${i}: exceeds the five-degree tolerance (${drift})`);
+      const glyphRadius = Math.hypot(glyph.position.x, glyph.position.y);
+      const labelRadius = Math.hypot(label.position.x, label.position.y);
+      assert.ok(Math.abs(glyphRadius - labelRadius - 0.15) < 1e-5,
+        'degree label must be inward toward the houses, close to its planet');
+    }
   }
 });
 

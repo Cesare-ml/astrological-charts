@@ -5,22 +5,28 @@
 The old renderer displaced each glyph by running a forward-only 7° gap pass
 twice; a compact group could drift far from its actual zodiac position and
 crowded up at 0°/360°. The new `planet-symbol-layout.ts` provides a bounded
-placement mode used by the rendered celestial glyphs:
+placement modes used by the rendered celestial glyphs:
 
 1. unwraps zodiac positions at their largest empty arc (so 359° and 0° are neighbours);
-2. limits every displayed planet to **at most ±3°** of its original longitude;
-3. searches many radial tracks inside the celestial band before making small angular adjustments;
+2. allows up to **±5°** in the wide natal band and searches one main orbit first, adding **only one fixed inner orbit** when necessary;
+3. keeps each glyph at the same standard scale in ordinary conjunctions, with the degree label radially inward, toward the houses;
 4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions;
-5. reduces the glyph and its label **together, and only in crowded groups**, if the available space cannot hold the original size without overlaps or a greater angular deviation;
+5. retains an emergency adaptive fallback for groups that are mathematically impossible in two lanes while respecting the angular bound;
 6. anchors the one retained outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed.
 
-For dense conjunctions, the bounded solver compares four insertion orders,
-radial slots, and angular offsets in half-degree steps inside ±3°. It never
-falls back to moving a glyph beyond the limit. There is a necessary geometric
-tradeoff: five perfectly coincident full-size glyphs cannot fit in such a
-narrow angular slice. The solver therefore scales that group uniformly rather
-than suggesting false zodiacal separation. The original two-lane least-squares
-algorithm remains available to consumers that do not request bounded layout.
+For ordinary natal conjunctions, the two-track solver tests multiple insertion
+orders and half-degree steps within ±5°. The default five-body Aries-point
+fixture fits at a uniform standard glyph size (`0.17 × symbolScale`) on only
+two radii; isolated planets use the same size. The labels sit `0.15` world
+units inward from their glyphs, on the same radial bearing. A pathologically
+dense arrangement (e.g. eight exactly coincident planets) may be impossible
+with full-size symbols, just two tracks and the ±5° limit simultaneously.
+The renderer currently uses the previous collision-safe adaptive scaling
+fallback **only in that exceptional case**; it must not silently overlap
+glyphs or alter astronomical longitudes. This limitation should be evaluated
+if a strict two-radius policy is needed for arbitrary ephemeris data. The
+legacy least-squares placement remains available to consumers that do not
+request bounded layout.
 These are *display* adjustments: astronomical longitudes remain unchanged.
 
 The standard natal chart restores the full zodiac sign-ring width (`103/120`
@@ -28,7 +34,7 @@ of the outer diameter). To create room for radial planet tracks, the natal
 house and aspect wheel is slightly smaller (its outer boundary is `67.1/120`
 instead of `75.1/120`); transit and synastry house proportions are left
 unchanged. Planet degree badges now sit **directly beside their glyphs**,
-instead of occupying an independent ring far away. The bounded solver accounts
+instead of occupying an independent ring far away. The two-track solver accounts
 for the badge size, so the two cannot collide with another planet or badge.
 The glyphs retain a margin before the sign ring. Transit and synastry rings
 also use bounded placement with their smaller pre-existing degree label when
@@ -70,15 +76,17 @@ legacy callers omitting them also see the requested markers:
 | `mostraFrecciaAscendente` | Thin orange axis ending in a small two-stroke open arrow |
 | `mostraRetroFrecciaDiscendente` | Plain green descending line, without the former gate |
 | `mostraFrecciaMC` | Thin violet axis ending in a small two-stroke open arrow |
-| `mostraRetroFrecciaIC` | Plain lavender line with a tiny terminal point |
-| `mostraGradiAssi` | Zodiacal DMS: ASC immediately above its horizontal arrow line, MC to the left of its arrow |
+| `mostraRetroFrecciaIC` | Plain lavender line with a visibly enlarged terminal point |
+| `mostraGradiAssi` | ASC: compact degree + two arcsecond digits on its arrow shaft; MC: full zodiacal DMS to the left of its arrow, both upright sans-serif |
 | `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour beside ASC, if source data exists (no “Ora” caption) |
-| `mostraDirezioneMotoMC` | Small lilac direction accent beside the MC shaft (no inner yellow arrow) |
+| `mostraDirezioneMotoMC` | Filled lilac triangle with its base on the MC shaft halfway along the external arrow; points left or right according to signed `mcSpeed` |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
 Axis positions always use the house system selected in `settaggi.domificazione_selezionata`;
-the layout does not change actual ecliptic longitude. Degree captions show
-*degree within the current sign*, with minutes and seconds rounded correctly.
+the layout does not change actual ecliptic longitude. MC captions show full
+degree/minute/second within the sign. For the more compact ASC caption, only
+the degree and two arcsecond digits are printed; minutes are intentionally
+omitted visually, but the actual longitude remains unchanged.
 The external ASC/DS/MC/IC strokes now terminate at their **true zodiacal
 degree tick**, i.e. the inner radius of the sign ring passed to the marker
 renderer. They never cross the celestial-body band to reach the house circle;
@@ -92,8 +100,8 @@ it never invents the ruler. When available, the chart loads the corresponding
 host-asset resolver and tints it to match ASC; it does not use a Unicode planet
 character or bundle an additional image.
 
-The MC movement indicator, now placed discreetly beside the arrow rather than
-inside its head, points toward increasing ecliptic longitude for an
+The filled MC movement triangle has its base directly on the arrow shaft,
+near the midpoint of the external part of the axis. It points toward increasing ecliptic longitude for an
 ordinary instant in the sky. To override it for a chart calculated through
 directions/progressions, supply a signed `mcSpeed` under
 `TemaRender.houses[selectedHouseSystem]` (or `TemaRender.mcSpeed`). A negative
@@ -130,9 +138,10 @@ date/place must stay in the local host and not in this public source tree.
   toggles, degree/minute/second boundaries, real interval selection for planetary
   hours and signed MC motion.
   Collision checks include 25 chart rotations at two glyph scales, 30 mixed
-  synthetic 18-body configurations, and **strict ±3° constraints** for groups
-  of five, seven and eight closely aligned bodies at seven rotations, including
-  the degree badges. They are still not a pixel-render baseline.
+  synthetic 18-body configurations, strict ±3° testing of the adaptive mode,
+  and the normal **five-body ±5° / two-radii / equal-glyph-size** case at nine
+  orientations, including degree placement toward the houses. They are still
+  not a pixel-render baseline.
 - Library/demo build: `npm run verify:angular` on a clean install.
 - Visual smoke: with the generated local demo pack and both servers running,
   `npm run test:demo` in Chromium and Firefox; inspect

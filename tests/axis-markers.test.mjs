@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 const bundle = await build({
   stdin: {
     contents: [
-      "export { MarcatoriAssiRender, formatAxisDms, planetaryHourAt } from './src/lib/renderers/moduli/marcatori-assi.renderer';",
+      "export { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, planetaryHourAt } from './src/lib/renderers/moduli/marcatori-assi.renderer';",
       "export { defaultOpzioniGrafico } from './src/lib/models/opzioni-grafico.model';",
       "export { OggettiSempliciRender } from './src/lib/renderers/oggetti-semplici.renderer';",
       "export * as THREE from 'three';",
@@ -14,7 +14,7 @@ const bundle = await build({
   },
   bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022',
 });
-const { MarcatoriAssiRender, formatAxisDms, planetaryHourAt, defaultOpzioniGrafico, OggettiSempliciRender, THREE } =
+const { MarcatoriAssiRender, formatAxisDms, formatAxisDegreeSeconds, planetaryHourAt, defaultOpzioniGrafico, OggettiSempliciRender, THREE } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
 const hourly = names => names.map((pianeta, i) => ({
@@ -36,6 +36,7 @@ async function makeMarkers(options = {}, overrides = {}) {
   const previousDocument = globalThis.document;
   const originalGetImg = OggettiSempliciRender.getImg;
   const texts = [];
+  const fonts = [];
   const assets = [];
   OggettiSempliciRender.getImg = async ref => {
     assets.push(ref);
@@ -46,14 +47,14 @@ async function makeMarkers(options = {}, overrides = {}) {
       assert.equal(name, 'canvas');
       return {
         width: 0, height: 0,
-        getContext() { return { clearRect() {}, fillText(text) { texts.push(text); } }; },
+        getContext() { return { clearRect() {}, fillText(text) { texts.push(text); fonts.push(this.font); } }; },
       };
     },
   };
   try {
     const opts = { ...structuredClone(defaultOpzioniGrafico), ...options };
     const theme = { orePlanetarie: structuredClone(hours), houses: { egizia: { mcSpeed: 1, ...overrides } } };
-    return { group: await MarcatoriAssiRender.creaMarcatori(20.7, 298.94, 2.286, opts, theme), texts, assets };
+    return { group: await MarcatoriAssiRender.creaMarcatori(20.7, 298.94, 2.286, opts, theme), texts, assets, fonts };
   } finally { globalThis.document = previousDocument; OggettiSempliciRender.getImg = originalGetImg; }
 }
 
@@ -62,6 +63,7 @@ test('axis longitude labels show degree, minute and second within the actual sig
   assert.equal(formatAxisDms(328 + 56 / 60 + 24 / 3600), '28°56′24″');
   assert.equal(formatAxisDms(-0.00001), '0°00′00″');
   assert.equal(formatAxisDms(29 + 59 / 60 + 59.6 / 3600), '0°00′00″');
+  assert.equal(formatAxisDegreeSeconds(20 + 42 / 60 + 46 / 3600), '20°46″');
 });
 
 test('planetary hour comes from the matching time interval, not a guessed weekday', () => {
@@ -73,12 +75,14 @@ test('planetary hour comes from the matching time interval, not a guessed weekda
 });
 
 test('ASC, DS, MC and IC each have separate visible toggles and use source longitudes', async () => {
-  const { group, texts, assets } = await makeMarkers();
+  const { group, texts, assets, fonts } = await makeMarkers();
   const ids = group.children.map(child => child.userData.axisMarker).filter(Boolean);
   assert.deepEqual(ids.sort(), ['ASC','DS','MC','IC','MC-motion'].sort());
-  assert.ok(texts.includes('20°42′00″'));
+  assert.ok(texts.includes('20°00″'));
   assert.ok(texts.includes('28°56′24″'));
   assert.ok(!texts.includes('Ora'), 'planetary hour must use its glyph alone');
+  assert.ok(fonts.every(font => !font.includes('italic')),
+    'axis degrees use an upright, non-italic face');
   assert.deepEqual(assets, ['simboli-bianchi/elementi-celesti/Jupiter.png']);
   assert.equal(group.children.find(child => child.userData.axis === 'planetary-hour-glyph')?.userData.planetaryHour, 'Jupiter');
   const markers = Object.fromEntries(group.children.filter(child => child.userData.axisMarker)
@@ -87,11 +91,11 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.ok(markers.DS.isLine && !markers.DS.isLineLoop);
   assert.ok(markers.MC.isLineSegments, 'MC is a simple two-stroke open arrow');
   assert.ok(markers.IC.isPoints, 'IC ends in a quiet point');
-  assert.ok(markers['MC-motion'].isLineSegments, 'MC direction is a subtle open accent');
+  assert.ok(markers['MC-motion'].isMesh, 'MC direction is a filled triangle');
   assert.equal(markers['MC-motion'].material.color.getHexString(), 'b58bd8');
   for (const label of group.children.filter(child => ['ASC','MC'].includes(child.userData.axis))) {
-    assert.equal(label.geometry.parameters.width, 0.47);
-    assert.equal(label.geometry.parameters.height, 0.12);
+    assert.equal(label.geometry.parameters.width, label.userData.axis === 'ASC' ? 0.32 : 0.47);
+    assert.equal(label.geometry.parameters.height, label.userData.axis === 'ASC' ? 0.10 : 0.12);
   }
 
   const hidden = await makeMarkers({
@@ -122,8 +126,10 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
   const ascDegree = group.children.find(child => child.userData.axis === 'ASC');
   const mcDegree = group.children.find(child => child.userData.axis === 'MC');
   assert.ok(ascDegree && mcDegree);
-  assert.ok(ascDegree.position.y > 0.06 && ascDegree.position.y < 0.10,
-    'ASC degree must rest directly above its horizontal arrow line');
+  assert.ok(ascDegree.position.y > 0.03 && ascDegree.position.y < 0.06,
+    'ASC degree must rest directly on its horizontal arrow line');
+  assert.equal(group.children.find(child => child.userData.axisMarker === 'IC').material.size, 6,
+    'terminal IC dot must be large enough to see');
   const mcAngle = (90 - 20.7 + 298.94) * Math.PI / 180;
   const mcStemX = -Math.sin(mcAngle) * (radius + 0.36);
   assert.ok(mcDegree.position.x < mcStemX - 0.25,

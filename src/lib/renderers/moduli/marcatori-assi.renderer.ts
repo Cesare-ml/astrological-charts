@@ -23,6 +23,12 @@ export function formatAxisDms(longitude: number): string {
   return `${degrees}°${String(minutes).padStart(2, '0')}′${String(seconds % 60).padStart(2, '0')}″`;
 }
 
+/** Compact ASC annotation: sign degrees and the two arcsecond digits only. */
+export function formatAxisDegreeSeconds(longitude: number): string {
+  const arcseconds = Math.round(((((longitude % 30) + 30) % 30) * 3600)) % (30 * 3600);
+  return `${Math.floor(arcseconds / 3600)}°${String(arcseconds % 60).padStart(2, '0')}″`;
+}
+
 /** Uses the actual diurnal/nocturnal intervals from VirgoStars' astrology backend. */
 export function planetaryHourAt(orePlanetarie: any): string | null {
   const time = orePlanetarie?.dataora;
@@ -66,7 +72,7 @@ function textLabel(value: string, color: string, width: number, height: number):
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Impossibile creare il testo degli assi');
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.font = 'italic 94px Georgia, "Times New Roman", serif';
+  context.font = 'bold 94px Arial, sans-serif';
   context.textBaseline = 'middle';
   context.textAlign = 'center';
   context.fillStyle = color;
@@ -130,7 +136,7 @@ export class MarcatoriAssiRender {
       addStem('IC', icAngle, zodiacRadius + 0.39, AXIS_PALETTE.ic);
       const marker = new THREE.Points(new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(tip.x, tip.y, 0.024),
-      ]), new THREE.PointsMaterial({ color: AXIS_PALETTE.ic, size: 3, sizeAttenuation: false }));
+      ]), new THREE.PointsMaterial({ color: AXIS_PALETTE.ic, size: 6, sizeAttenuation: false }));
       marker.userData.axisMarker = 'IC';
       group.add(marker);
     };
@@ -143,11 +149,12 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraGradiAssi !== false) {
       for (const [key, longitude, angle, color, radialOffset, tangentOffset] of [
         // ASC: the degree sits directly over the horizontal arrow shaft.
-        ['ASC', asc, ascAngle, AXIS_PALETTE.asc, 0.24, -0.079],
+        ['ASC', asc, ascAngle, AXIS_PALETTE.asc, 0.25, -0.045],
         // MC: the degree is beside the *left* of the rising MC arrow.
         ['MC', mc, mcAngle, AXIS_PALETTE.mc, 0.36, 0.315],
       ] as const) {
-        const label = textLabel(formatAxisDms(longitude), color, 0.47, 0.12);
+        const label = textLabel(key === 'ASC' ? formatAxisDegreeSeconds(longitude) : formatAxisDms(longitude),
+          color, key === 'ASC' ? 0.32 : 0.47, key === 'ASC' ? 0.10 : 0.12);
         const position = pointOnRing(angle, zodiacRadius + radialOffset)
           .add(pointOnRing(angle + 90, tangentOffset));
         label.position.x = position.x;
@@ -183,23 +190,21 @@ export class MarcatoriAssiRender {
       const house = temaRender?.houses?.[opzioni?.settaggi?.domificazione_selezionata];
       const speed = house?.mcSpeed ?? temaRender?.mcSpeed ?? 1;
       if (Number.isFinite(speed) && speed !== 0) {
-        // A two-stroke, lilac direction accent follows the MC's thin-line
-        // vocabulary. No solid yellow triangle over the violet marker.
-        // Offset the direction mark to the side of the line, so it does not
-        // add a second arrowhead inside the MC arrow.
-        const center = pointOnRing(mcAngle, zodiacRadius + 0.30)
-          .add(pointOnRing(mcAngle + 90, -0.11));
-        const tangent = pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.05);
-        const base = center.clone().sub(tangent.clone().multiplyScalar(0.7));
-        const wing = pointOnRing(mcAngle, 0.026);
-        const tip = center.clone().add(tangent);
-        const geometry = new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(base.x + wing.x, base.y + wing.y, 0.024),
-          new THREE.Vector3(tip.x, tip.y, 0.024),
-          new THREE.Vector3(base.x - wing.x, base.y - wing.y, 0.024),
-          new THREE.Vector3(tip.x, tip.y, 0.024),
-        ]);
-        const marker = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({color: '#b58bd8'}));
+        // A filled directional triangle sits with its base exactly on the
+        // shaft, approximately halfway along the external MC arrow.
+        const radius = zodiacRadius + 0.23;
+        const baseA = pointOnRing(mcAngle, radius - 0.038);
+        const baseB = pointOnRing(mcAngle, radius + 0.038);
+        const tip = pointOnRing(mcAngle, radius)
+          .add(pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.095));
+        const shape = new THREE.Shape();
+        shape.moveTo(baseA.x, baseA.y);
+        shape.lineTo(baseB.x, baseB.y);
+        shape.lineTo(tip.x, tip.y);
+        shape.closePath();
+        const marker = new THREE.Mesh(new THREE.ShapeGeometry(shape),
+          new THREE.MeshBasicMaterial({ color: '#b58bd8', side: THREE.DoubleSide }));
+        marker.position.z = 0.024;
         marker.userData.axisMarker = 'MC-motion';
         group.add(marker);
       }

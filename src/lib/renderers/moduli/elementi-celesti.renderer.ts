@@ -39,7 +39,7 @@ export class ElementiCelestiRender {
     texture.colorSpace = THREE.SRGBColorSpace;
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
     return new THREE.Mesh(new THREE.PlaneGeometry(
-      (compact ? 0.12 : 0.17) * size, (compact ? 0.06 : 0.10) * size,
+      (compact ? 0.12 : 0.13) * size, (compact ? 0.06 : 0.075) * size,
     ), material);
   }
 
@@ -112,8 +112,8 @@ export class ElementiCelestiRender {
       elementiCelesti, parametroDiRender,
       // The wider celestial band offers many radial tracks near the houses;
       // planet symbols keep a separate quiet margin from the zodiac signs.
-      hasWidePlanetBand ? innerRingRadius + 0.055 * simboliScale : innerRingRadius,
-      hasWidePlanetBand ? raggioConfineAnelloPianeti - 0.085 * simboliScale : raggioConfineAnelloPianeti,
+      hasWidePlanetBand ? innerRingRadius + 0.015 * simboliScale : innerRingRadius,
+      hasWidePlanetBand ? raggioConfineAnelloPianeti - 0.015 * simboliScale : raggioConfineAnelloPianeti,
       simboliScale, mostraGradi, 90 - ascendente + degOffs, hasWidePlanetBand,
     );
 
@@ -209,7 +209,7 @@ export class ElementiCelestiRender {
       }
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
       const glyphScale = elementiCelestiRenderPos[nome].scale ?? 1;
-      el.scale.set(0.22 * simboliScale * glyphScale, 0.22 * simboliScale * glyphScale, 1);
+      el.scale.set(0.17 * simboliScale * glyphScale, 0.17 * simboliScale * glyphScale, 1);
       const trueDegree = elementiCelesti[nome][parametroDiRender];
       const elDegDiRender = 90 - ascendente + trueDegree + degOffs;
       const glyphDegree = 90 - ascendente + elementiCelestiRenderPos[nome][parametroDiRender] + degOffs;
@@ -271,7 +271,7 @@ export class ElementiCelestiRender {
 
       // Every connector starts on the *true* astronomical degree; only its
       // symbol end may move into another radial lane to avoid a conjunction.
-      const glyphHalfHeight = 0.22 * simboliScale * glyphScale * 605 / 875 / 2;
+      const glyphHalfHeight = 0.17 * simboliScale * glyphScale * 605 / 875 / 2;
       if(lineaSuCerchioEsterno) {
         const p2 = this.pointOnRing(elDegDiRender, raggioConfineAnelloPianeti);
         const p1 = this.pointOnRing(glyphDegree, glyphRadius + glyphHalfHeight + 0.012);
@@ -287,10 +287,11 @@ export class ElementiCelestiRender {
         const label = this.makeDegreeLabel(trueDegree, coloreSimboli,
           simboliScale * glyphScale, !hasWidePlanetBand);
         const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);
-        const labelOffset = (hasWidePlanetBand ? 0.205 : 0.17) * simboliScale * glyphScale;
+        const labelOffset = (hasWidePlanetBand ? 0 : 0.17) * simboliScale * glyphScale;
+        const labelRadialOffset = (hasWidePlanetBand ? 0.15 : 0) * simboliScale * glyphScale;
         label.position.set(
-          glyphPosition.x - Math.cos(tangentAngle) * labelOffset,
-          glyphPosition.y - Math.sin(tangentAngle) * labelOffset, 0.002,
+          glyphPosition.x + Math.sin(tangentAngle) * labelRadialOffset - Math.cos(tangentAngle) * labelOffset,
+          glyphPosition.y - Math.cos(tangentAngle) * labelRadialOffset - Math.sin(tangentAngle) * labelOffset, 0.002,
         );
         label.material.opacity = el.material.opacity;
         group.add(label);
@@ -389,12 +390,14 @@ export class ElementiCelestiRender {
     for (const nome in elementiCelesti) longitudes[nome] = elementiCelesti[nome][parametroDiRender];
     const positions = layoutPlanetSymbols(
       longitudes, raggioInterno, raggioEsterno,
-      0.22 * simboliScale, 0.22 * simboliScale * 605 / 875, mostraGradi, chartRotation,
+      0.17 * simboliScale, 0.17 * simboliScale * 605 / 875, mostraGradi, chartRotation,
       raggioEsterno - raggioInterno > 0.06 ? {
-        maxAngularDisplacement: 3,
-        labelWidth: (largeDegreeLabels ? 0.17 : 0.12) * simboliScale,
-        labelHeight: (largeDegreeLabels ? 0.10 : 0.06) * simboliScale,
-        labelTangentOffset: (largeDegreeLabels ? 0.205 : 0.17) * simboliScale,
+        maxAngularDisplacement: largeDegreeLabels ? 5 : 3,
+        fixedTwoLanes: largeDegreeLabels,
+        labelWidth: (largeDegreeLabels ? 0.13 : 0.12) * simboliScale,
+        labelHeight: (largeDegreeLabels ? 0.075 : 0.06) * simboliScale,
+        labelTangentOffset: (largeDegreeLabels ? 0 : 0.17) * simboliScale,
+        labelRadialOffset: (largeDegreeLabels ? 0.15 : 0) * simboliScale,
       } : undefined,
     );
     const result = {};

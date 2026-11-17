@@ -19,6 +19,10 @@ export interface BoundedSymbolOptions {
   labelHeight?: number;
   /** Tangential distance from glyph centre to degree badge centre. */
   labelTangentOffset?: number;
+  /** Prefer one fixed radius; use only one second radius for conjunctions. */
+  fixedTwoLanes?: boolean;
+  /** Inward radial offset of the degree annotation from its planet. */
+  labelRadialOffset?: number;
 }
 
 interface Body {
@@ -61,6 +65,112 @@ function spreadLane(bodies: Body[], minGap: number): number[] {
   return result;
 }
 
+/** Fixed-size, two-track layout for ordinary conjunctions.
+ * For mathematically overfull clusters the caller can retain the established
+ * adaptive fallback rather than losing a planet or failing the entire chart.
+ */
+function layoutTwoFixedLanes(
+  bodies: Body[], innerRadius: number, outerRadius: number,
+  symbolWidth: number, symbolHeight: number, showDegrees: boolean,
+  chartRotation: number, options: BoundedSymbolOptions,
+): Record<string, SymbolPosition> | undefined {
+  const labelWidth = options.labelWidth ?? 0.13;
+  const labelHeight = options.labelHeight ?? 0.075;
+  const radialOffset = options.labelRadialOffset ?? 0.15;
+  const tangentOffset = options.labelTangentOffset ?? 0;
+  const outerLane = outerRadius - symbolWidth / 2 - 0.01;
+  const innerLane = innerRadius + (showDegrees ? radialOffset + labelWidth / 2 : symbolWidth / 2) + 0.01;
+  if (innerLane >= outerLane - symbolWidth - 0.015) return undefined;
+
+  function boxes(position: SymbolPosition) {
+    const theta = (chartRotation + position.displayDegree) * Math.PI / 180;
+    const x = -Math.sin(theta) * position.radius;
+    const y = Math.cos(theta) * position.radius;
+    const objects = [{x, y, w: symbolWidth, h: symbolHeight}];
+    if (showDegrees) objects.push({
+      x: x + Math.sin(theta) * radialOffset - Math.cos(theta) * tangentOffset,
+      y: y - Math.cos(theta) * radialOffset - Math.sin(theta) * tangentOffset,
+      w: labelWidth, h: labelHeight,
+    });
+    return objects;
+  }
+  function collides(a: SymbolPosition, b: SymbolPosition) {
+    for (const first of boxes(a)) for (const second of boxes(b)) {
+      if (Math.abs(first.x - second.x) < (first.w + second.w) / 2 + 0.002 &&
+          Math.abs(first.y - second.y) < (first.h + second.h) / 2 + 0.002) return true;
+    }
+    return false;
+  }
+
+  const source = [...bodies].sort((a, b) => a.degree - b.degree || a.key.localeCompare(b.key));
+  let cut = 0, widest = -1;
+  for (let i = 0; i < source.length; i++) {
+    const next = (i + 1) % source.length;
+    const gap = source[next].degree + (next <= i ? 360 : 0) - source[i].degree;
+    if (gap > widest) { widest = gap; cut = next; }
+  }
+  const circular = Array.from({length: source.length}, (_, index) => {
+    const originalIndex = (cut + index) % source.length;
+    return {...source[originalIndex], unwrapped: source[originalIndex].degree + (originalIndex < cut ? 360 : 0)};
+  });
+  const groups: Body[][] = [];
+  for (const body of circular) {
+    if (!groups.length || body.unwrapped - groups[groups.length - 1][groups[groups.length - 1].length - 1].unwrapped > 16) groups.push([]);
+    groups[groups.length - 1].push(body);
+  }
+  const placed: Record<string, SymbolPosition> = {};
+  const driftLimit = options.maxAngularDisplacement;
+  const deltas = [0];
+  for (let delta = 0.5; delta <= driftLimit + 1e-8; delta += 0.5) {
+    deltas.push(-Math.min(delta, driftLimit), Math.min(delta, driftLimit));
+  }
+  if (deltas.every(delta => Math.abs(delta) < driftLimit - 1e-8)) deltas.push(-driftLimit, driftLimit);
+
+  for (const group of groups) {
+    const fixed = Object.values(placed);
+    const center = (group[0].unwrapped + group[group.length - 1].unwrapped) / 2;
+    const centerFirst = [...group].sort((a, b) =>
+      Math.abs(a.unwrapped - center) - Math.abs(b.unwrapped - center) || a.unwrapped - b.unwrapped);
+    const orders = [centerFirst, group, [...group].reverse(), [...centerFirst].reverse()];
+    const tryGroup = (radii: number[]): Record<string, SymbolPosition> | undefined => {
+      for (const order of orders) {
+        const chosen: Record<string, SymbolPosition> = {};
+        let explored = 0;
+        // A dense seven-body group may be geometrically impossible within two
+        // fixed tracks. Bound the search so rendering never stalls the UI.
+        const maxSearchNodes = group.length >= 7 ? 3000 : 13000;
+        const search = (i: number): boolean => {
+          if (i === order.length) return true;
+          if (++explored > maxSearchNodes) return false;
+          const body = order[i];
+          for (const delta of deltas) for (const radius of radii) {
+            const candidate = {displayDegree: normalizeDegree(body.degree + delta), radius};
+            if (fixed.some(other => collides(candidate, other)) ||
+                Object.values(chosen).some(other => collides(candidate, other))) continue;
+            chosen[body.key] = candidate;
+            if (search(i + 1)) return true;
+            delete chosen[body.key];
+          }
+          return false;
+        };
+        if (search(0)) return chosen;
+      }
+      return undefined;
+    };
+    // One main orbit for most charts; introduce the inner orbit only when
+    // the actual body/degree rectangles would collide.
+    const span = group[group.length - 1].unwrapped - group[0].unwrapped;
+    const minimumSameLaneGap = 2 * Math.atan2(Math.min(symbolWidth, symbolHeight) / 2,
+      outerLane) * 180 / Math.PI;
+    const needsTwoLanes = span < (group.length - 1) * minimumSameLaneGap;
+    const match = (needsTwoLanes ? undefined : tryGroup([outerLane])) ??
+      tryGroup([outerLane, innerLane]);
+    if (!match) return undefined;
+    Object.assign(placed, match);
+  }
+  return placed;
+}
+
 /**
  * A dense conjunction cannot be shown faithfully by spreading positions around
  * the zodiac. Instead, use additional radial tracks. If even those are full,
@@ -78,6 +188,7 @@ function layoutBoundedSymbols(
   const labelWidth = options.labelWidth ?? symbolWidth * (0.12 / 0.22);
   const labelHeight = options.labelHeight ?? symbolHeight * (0.06 / (0.22 * 605 / 875));
   const tangentOffset = options.labelTangentOffset ?? symbolWidth * (0.17 / 0.22);
+  const radialOffset = options.labelRadialOffset ?? 0;
   const radiusMid = (innerRadius + outerRadius) / 2;
 
   function rectangles(placement: SymbolPosition) {
@@ -87,8 +198,8 @@ function layoutBoundedSymbols(
     const y = Math.cos(angle) * placement.radius;
     const boxes = [{ x, y, width: symbolWidth * scale, height: symbolHeight * scale }];
     if (showDegrees) boxes.push({
-      x: x - Math.cos(angle) * tangentOffset * scale,
-      y: y - Math.sin(angle) * tangentOffset * scale,
+      x: x + Math.sin(angle) * radialOffset * scale - Math.cos(angle) * tangentOffset * scale,
+      y: y - Math.cos(angle) * radialOffset * scale - Math.sin(angle) * tangentOffset * scale,
       width: labelWidth * scale,
       height: labelHeight * scale,
     });
@@ -206,6 +317,11 @@ export function layoutPlanetSymbols(
     .map(([key, longitude]) => ({ key, degree: normalizeDegree(longitude), unwrapped: 0 }))
     .sort((a, b) => a.degree - b.degree || a.key.localeCompare(b.key));
   if (!bodies.length) return {};
+  if (bounded?.fixedTwoLanes) {
+    const fixed = layoutTwoFixedLanes(bodies, innerRadius, outerRadius,
+      symbolWidth, symbolHeight, showDegrees, chartRotation, bounded);
+    if (fixed) return fixed;
+  }
   if (bounded) return layoutBoundedSymbols(
     bodies, innerRadius, outerRadius, symbolWidth, symbolHeight,
     showDegrees, chartRotation, bounded,
