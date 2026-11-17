@@ -92,24 +92,18 @@ export class MarcatoriAssiRender {
     const mcAngle = 90 - asc + mc;
     const icAngle = mcAngle + 180;
 
-    // ASC: two open, offset chevrons, evoking an ascending signal rather than
-    // the solid triangular marker of the reference chart.
-    const makeAscChevron = () => {
+    // ASC: a restrained single-stroke pointer, distinct from the filled
+    // triangle in the visual reference and legible at small chart sizes.
+    const makeAscPointer = () => {
       group.add(axisLine(pointOnRing(ascAngle, zodiacRadius - 0.02),
-        pointOnRing(ascAngle, zodiacRadius + 0.35), AXIS_PALETTE.asc));
-      for (const [tipRadius, span] of [[0.44, 0.095], [0.53, 0.07]]) {
-        const tip = pointOnRing(ascAngle, zodiacRadius + tipRadius);
-        const base = pointOnRing(ascAngle, zodiacRadius + tipRadius - 0.12);
-        const t = pointOnRing(ascAngle + 90, span);
-        group.add(axisLine(base.clone().add(t), tip, AXIS_PALETTE.asc));
-        group.add(axisLine(base.clone().sub(t), tip, AXIS_PALETTE.asc));
-      }
-      const end = pointOnRing(ascAngle, zodiacRadius + 0.535);
-      const dot = new THREE.Mesh(new THREE.CircleGeometry(0.025, 16),
-        new THREE.MeshBasicMaterial({color: AXIS_PALETTE.asc}));
-      dot.position.set(end.x, end.y, 0.025);
-      dot.userData.axisMarker = 'ASC';
-      group.add(dot);
+        pointOnRing(ascAngle, zodiacRadius + 0.45), AXIS_PALETTE.asc));
+      const tip = pointOnRing(ascAngle, zodiacRadius + 0.45);
+      const base = pointOnRing(ascAngle, zodiacRadius + 0.34);
+      const tangent = pointOnRing(ascAngle + 90, 0.072);
+      const pointer = outlinePolygon([base.clone().add(tangent), tip,
+        base.clone().sub(tangent)], AXIS_PALETTE.asc);
+      pointer.userData.axisMarker = 'ASC';
+      group.add(pointer);
     };
 
     // DS: a bracketed gate with a flat stop, unlike a circular arrow tail.
@@ -127,26 +121,20 @@ export class MarcatoriAssiRender {
       group.add(bar);
     };
 
-    // MC: a tapered compass vane with a notched base; its golden directional
-    // pointer is distinct from the purple body.
-    const makeMcVane = () => {
+    // MC: one slender open spearhead, with room for a separate small
+    // directional indicator; no bulky filled polygon.
+    const makeMcPointer = () => {
       const angle = mcAngle;
       group.add(axisLine(pointOnRing(angle, zodiacRadius - 0.02),
-        pointOnRing(angle, zodiacRadius + 0.25), AXIS_PALETTE.mc));
-      const stem = pointOnRing(angle, zodiacRadius + 0.32);
-      const t = pointOnRing(angle + 90, 0.105);
-      const blade = solidPolygon([
-        pointOnRing(angle, zodiacRadius + 0.55),
-        stem.clone().add(t),
-        pointOnRing(angle, zodiacRadius + 0.39),
-        stem.clone().sub(t),
+        pointOnRing(angle, zodiacRadius + 0.47), AXIS_PALETTE.mc));
+      const base = pointOnRing(angle, zodiacRadius + 0.34);
+      const tangent = pointOnRing(angle + 90, 0.078);
+      const pointer = outlinePolygon([
+        base.clone().add(tangent), pointOnRing(angle, zodiacRadius + 0.47),
+        base.clone().sub(tangent),
       ], AXIS_PALETTE.mc);
-      blade.userData.axisMarker = 'MC';
-      group.add(blade);
-      group.add(outlinePolygon([
-        pointOnRing(angle, zodiacRadius + 0.55), stem.clone().add(t),
-        pointOnRing(angle, zodiacRadius + 0.24), stem.clone().sub(t),
-      ], '#9a70df'));
+      pointer.userData.axisMarker = 'MC';
+      group.add(pointer);
     };
 
     // IC: an open, faceted cradle. No circular outline or filled arrowhead.
@@ -166,9 +154,9 @@ export class MarcatoriAssiRender {
       group.add(axisLine(center.clone().add(tangent), center.clone().sub(tangent), AXIS_PALETTE.ic));
     };
 
-    if (opzioni.mostraFrecciaAscendente !== false) makeAscChevron();
+    if (opzioni.mostraFrecciaAscendente !== false) makeAscPointer();
     if (opzioni.mostraRetroFrecciaDiscendente !== false) makeDsGate();
-    if (opzioni.mostraFrecciaMC !== false) makeMcVane();
+    if (opzioni.mostraFrecciaMC !== false) makeMcPointer();
     if (opzioni.mostraRetroFrecciaIC !== false) makeIcCradle();
 
     if (opzioni.mostraGradiAssi !== false) {
@@ -176,7 +164,7 @@ export class MarcatoriAssiRender {
         ['ASC', asc, ascAngle, AXIS_PALETTE.asc, -0.28],
         ['MC', mc, mcAngle, AXIS_PALETTE.mc, -0.28],
       ] as const) {
-        const label = textLabel(formatAxisDms(longitude), color, 0.78, 0.23);
+        const label = textLabel(formatAxisDms(longitude), color, 0.56, 0.16);
         const position = pointOnRing(angle, zodiacRadius + 0.25)
           .add(pointOnRing(angle + 90, tangentOffset));
         label.position.x = position.x;
@@ -189,14 +177,8 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraOraPlanetariaAscendente !== false) {
       const name = planetaryHourAt(temaRender?.orePlanetarie);
       if (name) {
-        const label = textLabel('Ora', AXIS_PALETTE.asc, 0.30, 0.19);
         const position = pointOnRing(ascAngle, zodiacRadius + 0.25)
           .add(pointOnRing(ascAngle + 90, 0.27));
-        label.position.x = position.x + 0.11;
-        label.position.y = position.y;
-        label.userData.axis = 'planetary-hour';
-        group.add(label);
-
         // Use the owner's real, skin-tinted chart asset. Unicode planet
         // characters vary by font and don't match the chart's glyph family.
         const glyph = await OggettiSempliciRender.getImg(
@@ -204,7 +186,7 @@ export class MarcatoriAssiRender {
           false, AXIS_PALETTE.asc,
         );
         glyph.scale.set(0.21, 0.21, 1);
-        glyph.position.set(position.x - 0.16, position.y, 0.031);
+        glyph.position.set(position.x, position.y, 0.031);
         glyph.userData.axis = 'planetary-hour-glyph';
         glyph.userData.planetaryHour = name;
         group.add(glyph);

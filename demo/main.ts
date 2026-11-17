@@ -11,7 +11,7 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
   template: `
   <main>
     <header><div><p class="eyebrow">ASTROLOGICAL CHARTS · DEVELOPMENT</p><h1>Renderer laboratory</h1>
-      <p>Deterministic synthetic chart data · no account or backend</p></div><span class="version">Library 0.0.1</span></header>
+      <p>Deterministic synthetic chart · 5 close celestial bodies · no account or backend</p></div><span class="version">Library 0.0.1</span></header>
     <section class="workspace">
       <aside>
         <label for="mode">Chart</label>

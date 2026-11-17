@@ -190,8 +190,8 @@ test('wider natal planet ring keeps the degrees in a separate strip toward house
   assert.equal(glyphs.length, badges.length);
   for (const label of badges) {
     const radius = Math.hypot(label.position.x, label.position.y);
-    assert.ok(radius > innerRadius + 0.10 && radius < innerRadius + 0.16,
-      'label must be on the inner band, immediately outside the house ring');
+    assert.ok(radius > innerRadius + 0.14 && radius < innerRadius + 0.20,
+      'label must be near the glyph, still on its own inner orbit');
     assert.ok(label.geometry.parameters.width >= 0.18 && label.geometry.parameters.height >= 0.11,
       'degree labels in the natal band must be visibly larger');
   }

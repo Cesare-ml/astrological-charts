@@ -116,9 +116,9 @@ export class ElementiCelestiRender {
       raggioConfineAnelloPianeti,
       simboliScale, mostraGradi && !useDegreeStrip, 90 - ascendente + degOffs,
     );
-    // Badges have their own collision layout on a narrow orbit next to the
-    // house ring; they never take space beside or over the planetary glyphs.
-    const badgeRadius = innerRingRadius + 0.125 * simboliScale;
+    // The badge orbit is closer to the glyphs than to the house numerals,
+    // while independent collision spreading prevents tight clusters merging.
+    const badgeRadius = innerRingRadius + 0.18 * simboliScale;
     const badgeLongitudes = Object.fromEntries(Object.entries(elementiCelesti)
       .map(([name, body]) => [name, body[parametroDiRender]]));
     const badgePositions = mostraGradi && useDegreeStrip ? layoutPlanetSymbols(

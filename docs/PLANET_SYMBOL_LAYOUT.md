@@ -15,9 +15,10 @@ crowded up at 0°/360°. The new `planet-symbol-layout.ts`:
 
 The natal chart's planet ring has more space (`103/120` of the zodiac outer diameter).
 When its radial width is at least `0.45` world units, glyphs occupy an outward
-collision-spread orbit, while much larger degree badges get their **own
-collision-spread orbit next to the house ring**, between glyphs and house
-numerals. The separated radial bands protect readability on the 800px demo.
+collision-spread orbit, while degree badges get their **own collision-spread
+orbit between the house ring and planetary glyphs**. The badge orbit is shifted
+slightly closer to its associated planet; the separated radial bands protect
+readability on the 800px demo.
 Thinner transit and
 synastry bands retain the preceding tangential badge layout. This avoids
 incorrectly moving glyphs outside a narrow band.
@@ -54,12 +55,12 @@ legacy callers omitting them also see the requested markers:
 
 | Option | Effect |
 | --- | --- |
-| `mostraFrecciaAscendente` | Orange double open chevrons with endpoint dot on ASC |
+| `mostraFrecciaAscendente` | Thin orange line with one simple open pointer on ASC |
 | `mostraRetroFrecciaDiscendente` | Green bracket/gate on DS |
-| `mostraFrecciaMC` | Violet notched compass vane on MC |
+| `mostraFrecciaMC` | Slim violet open pointer on MC |
 | `mostraRetroFrecciaIC` | Lavender open faceted cradle on IC |
-| `mostraGradiAssi` | Zodiacal degree/minute/second captions at ASC and MC |
-| `mostraOraPlanetariaAscendente` | Ruler of the planetary hour beside ASC, if source data exists |
+| `mostraGradiAssi` | Smaller zodiacal degree/minute/second captions at ASC and MC |
+| `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour beside ASC, if source data exists (no “Ora” caption) |
 | `mostraDirezioneMotoMC` | Small golden direction tip within the MC arrow |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
@@ -87,10 +88,13 @@ external annotations. Markers use native Three.js geometry, disposable
 canvas-textured text and the same host-owned symbol assets already required
 by the rest of the chart.
 
-The Angular demo exposes **Show celestial degrees**, per-axis controls,
-the house numeral scale, and a **Conjunction stress-test (synthetic)** checkbox.
-Its stress fixture uses only
-illustrative positions around 359°/0° and no user's birth data.
+The zodiac glyph is centred radially in its own sign ring, rather than being
+biased toward the celestial bodies. The Angular demo exposes **Show celestial
+degrees**, per-axis controls, the house numeral scale, and a **Conjunction
+stress-test (synthetic)** checkbox. Its **default** fixture places five bodies
+within about four degrees around 359°/0° to expose overlaps immediately;
+the optional stress fixture is denser still. Both use invented positions,
+never a user's birth data.
 
 The demo now accepts a locally calculated `TemaRender` JSON file (or a wrapper
 with `temaRender` or `theme`). After its first import, that chart becomes the

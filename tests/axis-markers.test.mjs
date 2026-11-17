@@ -78,18 +78,18 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.deepEqual(ids.sort(), ['ASC','DS','MC','IC','MC-motion'].sort());
   assert.ok(texts.includes('20°42′00″'));
   assert.ok(texts.includes('28°56′24″'));
-  assert.ok(texts.includes('Ora'));
+  assert.ok(!texts.includes('Ora'), 'planetary hour must use its glyph alone');
   assert.deepEqual(assets, ['simboli-bianchi/elementi-celesti/Jupiter.png']);
   assert.equal(group.children.find(child => child.userData.axis === 'planetary-hour-glyph')?.userData.planetaryHour, 'Jupiter');
   const markers = Object.fromEntries(group.children.filter(child => child.userData.axisMarker)
     .map(child => [child.userData.axisMarker, child]));
-  assert.ok(markers.ASC.isMesh && markers.ASC.geometry.type === 'CircleGeometry');
+  assert.ok(markers.ASC.isLineLoop);
   assert.ok(markers.DS.isLine && !markers.DS.isLineLoop);
-  assert.ok(markers.MC.isMesh && markers.MC.geometry.type === 'ShapeGeometry');
+  assert.ok(markers.MC.isLineLoop);
   assert.ok(markers.IC.isLineLoop);
   for (const label of group.children.filter(child => ['ASC','MC'].includes(child.userData.axis))) {
-    assert.ok(label.geometry.parameters.width >= 0.75);
-    assert.ok(label.geometry.parameters.height >= 0.22);
+    assert.ok(label.geometry.parameters.width >= 0.54 && label.geometry.parameters.width <= 0.58);
+    assert.ok(label.geometry.parameters.height >= 0.15 && label.geometry.parameters.height <= 0.17);
   }
 
   const hidden = await makeMarkers({

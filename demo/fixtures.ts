@@ -2,7 +2,9 @@ import { TemaRender } from '../src/public-api';
 
 // Illustrative longitudes, not calculated ephemerides and not real birth data.
 export const demoBodies = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
-const longitudes = [15, 75, 42, 103, 135, 195, 255, 278, 308, 338];
+// First five bodies form an intentionally dense conjunction across 0° Aries.
+// This is wholly synthetic: it is not the maintainer's birth chart.
+const longitudes = [358.4, 359.1, 0.3, 1.2, 2.4, 195, 255, 278, 308, 338];
 export function makeDemoTheme(offset: number): TemaRender {
   const ascendant = (20 + offset) % 360;
   const mc = (290 + offset) % 360;

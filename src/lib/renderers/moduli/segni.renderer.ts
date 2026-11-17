@@ -173,7 +173,9 @@ export class SegniRender {
             );
             segno.scale.set(0.16, 0.16, 1);
             segno.rotateZ(THREE.MathUtils.degToRad(i * 30 + 15 + degOffsAscendente));
-            segno.translateY(diametroCerchioEsterno / 2 - diametroCerchioEsterno / 21);
+            // Centre the glyph within the actual zodiac band. Previously a
+            // fixed fraction of the outer diameter pulled it toward planets.
+            segno.translateY((diametroCerchioInterno + diametroCerchioEsterno) / 4);
             segno.rotation.z = 0;
             group.add(segno);
         }
