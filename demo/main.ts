@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, ViewChild, inject, provideZonelessChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { defaultOpzioniGrafico, GestoreImmagini, GraficoRenderService, SkinManager } from '../src/public-api';
-import { demoBodies, makeDemoTheme } from './fixtures';
+import { demoBodies, makeDemoTheme, makeDenseDemoTheme } from './fixtures';
 
 type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
 
@@ -23,6 +23,8 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <select id="skin" [value]="skin" [disabled]="busy" (change)="changeSkin($event)">
           <option *ngFor="let item of skins" [value]="item" [selected]="item === skin">{{item}}</option>
         </select>
+        <label class="check-setting" for="show-degrees"><input id="show-degrees" type="checkbox" [checked]="showDegrees" [disabled]="busy" (change)="changeDegrees($event)"> Show celestial degrees</label>
+        <label class="check-setting" for="dense"><input id="dense" type="checkbox" [checked]="dense" [disabled]="busy" (change)="changeDense($event)"> Conjunction stress-test (synthetic)</label>
         <div class="buttons"><button (click)="zoom(-1)" [disabled]="busy" aria-label="Zoom out">−</button>
           <button (click)="zoom(1)" [disabled]="busy" aria-label="Zoom in">+</button>
           <button class="primary" (click)="exportPng()" [disabled]="busy">Export PNG</button></div>
@@ -45,6 +47,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   readonly skins = Object.keys(SkinManager.skins);
   mode: Mode = 'natal';
   skin = 'light';
+  showDegrees = true;
+  dense = false;
   busy = false;
   status = 'Preparing renderer…';
   error = '';
@@ -64,6 +68,8 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void { this.renderer.ngOnDestroy(); }
   changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.draw(); }
   changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.draw(); }
+  changeDegrees(event: Event): void { this.showDegrees = (event.target as HTMLInputElement).checked; void this.draw(); }
+  changeDense(event: Event): void { this.dense = (event.target as HTMLInputElement).checked; void this.draw(); }
   changeBase(event: Event): void {
     try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.draw(); }
     catch (error) { this.showError(error); }
@@ -75,13 +81,14 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     opts.temaGrafico = this.skin;
     opts.mostraTransiti = this.mode === 'transits';
     opts.mostraSinastria = this.mode === 'synastry';
+    opts.mostraGradiElementiCelesti = this.showDegrees;
     for (const body of demoBodies) { opts.settaggi.elementi_celesti[body].att = true; opts.settaggi.elementi_celesti[body].aspVerso = true; }
     return opts;
   }
   async draw(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Rendering…'; this.changes.markForCheck();
     try {
-      await this.renderer.disegnaScena(this.radix, this.mode === 'transits' ? this.transit : null,
+      await this.renderer.disegnaScena(this.dense ? makeDenseDemoTheme(0) : this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
       this.status = 'Rendered with the configured asset server.';
     } catch (error) { this.showError(error); }
@@ -90,7 +97,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   async exportPng(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
     try {
-      const png = await this.renderer.generaImmagine(this.radix, this.mode === 'transits' ? this.transit : null,
+      const png = await this.renderer.generaImmagine(this.dense ? makeDenseDemoTheme(0) : this.radix, this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options(), {x: 800, y: 800}, 2);
       const link = document.createElement('a'); link.href = png; link.download = `chart-${this.mode}-${this.skin}.png`; link.click();
       this.status = 'PNG exported.';

@@ -22,3 +22,13 @@ export function makeDemoTheme(offset: number): TemaRender {
     lunazioniErmetiche: {}, astrologiaOraria: {}, orePlanetarie: {}, partiArabe: {},
   };
 }
+
+/** Synthetic conjunction including a 359°/0° seam; not a user's chart. */
+export function makeDenseDemoTheme(offset: number): TemaRender {
+  const theme = makeDemoTheme(offset);
+  const cluster = [358.5, 359.2, 0.1, 1.4, 2.3, 3.1, 4.2];
+  demoBodies.slice(0, cluster.length).forEach((name, i) => {
+    theme.planets[name].longitude = (cluster[i] + offset) % 360;
+  });
+  return theme;
+}

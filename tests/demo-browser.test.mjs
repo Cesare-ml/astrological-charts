@@ -72,6 +72,16 @@ test('Angular demo renders every chart and skin, exports PNG and reports missing
         if (skin === 'light') modeImages.set(mode, createHash('sha256').update(data).digest('hex'));
       }
     }
+    // The degree toggle is a real render option. The synthetic conjunction
+    // deliberately straddles 359°/0° and must remain drawable and exportable.
+    await page.selectOption('#mode', 'natal'); await ready();
+    await page.locator('#dense').check(); await ready();
+    const crowdedWithDegrees = await page.locator('canvas').screenshot({path:join(output, 'conjunction-degrees-on.png')});
+    await page.locator('#show-degrees').uncheck(); await ready();
+    const crowdedWithoutDegrees = await page.locator('canvas').screenshot({path:join(output, 'conjunction-degrees-off.png')});
+    assert.notDeepEqual(crowdedWithDegrees, crowdedWithoutDegrees, 'degree option must change the chart');
+    await page.locator('#show-degrees').check(); await ready();
+    await page.locator('#dense').uncheck(); await ready();
     assert.equal(new Set(modeImages.values()).size, modes.length, 'chart modes should produce different canvas images');
     for (const mode of modes) {
       await page.selectOption('#mode', mode); await ready();

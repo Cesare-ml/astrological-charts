@@ -5,11 +5,33 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
 import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
+import { degreeWithinSign, layoutPlanetSymbols } from './planet-symbol-layout';
 
 
 export class ElementiCelestiRender {
 
-  private static offsetMinimoPianeti:number = 7;//6; //deg
+  private static pointOnRing(degrees: number, radius: number): THREE.Vector2 {
+    const angle = THREE.MathUtils.degToRad(degrees);
+    return new THREE.Vector2(-Math.sin(angle) * radius, Math.cos(angle) * radius);
+  }
+
+  private static makeDegreeLabel(longitude: number, color: string, size: number): THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
+    const canvas = document.createElement('canvas');
+    canvas.width = 192;
+    canvas.height = 96;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Impossibile creare le etichette dei gradi');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = color;
+    context.font = 'bold 62px Arial, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(`${degreeWithinSign(longitude)}°`, 96, 49);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
+    return new THREE.Mesh(new THREE.PlaneGeometry(0.12 * size, 0.06 * size), material);
+  }
 
   public static async getAnelloElementiCelesti(
     temaRender,
@@ -68,12 +90,15 @@ export class ElementiCelestiRender {
         coloreImgFolder;
     }
 
-    var elementiCelestiRenderPos = this.getRenderPosPianeti(elementiCelesti,parametroDiRender);
-
-
     var raggioConfineAnelloPianeti = diametroCerchioEsterno/2;
 
     var raggioEclittica = (raggioConfineAnelloPianeti - diametroCerchioInterno/2)/2 + diametroCerchioInterno/2;
+    const mostraGradi = opzioni.mostraGradiElementiCelesti !== false;
+    const elementiCelestiRenderPos = this.getRenderPosPianeti(
+      elementiCelesti, parametroDiRender,
+      diametroCerchioInterno / 2, raggioConfineAnelloPianeti,
+      simboliScale, mostraGradi,
+    );
 
     //parti arabe render freccia+elemento in evidenza
     var partiArabeNomePianetaHighlight = undefined;
@@ -167,10 +192,12 @@ export class ElementiCelestiRender {
       }
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
       el.scale.set(0.22*simboliScale,0.22*simboliScale,1);
-      el.rotateZ(THREE.MathUtils.degToRad(
-        elementiCelestiRenderPos[nome][parametroDiRender] - elementiCelesti[nome][parametroDiRender]
-      ));
-      el.translateY(raggioEclittica);
+      const trueDegree = elementiCelesti[nome][parametroDiRender];
+      const elDegDiRender = 90 - ascendente + trueDegree + degOffs;
+      const glyphDegree = 90 - ascendente + elementiCelestiRenderPos[nome][parametroDiRender] + degOffs;
+      const glyphRadius = elementiCelestiRenderPos[nome].radius ?? raggioEclittica;
+      const glyphPosition = this.pointOnRing(glyphDegree, glyphRadius);
+      el.position.set(glyphPosition.x, glyphPosition.y, 0);
 
       if(opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') {
         el.material.opacity = 0.3;
@@ -198,20 +225,9 @@ export class ElementiCelestiRender {
 
         var raggioCerchietto = (raggioConfineAnelloPianeti - diametroCerchioInterno/2)/2;
         var cerchietto = OggettiSempliciRender.getCerchio(raggioCerchietto,coloreCerchio);
-        cerchietto.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
-        ));
-        cerchietto.translateX(el.position.x);
-        cerchietto.translateY(el.position.y);
-        //cerchietto.translateY(el.position.y);
-        var lineaCerchietto = OggettiSempliciRender.getLinea({x:0,y:0},el.position,"#888");
-        lineaCerchietto.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
-        ));
+        cerchietto.position.set(glyphPosition.x, glyphPosition.y, 0);
+        var lineaCerchietto = OggettiSempliciRender.getLinea(
+          this.pointOnRing(elDegDiRender, diametroCerchioInterno / 2), glyphPosition, '#888');
         group.add(cerchietto);
         group.add(lineaCerchietto);
       }
@@ -235,66 +251,33 @@ export class ElementiCelestiRender {
         el.material.opacity = 0.3;
       }
 
-      function accorciaLinea(da, a, valore = 0.9, usaPercentuale = true) {
-        const daVec = new THREE.Vector2(da.x, da.y);
-        const aVec = new THREE.Vector2(a.x, a.y);
-
-        // direzione e lunghezza
-        const dir = new THREE.Vector2().subVectors(aVec, daVec);
-        const lunghezza = dir.length();
-
-        // calcolo del nuovo fattore di accorciamento
-        let nuovoFattore;
-        if (usaPercentuale) {
-          // valore = percentuale (es. 0.9 => linea lunga il 90%)
-          nuovoFattore = valore;
-        } else {
-          // valore = lunghezza da accorciare
-          const riduzione = Math.min(valore, lunghezza); // evita valori > lunghezza
-          nuovoFattore = (lunghezza - riduzione) / lunghezza;
-        }
-
-        // nuovo punto finale accorciato
-        dir.multiplyScalar(nuovoFattore);
-        const p2Accorciato = new THREE.Vector2().copy(daVec).add(dir);
-
-        return p2Accorciato;
-      }
-
-
-
-      
-      const accorciamento = 0.09; // oppure calcolato dinamicamente
+      // Every connector starts on the *true* astronomical degree; only its
+      // symbol end may move into another radial lane to avoid a conjunction.
+      const glyphHalfHeight = 0.22 * simboliScale * 605 / 875 / 2;
       if(lineaSuCerchioEsterno) {
-        const p2 = { x: 0, y: raggioConfineAnelloPianeti };
-        const p1 = accorciaLinea(p2, el.position, accorciamento, false);
-
+        const p2 = this.pointOnRing(elDegDiRender, raggioConfineAnelloPianeti);
+        const p1 = this.pointOnRing(glyphDegree, glyphRadius + glyphHalfHeight + 0.012);
         var lineaB = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
-        lineaB.rotateZ(THREE.MathUtils.degToRad(
-          75-ascendente+15
-          + elementiCelesti[nome][parametroDiRender]
-          + degOffs
-        ));
         group.add(lineaB);
       }
 
-      const p2 = {x:0,y:diametroCerchioInterno/2};
-      const p1 = accorciaLinea(p2, el.position, accorciamento, false);
-
+      const p2 = this.pointOnRing(elDegDiRender, diametroCerchioInterno/2);
+      const p1 = this.pointOnRing(glyphDegree, glyphRadius - glyphHalfHeight - 0.012);
       var lineaA = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
-      lineaA.rotateZ(THREE.MathUtils.degToRad(
-        75-ascendente+15
-        + elementiCelesti[nome][parametroDiRender]
-        + degOffs
-      ));
       group.add(lineaA);
 
-      el.translateY(-raggioEclittica);
-      var elDegDiRender = 75-ascendente+15 + elementiCelesti[nome][parametroDiRender] + degOffs;
-      el.rotateZ(THREE.MathUtils.degToRad(elDegDiRender));
-      el.translateY(raggioEclittica);
-      el.rotation.z = 0;
       group.add( el );
+      if (mostraGradi) {
+        const label = this.makeDegreeLabel(trueDegree, coloreSimboli, simboliScale);
+        // Keep the badge on the inward side of the left/right chart halves.
+        label.position.set(
+          glyphPosition.x + (glyphPosition.x < 0 ? 0.13 : -0.13) * simboliScale,
+          glyphPosition.y + 0.035 * simboliScale,
+          0.002,
+        );
+        label.material.opacity = el.material.opacity;
+        group.add(label);
+      }
 
       /*
       if(eventiMouse) {
@@ -380,92 +363,25 @@ export class ElementiCelestiRender {
     }
   }
 
-  public static ciclo(pianeti) {
-    pianeti.sort(function (a, b) {
-      return a.deg - b.deg;
-    });
-    for(var i=1; i<pianeti.length; i++) {
-      var a = pianeti[i-1].deg;
-      var b = pianeti[i].deg;
-
-      if(b-a < ElementiCelestiRender.offsetMinimoPianeti) {
-        b += ElementiCelestiRender.offsetMinimoPianeti - (b-a);
-      }
-      pianeti[i].deg = b;
-    }
-
-    for(var i=0; i<pianeti.length; i++) {
-      pianeti[i].deg = (pianeti[i].deg + 180) %360;
-    }
-
-    return pianeti;
-  }
-
-  public static getRenderPosPianeti(elementiCelesti,parametroDiRender) {
-
-    //serve un array, elementiCelesti è un oggetto
-    var pianetiOrdineDiRiferimento = [];
-    for(var nome in elementiCelesti) {
-      var p = {
-        'key': nome,
-        'deg': elementiCelesti[nome][parametroDiRender]%360
+  public static getRenderPosPianeti(
+    elementiCelesti, parametroDiRender,
+    raggioInterno = 1.4, raggioEsterno = 1.8,
+    simboliScale = 1, mostraGradi = true,
+  ) {
+    const longitudes: Record<string, number> = {};
+    for (const nome in elementiCelesti) longitudes[nome] = elementiCelesti[nome][parametroDiRender];
+    const positions = layoutPlanetSymbols(
+      longitudes, raggioInterno, raggioEsterno,
+      0.22 * simboliScale, 0.22 * simboliScale * 605 / 875, mostraGradi,
+    );
+    const result = {};
+    for (const nome in positions) {
+      result[nome] = {
+        [parametroDiRender]: positions[nome].displayDegree,
+        radius: positions[nome].radius,
       };
-      pianetiOrdineDiRiferimento.push(p);
     }
-    var pianeti = JSON.parse(JSON.stringify(pianetiOrdineDiRiferimento));
-
-    pianeti = this.ciclo(pianeti);
-    pianeti = this.ciclo(pianeti);
-/*
-    pianetiOrdineDiRiferimento.forEach(p => p.deg = ((Number(p.deg) % 360) + 360) % 360);
-    pianetiOrdineDiRiferimento.sort(function (a, b) {
-      return Number(a.deg) - Number(b.deg);
-    });
-
-    console.log("inizio",pianeti);
-    pianeti.forEach(p => p.deg = ((Number(p.deg) % 360) + 360) % 360);
-
-    pianeti.sort((a, b) => a.deg - b.deg);
-
-    console.log("ordinati", pianeti.map(p => `${p.key}: ${p.deg.toFixed(2)}`));
-
-    //  pianetiOrdineDiRiferimento e pianeti dovrebbero avere la stessa sequenza di pianeti,
-    
-    var inizioJ=0;
-    while(pianeti[inizioJ].key != pianetiOrdineDiRiferimento[0].key) {
-      inizioJ++;
-    }
-    console.log('inizioJ',inizioJ);
-    for(let i=0; i<pianetiOrdineDiRiferimento.length; i++) {
-      let j = (inizioJ+i)%pianeti.length;
-      let pi = pianetiOrdineDiRiferimento[i];
-      let pj = pianeti[j];
-      //console.log(pianeti,pi,pj);
-      if(pi.key != pj.key){
-        let jk = j;
-        do {
-          jk = (jk+1)%pianeti.length;
-        } while(pianeti[jk].key != pi.key);
-        
-        //console.log('sostituzione', pianeti[jk],pianeti[j]);
-        let tmp = pianeti[jk].key;
-        pianeti[jk].key = pianeti[j].key;
-        pianeti[j].key = tmp;
-
-        tmp = pianeti[jk].deg;
-        pianeti[jk].deg = pianeti[j].deg;
-        pianeti[j].deg = tmp;
-      }
-    }
-    console.log(pianeti,pianetiOrdineDiRiferimento);
-*/
-    var pianetiRet = {};
-    for(var i=0; i<pianeti.length; i++) {
-      pianetiRet[pianeti[i]['key']]={};
-      pianetiRet[pianeti[i]['key']][parametroDiRender] = pianeti[i].deg;
-    }
-
-    return pianetiRet;
+    return result;
   }
 
   public static initElementoCeleste(nome,parametroDiRender,deg) {

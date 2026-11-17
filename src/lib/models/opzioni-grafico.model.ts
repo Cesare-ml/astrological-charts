@@ -94,6 +94,8 @@ export interface OpzioniGrafico {
   mostraMonomeri: boolean;
   mostraAspetti: boolean;
   mostraInfoPianeti: boolean;
+  /** Shows 0–29° beside each celestial symbol; defaults on, including for legacy callers omitting this field. */
+  mostraGradiElementiCelesti?: boolean;
 
   mostraAntisci: boolean;
   antisci: {
@@ -198,6 +200,7 @@ export const defaultOpzioniGrafico: OpzioniGrafico = {
   mostraMonomeri: false,
   mostraAspetti: true,
   mostraInfoPianeti: false,
+  mostraGradiElementiCelesti: true,
 
   mostraAntisci: false,
   antisci: { Cardinale: false, Fissa: false, Mutevole: false },

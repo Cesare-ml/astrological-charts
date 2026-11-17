@@ -12,6 +12,8 @@ Invite known contributors to develop the astrological renderer using Codex, Clau
 
 The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
 
+Celestial glyphs now use a compact two-lane collision layout; exact longitude is still represented by the radial connector. `mostraGradiElementiCelesti` (default `true`) shows the 0–29° position within the zodiac sign. See [symbol layout and integration notes](docs/PLANET_SYMBOL_LAYOUT.md).
+
 **Important:** The renderer loads images from a host asset root; the library does not bundle them. A private owner-authorized image pack is available separately in `astrological-assets`, without the unknown-license font. Building TypeScript does not by itself prove visual correctness.
 
 ## Start developing
