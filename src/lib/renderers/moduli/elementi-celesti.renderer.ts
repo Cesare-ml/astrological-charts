@@ -15,22 +15,24 @@ export class ElementiCelestiRender {
     return new THREE.Vector2(-Math.sin(angle) * radius, Math.cos(angle) * radius);
   }
 
-  private static makeDegreeLabel(longitude: number, color: string, size: number): THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
+  private static makeDegreeLabel(longitude: number, color: string, size: number, compact: boolean): THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
     const canvas = document.createElement('canvas');
-    canvas.width = 192;
-    canvas.height = 96;
+    canvas.width = 160;
+    canvas.height = 112;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Impossibile creare le etichette dei gradi');
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.fillStyle = color;
-    context.font = 'bold 62px Arial, sans-serif';
+    context.font = 'bold 87px Arial, sans-serif';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText(`${degreeWithinSign(longitude)}°`, 96, 49);
+    context.fillText(`${degreeWithinSign(longitude)}°`, 80, 56, 152);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
-    return new THREE.Mesh(new THREE.PlaneGeometry(0.12 * size, 0.06 * size), material);
+    return new THREE.Mesh(new THREE.PlaneGeometry(
+      (compact ? 0.12 : 0.215) * size, (compact ? 0.06 : 0.14) * size,
+    ), material);
   }
 
   public static async getAnelloElementiCelesti(
@@ -100,17 +102,20 @@ export class ElementiCelestiRender {
     const useDegreeStrip = raggioConfineAnelloPianeti - innerRingRadius >= 0.45;
     const elementiCelestiRenderPos = this.getRenderPosPianeti(
       elementiCelesti, parametroDiRender,
-      innerRingRadius + (useDegreeStrip ? 0.15 * simboliScale : 0), raggioConfineAnelloPianeti,
+      // The readable degree band gets its own orbit; symbols stay farther out
+      // instead of sharing a cramped radial lane with the larger numerals.
+      useDegreeStrip ? raggioConfineAnelloPianeti - 0.235 * simboliScale : innerRingRadius,
+      raggioConfineAnelloPianeti,
       simboliScale, mostraGradi && !useDegreeStrip, 90 - ascendente + degOffs,
     );
     // Badges have their own collision layout on a narrow orbit next to the
     // house ring; they never take space beside or over the planetary glyphs.
-    const badgeRadius = innerRingRadius + 0.045 * simboliScale;
+    const badgeRadius = innerRingRadius + 0.085 * simboliScale;
     const badgeLongitudes = Object.fromEntries(Object.entries(elementiCelesti)
       .map(([name, body]) => [name, body[parametroDiRender]]));
     const badgePositions = mostraGradi && useDegreeStrip ? layoutPlanetSymbols(
       badgeLongitudes, badgeRadius, badgeRadius,
-      0.12 * simboliScale, 0.06 * simboliScale, false, 90 - ascendente + degOffs,
+      0.215 * simboliScale, 0.14 * simboliScale, false, 90 - ascendente + degOffs,
     ) : {};
 
     //parti arabe render freccia+elemento in evidenza
@@ -281,7 +286,7 @@ export class ElementiCelestiRender {
 
       group.add( el );
       if (mostraGradi) {
-        const label = this.makeDegreeLabel(trueDegree, coloreSimboli, simboliScale);
+        const label = this.makeDegreeLabel(trueDegree, coloreSimboli, simboliScale, !useDegreeStrip);
         if (useDegreeStrip) {
           const badgeDegree = 90 - ascendente + badgePositions[nome].displayDegree + degOffs;
           const badgePosition = this.pointOnRing(badgeDegree, badgeRadius);

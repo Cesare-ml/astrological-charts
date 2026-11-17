@@ -31,6 +31,12 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <label for="house-size">House numeral size: {{houseSize.toFixed(2)}}×</label>
         <input id="house-size" type="range" min="0.8" max="1.7" step="0.05" [value]="houseSize" [disabled]="busy" (input)="changeHouseSize($event)">
         <label class="check-setting" for="dense"><input id="dense" type="checkbox" [checked]="dense" [disabled]="busy" (change)="changeDense($event)"> Conjunction stress-test (synthetic)</label>
+        <h2>Reference natal chart</h2>
+        <p class="muted">Import a calculated VirgoStars TemaRender JSON for your reference date/place. It becomes the default chart in this browser; no birth data is committed to the repository or sent by the demo.</p>
+        <label for="reference-json">Import calculated chart JSON</label>
+        <input id="reference-json" type="file" accept=".json,application/json" [disabled]="busy" (change)="importReference($event)">
+        <p class="muted" data-testid="reference-status">{{referenceLabel}}</p>
+        <button *ngIf="referenceTheme" (click)="clearReference()" [disabled]="busy">Use synthetic fixture instead</button>
         <div class="buttons"><button (click)="zoom(-1)" [disabled]="busy" aria-label="Zoom out">−</button>
           <button (click)="zoom(1)" [disabled]="busy" aria-label="Zoom in">+</button>
           <button class="primary" (click)="exportPng()" [disabled]="busy">Export PNG</button></div>
@@ -71,12 +77,16 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   error = '';
   assetBase = new URLSearchParams(location.search).get('assets') || 'http://127.0.0.1:4177/assets/';
   manifestLabel = new URLSearchParams(location.search).get('manifest') || 'local server manifest (see server console)';
+  referenceLabel = 'Synthetic fixture active. A date alone cannot provide astronomical positions.';
+  referenceTheme: any = null;
+  private readonly referenceKey = 'astrological-charts-demo-reference-theme-v1';
   private readonly radix = makeDemoTheme(0);
   private readonly transit = makeDemoTheme(24);
   private readonly synastry = makeDemoTheme(71);
 
   ngAfterViewInit(): void {
     try {
+      this.restoreReference();
       GestoreImmagini.configurePublicAssetsBase(this.assetBase);
       this.renderer.inizializzaGraficoRender(this.canvas, {x: 800, y: 800});
       void this.draw();
@@ -89,11 +99,54 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   changeAxisOption(key: string, event: Event): void { this.axisOptions[key] = (event.target as HTMLInputElement).checked; void this.draw(); }
   changeHouseSize(event: Event): void { this.houseSize = Number((event.target as HTMLInputElement).value); void this.draw(); }
   changeDense(event: Event): void { this.dense = (event.target as HTMLInputElement).checked; void this.draw(); }
+  private restoreReference(): void {
+    try {
+      const saved = localStorage.getItem(this.referenceKey);
+      if (!saved) return;
+      const theme = JSON.parse(saved);
+      this.validateReference(theme);
+      this.referenceTheme = theme;
+      this.referenceLabel = `Local reference active (${theme.dataora ?? 'calculated theme'}).`;
+    } catch {
+      this.referenceLabel = 'Unable to restore the local reference. Import the calculated JSON again.';
+    }
+  }
+  private validateReference(theme: any): void {
+    if (!theme || typeof theme !== 'object' || !theme.planets ||
+      !Object.keys(theme.planets).length || !theme.houses || !Object.keys(theme.houses).length) {
+      throw new Error('Expected a VirgoStars TemaRender containing planets and houses.');
+    }
+  }
+  async importReference(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > 2_000_000) throw new Error('Reference chart JSON must be below 2 MB.');
+      const parsed = JSON.parse(await file.text());
+      const theme = parsed?.temaRender ?? parsed?.theme ?? parsed;
+      this.validateReference(theme);
+      localStorage.setItem(this.referenceKey, JSON.stringify(theme));
+      this.referenceTheme = theme;
+      this.dense = false;
+      this.referenceLabel = `Local reference active (${theme.dataora ?? 'calculated theme'}). Reloading the page keeps it selected.`;
+      void this.draw();
+    } catch (error) {
+      this.showError(error);
+    } finally { input.value = ''; this.changes.markForCheck(); }
+  }
+  clearReference(): void {
+    localStorage.removeItem(this.referenceKey);
+    this.referenceTheme = null;
+    this.referenceLabel = 'Synthetic fixture active. A date alone cannot provide astronomical positions.';
+    void this.draw();
+  }
   changeBase(event: Event): void {
     try { this.assetBase = (event.target as HTMLInputElement).value; GestoreImmagini.configurePublicAssetsBase(this.assetBase); void this.draw(); }
     catch (error) { this.showError(error); }
   }
   zoom(direction: number): void { direction > 0 ? this.renderer.zoomIn(0.15) : this.renderer.zoomOut(0.15); }
+  private radixTheme(): any { return this.dense ? makeDenseDemoTheme(0) : this.referenceTheme ?? this.radix; }
   private options(): any {
     const opts = structuredClone(defaultOpzioniGrafico) as any;
     opts.settaggi.skin_id = this.skin;
@@ -109,7 +162,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   async draw(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Rendering…'; this.changes.markForCheck();
     try {
-      await this.renderer.disegnaScena(this.dense ? makeDenseDemoTheme(0) : this.radix, this.mode === 'transits' ? this.transit : null,
+      await this.renderer.disegnaScena(this.radixTheme(), this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options());
       this.status = 'Rendered with the configured asset server.';
     } catch (error) { this.showError(error); }
@@ -118,7 +171,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   async exportPng(): Promise<void> {
     this.busy = true; this.error = ''; this.status = 'Exporting…'; this.changes.markForCheck();
     try {
-      const png = await this.renderer.generaImmagine(this.dense ? makeDenseDemoTheme(0) : this.radix, this.mode === 'transits' ? this.transit : null,
+      const png = await this.renderer.generaImmagine(this.radixTheme(), this.mode === 'transits' ? this.transit : null,
         this.mode === 'synastry' ? this.synastry : null, this.mode === 'latitude' ? 'latitudini' : 'carta-astrale', this.options(), {x: 800, y: 800}, 2);
       const link = document.createElement('a'); link.href = png; link.download = `chart-${this.mode}-${this.skin}.png`; link.click();
       this.status = 'PNG exported.';

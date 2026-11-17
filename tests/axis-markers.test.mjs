@@ -50,10 +50,10 @@ function makeMarkers(options = {}, overrides = {}) {
 }
 
 test('axis longitude labels show degree, minute and second within the actual sign', () => {
-  assert.equal(formatAxisDms(20 + 42 / 60 + 46 / 3600), '20° 42′ 46″');
-  assert.equal(formatAxisDms(328 + 56 / 60 + 24 / 3600), '28° 56′ 24″');
-  assert.equal(formatAxisDms(-0.00001), '0° 00′ 00″');
-  assert.equal(formatAxisDms(29 + 59 / 60 + 59.6 / 3600), '0° 00′ 00″');
+  assert.equal(formatAxisDms(20 + 42 / 60 + 46 / 3600), '20°42′46″');
+  assert.equal(formatAxisDms(328 + 56 / 60 + 24 / 3600), '28°56′24″');
+  assert.equal(formatAxisDms(-0.00001), '0°00′00″');
+  assert.equal(formatAxisDms(29 + 59 / 60 + 59.6 / 3600), '0°00′00″');
 });
 
 test('planetary hour comes from the matching time interval, not a guessed weekday', () => {
@@ -68,9 +68,19 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   const { group, texts } = makeMarkers();
   const ids = group.children.map(child => child.userData.axisMarker).filter(Boolean);
   assert.deepEqual(ids.sort(), ['ASC','DS','MC','IC','MC-motion'].sort());
-  assert.ok(texts.includes('20° 42′ 00″'));
-  assert.ok(texts.includes('28° 56′ 24″'));
+  assert.ok(texts.includes('20°42′00″'));
+  assert.ok(texts.includes('28°56′24″'));
   assert.ok(texts.includes('Ora ♃'));
+  const markers = Object.fromEntries(group.children.filter(child => child.userData.axisMarker)
+    .map(child => [child.userData.axisMarker, child]));
+  assert.ok(markers.ASC.isMesh && markers.ASC.geometry.type === 'CircleGeometry');
+  assert.ok(markers.DS.isLine && !markers.DS.isLineLoop);
+  assert.ok(markers.MC.isMesh && markers.MC.geometry.type === 'ShapeGeometry');
+  assert.ok(markers.IC.isLineLoop);
+  for (const label of group.children.filter(child => ['ASC','MC'].includes(child.userData.axis))) {
+    assert.ok(label.geometry.parameters.width >= 0.75);
+    assert.ok(label.geometry.parameters.height >= 0.22);
+  }
 
   const hidden = makeMarkers({
     mostraFrecciaAscendente: false, mostraRetroFrecciaDiscendente: false,

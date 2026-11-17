@@ -14,9 +14,11 @@ crowded up at 0°/360°. The new `planet-symbol-layout.ts`:
 6. keeps the symbol and small degree label horizontal even where the radial connector bends.
 
 The natal chart's planet ring has more space (`103/120` of the zodiac outer diameter).
-When its radial width is at least `0.45` world units, glyphs occupy the outer
-two-lane area, while degree badges get their **own collision-spread orbit next
-to the house ring**, between the glyphs and house numerals. Thinner transit and
+When its radial width is at least `0.45` world units, glyphs occupy an outward
+collision-spread orbit, while much larger degree badges get their **own
+collision-spread orbit next to the house ring**, between glyphs and house
+numerals. The separated radial bands protect readability on the 800px demo.
+Thinner transit and
 synastry bands retain the preceding tangential badge layout. This avoids
 incorrectly moving glyphs outside a narrow band.
 
@@ -48,10 +50,10 @@ legacy callers omitting them also see the requested markers:
 
 | Option | Effect |
 | --- | --- |
-| `mostraFrecciaAscendente` | Orange, outward-pointing ASC marker |
-| `mostraRetroFrecciaDiscendente` | Green ring/tail on DS |
-| `mostraFrecciaMC` | Violet, outward-pointing MC marker |
-| `mostraRetroFrecciaIC` | Lavender ring/tail on IC |
+| `mostraFrecciaAscendente` | Orange double open chevrons with endpoint dot on ASC |
+| `mostraRetroFrecciaDiscendente` | Green bracket/gate on DS |
+| `mostraFrecciaMC` | Violet notched compass vane on MC |
+| `mostraRetroFrecciaIC` | Lavender open faceted cradle on IC |
 | `mostraGradiAssi` | Zodiacal degree/minute/second captions at ASC and MC |
 | `mostraOraPlanetariaAscendente` | Ruler of the planetary hour beside ASC, if source data exists |
 | `mostraDirezioneMotoMC` | Small golden direction tip within the MC arrow |
@@ -81,6 +83,13 @@ The Angular demo exposes **Show celestial degrees**, per-axis controls,
 the house numeral scale, and a **Conjunction stress-test (synthetic)** checkbox.
 Its stress fixture uses only
 illustrative positions around 359°/0° and no user's birth data.
+
+The demo now accepts a locally calculated `TemaRender` JSON file (or a wrapper
+with `temaRender` or `theme`). After its first import, that chart becomes the
+default on page reload, stored **only in the local browser**, with a button to
+clear it. Because this renderer intentionally contains no ephemeris, entering
+a date/place alone is not enough to calculate a real chart. Any personal test
+date/place must stay in the local host and not in this public source tree.
 
 ## Verification / integration gate
 

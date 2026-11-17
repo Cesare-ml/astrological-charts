@@ -22,6 +22,17 @@ Open `http://127.0.0.1:4200/`. The same commands work in PowerShell. `demo:pack`
 
 Choose natal, transits, synastry or latitudes, one of the seven skins, zoom and export PNG. The service serializes its own scene-building and export operations across its instances because the legacy renderer uses shared dimensions. It awaits scene textures before rendering and reports missing assets with their URL. Direct callers of lower-level renderer functions do not use that service queue.
 
+### Local real-chart reference without committing natal data
+
+The **Reference natal chart** input accepts a `TemaRender` JSON exported from
+an external VirgoStars calculation. It can also read `{ "temaRender": ... }`
+or `{ "theme": ... }`. On a successful import, that calculated chart becomes
+the demo's default in the current browser until **Use synthetic fixture
+instead** is selected. It is stored in the browser's local storage only;
+the reference data is not checked into the public repo or uploaded by this
+demo. The library does not generate planetary longitudes or houses from a date,
+time and place: those calculations remain the responsibility of VirgoStars.
+
 ## Approved real asset pack
 
 Clone the publicly readable [`Cesare-ml/astrological-assets`](https://github.com/Cesare-ml/astrological-assets) repository next to `astrological-charts` and start the manifest-verified server from the Charts directory. Public visibility does not clear individual artwork for redistribution: review the asset repository's rights policy before any distribution.
