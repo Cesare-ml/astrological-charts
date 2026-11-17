@@ -4,39 +4,36 @@
 
 The old renderer displaced each glyph by running a forward-only 7° gap pass
 twice; a compact group could drift far from its actual zodiac position and
-crowded up at 0°/360°. The new `planet-symbol-layout.ts`:
+crowded up at 0°/360°. The new `planet-symbol-layout.ts` provides a bounded
+placement mode used by the rendered celestial glyphs:
 
 1. unwraps zodiac positions at their largest empty arc (so 359° and 0° are neighbours);
-2. uses two radial lanes when the available ring width allows it, with a single-lane fallback for narrow charts;
-3. spreads glyphs within each lane by minimum-squared angular displacement, based on the actual glyph/label footprint;
-4. resolves remaining two-dimensional bounding-box collisions after chart rotation, including collisions between a glyph and another body's degree badge;
-5. anchors every thin connector to the **original longitude** at the ring boundary, rather than to the displaced glyph;
-6. keeps the symbol and small degree label horizontal even where the radial connector bends.
+2. limits every displayed planet to **at most ±3°** of its original longitude;
+3. searches many radial tracks inside the celestial band before making small angular adjustments;
+4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions;
+5. reduces the glyph and its label **together, and only in crowded groups**, if the available space cannot hold the original size without overlaps or a greater angular deviation;
+6. anchors the one retained outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed.
 
-For **dense** conjunctions (three or more nearby objects), an additional
-deterministic packing pass first tries multiple radial positions and small
-half-degree angular steps. It compares four insertion orders, keeps the
-least-displaced collision-free result and reassigns occupied glyph slots in
-ascending longitude order, preventing visual reversals. The original
-least-squares spread remains the bounded fallback for impossible layouts.
-In the five-body synthetic Aries-point fixture, this reduces the typical
-largest glyph deviation at the demo's chart rotation from roughly 15° to
-under 9°. This is a display position, never a modification of astronomical
-longitude; both radial connectors still point to the exact input longitude.
+For dense conjunctions, the bounded solver compares four insertion orders,
+radial slots, and angular offsets in half-degree steps inside ±3°. It never
+falls back to moving a glyph beyond the limit. There is a necessary geometric
+tradeoff: five perfectly coincident full-size glyphs cannot fit in such a
+narrow angular slice. The solver therefore scales that group uniformly rather
+than suggesting false zodiacal separation. The original two-lane least-squares
+algorithm remains available to consumers that do not request bounded layout.
+These are *display* adjustments: astronomical longitudes remain unchanged.
 
-The standard natal chart's planet ring has more space (`108/120` of the zodiac
-outer diameter), while the glyphs leave a dedicated clear margin before the zodiac sign ring.
-When zodiac decan/decade overlays are enabled, the old `103/120` boundary is
-retained to reserve space for their additional symbols.
-In crowded groups they may occupy an additional inner lane toward the houses.
-When its radial width is at least `0.45` world units, glyphs occupy an outward
-collision-spread orbit, while degree badges get their **own collision-spread
-orbit between the house ring and planetary glyphs**. The badge orbit is shifted
-slightly closer to its associated planet; the separated radial bands protect
-readability on the 800px demo.
-Thinner transit and
-synastry bands retain the preceding tangential badge layout. This avoids
-incorrectly moving glyphs outside a narrow band.
+The standard natal chart restores the full zodiac sign-ring width (`103/120`
+of the outer diameter). To create room for radial planet tracks, the natal
+house and aspect wheel is slightly smaller (its outer boundary is `67.1/120`
+instead of `75.1/120`); transit and synastry house proportions are left
+unchanged. Planet degree badges now sit **directly beside their glyphs**,
+instead of occupying an independent ring far away. The bounded solver accounts
+for the badge size, so the two cannot collide with another planet or badge.
+The glyphs retain a margin before the sign ring. Transit and synastry rings
+also use bounded placement with their smaller pre-existing degree label when
+there is a nonzero usable radial band; degenerate near-zero-width rings retain
+the legacy layout to avoid making chart rendering fail.
 
 The on-screen glyph *can* move to improve readability. The underlying `TemaRender`
 planet longitudes, cusp positions, aspect calculations and other chart math are
@@ -44,8 +41,8 @@ unchanged. The badge reports the original degree within the zodiac sign,
 **not** the glyph angle. The main degree number is followed by **two moderately
 smaller, enlarged-for-legibility arcsecond digits** instead of the degree sign. For example, 358°30′44″
 is shown as a large `28` followed by small `44` (the minute portion is not
-drawn in this compact badge). Full DMS remains available for the ASC and MC
-captions. Badges are slightly reduced in size and shifted toward their glyphs.
+drawn in this compact badge). The two arcsecond digits have a larger font
+than before; full DMS remains available for ASC and MC captions.
 
 ## Public option
 
@@ -127,10 +124,10 @@ date/place must stay in the local host and not in this public source tree.
   Additional headless tests verify the wide band, axis geometry, independent
   toggles, degree/minute/second boundaries, real interval selection for planetary
   hours and signed MC motion.
-  Collision checks include 25 chart rotations at two glyph scales and 30 mixed
-  synthetic 18-body configurations, plus a five-body regression for angular
-  fidelity, radial staggering and preserved zodiacal order. They are still
-  not a pixel-render baseline.
+  Collision checks include 25 chart rotations at two glyph scales, 30 mixed
+  synthetic 18-body configurations, and **strict ±3° constraints** for groups
+  of five, seven and eight closely aligned bodies at seven rotations, including
+  the degree badges. They are still not a pixel-render baseline.
 - Library/demo build: `npm run verify:angular` on a clean install.
 - Visual smoke: with the generated local demo pack and both servers running,
   `npm run test:demo` in Chromium and Firefox; inspect

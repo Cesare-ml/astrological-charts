@@ -116,3 +116,44 @@ test('mixed planetary distributions remain collision-free across deterministic c
     }
   }
 });
+
+test('bounded natal layout never shifts a glyph more than three degrees or overlaps its neighbours', () => {
+  const natalInner = 4.5723 * 67.1 / 120 / 2 + 0.055;
+  const natalOuter = 4.5723 * 103 / 120 / 2 - 0.085;
+  const options = { maxAngularDisplacement: 3, labelWidth: 0.17,
+    labelHeight: 0.10, labelTangentOffset: 0.205 };
+  const clusters = [
+    { Sun: 358.4, Moon: 359.1, Mercury: 0.3, Venus: 1.2, Mars: 2.4 },
+    Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`p${i}`, 359.7])),
+    { Sun: 12, Moon: 12.01, Mercury: 12.1, Venus: 12.2, Mars: 12.4,
+      Jupiter: 12.5, Saturn: 12.6 },
+  ];
+  for (const rotation of [0, 45, 90, 135, 180, 240, 315]) for (const source of clusters) {
+    const result = layoutPlanetSymbols(source, natalInner, natalOuter,
+      width, height, true, rotation, options);
+    assert.deepEqual(Object.keys(result).sort(), Object.keys(source).sort());
+    const objects = [];
+    for (const [name, position] of Object.entries(result)) {
+      const drift = angularDistance(position.displayDegree, source[name]);
+      assert.ok(drift <= 3 + 1e-8, `rotation ${rotation}: ${name} drift ${drift}`);
+      const scale = position.scale ?? 1;
+      assert.ok(scale > 0, 'crowded glyph remains visible');
+      assert.ok(position.radius > natalInner && position.radius < natalOuter,
+        `${name}: radial placement outside the celestial band`);
+      const radians = (rotation + position.displayDegree) * Math.PI / 180;
+      const x = -Math.sin(radians) * position.radius;
+      const y = Math.cos(radians) * position.radius;
+      objects.push({ name, x, y, w: width * scale, h: height * scale });
+      objects.push({ name, x: x - Math.cos(radians) * options.labelTangentOffset * scale,
+        y: y - Math.sin(radians) * options.labelTangentOffset * scale,
+        w: options.labelWidth * scale, h: options.labelHeight * scale });
+    }
+    for (let i = 0; i < objects.length; i++) for (let j = i + 1; j < objects.length; j++) {
+      const a = objects[i], b = objects[j];
+      if (a.name === b.name) continue;
+      const dx = (a.w + b.w) / 2 - Math.abs(a.x - b.x);
+      const dy = (a.h + b.h) / 2 - Math.abs(a.y - b.y);
+      assert.ok(dx <= 0 || dy <= 0, `rotation ${rotation}: ${a.name}/${b.name} collision`);
+    }
+  }
+});

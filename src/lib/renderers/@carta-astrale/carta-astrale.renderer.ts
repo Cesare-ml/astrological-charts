@@ -155,18 +155,15 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
         diametroAnelloTransiti: 146.64 / 120,
         diametroAssi: 138 / 120,
         diametroGrigliaTransiti: 120/120, //122.56 / 120,
-        // Widen the celestial band: the outermost glyph lane stays well away
-        // from the zodiac signs, while crowded conjunctions can use an inner
-        // radial lane nearer the house ring.
-        // Decans/decades occupy a second symbol strip inside the zodiac ring;
-        // retain its wider historical band when either overlay is enabled.
-        diametroAnelloElementiCelesti: (opzioni.mostraDecani || opzioni.mostraDecadi ? 103 : 108) / 120,
+        // Preserve the full width of the zodiac sign ring. A wider planetary
+        // band comes from a smaller house/aspect wheel, not cramped signs.
+        diametroAnelloElementiCelesti: 103 / 120,
         diametroCerchioDodecatemori: 91.66 / 120,
         diametroCerchioDodecatemori2: 87.5 / 120,
-        diametroInternoMiniArcoCase: 75.1 / 120,
-        diametroAnelloCase: 74.16 / 120,
-        diametroCerchioInternoTermini: 70.03 / 120,
-        diametroInternoAnelloCase: 63.36 / 120
+        diametroInternoMiniArcoCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 75.1 : 67.1) / 120,
+        diametroAnelloCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 74.16 : 66.16) / 120,
+        diametroCerchioInternoTermini: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 70.03 : 62.03) / 120,
+        diametroInternoAnelloCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 63.36 : 55.36) / 120
     };
 
     for (const key in proporzioni) {

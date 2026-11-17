@@ -32,14 +32,14 @@ export class ElementiCelestiRender {
     context.fillText(`${degree}`, 98, 58);
     // Two small arcsecond digits replace the degree sign. The label keeps the
     // exact, unshifted longitude even if its visual position was separated.
-    context.font = 'bold 50px Arial, sans-serif';
+    context.font = 'bold 62px Arial, sans-serif';
     context.textAlign = 'left';
     context.fillText(seconds, 104, 51);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
     return new THREE.Mesh(new THREE.PlaneGeometry(
-      (compact ? 0.12 : 0.19) * size, (compact ? 0.06 : 0.12) * size,
+      (compact ? 0.12 : 0.17) * size, (compact ? 0.06 : 0.10) * size,
     ), material);
   }
 
@@ -107,24 +107,15 @@ export class ElementiCelestiRender {
     const innerRingRadius = diametroCerchioInterno / 2;
     // Transit/synastry rings may be considerably thinner. Preserve their
     // compact tangential labels instead of squeezing symbols past the rim.
-    const useDegreeStrip = raggioConfineAnelloPianeti - innerRingRadius >= 0.45;
+    const hasWidePlanetBand = raggioConfineAnelloPianeti - innerRingRadius >= 0.45;
     const elementiCelestiRenderPos = this.getRenderPosPianeti(
       elementiCelesti, parametroDiRender,
-      // The widened band gives dense groups a second lane toward the houses,
-      // while reserving a quiet outer margin before the zodiac sign symbols.
-      useDegreeStrip ? innerRingRadius + 0.24 * simboliScale : innerRingRadius,
-      useDegreeStrip ? raggioConfineAnelloPianeti - 0.085 * simboliScale : raggioConfineAnelloPianeti,
-      simboliScale, mostraGradi && !useDegreeStrip, 90 - ascendente + degOffs,
+      // The wider celestial band offers many radial tracks near the houses;
+      // planet symbols keep a separate quiet margin from the zodiac signs.
+      hasWidePlanetBand ? innerRingRadius + 0.055 * simboliScale : innerRingRadius,
+      hasWidePlanetBand ? raggioConfineAnelloPianeti - 0.085 * simboliScale : raggioConfineAnelloPianeti,
+      simboliScale, mostraGradi, 90 - ascendente + degOffs, hasWidePlanetBand,
     );
-    // The badge orbit is closer to the glyphs than to the house numerals,
-    // while independent collision spreading prevents tight clusters merging.
-    const badgeRadius = innerRingRadius + 0.09 * simboliScale;
-    const badgeLongitudes = Object.fromEntries(Object.entries(elementiCelesti)
-      .map(([name, body]) => [name, body[parametroDiRender]]));
-    const badgePositions = mostraGradi && useDegreeStrip ? layoutPlanetSymbols(
-      badgeLongitudes, badgeRadius, badgeRadius,
-      0.19 * simboliScale, 0.12 * simboliScale, false, 90 - ascendente + degOffs,
-    ) : {};
 
     //parti arabe render freccia+elemento in evidenza
     var partiArabeNomePianetaHighlight = undefined;
@@ -217,7 +208,8 @@ export class ElementiCelestiRender {
         elRef = 'simboli-bianchi/elementi-celesti/'+nome+'.png';
       }
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
-      el.scale.set(0.22*simboliScale,0.22*simboliScale,1);
+      const glyphScale = elementiCelestiRenderPos[nome].scale ?? 1;
+      el.scale.set(0.22 * simboliScale * glyphScale, 0.22 * simboliScale * glyphScale, 1);
       const trueDegree = elementiCelesti[nome][parametroDiRender];
       const elDegDiRender = 90 - ascendente + trueDegree + degOffs;
       const glyphDegree = 90 - ascendente + elementiCelestiRenderPos[nome][parametroDiRender] + degOffs;
@@ -279,7 +271,7 @@ export class ElementiCelestiRender {
 
       // Every connector starts on the *true* astronomical degree; only its
       // symbol end may move into another radial lane to avoid a conjunction.
-      const glyphHalfHeight = 0.22 * simboliScale * 605 / 875 / 2;
+      const glyphHalfHeight = 0.22 * simboliScale * glyphScale * 605 / 875 / 2;
       if(lineaSuCerchioEsterno) {
         const p2 = this.pointOnRing(elDegDiRender, raggioConfineAnelloPianeti);
         const p1 = this.pointOnRing(glyphDegree, glyphRadius + glyphHalfHeight + 0.012);
@@ -287,26 +279,19 @@ export class ElementiCelestiRender {
         group.add(lineaB);
       }
 
-      const p2 = this.pointOnRing(elDegDiRender, diametroCerchioInterno/2);
-      const p1 = this.pointOnRing(glyphDegree, glyphRadius - glyphHalfHeight - 0.012);
-      var lineaA = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
-      group.add(lineaA);
+      // The inward spoke to the houses is deliberately omitted. The outer
+      // tick still anchors the symbol to its exact astronomical longitude.
 
       group.add( el );
       if (mostraGradi) {
-        const label = this.makeDegreeLabel(trueDegree, coloreSimboli, simboliScale, !useDegreeStrip);
-        if (useDegreeStrip) {
-          const badgeDegree = 90 - ascendente + badgePositions[nome].displayDegree + degOffs;
-          const badgePosition = this.pointOnRing(badgeDegree, badgeRadius);
-          label.position.set(badgePosition.x, badgePosition.y, 0.002);
-        } else {
-          const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);
-          const labelOffset = 0.17 * simboliScale;
-          label.position.set(
-            glyphPosition.x - Math.cos(tangentAngle) * labelOffset,
-            glyphPosition.y - Math.sin(tangentAngle) * labelOffset, 0.002,
-          );
-        }
+        const label = this.makeDegreeLabel(trueDegree, coloreSimboli,
+          simboliScale * glyphScale, !hasWidePlanetBand);
+        const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);
+        const labelOffset = (hasWidePlanetBand ? 0.205 : 0.17) * simboliScale * glyphScale;
+        label.position.set(
+          glyphPosition.x - Math.cos(tangentAngle) * labelOffset,
+          glyphPosition.y - Math.sin(tangentAngle) * labelOffset, 0.002,
+        );
         label.material.opacity = el.material.opacity;
         group.add(label);
       }
@@ -398,19 +383,26 @@ export class ElementiCelestiRender {
   public static getRenderPosPianeti(
     elementiCelesti, parametroDiRender,
     raggioInterno = 1.4, raggioEsterno = 1.8,
-    simboliScale = 1, mostraGradi = true, chartRotation = 0,
+    simboliScale = 1, mostraGradi = true, chartRotation = 0, largeDegreeLabels = false,
   ) {
     const longitudes: Record<string, number> = {};
     for (const nome in elementiCelesti) longitudes[nome] = elementiCelesti[nome][parametroDiRender];
     const positions = layoutPlanetSymbols(
       longitudes, raggioInterno, raggioEsterno,
       0.22 * simboliScale, 0.22 * simboliScale * 605 / 875, mostraGradi, chartRotation,
+      raggioEsterno - raggioInterno > 0.06 ? {
+        maxAngularDisplacement: 3,
+        labelWidth: (largeDegreeLabels ? 0.17 : 0.12) * simboliScale,
+        labelHeight: (largeDegreeLabels ? 0.10 : 0.06) * simboliScale,
+        labelTangentOffset: (largeDegreeLabels ? 0.205 : 0.17) * simboliScale,
+      } : undefined,
     );
     const result = {};
     for (const nome in positions) {
       result[nome] = {
         [parametroDiRender]: positions[nome].displayDegree,
         radius: positions[nome].radius,
+        scale: positions[nome].scale,
       };
     }
     return result;

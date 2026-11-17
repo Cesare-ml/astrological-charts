@@ -7,6 +7,18 @@
 export interface SymbolPosition {
   displayDegree: number;
   radius: number;
+  /** Glyph size relative to the requested dimensions (crowded groups only). */
+  scale?: number;
+}
+
+export interface BoundedSymbolOptions {
+  /** Maximum difference between a symbol's displayed and true longitude. */
+  maxAngularDisplacement: number;
+  /** Dimensions of the degree badge placed beside the glyph. */
+  labelWidth?: number;
+  labelHeight?: number;
+  /** Tangential distance from glyph centre to degree badge centre. */
+  labelTangentOffset?: number;
 }
 
 interface Body {
@@ -49,6 +61,136 @@ function spreadLane(bodies: Body[], minGap: number): number[] {
   return result;
 }
 
+/**
+ * A dense conjunction cannot be shown faithfully by spreading positions around
+ * the zodiac. Instead, use additional radial tracks. If even those are full,
+ * reduce only the glyphs in that group, preserving their true order/longitude.
+ * Each candidate is checked against its actual screen-aligned glyph and label
+ * rectangles, not just against distances along the circumference.
+ */
+function layoutBoundedSymbols(
+  bodies: Body[], innerRadius: number, outerRadius: number,
+  symbolWidth: number, symbolHeight: number, showDegrees: boolean,
+  chartRotation: number, options: BoundedSymbolOptions,
+): Record<string, SymbolPosition> {
+  const maxDrift = Math.max(0, options.maxAngularDisplacement);
+  const band = outerRadius - innerRadius;
+  const labelWidth = options.labelWidth ?? symbolWidth * (0.12 / 0.22);
+  const labelHeight = options.labelHeight ?? symbolHeight * (0.06 / (0.22 * 605 / 875));
+  const tangentOffset = options.labelTangentOffset ?? symbolWidth * (0.17 / 0.22);
+  const radiusMid = (innerRadius + outerRadius) / 2;
+
+  function rectangles(placement: SymbolPosition) {
+    const angle = (chartRotation + placement.displayDegree) * Math.PI / 180;
+    const scale = placement.scale ?? 1;
+    const x = -Math.sin(angle) * placement.radius;
+    const y = Math.cos(angle) * placement.radius;
+    const boxes = [{ x, y, width: symbolWidth * scale, height: symbolHeight * scale }];
+    if (showDegrees) boxes.push({
+      x: x - Math.cos(angle) * tangentOffset * scale,
+      y: y - Math.sin(angle) * tangentOffset * scale,
+      width: labelWidth * scale,
+      height: labelHeight * scale,
+    });
+    return boxes;
+  }
+
+  function collides(first: SymbolPosition, second: SymbolPosition): boolean {
+    for (const a of rectangles(first)) for (const b of rectangles(second)) {
+      if (Math.abs(a.x - b.x) < (a.width + b.width) / 2 + 0.004 &&
+          Math.abs(a.y - b.y) < (a.height + b.height) / 2 + 0.004) return true;
+    }
+    return false;
+  }
+
+  // The widest gap is the natural circular break; a conjunction at 359°/0°
+  // therefore belongs to one group instead of being split at the Aries point.
+  const sorted = [...bodies].sort((a, b) => a.degree - b.degree || a.key.localeCompare(b.key));
+  let start = 0;
+  let largestGap = -1;
+  for (let i = 0; i < sorted.length; i++) {
+    const next = (i + 1) % sorted.length;
+    const gap = sorted[next].degree + (next <= i ? 360 : 0) - sorted[i].degree;
+    if (gap > largestGap) { largestGap = gap; start = next; }
+  }
+  const circular = Array.from({ length: sorted.length }, (_, i) => {
+    const index = (start + i) % sorted.length;
+    return { ...sorted[index], unwrapped: sorted[index].degree + (index < start ? 360 : 0) };
+  });
+  const groupGap = Math.max(9, 2 * maxDrift + 2 * Math.atan2(symbolWidth, radiusMid) * 180 / Math.PI);
+  const groups: Body[][] = [];
+  for (const body of circular) {
+    if (!groups.length || body.unwrapped - groups[groups.length - 1][groups[groups.length - 1].length - 1].unwrapped > groupGap) {
+      groups.push([]);
+    }
+    groups[groups.length - 1].push(body);
+  }
+
+  const placed: Record<string, SymbolPosition> = {};
+  for (const group of groups) {
+    const fixed = Object.values(placed);
+    const center = (group[0].unwrapped + group[group.length - 1].unwrapped) / 2;
+    const centerFirst = [...group].sort((a, b) =>
+      Math.abs(a.unwrapped - center) - Math.abs(b.unwrapped - center) || a.unwrapped - b.unwrapped);
+    const orders = [group, [...group].reverse(), centerFirst, [...centerFirst].reverse()];
+    let winning: Record<string, SymbolPosition> | undefined;
+    let winningScore = Infinity;
+
+    // Uniform scaling within a dense group prevents misleading emphasis on an
+    // individual planet; isolated planets always retain their full glyph size.
+    for (const scale of [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5,
+      0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1, 0.07, 0.04, 0.02]) {
+      const radialMargin = symbolHeight * scale / 2 + 0.007;
+      if (band < 2 * radialMargin) continue;
+      const radialStep = Math.max(0.01, symbolHeight * scale * 0.42);
+      const radialSlots: number[] = [];
+      for (let radius = innerRadius + radialMargin; radius <= outerRadius - radialMargin + 1e-8; radius += radialStep) {
+        radialSlots.push(Math.min(radius, outerRadius - radialMargin));
+      }
+      radialSlots.push(outerRadius - radialMargin);
+      radialSlots.sort((a, b) => Math.abs(a - radiusMid) - Math.abs(b - radiusMid));
+      const offsets: number[] = [0];
+      const angularStep = maxDrift ? Math.min(0.5, maxDrift) : 1;
+      for (let value = angularStep; value < maxDrift + 1e-8; value += angularStep) {
+        offsets.push(-Math.min(value, maxDrift), Math.min(value, maxDrift));
+      }
+      if (maxDrift && offsets.every(value => Math.abs(value) < maxDrift - 1e-8)) {
+        offsets.push(-maxDrift, maxDrift);
+      }
+      // Limit angular displacements first, then prefer a middle radial track.
+      const candidates = (body: Body): SymbolPosition[] => offsets.flatMap(offset =>
+        radialSlots.map(radius => ({ displayDegree: normalizeDegree(body.degree + offset), radius, scale })));
+
+      for (const order of orders) {
+        const selected: Record<string, SymbolPosition> = {};
+        let possible = true;
+        for (const body of order) {
+          const location = candidates(body).find(candidate =>
+            !fixed.some(other => collides(candidate, other)) &&
+            !Object.values(selected).some(other => collides(candidate, other)));
+          if (!location) { possible = false; break; }
+          selected[body.key] = location;
+        }
+        if (!possible) continue;
+        const locations = group.map(body => selected[body.key]);
+        const drifts = group.map((body, i) =>
+          Math.abs(((locations[i].displayDegree - body.degree + 540) % 360) - 180));
+        const score = Math.max(...drifts) * 100 + drifts.reduce((sum, delta) => sum + delta * delta, 0)
+          + locations.reduce((sum, location) => sum + Math.abs(location.radius - radiusMid), 0);
+        if (score < winningScore) { winning = selected; winningScore = score; }
+      }
+      if (winning) break;
+    }
+    if (!winning) {
+      // A physically impossibly dense group (or a zero-width ring) should
+      // never silently spread beyond the requested longitude constraint.
+      throw new Error('Insufficient radial space for collision-free planetary symbols');
+    }
+    Object.assign(placed, winning);
+  }
+  return placed;
+}
+
 export function layoutPlanetSymbols(
   longitudes: Record<string, number>,
   innerRadius: number,
@@ -57,12 +199,17 @@ export function layoutPlanetSymbols(
   symbolHeight: number,
   showDegrees: boolean,
   chartRotation = 0,
+  bounded?: BoundedSymbolOptions,
 ): Record<string, SymbolPosition> {
   const bodies: Body[] = Object.entries(longitudes)
     .filter(([, longitude]) => Number.isFinite(longitude))
     .map(([key, longitude]) => ({ key, degree: normalizeDegree(longitude), unwrapped: 0 }))
     .sort((a, b) => a.degree - b.degree || a.key.localeCompare(b.key));
   if (!bodies.length) return {};
+  if (bounded) return layoutBoundedSymbols(
+    bodies, innerRadius, outerRadius, symbolWidth, symbolHeight,
+    showDegrees, chartRotation, bounded,
+  );
 
   // Start after the widest empty arc so conjunctions crossing 0° stay together.
   let start = 0;

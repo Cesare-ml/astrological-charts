@@ -50,7 +50,8 @@ function overlapArea(a, b) {
   return Math.max(0, width) * Math.max(0, height);
 }
 
-async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1, outerRingRadius = outerRadius) {
+async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
+  outerRingRadius = outerRadius, innerRingRadius = innerRadius) {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -105,8 +106,8 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1, oute
     };
     const initial = structuredClone(theme);
     const group = await ElementiCelestiRender.getAnelloElementiCelesti(
-      theme, 0, [], symbolScale, options, [], [], innerRadius * 2, outerRingRadius * 2,
-      innerRadius * 2, true, false,
+      theme, 0, [], symbolScale, options, [], [], innerRingRadius * 2, outerRingRadius * 2,
+      innerRingRadius * 2, true, false,
     );
     assert.deepEqual(theme, initial, 'renderer must not mutate original positions');
     return { group, labels, fonts };
@@ -125,10 +126,10 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
   const numberLabels = group.children.filter(child =>
     child.material?.map?.isCanvasTexture);
   assert.equal(glyphs.length, names.length);
-  assert.equal(lines.length, names.length * 2);
+  assert.equal(lines.length, names.length, 'only the true-degree outer connector remains');
   assert.equal(numberLabels.length, names.length);
   assert.deepEqual(labels.sort(), ['0', '1', '2', '28', '29', '3', '4', '44', ...Array(6).fill('00')].sort());
-  assert.ok(fonts.includes('bold 50px Arial, sans-serif'), 'small two-digit arcseconds must remain legible');
+  assert.ok(fonts.includes('bold 62px Arial, sans-serif'), 'two-digit arcseconds must remain legible');
   for (const label of numberLabels) {
     const radius = Math.hypot(label.position.x, label.position.y);
     assert.ok(radius > innerRadius + 0.03 && radius < outerRadius - 0.03,
@@ -140,14 +141,14 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
     const glyph = glyphs.find(child => child.userData.ref.endsWith(file));
     assert.ok(glyph, `missing ${name} glyph`);
     const longitude = planetLongitudes[name];
-    const anchor = polar(90 + longitude, innerRadius);
-    assert.ok(lines.some(line =>
-      distance(line.userData.connector.to, anchor) < 1e-8), `${name} must have a true-degree inner anchor`);
     const outerAnchor = polar(90 + longitude, outerRadius);
     assert.ok(lines.some(line =>
       distance(line.userData.connector.to, outerAnchor) < 1e-8), `${name} must have a true-degree outer anchor`);
     const glyphRadius = Math.hypot(glyph.position.x, glyph.position.y);
     assert.ok(glyphRadius > innerRadius && glyphRadius < outerRadius, `${name} outside ring`);
+    const drawnAngle = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;
+    const discrepancy = Math.abs(((drawnAngle - longitude + 540) % 360) - 180);
+    assert.ok(discrepancy <= 3 + 1e-7, `${name}: glyph displaced ${discrepancy.toFixed(3)}°`);
   }
 });
 
@@ -184,27 +185,28 @@ test('no celestial glyph or degree badge covers a neighbouring glyph or badge in
   }
 });
 
-test('wider natal planet ring keeps the degrees in a separate strip toward houses', async () => {
-  const natalOuterRadius = 4.5723 * 108 / 120 / 2;
-  const scene = await makeScene(true, 0, 1, natalOuterRadius);
+test('wider natal planet ring holds degree badges beside each glyph', async () => {
+  const natalInnerRadius = 4.5723 * 67.1 / 120 / 2;
+  const natalOuterRadius = 4.5723 * 103 / 120 / 2;
+  const scene = await makeScene(true, 0, 1, natalOuterRadius, natalInnerRadius);
   const glyphs = scene.group.children.filter(child => child.userData.ref);
   const badges = scene.group.children.filter(child => child.material?.map?.isCanvasTexture);
   assert.equal(glyphs.length, badges.length);
-  for (const label of badges) {
-    const radius = Math.hypot(label.position.x, label.position.y);
-    assert.ok(radius > innerRadius + 0.07 && radius < innerRadius + 0.12,
-      'label must stay legible on a dedicated orbit just outside the houses');
-    assert.ok(label.geometry.parameters.width >= 0.18 && label.geometry.parameters.height >= 0.11,
-      'degree labels in the natal band must be visibly larger');
+  for (let i = 0; i < badges.length; i++) {
+    const glyph = glyphs[i], label = badges[i];
+    const badgeDistance = distance(glyph.position, label.position);
+    assert.ok(badgeDistance <= 0.205 * glyph.scale.x / 0.22 + 0.001,
+      'degree label should follow its glyph rather than an independent orbit');
+    assert.ok(badgeDistance > 0.04, 'degree label must remain distinguishable from its glyph');
   }
   for (const glyph of glyphs) {
     const radius = Math.hypot(glyph.position.x, glyph.position.y);
-    assert.ok(radius > innerRadius + 0.15 && radius < natalOuterRadius,
-      'glyph must occupy a separate radial orbit outside the degree band');
+    assert.ok(radius > natalInnerRadius && radius < natalOuterRadius,
+      'glyph must occupy the wider radial band');
   }
 
   for (const offset of [0, 27, 91, 135, 198, 276, 331]) {
-    const { group } = await makeScene(true, offset, 1, natalOuterRadius);
+    const { group } = await makeScene(true, offset, 1, natalOuterRadius, natalInnerRadius);
     let owner = '';
     const objects = [];
     for (const child of group.children) {
@@ -216,5 +218,25 @@ test('wider natal planet ring keeps the degrees in a separate strip toward house
       assert.ok(overlapArea(objects[i].box, objects[j].box) < 0.00001,
         `wider natal layout must not overlap, offset ${offset}, ${objects[i].owner} ${JSON.stringify(objects[i].box)} vs ${objects[j].owner} ${JSON.stringify(objects[j].box)}, ${overlapArea(objects[i].box, objects[j].box)}`);
     }
+  }
+});
+
+test('degree badge collision geometry stays consistent near the wide-band threshold', async () => {
+  // The renderer uses the original band width to select large badges; after
+  // reserving margins, the effective layout band is narrower than 0.45.
+  const { group } = await makeScene(true, 0, 1, 1.95, 1.43);
+  let owner = '';
+  const objects = [];
+  for (const child of group.children) {
+    if (child.userData.ref) { owner = child.userData.ref; objects.push({ owner, box: visibleRectangle(child) }); }
+    else if (child.material?.map?.isCanvasTexture) {
+      objects.push({ owner, box: visibleRectangle(child) });
+    }
+  }
+  for (let i = 0; i < objects.length; i++) for (let j = i + 1; j < objects.length; j++) {
+    const a = objects[i], b = objects[j];
+    if (a.owner === b.owner) continue;
+    assert.ok(overlapArea(a.box, b.box) < 0.00001,
+      `${a.owner}/${b.owner}: badge and glyph footprints diverged`);
   }
 });
