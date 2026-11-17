@@ -24,7 +24,11 @@ largest glyph deviation at the demo's chart rotation from roughly 15° to
 under 9°. This is a display position, never a modification of astronomical
 longitude; both radial connectors still point to the exact input longitude.
 
-The natal chart's planet ring has more space (`103/120` of the zodiac outer diameter).
+The standard natal chart's planet ring has more space (`108/120` of the zodiac
+outer diameter), while the glyphs leave a dedicated clear margin before the zodiac sign ring.
+When zodiac decan/decade overlays are enabled, the old `103/120` boundary is
+retained to reserve space for their additional symbols.
+In crowded groups they may occupy an additional inner lane toward the houses.
 When its radial width is at least `0.45` world units, glyphs occupy an outward
 collision-spread orbit, while degree badges get their **own collision-spread
 orbit between the house ring and planetary glyphs**. The badge orbit is shifted
@@ -37,8 +41,8 @@ incorrectly moving glyphs outside a narrow band.
 The on-screen glyph *can* move to improve readability. The underlying `TemaRender`
 planet longitudes, cusp positions, aspect calculations and other chart math are
 unchanged. The badge reports the original degree within the zodiac sign,
-**not** the glyph angle. The main degree number is followed by **two much
-smaller arcsecond digits** instead of the degree sign. For example, 358°30′44″
+**not** the glyph angle. The main degree number is followed by **two moderately
+smaller, enlarged-for-legibility arcsecond digits** instead of the degree sign. For example, 358°30′44″
 is shown as a large `28` followed by small `44` (the minute portion is not
 drawn in this compact badge). Full DMS remains available for the ASC and MC
 captions. Badges are slightly reduced in size and shifted toward their glyphs.
@@ -72,7 +76,7 @@ legacy callers omitting them also see the requested markers:
 | `mostraRetroFrecciaIC` | Lavender open faceted cradle on IC |
 | `mostraGradiAssi` | Smaller zodiacal degree/minute/second captions at ASC and MC |
 | `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour beside ASC, if source data exists (no “Ora” caption) |
-| `mostraDirezioneMotoMC` | Small golden direction tip within the MC arrow |
+| `mostraDirezioneMotoMC` | Small open lilac direction accent within the MC arrow (no yellow fill) |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
 Axis positions always use the house system selected in `settaggi.domificazione_selezionata`;

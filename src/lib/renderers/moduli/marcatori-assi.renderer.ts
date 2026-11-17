@@ -48,15 +48,6 @@ function axisLine(a: THREE.Vector2, b: THREE.Vector2, color: string, z = 0.015):
   return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 }));
 }
 
-function solidPolygon(points: THREE.Vector2[], color: string, z = 0.018): THREE.Mesh {
-  const shape = new THREE.Shape();
-  points.forEach((point, index) => index === 0 ? shape.moveTo(point.x, point.y) : shape.lineTo(point.x, point.y));
-  shape.closePath();
-  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
-  mesh.position.z = z;
-  return mesh;
-}
-
 function outlinePolygon(points: THREE.Vector2[], color: string): THREE.LineLoop {
   const geometry = new THREE.BufferGeometry().setFromPoints(points.map(p => new THREE.Vector3(p.x, p.y, 0.022)));
   return new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({color}));
@@ -200,13 +191,20 @@ export class MarcatoriAssiRender {
       const house = temaRender?.houses?.[opzioni?.settaggi?.domificazione_selezionata];
       const speed = house?.mcSpeed ?? temaRender?.mcSpeed ?? 1;
       if (Number.isFinite(speed) && speed !== 0) {
-        const center = pointOnRing(mcAngle, zodiacRadius + 0.365);
-        const tangent = pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.055);
-        const radial = pointOnRing(mcAngle, 0.045);
-        const marker = solidPolygon([
-          center.clone().add(tangent), center.clone().sub(tangent).add(radial),
-          center.clone().sub(tangent).sub(radial),
-        ], '#ffdf73', 0.024);
+        // A two-stroke, lilac direction accent follows the MC's thin-line
+        // vocabulary. No solid yellow triangle over the violet marker.
+        const center = pointOnRing(mcAngle, zodiacRadius + 0.37);
+        const tangent = pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.05);
+        const base = center.clone().sub(tangent.clone().multiplyScalar(0.7));
+        const wing = pointOnRing(mcAngle, 0.026);
+        const tip = center.clone().add(tangent);
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(base.x + wing.x, base.y + wing.y, 0.024),
+          new THREE.Vector3(tip.x, tip.y, 0.024),
+          new THREE.Vector3(base.x - wing.x, base.y - wing.y, 0.024),
+          new THREE.Vector3(tip.x, tip.y, 0.024),
+        ]);
+        const marker = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({color: '#b58bd8'}));
         marker.userData.axisMarker = 'MC-motion';
         group.add(marker);
       }

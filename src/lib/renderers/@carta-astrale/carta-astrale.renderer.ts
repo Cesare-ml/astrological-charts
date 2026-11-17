@@ -155,8 +155,12 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
         diametroAnelloTransiti: 146.64 / 120,
         diametroAssi: 138 / 120,
         diametroGrigliaTransiti: 120/120, //122.56 / 120,
-        // Extra room for two glyph lanes and a separate inner degree band.
-        diametroAnelloElementiCelesti: 103 / 120,
+        // Widen the celestial band: the outermost glyph lane stays well away
+        // from the zodiac signs, while crowded conjunctions can use an inner
+        // radial lane nearer the house ring.
+        // Decans/decades occupy a second symbol strip inside the zodiac ring;
+        // retain its wider historical band when either overlay is enabled.
+        diametroAnelloElementiCelesti: (opzioni.mostraDecani || opzioni.mostraDecadi ? 103 : 108) / 120,
         diametroCerchioDodecatemori: 91.66 / 120,
         diametroCerchioDodecatemori2: 87.5 / 120,
         diametroInternoMiniArcoCase: 75.1 / 120,

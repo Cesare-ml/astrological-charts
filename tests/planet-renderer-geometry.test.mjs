@@ -55,6 +55,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1, oute
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
   const labels = [];
+  const fonts = [];
   try {
     OggettiSempliciRender.getImg = async (ref, width, height, scale) => {
       const mesh = new THREE.Mesh(
@@ -82,7 +83,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1, oute
           getContext() {
             return {
               clearRect() {},
-              fillText(value) { canvas.testLabel = value; labels.push(value); },
+              fillText(value) { canvas.testLabel = value; labels.push(value); fonts.push(this.font); },
             };
           },
         };
@@ -108,7 +109,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1, oute
       innerRadius * 2, true, false,
     );
     assert.deepEqual(theme, initial, 'renderer must not mutate original positions');
-    return { group, labels };
+    return { group, labels, fonts };
   } finally {
     OggettiSempliciRender.getImg = originalGetImg;
     OggettiSempliciRender.getLinea = originalGetLinea;
@@ -117,7 +118,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1, oute
 }
 
 test('Three.js scene keeps every glyph connector anchored at the true degree', async () => {
-  const { group, labels } = await makeScene(true);
+  const { group, labels, fonts } = await makeScene(true);
   const names = Object.keys(planetLongitudes);
   const glyphs = group.children.filter(child => child.userData.ref);
   const lines = group.children.filter(child => child.userData.connector);
@@ -127,6 +128,7 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
   assert.equal(lines.length, names.length * 2);
   assert.equal(numberLabels.length, names.length);
   assert.deepEqual(labels.sort(), ['0', '1', '2', '28', '29', '3', '4', '44', ...Array(6).fill('00')].sort());
+  assert.ok(fonts.includes('bold 50px Arial, sans-serif'), 'small two-digit arcseconds must remain legible');
   for (const label of numberLabels) {
     const radius = Math.hypot(label.position.x, label.position.y);
     assert.ok(radius > innerRadius + 0.03 && radius < outerRadius - 0.03,
@@ -183,15 +185,15 @@ test('no celestial glyph or degree badge covers a neighbouring glyph or badge in
 });
 
 test('wider natal planet ring keeps the degrees in a separate strip toward houses', async () => {
-  const natalOuterRadius = 4.5723 * 103 / 120 / 2;
+  const natalOuterRadius = 4.5723 * 108 / 120 / 2;
   const scene = await makeScene(true, 0, 1, natalOuterRadius);
   const glyphs = scene.group.children.filter(child => child.userData.ref);
   const badges = scene.group.children.filter(child => child.material?.map?.isCanvasTexture);
   assert.equal(glyphs.length, badges.length);
   for (const label of badges) {
     const radius = Math.hypot(label.position.x, label.position.y);
-    assert.ok(radius > innerRadius + 0.14 && radius < innerRadius + 0.20,
-      'label must be near the glyph, still on its own inner orbit');
+    assert.ok(radius > innerRadius + 0.07 && radius < innerRadius + 0.12,
+      'label must stay legible on a dedicated orbit just outside the houses');
     assert.ok(label.geometry.parameters.width >= 0.18 && label.geometry.parameters.height >= 0.11,
       'degree labels in the natal band must be visibly larger');
   }

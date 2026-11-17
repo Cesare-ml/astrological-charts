@@ -32,9 +32,9 @@ export class ElementiCelestiRender {
     context.fillText(`${degree}`, 98, 58);
     // Two small arcsecond digits replace the degree sign. The label keeps the
     // exact, unshifted longitude even if its visual position was separated.
-    context.font = 'bold 35px Arial, sans-serif';
+    context.font = 'bold 50px Arial, sans-serif';
     context.textAlign = 'left';
-    context.fillText(seconds, 104, 47);
+    context.fillText(seconds, 104, 51);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
@@ -110,15 +110,15 @@ export class ElementiCelestiRender {
     const useDegreeStrip = raggioConfineAnelloPianeti - innerRingRadius >= 0.45;
     const elementiCelestiRenderPos = this.getRenderPosPianeti(
       elementiCelesti, parametroDiRender,
-      // The readable degree band gets its own orbit; symbols stay farther out
-      // instead of sharing a cramped radial lane with the larger numerals.
-      useDegreeStrip ? raggioConfineAnelloPianeti - 0.235 * simboliScale : innerRingRadius,
-      raggioConfineAnelloPianeti,
+      // The widened band gives dense groups a second lane toward the houses,
+      // while reserving a quiet outer margin before the zodiac sign symbols.
+      useDegreeStrip ? innerRingRadius + 0.24 * simboliScale : innerRingRadius,
+      useDegreeStrip ? raggioConfineAnelloPianeti - 0.085 * simboliScale : raggioConfineAnelloPianeti,
       simboliScale, mostraGradi && !useDegreeStrip, 90 - ascendente + degOffs,
     );
     // The badge orbit is closer to the glyphs than to the house numerals,
     // while independent collision spreading prevents tight clusters merging.
-    const badgeRadius = innerRingRadius + 0.18 * simboliScale;
+    const badgeRadius = innerRingRadius + 0.09 * simboliScale;
     const badgeLongitudes = Object.fromEntries(Object.entries(elementiCelesti)
       .map(([name, body]) => [name, body[parametroDiRender]]));
     const badgePositions = mostraGradi && useDegreeStrip ? layoutPlanetSymbols(

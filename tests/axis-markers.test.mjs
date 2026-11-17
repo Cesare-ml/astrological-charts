@@ -87,6 +87,8 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.ok(markers.DS.isLine && !markers.DS.isLineLoop);
   assert.ok(markers.MC.isLineLoop);
   assert.ok(markers.IC.isLineLoop);
+  assert.ok(markers['MC-motion'].isLineSegments, 'MC direction is a subtle open accent');
+  assert.equal(markers['MC-motion'].material.color.getHexString(), 'b58bd8');
   for (const label of group.children.filter(child => ['ASC','MC'].includes(child.userData.axis))) {
     assert.ok(label.geometry.parameters.width >= 0.54 && label.geometry.parameters.width <= 0.58);
     assert.ok(label.geometry.parameters.height >= 0.15 && label.geometry.parameters.height <= 0.17);
