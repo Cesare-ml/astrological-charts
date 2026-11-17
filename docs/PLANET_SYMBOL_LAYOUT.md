@@ -39,7 +39,10 @@ illustrative positions around 359°/0° and no user's birth data.
 
 ## Verification / integration gate
 
-- Geometry tests: `node --test tests/planet-symbol-layout.test.mjs`.
+- Geometry tests: `npm run test:planet-layout`. This covers both the pure
+  collision algorithm and a Three.js scene assembled without WebGL using
+  synthetic symbol meshes. It checks true-longitude anchors, glyph ring bounds,
+  badge placement, original input immutability and default/disabled degree labels.
 - Library/demo build: `npm run verify:angular` on a clean install.
 - Visual smoke: with the generated local demo pack and both servers running,
   `npm run test:demo` in Chromium and Firefox; inspect

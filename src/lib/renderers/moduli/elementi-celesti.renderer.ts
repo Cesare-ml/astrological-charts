@@ -269,10 +269,13 @@ export class ElementiCelestiRender {
       group.add( el );
       if (mostraGradi) {
         const label = this.makeDegreeLabel(trueDegree, coloreSimboli, simboliScale);
-        // Keep the badge on the inward side of the left/right chart halves.
+        // Offset tangentially, not radially: both inner- and outer-lane badges
+        // remain within the narrow planet ring, even near the left/right axes.
+        const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);
+        const labelOffset = 0.17 * simboliScale;
         label.position.set(
-          glyphPosition.x + (glyphPosition.x < 0 ? 0.13 : -0.13) * simboliScale,
-          glyphPosition.y + 0.035 * simboliScale,
+          glyphPosition.x - Math.cos(tangentAngle) * labelOffset,
+          glyphPosition.y - Math.sin(tangentAngle) * labelOffset,
           0.002,
         );
         label.material.opacity = el.material.opacity;
