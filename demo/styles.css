@@ -21,3 +21,5 @@ h2 { font-size: 16px; margin: 0; } .muted, footer { color: #a3a8b8; font-size: 1
 canvas { width: min(100%, 800px); aspect-ratio: 1; display: block; }
 footer { margin-top: 20px; }
 @media (max-width: 700px) { main { padding: 20px 14px; } .workspace { grid-template-columns: 1fr; } .stage { grid-row: 1; padding: 10px; } header { align-items: start; } }
+aside label.check-setting { display: flex; align-items: center; gap: 0.45rem; font-size: 13px; font-weight: 500; }
+.check-setting input { width: auto; margin: 0; }

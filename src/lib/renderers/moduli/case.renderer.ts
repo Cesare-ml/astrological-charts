@@ -36,6 +36,8 @@ export class CaseRender {
     isCaseSinastria=false
   ) {
     var group = new THREE.Group();
+    // Legacy render options omit this; normal house numerals are 25% larger.
+    simboliScale *= opzioni.dimensioneNumeriCase ?? 1.25;
     var mostraTermini =
       opzioni.mostraTermini
       && (

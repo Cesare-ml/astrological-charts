@@ -8,6 +8,7 @@ import { SkinManager } from '../@skin-manager';
 import { SinastriaRender } from '../moduli/sinastria.renderer';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
 import { stopSceneAnimations } from '../scene-animations';
+import { MarcatoriAssiRender } from '../moduli/marcatori-assi.renderer';
 
 // ---------------------------
 // Stato globale per tutti i renderer
@@ -154,13 +155,15 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
         diametroAnelloTransiti: 146.64 / 120,
         diametroAssi: 138 / 120,
         diametroGrigliaTransiti: 120/120, //122.56 / 120,
-        diametroAnelloElementiCelesti: 95.82 / 120,
+        // Preserve the full width of the zodiac sign ring. A wider planetary
+        // band comes from a smaller house/aspect wheel, not cramped signs.
+        diametroAnelloElementiCelesti: 103 / 120,
         diametroCerchioDodecatemori: 91.66 / 120,
         diametroCerchioDodecatemori2: 87.5 / 120,
-        diametroInternoMiniArcoCase: 75.1 / 120,
-        diametroAnelloCase: 74.16 / 120,
-        diametroCerchioInternoTermini: 70.03 / 120,
-        diametroInternoAnelloCase: 63.36 / 120
+        diametroInternoMiniArcoCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 75.1 : 67.1) / 120,
+        diametroAnelloCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 74.16 : 66.16) / 120,
+        diametroCerchioInternoTermini: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 70.03 : 62.03) / 120,
+        diametroInternoAnelloCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 63.36 : 55.36) / 120
     };
 
     for (const key in proporzioni) {
@@ -389,6 +392,17 @@ async function creaAspetti(stato: StatoCartaAstrale) {
     return group;
 }
 
+async function creaMarcatoriAssi(stato: StatoCartaAstrale) {
+    const caseTema = stato.temaRender?.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
+    if (!caseTema || !Number.isFinite(caseTema.ascendant) ||
+        !Number.isFinite(caseTema.mc) || stato.opzioni.mostraEffemeridi) return null;
+    return MarcatoriAssiRender.creaMarcatori(
+        stato.asc, stato.mc, stato.diametri.diametroAnelloSegni / 2,
+      stato.opzioni, stato.temaRender,
+      stato.diametri.diametroAnelloElementiCelesti / 2,
+    );
+}
+
 
 
 async function creaTransiti(stato: StatoCartaAstrale) {
@@ -469,6 +483,7 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
         creaElementiCelesti,
         creaCase,
         creaAspetti,
+        creaMarcatoriAssi,
         creaSinastria
         // puoi aggiungere altre funzioni come direzioni, lunazioni, ecc.
     ];

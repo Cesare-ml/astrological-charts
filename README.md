@@ -12,6 +12,8 @@ Invite known contributors to develop the astrological renderer using Codex, Clau
 
 The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
 
+Celestial glyphs use a collision-aware layout: isolated natal planets are larger, while ordinary conjunctions retain equal-size compact symbols on one or, only where crowded, two fixed-radius tracks, within ±5° of their true longitude. Extremely dense, geometrically impossible clusters still have a collision-safe adaptive fallback. The single outward connector marks the true degree; no spoke runs from the glyph to the houses. `mostraGradiElementiCelesti` (default `true`) shows **only the integer sign degree** on the inward side of each planet, closer to its glyph than to the houses. The natal aspect/house wheel is slightly smaller to leave room for planets without reducing the sign ring. ASC and MC show degree and whole arcminutes (e.g. `20° 0′`), with the ASC centred on the free arrow shaft below the planetary-hour glyph and the MC left of the arrow beside its filled direction triangle. DS and IC have smooth, enlarged circular terminal discs. See [symbol layout and integration notes](docs/PLANET_SYMBOL_LAYOUT.md).
+
 **Important:** The renderer loads images from a host asset root; the library does not bundle them. A private owner-authorized image pack is available separately in `astrological-assets`, without the unknown-license font. Building TypeScript does not by itself prove visual correctness.
 
 ## Start developing

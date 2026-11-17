@@ -94,6 +94,18 @@ export interface OpzioniGrafico {
   mostraMonomeri: boolean;
   mostraAspetti: boolean;
   mostraInfoPianeti: boolean;
+  /** Shows 0–29° beside each celestial symbol; defaults on, including for legacy callers omitting this field. */
+  mostraGradiElementiCelesti?: boolean;
+  /** Separate, individually configurable markers on the natal chart rim. */
+  mostraFrecciaAscendente?: boolean;
+  mostraRetroFrecciaDiscendente?: boolean;
+  mostraFrecciaMC?: boolean;
+  mostraRetroFrecciaIC?: boolean;
+  mostraGradiAssi?: boolean;
+  mostraOraPlanetariaAscendente?: boolean;
+  mostraDirezioneMotoMC?: boolean;
+  /** House numeral multiplier, e.g. 1.25. */
+  dimensioneNumeriCase?: number;
 
   mostraAntisci: boolean;
   antisci: {
@@ -198,6 +210,15 @@ export const defaultOpzioniGrafico: OpzioniGrafico = {
   mostraMonomeri: false,
   mostraAspetti: true,
   mostraInfoPianeti: false,
+  mostraGradiElementiCelesti: true,
+  mostraFrecciaAscendente: true,
+  mostraRetroFrecciaDiscendente: true,
+  mostraFrecciaMC: true,
+  mostraRetroFrecciaIC: true,
+  mostraGradiAssi: true,
+  mostraOraPlanetariaAscendente: true,
+  mostraDirezioneMotoMC: true,
+  dimensioneNumeriCase: 1.25,
 
   mostraAntisci: false,
   antisci: { Cardinale: false, Fissa: false, Mutevole: false },
