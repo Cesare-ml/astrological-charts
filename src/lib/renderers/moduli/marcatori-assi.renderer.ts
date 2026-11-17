@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
 
 const AXIS_PALETTE = {
   asc: '#cb5c12',
@@ -7,9 +8,7 @@ const AXIS_PALETTE = {
   ic: '#9976ce',
 };
 
-const HOUR_GLYPHS: Record<string, string> = {
-  Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂', Jupiter: '♃', Saturn: '♄',
-};
+const HOUR_PLANETS = new Set(['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']);
 
 function pointOnRing(degrees: number, radius: number): THREE.Vector2 {
   const angle = THREE.MathUtils.degToRad(degrees);
@@ -39,7 +38,7 @@ export function planetaryHourAt(orePlanetarie: any): string | null {
   if (!Array.isArray(hours) || hours.length !== 12) return null;
   const entry = [...hours].reverse().find(hour =>
     typeof hour?.dataora === 'string' && comparable(hour.dataora) <= instant);
-  return typeof entry?.pianeta === 'string' && HOUR_GLYPHS[entry.pianeta] ? entry.pianeta : null;
+  return typeof entry?.pianeta === 'string' && HOUR_PLANETS.has(entry.pianeta) ? entry.pianeta : null;
 }
 
 function axisLine(a: THREE.Vector2, b: THREE.Vector2, color: string, z = 0.015): THREE.Line {
@@ -86,7 +85,7 @@ function textLabel(value: string, color: string, width: number, height: number):
 
 /** Distinctly styled markers, outside the zodiac and independently switchable. */
 export class MarcatoriAssiRender {
-  public static creaMarcatori(asc: number, mc: number, zodiacRadius: number, opzioni: any, temaRender: any): THREE.Group {
+  public static async creaMarcatori(asc: number, mc: number, zodiacRadius: number, opzioni: any, temaRender: any): Promise<THREE.Group> {
     const group = new THREE.Group();
     const ascAngle = 90;
     const dsAngle = 270;
@@ -190,13 +189,25 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraOraPlanetariaAscendente !== false) {
       const name = planetaryHourAt(temaRender?.orePlanetarie);
       if (name) {
-        const label = textLabel(`Ora ${HOUR_GLYPHS[name]}`, AXIS_PALETTE.asc, 0.51, 0.20);
+        const label = textLabel('Ora', AXIS_PALETTE.asc, 0.30, 0.19);
         const position = pointOnRing(ascAngle, zodiacRadius + 0.25)
           .add(pointOnRing(ascAngle + 90, 0.27));
-        label.position.x = position.x;
+        label.position.x = position.x + 0.11;
         label.position.y = position.y;
         label.userData.axis = 'planetary-hour';
         group.add(label);
+
+        // Use the owner's real, skin-tinted chart asset. Unicode planet
+        // characters vary by font and don't match the chart's glyph family.
+        const glyph = await OggettiSempliciRender.getImg(
+          `simboli-bianchi/elementi-celesti/${name}.png`, 875, 605, 1 / 875,
+          false, AXIS_PALETTE.asc,
+        );
+        glyph.scale.set(0.21, 0.21, 1);
+        glyph.position.set(position.x - 0.16, position.y, 0.031);
+        glyph.userData.axis = 'planetary-hour-glyph';
+        glyph.userData.planetaryHour = name;
+        group.add(glyph);
       }
     }
 

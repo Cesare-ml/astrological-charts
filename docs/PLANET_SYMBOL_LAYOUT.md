@@ -25,7 +25,11 @@ incorrectly moving glyphs outside a narrow band.
 The on-screen glyph *can* move to improve readability. The underlying `TemaRender`
 planet longitudes, cusp positions, aspect calculations and other chart math are
 unchanged. The badge reports the original degree within the zodiac sign,
-**not** the glyph angle: e.g. 359.7° is `29°`, 46.8° is `16°`.
+**not** the glyph angle. The main degree number is followed by **two much
+smaller arcsecond digits** instead of the degree sign. For example, 358°30′44″
+is shown as a large `28` followed by small `44` (the minute portion is not
+drawn in this compact badge). Full DMS remains available for the ASC and MC
+captions. Badges are slightly reduced in size and shifted toward their glyphs.
 
 ## Public option
 
@@ -66,7 +70,10 @@ The planetary-hour label consumes the **computed** `TemaRender.orePlanetarie`
 object already returned by the VirgoStars backend (`dataora`, `alba`,
 `tramonto`, `albaSucc`, `dh.diurne[]`, `dh.notturne[]`, each entry containing
 `dataora` and `pianeta`). If missing or inconsistent, it omits the label;
-it never invents the ruler.
+it never invents the ruler. When available, the chart loads the corresponding
+**existing** `simboli-bianchi/elementi-celesti/{planet}.png` via the shared
+host-asset resolver and tints it to match ASC; it does not use a Unicode planet
+character or bundle an additional image.
 
 The MC movement indicator points toward increasing ecliptic longitude for an
 ordinary instant in the sky. To override it for a chart calculated through
@@ -76,8 +83,9 @@ value reverses the small arrow; zero or nonfinite data hides it. Its option
 can independently hide the tip without hiding the MC arrow.
 
 The service adjusts the interactive **and PNG-export cameras** to fit these
-external annotations. All artwork is native Three.js geometry or disposable
-canvas-textured text, with no extra asset files or remote fetches.
+external annotations. Markers use native Three.js geometry, disposable
+canvas-textured text and the same host-owned symbol assets already required
+by the rest of the chart.
 
 The Angular demo exposes **Show celestial degrees**, per-axis controls,
 the house numeral scale, and a **Conjunction stress-test (synthetic)** checkbox.

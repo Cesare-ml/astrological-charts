@@ -5,7 +5,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
 import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
-import { degreeWithinSign, layoutPlanetSymbols } from './planet-symbol-layout';
+import { normalizeDegree, layoutPlanetSymbols } from './planet-symbol-layout';
 
 
 export class ElementiCelestiRender {
@@ -17,21 +17,29 @@ export class ElementiCelestiRender {
 
   private static makeDegreeLabel(longitude: number, color: string, size: number, compact: boolean): THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
     const canvas = document.createElement('canvas');
-    canvas.width = 160;
+    canvas.width = 180;
     canvas.height = 112;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Impossibile creare le etichette dei gradi');
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.fillStyle = color;
-    context.font = 'bold 87px Arial, sans-serif';
-    context.textAlign = 'center';
+    const arcseconds = Math.round((normalizeDegree(longitude) % 30) * 3600) % (30 * 3600);
+    const degree = Math.floor(arcseconds / 3600);
+    const seconds = String(arcseconds % 60).padStart(2, '0');
+    context.font = 'bold 81px Arial, sans-serif';
+    context.textAlign = 'right';
     context.textBaseline = 'middle';
-    context.fillText(`${degreeWithinSign(longitude)}°`, 80, 56, 152);
+    context.fillText(`${degree}`, 98, 58);
+    // Two small arcsecond digits replace the degree sign. The label keeps the
+    // exact, unshifted longitude even if its visual position was separated.
+    context.font = 'bold 35px Arial, sans-serif';
+    context.textAlign = 'left';
+    context.fillText(seconds, 104, 47);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
     return new THREE.Mesh(new THREE.PlaneGeometry(
-      (compact ? 0.12 : 0.215) * size, (compact ? 0.06 : 0.14) * size,
+      (compact ? 0.12 : 0.19) * size, (compact ? 0.06 : 0.12) * size,
     ), material);
   }
 
@@ -110,12 +118,12 @@ export class ElementiCelestiRender {
     );
     // Badges have their own collision layout on a narrow orbit next to the
     // house ring; they never take space beside or over the planetary glyphs.
-    const badgeRadius = innerRingRadius + 0.085 * simboliScale;
+    const badgeRadius = innerRingRadius + 0.125 * simboliScale;
     const badgeLongitudes = Object.fromEntries(Object.entries(elementiCelesti)
       .map(([name, body]) => [name, body[parametroDiRender]]));
     const badgePositions = mostraGradi && useDegreeStrip ? layoutPlanetSymbols(
       badgeLongitudes, badgeRadius, badgeRadius,
-      0.215 * simboliScale, 0.14 * simboliScale, false, 90 - ascendente + degOffs,
+      0.19 * simboliScale, 0.12 * simboliScale, false, 90 - ascendente + degOffs,
     ) : {};
 
     //parti arabe render freccia+elemento in evidenza

@@ -12,7 +12,7 @@ Invite known contributors to develop the astrological renderer using Codex, Clau
 
 The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
 
-Celestial glyphs now use a collision-aware layout; exact longitude is still represented by the radial connector. `mostraGradiElementiCelesti` (default `true`) shows the 0–29° position within the zodiac sign, using larger, legible numerals on a separate inner degree strip when the ring is wide enough. Independently configurable ASC/DS/MC/IC rim markers have distinct VirgoStars geometry, enlarged DMS labels, the precomputed planetary hour and an MC motion indicator. See [symbol layout and integration notes](docs/PLANET_SYMBOL_LAYOUT.md).
+Celestial glyphs now use a collision-aware layout; exact longitude is still represented by the radial connector. `mostraGradiElementiCelesti` (default `true`) shows the degree within the zodiac sign with a smaller two-digit arcsecond suffix (without the ° glyph), on an inner degree strip nearer the planets when the ring is wide enough. Independently configurable ASC/DS/MC/IC rim markers have distinct VirgoStars geometry, DMS captions, the precomputed planetary hour with its host-owned planetary glyph image and an MC motion indicator. See [symbol layout and integration notes](docs/PLANET_SYMBOL_LAYOUT.md).
 
 **Important:** The renderer loads images from a host asset root; the library does not bundle them. A private owner-authorized image pack is available separately in `astrological-assets`, without the unknown-license font. Building TypeScript does not by itself prove visual correctness.
 

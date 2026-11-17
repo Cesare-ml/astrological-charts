@@ -20,7 +20,7 @@ const { ElementiCelestiRender, OggettiSempliciRender, defaultOpzioniGrafico, THR
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
 const planetLongitudes = {
-  Sun: 358.5, Moon: 359.2, Mercury: 0.1, Venus: 1.4,
+  Sun: 358.51234, Moon: 359.2, Mercury: 0.1, Venus: 1.4,
   Mars: 2.3, Jupiter: 3.1, Saturn: 4.2,
 };
 const innerRadius = 1.43;
@@ -126,7 +126,7 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
   assert.equal(glyphs.length, names.length);
   assert.equal(lines.length, names.length * 2);
   assert.equal(numberLabels.length, names.length);
-  assert.deepEqual(labels.sort(), ['0°', '1°', '2°', '28°', '29°', '3°', '4°'].sort());
+  assert.deepEqual(labels.sort(), ['0', '1', '2', '28', '29', '3', '4', '44', ...Array(6).fill('00')].sort());
   for (const label of numberLabels) {
     const radius = Math.hypot(label.position.x, label.position.y);
     assert.ok(radius > innerRadius + 0.03 && radius < outerRadius - 0.03,
@@ -190,9 +190,9 @@ test('wider natal planet ring keeps the degrees in a separate strip toward house
   assert.equal(glyphs.length, badges.length);
   for (const label of badges) {
     const radius = Math.hypot(label.position.x, label.position.y);
-    assert.ok(radius > innerRadius + 0.03 && radius < innerRadius + 0.10,
+    assert.ok(radius > innerRadius + 0.10 && radius < innerRadius + 0.16,
       'label must be on the inner band, immediately outside the house ring');
-    assert.ok(label.geometry.parameters.width >= 0.21 && label.geometry.parameters.height >= 0.13,
+    assert.ok(label.geometry.parameters.width >= 0.18 && label.geometry.parameters.height >= 0.11,
       'degree labels in the natal band must be visibly larger');
   }
   for (const glyph of glyphs) {

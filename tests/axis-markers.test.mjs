@@ -7,12 +7,14 @@ const bundle = await build({
     contents: [
       "export { MarcatoriAssiRender, formatAxisDms, planetaryHourAt } from './src/lib/renderers/moduli/marcatori-assi.renderer';",
       "export { defaultOpzioniGrafico } from './src/lib/models/opzioni-grafico.model';",
+      "export { OggettiSempliciRender } from './src/lib/renderers/oggetti-semplici.renderer';",
+      "export * as THREE from 'three';",
     ].join('\n'),
     resolveDir: process.cwd(), sourcefile: 'axis-marker-harness.ts', loader: 'ts',
   },
   bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022',
 });
-const { MarcatoriAssiRender, formatAxisDms, planetaryHourAt, defaultOpzioniGrafico } =
+const { MarcatoriAssiRender, formatAxisDms, planetaryHourAt, defaultOpzioniGrafico, OggettiSempliciRender, THREE } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
 const hourly = names => names.map((pianeta, i) => ({
@@ -30,9 +32,15 @@ const hours = {
   },
 };
 
-function makeMarkers(options = {}, overrides = {}) {
+async function makeMarkers(options = {}, overrides = {}) {
   const previousDocument = globalThis.document;
+  const originalGetImg = OggettiSempliciRender.getImg;
   const texts = [];
+  const assets = [];
+  OggettiSempliciRender.getImg = async ref => {
+    assets.push(ref);
+    return new THREE.Mesh(new THREE.PlaneGeometry(1, 605 / 875), new THREE.MeshBasicMaterial());
+  };
   globalThis.document = {
     createElement(name) {
       assert.equal(name, 'canvas');
@@ -45,8 +53,8 @@ function makeMarkers(options = {}, overrides = {}) {
   try {
     const opts = { ...structuredClone(defaultOpzioniGrafico), ...options };
     const theme = { orePlanetarie: structuredClone(hours), houses: { egizia: { mcSpeed: 1, ...overrides } } };
-    return { group: MarcatoriAssiRender.creaMarcatori(20.7, 298.94, 2.286, opts, theme), texts };
-  } finally { globalThis.document = previousDocument; }
+    return { group: await MarcatoriAssiRender.creaMarcatori(20.7, 298.94, 2.286, opts, theme), texts, assets };
+  } finally { globalThis.document = previousDocument; OggettiSempliciRender.getImg = originalGetImg; }
 }
 
 test('axis longitude labels show degree, minute and second within the actual sign', () => {
@@ -64,13 +72,15 @@ test('planetary hour comes from the matching time interval, not a guessed weekda
   assert.equal(planetaryHourAt({}), null);
 });
 
-test('ASC, DS, MC and IC each have separate visible toggles and use source longitudes', () => {
-  const { group, texts } = makeMarkers();
+test('ASC, DS, MC and IC each have separate visible toggles and use source longitudes', async () => {
+  const { group, texts, assets } = await makeMarkers();
   const ids = group.children.map(child => child.userData.axisMarker).filter(Boolean);
   assert.deepEqual(ids.sort(), ['ASC','DS','MC','IC','MC-motion'].sort());
   assert.ok(texts.includes('20°42′00″'));
   assert.ok(texts.includes('28°56′24″'));
-  assert.ok(texts.includes('Ora ♃'));
+  assert.ok(texts.includes('Ora'));
+  assert.deepEqual(assets, ['simboli-bianchi/elementi-celesti/Jupiter.png']);
+  assert.equal(group.children.find(child => child.userData.axis === 'planetary-hour-glyph')?.userData.planetaryHour, 'Jupiter');
   const markers = Object.fromEntries(group.children.filter(child => child.userData.axisMarker)
     .map(child => [child.userData.axisMarker, child]));
   assert.ok(markers.ASC.isMesh && markers.ASC.geometry.type === 'CircleGeometry');
@@ -82,7 +92,7 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
     assert.ok(label.geometry.parameters.height >= 0.22);
   }
 
-  const hidden = makeMarkers({
+  const hidden = await makeMarkers({
     mostraFrecciaAscendente: false, mostraRetroFrecciaDiscendente: false,
     mostraFrecciaMC: false, mostraRetroFrecciaIC: false,
     mostraGradiAssi: false, mostraOraPlanetariaAscendente: false,
@@ -92,8 +102,8 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.deepEqual(hidden.texts, []);
 });
 
-test('individual annotations and signed MC motion can be hidden independently', () => {
-  const { group, texts } = makeMarkers({
+test('individual annotations and signed MC motion can be hidden independently', async () => {
+  const { group, texts } = await makeMarkers({
     mostraGradiAssi: false, mostraOraPlanetariaAscendente: false,
     mostraRetroFrecciaDiscendente: false, mostraDirezioneMotoMC: false,
   });
@@ -101,8 +111,8 @@ test('individual annotations and signed MC motion can be hidden independently', 
   assert.ok(!group.children.some(child => child.userData.axisMarker === 'DS'));
   assert.ok(!group.children.some(child => child.userData.axisMarker === 'MC-motion'));
 
-  const forwards = makeMarkers({}, { mcSpeed: 1 }).group.children.find(child => child.userData.axisMarker === 'MC-motion');
-  const backwards = makeMarkers({}, { mcSpeed: -1 }).group.children.find(child => child.userData.axisMarker === 'MC-motion');
+  const forwards = (await makeMarkers({}, { mcSpeed: 1 })).group.children.find(child => child.userData.axisMarker === 'MC-motion');
+  const backwards = (await makeMarkers({}, { mcSpeed: -1 })).group.children.find(child => child.userData.axisMarker === 'MC-motion');
   assert.ok(forwards && backwards);
   assert.notDeepEqual(
     [...forwards.geometry.attributes.position.array],
