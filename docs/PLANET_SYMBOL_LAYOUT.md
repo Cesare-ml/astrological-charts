@@ -13,6 +13,17 @@ crowded up at 0°/360°. The new `planet-symbol-layout.ts`:
 5. anchors every thin connector to the **original longitude** at the ring boundary, rather than to the displaced glyph;
 6. keeps the symbol and small degree label horizontal even where the radial connector bends.
 
+For **dense** conjunctions (three or more nearby objects), an additional
+deterministic packing pass first tries multiple radial positions and small
+half-degree angular steps. It compares four insertion orders, keeps the
+least-displaced collision-free result and reassigns occupied glyph slots in
+ascending longitude order, preventing visual reversals. The original
+least-squares spread remains the bounded fallback for impossible layouts.
+In the five-body synthetic Aries-point fixture, this reduces the typical
+largest glyph deviation at the demo's chart rotation from roughly 15° to
+under 9°. This is a display position, never a modification of astronomical
+longitude; both radial connectors still point to the exact input longitude.
+
 The natal chart's planet ring has more space (`103/120` of the zodiac outer diameter).
 When its radial width is at least `0.45` world units, glyphs occupy an outward
 collision-spread orbit, while degree badges get their **own collision-spread
@@ -113,7 +124,9 @@ date/place must stay in the local host and not in this public source tree.
   toggles, degree/minute/second boundaries, real interval selection for planetary
   hours and signed MC motion.
   Collision checks include 25 chart rotations at two glyph scales and 30 mixed
-  synthetic 18-body configurations; they are still not a pixel-render baseline.
+  synthetic 18-body configurations, plus a five-body regression for angular
+  fidelity, radial staggering and preserved zodiacal order. They are still
+  not a pixel-render baseline.
 - Library/demo build: `npm run verify:angular` on a clean install.
 - Visual smoke: with the generated local demo pack and both servers running,
   `npm run test:demo` in Chromium and Firefox; inspect

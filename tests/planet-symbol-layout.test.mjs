@@ -44,6 +44,26 @@ test('a conjunction crosses the Aries point without piling up or drifting tens o
   }
 });
 
+test('five-body natal conjunction stays visually near its longitude and in zodiacal order', () => {
+  const source = { Sun: 358.4, Moon: 359.1, Mercury: 0.3, Venus: 1.2, Mars: 2.4 };
+  // This reproduces the default synthetic demo's Aries-point group. The
+  // renderer uses a narrow outer glyph orbit and separate degree-label strip.
+  const innerGlyphOrbit = 1.962 - 0.235;
+  for (const rotation of [0, 35, 70, 90, 135, 180, 270]) {
+    const positions = layoutPlanetSymbols(source, innerGlyphOrbit, 1.962, width, height, false, rotation);
+    const angles = Object.keys(source).map(name => positions[name].displayDegree);
+    assert.ok(Math.max(...angles.map((angle, index) => angularDistance(angle, Object.values(source)[index]))) <= 13,
+      `rotation ${rotation}: symbols drifted too far from their real longitudes`);
+    const unwrapped = angles.map(angle => angle < 180 ? angle + 360 : angle);
+    assert.ok(unwrapped.every((angle, index) => !index || angle >= unwrapped[index - 1] - 1e-7),
+      `rotation ${rotation}: planets must not appear in reverse zodiacal order`);
+    if (rotation === 70 || rotation === 90) {
+      assert.ok(new Set(Object.values(positions).map(position => position.radius.toFixed(4))).size >= 2,
+        `rotation ${rotation}: radial staggering must be used where the geometry permits`);
+    }
+  }
+});
+
 test('exactly coincident bodies spread symmetrically instead of accumulating drift', () => {
   const source = Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`p${i}`, 359.7]));
   const result = layoutPlanetSymbols(source, inner, outer, width, height, true);
