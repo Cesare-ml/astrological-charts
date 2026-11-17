@@ -48,9 +48,15 @@ function axisLine(a: THREE.Vector2, b: THREE.Vector2, color: string, z = 0.015):
   return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 }));
 }
 
-function outlinePolygon(points: THREE.Vector2[], color: string): THREE.LineLoop {
-  const geometry = new THREE.BufferGeometry().setFromPoints(points.map(p => new THREE.Vector3(p.x, p.y, 0.022)));
-  return new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({color}));
+/** Two fine strokes form a traditional, unfilled arrowhead. */
+function openArrowhead(angle: number, radius: number, color: string): THREE.LineSegments {
+  const tip = pointOnRing(angle, radius);
+  const base = pointOnRing(angle, radius - 0.095);
+  const tangent = pointOnRing(angle + 90, 0.045);
+  const sides = [base.clone().add(tangent), tip, base.clone().sub(tangent), tip];
+  const geometry = new THREE.BufferGeometry().setFromPoints(
+    sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
+  return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color }));
 }
 
 function textLabel(value: string, color: string, width: number, height: number): THREE.Mesh {
@@ -60,7 +66,7 @@ function textLabel(value: string, color: string, width: number, height: number):
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Impossibile creare il testo degli assi');
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.font = 'bold 96px Arial, sans-serif';
+  context.font = 'italic 94px Georgia, "Times New Roman", serif';
   context.textBaseline = 'middle';
   context.textAlign = 'center';
   context.fillStyle = color;
@@ -74,89 +80,75 @@ function textLabel(value: string, color: string, width: number, height: number):
   return mesh;
 }
 
-/** Distinctly styled markers, outside the zodiac and independently switchable. */
+/** Restrained hand-drawn-style axis markers, independently switchable. */
 export class MarcatoriAssiRender {
-  public static async creaMarcatori(asc: number, mc: number, zodiacRadius: number, opzioni: any, temaRender: any): Promise<THREE.Group> {
+  public static async creaMarcatori(asc: number, mc: number, zodiacRadius: number,
+    opzioni: any, temaRender: any, degreeTickRadius = zodiacRadius * 103 / 120): Promise<THREE.Group> {
     const group = new THREE.Group();
     const ascAngle = 90;
     const dsAngle = 270;
     const mcAngle = 90 - asc + mc;
     const icAngle = mcAngle + 180;
 
-    // ASC: a restrained single-stroke pointer, distinct from the filled
-    // triangle in the visual reference and legible at small chart sizes.
+    // The axis stems end at the precise longitude tick on the *inner zodiac
+    // rim*. They do not extend inward across the planets toward the houses.
+    const addStem = (key: string, angle: number, tipRadius: number, color: string) => {
+      const stem = axisLine(pointOnRing(angle, degreeTickRadius),
+        pointOnRing(angle, tipRadius), color);
+      stem.userData.axisStem = key;
+      group.add(stem);
+      return stem;
+    };
+
+    // Like the traditional hand-drawn natal chart: an open V at the end of a
+    // thin axis line, not a triangle with a wide base.
     const makeAscPointer = () => {
-      group.add(axisLine(pointOnRing(ascAngle, zodiacRadius - 0.02),
-        pointOnRing(ascAngle, zodiacRadius + 0.45), AXIS_PALETTE.asc));
-      const tip = pointOnRing(ascAngle, zodiacRadius + 0.45);
-      const base = pointOnRing(ascAngle, zodiacRadius + 0.34);
-      const tangent = pointOnRing(ascAngle + 90, 0.072);
-      const pointer = outlinePolygon([base.clone().add(tangent), tip,
-        base.clone().sub(tangent)], AXIS_PALETTE.asc);
+      addStem('ASC', ascAngle, zodiacRadius + 0.47, AXIS_PALETTE.asc);
+      const pointer = openArrowhead(ascAngle, zodiacRadius + 0.47, AXIS_PALETTE.asc);
       pointer.userData.axisMarker = 'ASC';
       group.add(pointer);
     };
 
-    // DS: a bracketed gate with a flat stop, unlike a circular arrow tail.
-    const makeDsGate = () => {
-      const angle = dsAngle;
-      group.add(axisLine(pointOnRing(angle, zodiacRadius - 0.02),
-        pointOnRing(angle, zodiacRadius + 0.37), AXIS_PALETTE.ds));
-      const left = pointOnRing(angle + 90, 0.095);
-      const end = pointOnRing(angle, zodiacRadius + 0.41);
-      const inner = pointOnRing(angle, zodiacRadius + 0.28);
-      group.add(axisLine(end.clone().add(left), end.clone().sub(left), AXIS_PALETTE.ds));
-      group.add(axisLine(end.clone().add(left), inner.clone().add(left), AXIS_PALETTE.ds));
-      const bar = axisLine(end.clone().sub(left), inner.clone().sub(left), AXIS_PALETTE.ds);
-      bar.userData.axisMarker = 'DS';
-      group.add(bar);
+    // The descending axis is a plain, uncapped line in the reference.
+    const makeDsLine = () => {
+      const line = addStem('DS', dsAngle, zodiacRadius + 0.38, AXIS_PALETTE.ds);
+      line.userData.axisMarker = 'DS';
     };
 
-    // MC: one slender open spearhead, with room for a separate small
-    // directional indicator; no bulky filled polygon.
+    // MC repeats the same simple arrow vocabulary as ASC.
     const makeMcPointer = () => {
       const angle = mcAngle;
-      group.add(axisLine(pointOnRing(angle, zodiacRadius - 0.02),
-        pointOnRing(angle, zodiacRadius + 0.47), AXIS_PALETTE.mc));
-      const base = pointOnRing(angle, zodiacRadius + 0.34);
-      const tangent = pointOnRing(angle + 90, 0.078);
-      const pointer = outlinePolygon([
-        base.clone().add(tangent), pointOnRing(angle, zodiacRadius + 0.47),
-        base.clone().sub(tangent),
-      ], AXIS_PALETTE.mc);
+      addStem('MC', angle, zodiacRadius + 0.48, AXIS_PALETTE.mc);
+      const pointer = openArrowhead(angle, zodiacRadius + 0.48, AXIS_PALETTE.mc);
       pointer.userData.axisMarker = 'MC';
       group.add(pointer);
     };
 
-    // IC: an open, faceted cradle. No circular outline or filled arrowhead.
-    const makeIcCradle = () => {
-      const angle = icAngle;
-      const center = pointOnRing(angle, zodiacRadius + 0.39);
-      const radial = pointOnRing(angle, 0.11);
-      const tangent = pointOnRing(angle + 90, 0.105);
-      group.add(axisLine(pointOnRing(angle, zodiacRadius - 0.02),
-        pointOnRing(angle, zodiacRadius + 0.25), AXIS_PALETTE.ic));
-      const frame = outlinePolygon([
-        center.clone().add(radial), center.clone().add(tangent),
-        center.clone().sub(radial), center.clone().sub(tangent),
-      ], AXIS_PALETTE.ic);
-      frame.userData.axisMarker = 'IC';
-      group.add(frame);
-      group.add(axisLine(center.clone().add(tangent), center.clone().sub(tangent), AXIS_PALETTE.ic));
+    // A small terminal point, as in the photographed Imum Coeli axis.
+    const makeIcLine = () => {
+      const tip = pointOnRing(icAngle, zodiacRadius + 0.39);
+      addStem('IC', icAngle, zodiacRadius + 0.39, AXIS_PALETTE.ic);
+      const marker = new THREE.Points(new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(tip.x, tip.y, 0.024),
+      ]), new THREE.PointsMaterial({ color: AXIS_PALETTE.ic, size: 3, sizeAttenuation: false }));
+      marker.userData.axisMarker = 'IC';
+      group.add(marker);
     };
 
     if (opzioni.mostraFrecciaAscendente !== false) makeAscPointer();
-    if (opzioni.mostraRetroFrecciaDiscendente !== false) makeDsGate();
+    if (opzioni.mostraRetroFrecciaDiscendente !== false) makeDsLine();
     if (opzioni.mostraFrecciaMC !== false) makeMcPointer();
-    if (opzioni.mostraRetroFrecciaIC !== false) makeIcCradle();
+    if (opzioni.mostraRetroFrecciaIC !== false) makeIcLine();
 
     if (opzioni.mostraGradiAssi !== false) {
-      for (const [key, longitude, angle, color, tangentOffset] of [
-        ['ASC', asc, ascAngle, AXIS_PALETTE.asc, -0.28],
-        ['MC', mc, mcAngle, AXIS_PALETTE.mc, -0.28],
+      for (const [key, longitude, angle, color, radialOffset, tangentOffset] of [
+        // ASC: the degree sits directly over the horizontal arrow shaft.
+        ['ASC', asc, ascAngle, AXIS_PALETTE.asc, 0.24, -0.079],
+        // MC: the degree is beside the *left* of the rising MC arrow.
+        ['MC', mc, mcAngle, AXIS_PALETTE.mc, 0.36, 0.315],
       ] as const) {
-        const label = textLabel(formatAxisDms(longitude), color, 0.56, 0.16);
-        const position = pointOnRing(angle, zodiacRadius + 0.25)
+        const label = textLabel(formatAxisDms(longitude), color, 0.47, 0.12);
+        const position = pointOnRing(angle, zodiacRadius + radialOffset)
           .add(pointOnRing(angle + 90, tangentOffset));
         label.position.x = position.x;
         label.position.y = position.y;
@@ -193,7 +185,10 @@ export class MarcatoriAssiRender {
       if (Number.isFinite(speed) && speed !== 0) {
         // A two-stroke, lilac direction accent follows the MC's thin-line
         // vocabulary. No solid yellow triangle over the violet marker.
-        const center = pointOnRing(mcAngle, zodiacRadius + 0.37);
+        // Offset the direction mark to the side of the line, so it does not
+        // add a second arrowhead inside the MC arrow.
+        const center = pointOnRing(mcAngle, zodiacRadius + 0.30)
+          .add(pointOnRing(mcAngle + 90, -0.11));
         const tangent = pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.05);
         const base = center.clone().sub(tangent.clone().multiplyScalar(0.7));
         const wing = pointOnRing(mcAngle, 0.026);

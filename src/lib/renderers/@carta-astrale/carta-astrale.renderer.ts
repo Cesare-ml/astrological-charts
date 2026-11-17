@@ -398,7 +398,8 @@ async function creaMarcatoriAssi(stato: StatoCartaAstrale) {
         !Number.isFinite(caseTema.mc) || stato.opzioni.mostraEffemeridi) return null;
     return MarcatoriAssiRender.creaMarcatori(
         stato.asc, stato.mc, stato.diametri.diametroAnelloSegni / 2,
-        stato.opzioni, stato.temaRender,
+      stato.opzioni, stato.temaRender,
+      stato.diametri.diametroAnelloElementiCelesti / 2,
     );
 }
 

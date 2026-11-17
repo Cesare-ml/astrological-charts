@@ -83,15 +83,15 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.equal(group.children.find(child => child.userData.axis === 'planetary-hour-glyph')?.userData.planetaryHour, 'Jupiter');
   const markers = Object.fromEntries(group.children.filter(child => child.userData.axisMarker)
     .map(child => [child.userData.axisMarker, child]));
-  assert.ok(markers.ASC.isLineLoop);
+  assert.ok(markers.ASC.isLineSegments, 'ASC is a simple two-stroke open arrow');
   assert.ok(markers.DS.isLine && !markers.DS.isLineLoop);
-  assert.ok(markers.MC.isLineLoop);
-  assert.ok(markers.IC.isLineLoop);
+  assert.ok(markers.MC.isLineSegments, 'MC is a simple two-stroke open arrow');
+  assert.ok(markers.IC.isPoints, 'IC ends in a quiet point');
   assert.ok(markers['MC-motion'].isLineSegments, 'MC direction is a subtle open accent');
   assert.equal(markers['MC-motion'].material.color.getHexString(), 'b58bd8');
   for (const label of group.children.filter(child => ['ASC','MC'].includes(child.userData.axis))) {
-    assert.ok(label.geometry.parameters.width >= 0.54 && label.geometry.parameters.width <= 0.58);
-    assert.ok(label.geometry.parameters.height >= 0.15 && label.geometry.parameters.height <= 0.17);
+    assert.equal(label.geometry.parameters.width, 0.47);
+    assert.equal(label.geometry.parameters.height, 0.12);
   }
 
   const hidden = await makeMarkers({
@@ -102,6 +102,32 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   });
   assert.equal(hidden.group.children.length, 0);
   assert.deepEqual(hidden.texts, []);
+});
+
+test('axis strokes stop at the zodiac degree ticks and degree captions follow the reference placement', async () => {
+  const radius = 2.286;
+  const tickRadius = radius * 103 / 120;
+  const { group } = await makeMarkers();
+  const stems = group.children.filter(child => child.userData.axisStem);
+  assert.deepEqual(stems.map(stem => stem.userData.axisStem).sort(), ['ASC','DS','MC','IC'].sort());
+  for (const stem of stems) {
+    const vertex = stem.geometry.attributes.position.array;
+    const fromRadius = Math.hypot(vertex[0], vertex[1]);
+    const toRadius = Math.hypot(vertex[3], vertex[4]);
+    assert.ok(Math.abs(fromRadius - tickRadius) < 1e-6,
+      `${stem.userData.axisStem}: line must end at zodiac degree tick, not a house cusp`);
+    assert.ok(toRadius > radius + 0.35 && toRadius < radius + 0.5,
+      `${stem.userData.axisStem}: line must finish just beyond the chart`);
+  }
+  const ascDegree = group.children.find(child => child.userData.axis === 'ASC');
+  const mcDegree = group.children.find(child => child.userData.axis === 'MC');
+  assert.ok(ascDegree && mcDegree);
+  assert.ok(ascDegree.position.y > 0.06 && ascDegree.position.y < 0.10,
+    'ASC degree must rest directly above its horizontal arrow line');
+  const mcAngle = (90 - 20.7 + 298.94) * Math.PI / 180;
+  const mcStemX = -Math.sin(mcAngle) * (radius + 0.36);
+  assert.ok(mcDegree.position.x < mcStemX - 0.25,
+    'MC degree must sit to the left of the upward arrow');
 });
 
 test('individual annotations and signed MC motion can be hidden independently', async () => {

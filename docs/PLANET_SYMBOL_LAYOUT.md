@@ -67,18 +67,22 @@ legacy callers omitting them also see the requested markers:
 
 | Option | Effect |
 | --- | --- |
-| `mostraFrecciaAscendente` | Thin orange line with one simple open pointer on ASC |
-| `mostraRetroFrecciaDiscendente` | Green bracket/gate on DS |
-| `mostraFrecciaMC` | Slim violet open pointer on MC |
-| `mostraRetroFrecciaIC` | Lavender open faceted cradle on IC |
-| `mostraGradiAssi` | Smaller zodiacal degree/minute/second captions at ASC and MC |
+| `mostraFrecciaAscendente` | Thin orange axis ending in a small two-stroke open arrow |
+| `mostraRetroFrecciaDiscendente` | Plain green descending line, without the former gate |
+| `mostraFrecciaMC` | Thin violet axis ending in a small two-stroke open arrow |
+| `mostraRetroFrecciaIC` | Plain lavender line with a tiny terminal point |
+| `mostraGradiAssi` | Zodiacal DMS: ASC immediately above its horizontal arrow line, MC to the left of its arrow |
 | `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour beside ASC, if source data exists (no “Ora” caption) |
-| `mostraDirezioneMotoMC` | Small open lilac direction accent within the MC arrow (no yellow fill) |
+| `mostraDirezioneMotoMC` | Small lilac direction accent beside the MC shaft (no inner yellow arrow) |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
 Axis positions always use the house system selected in `settaggi.domificazione_selezionata`;
 the layout does not change actual ecliptic longitude. Degree captions show
 *degree within the current sign*, with minutes and seconds rounded correctly.
+The external ASC/DS/MC/IC strokes now terminate at their **true zodiacal
+degree tick**, i.e. the inner radius of the sign ring passed to the marker
+renderer. They never cross the celestial-body band to reach the house circle;
+house cusp dividers inside the house wheel are preserved independently.
 The planetary-hour label consumes the **computed** `TemaRender.orePlanetarie`
 object already returned by the VirgoStars backend (`dataora`, `alba`,
 `tramonto`, `albaSucc`, `dh.diurne[]`, `dh.notturne[]`, each entry containing
@@ -88,7 +92,8 @@ it never invents the ruler. When available, the chart loads the corresponding
 host-asset resolver and tints it to match ASC; it does not use a Unicode planet
 character or bundle an additional image.
 
-The MC movement indicator points toward increasing ecliptic longitude for an
+The MC movement indicator, now placed discreetly beside the arrow rather than
+inside its head, points toward increasing ecliptic longitude for an
 ordinary instant in the sky. To override it for a chart calculated through
 directions/progressions, supply a signed `mcSpeed` under
 `TemaRender.houses[selectedHouseSystem]` (or `TemaRender.mcSpeed`). A negative
