@@ -87,7 +87,8 @@ test('planetary hour comes from the matching time interval, not a guessed weekda
 test('ASC, DS, MC and IC each have separate visible toggles and use source longitudes', async () => {
   const { group, texts, assets, fonts } = await makeMarkers();
   const ids = group.children.map(child => child.userData.axisMarker).filter(Boolean);
-  assert.deepEqual(ids.sort(), ['ASC','DS','MC','IC','MC-motion'].sort());
+  assert.deepEqual(ids.sort(), ['ASC','DS','MC','IC'].sort(),
+    'the reference chart has no extra movement triangle on the MC shaft');
   assert.ok(texts.includes('20° 42′'));
   assert.ok(texts.includes('28° 56′'));
   assert.ok(!texts.includes('Ora'), 'planetary hour must use its glyph alone');
@@ -103,14 +104,20 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.ok(markers.MC.isLineSegments, 'MC is a simple two-stroke open arrow');
   assert.ok(markers.IC.isMesh && markers.IC.geometry.type === 'CircleGeometry',
     'IC ends in a properly round disc, not a square point');
-  assert.ok(markers['MC-motion'].isMesh, 'MC direction is a filled triangle');
-  assert.equal(markers['MC-motion'].material.color.getHexString(), 'b58bd8');
+  assert.equal(markers['MC-motion'], undefined,
+    'MC motion indicator must be opt-in, unlike the arrowhead');
   for (const label of group.children.filter(child => ['ASC','MC'].includes(child.userData.axis))) {
-    assert.equal(label.geometry.parameters.width, 0.46);
+    assert.equal(label.geometry.parameters.width, 0.64);
     assert.equal(label.geometry.parameters.height, 0.18);
   }
-  assert.ok(fonts.every(font => font.includes('Georgia') && !font.includes('italic')),
-    'axis headings and degrees must use a clear non-italic serif canvas font');
+  assert.ok(fonts.every(font => font.includes('Times New Roman') && !font.includes('italic')),
+    'axis headings and degrees must use a clear non-italic Times-like canvas font');
+  for (const name of group.children.filter(child => child.userData.axisName)) {
+    assert.equal(name.geometry.parameters.width, 0.77);
+    assert.equal(name.geometry.parameters.height, 0.24);
+    assert.ok(Math.abs(name.geometry.parameters.width / name.geometry.parameters.height - 512 / 160) < 0.03,
+      'the canvas texture must not compress letters horizontally');
+  }
 
   const hidden = await makeMarkers({
     mostraFrecciaAscendente: false, mostraRetroFrecciaDiscendente: false,
@@ -180,9 +187,9 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
     const left = new THREE.Vector3().fromBufferAttribute(vertices, 0);
     const tip = new THREE.Vector3().fromBufferAttribute(vertices, 1);
     const right = new THREE.Vector3().fromBufferAttribute(vertices, 2);
-    assert.ok(left.distanceTo(right) > 0.115 && left.distanceTo(right) < 0.125,
-      `${axis}: reference arrowhead must be wider than the old narrow V`);
-    assert.ok(tip.distanceTo(left) > 0.10 && tip.distanceTo(right) > 0.10);
+    assert.ok(left.distanceTo(right) > 0.085 && left.distanceTo(right) < 0.087,
+      `${axis}: the open V must match the reference width`);
+    assert.ok(tip.distanceTo(left) > 0.085 && tip.distanceTo(right) < 0.088);
   }
 });
 
@@ -195,8 +202,8 @@ test('individual annotations and signed MC motion can be hidden independently', 
   assert.ok(!group.children.some(child => child.userData.axisMarker === 'DS'));
   assert.ok(!group.children.some(child => child.userData.axisMarker === 'MC-motion'));
 
-  const forwards = (await makeMarkers({}, { mcSpeed: 1 })).group.children.find(child => child.userData.axisMarker === 'MC-motion');
-  const backwards = (await makeMarkers({}, { mcSpeed: -1 })).group.children.find(child => child.userData.axisMarker === 'MC-motion');
+  const forwards = (await makeMarkers({mostraDirezioneMotoMC: true}, { mcSpeed: 1 })).group.children.find(child => child.userData.axisMarker === 'MC-motion');
+  const backwards = (await makeMarkers({mostraDirezioneMotoMC: true}, { mcSpeed: -1 })).group.children.find(child => child.userData.axisMarker === 'MC-motion');
   assert.ok(forwards && backwards);
   assert.notDeepEqual(
     [...forwards.geometry.attributes.position.array],
@@ -206,8 +213,8 @@ test('individual annotations and signed MC motion can be hidden independently', 
 });
 
 test('axis names are geometry-shared between skins, but the official palette is skin-scoped', async () => {
-  const original = await makeMarkers();
-  const official = await makeMarkers({ settaggi: { skin_id: 'virgostars' } });
+  const original = await makeMarkers({mostraDirezioneMotoMC: true});
+  const official = await makeMarkers({ mostraDirezioneMotoMC: true, settaggi: { skin_id: 'virgostars' } });
   const names = group => group.children.filter(child => child.userData.axisName);
   assert.deepEqual(names(original.group).map(child => child.userData.axisName), ['ASC','DS','MC','IC']);
   assert.deepEqual(names(official.group).map(child => child.userData.axisName), ['ASC','DS','MC','IC']);

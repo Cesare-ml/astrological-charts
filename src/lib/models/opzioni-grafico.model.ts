@@ -105,6 +105,7 @@ export interface OpzioniGrafico {
   /** ASC, DSC, MC and IC names just beyond their markers. Defaults on. */
   mostraNomiAssi?: boolean;
   mostraOraPlanetariaAscendente?: boolean;
+  /** Separate MC movement triangle. Off in new chart settings; opt in explicitly. */
   mostraDirezioneMotoMC?: boolean;
   /** House numeral multiplier, e.g. 1.25. */
   dimensioneNumeriCase?: number;
@@ -220,7 +221,7 @@ export const defaultOpzioniGrafico: OpzioniGrafico = {
   mostraGradiAssi: true,
   mostraNomiAssi: true,
   mostraOraPlanetariaAscendente: true,
-  mostraDirezioneMotoMC: true,
+  mostraDirezioneMotoMC: false,
   dimensioneNumeriCase: 1.25,
 
   mostraAntisci: false,

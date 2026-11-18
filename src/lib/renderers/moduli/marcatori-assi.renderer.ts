@@ -60,11 +60,11 @@ function axisLine(a: THREE.Vector2, b: THREE.Vector2, color: string, z = 0.015):
   return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 }));
 }
 
-/** Two clean, straight strokes form the broad, unfilled reference arrowhead. */
+/** Two straight strokes with the measured reference V proportions. */
 function openArrowhead(angle: number, radius: number, color: string): THREE.LineSegments {
   const tip = pointOnRing(angle, radius);
-  const base = pointOnRing(angle, radius - 0.085);
-  const tangent = pointOnRing(angle + 90, 0.060);
+  const base = pointOnRing(angle, radius - 0.075);
+  const tangent = pointOnRing(angle + 90, 0.043);
   const sides = [base.clone().add(tangent), tip, base.clone().sub(tangent), tip];
   const geometry = new THREE.BufferGeometry().setFromPoints(
     sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
@@ -167,14 +167,16 @@ export class MarcatoriAssiRender {
       // never loaded as glyphs from astrological-assets. Their layout is
       // universal; only the text color remains skin-specific.
       for (const [key, title, angle, shift, tangentShift, visible] of [
-        ['ASC', 'ASC', ascAngle, 0.53, -0.05, opzioni.mostraFrecciaAscendente !== false],
+        ['ASC', 'ASC', ascAngle, 0.48, -0.063, opzioni.mostraFrecciaAscendente !== false],
         ['DS', 'DSC', dsAngle, 0.52, 0, opzioni.mostraRetroFrecciaDiscendente !== false],
-        ['MC', 'MC', mcAngle, 0.64, 0, opzioni.mostraFrecciaMC !== false],
+        ['MC', 'MC', mcAngle, 0.61, 0, opzioni.mostraFrecciaMC !== false],
         ['IC', 'IC', icAngle, 0.50, 0, opzioni.mostraRetroFrecciaIC !== false],
       ] as const) {
         if (!visible) continue;
-        const label = textLabel(title, colors.testo, 0.43, 0.24,
-          'normal 114px Georgia, "Times New Roman", serif');
+        // Canvas is 512×160 (3.2:1). Matching that aspect ratio on the plane
+        // avoids the previous ~45% horizontal compression of all axis names.
+        const label = textLabel(title, colors.testo, 0.77, 0.24,
+          'bold 114px "Times New Roman", Georgia, serif');
         const position = pointOnRing(angle, zodiacRadius + shift)
           .add(pointOnRing(angle + 90, tangentShift));
         label.position.x = position.x;
@@ -187,12 +189,12 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraGradiAssi !== false) {
       for (const [key, longitude, angle, color, radialOffset, tangentOffset] of [
         // ASC: beyond the arrowhead, directly UNDER the ASC heading.
-        ['ASC', asc, ascAngle, colors.asc, 0.53, 0.145],
+        ['ASC', asc, ascAngle, colors.asc, 0.48, 0.12],
         // MC: centered on the axis, between the shortened arrow and MC title.
-        ['MC', mc, mcAngle, colors.mc, 0.47, 0],
+        ['MC', mc, mcAngle, colors.mc, 0.45, 0],
       ] as const) {
         const label = textLabel(formatAxisDegreeMinutes(longitude),
-          color, 0.46, 0.18, 'normal 102px Georgia, "Times New Roman", serif');
+          color, 0.64, 0.18, 'normal 102px "Times New Roman", Georgia, serif');
         const position = pointOnRing(angle, zodiacRadius + radialOffset)
           .add(pointOnRing(angle + 90, tangentOffset));
         label.position.x = position.x;
@@ -208,7 +210,7 @@ export class MarcatoriAssiRender {
         // Keep the real planetary-hour glyph above the shortened ASC arrow,
         // with the heading and its degree in the separate two-line caption.
         const position = pointOnRing(ascAngle, zodiacRadius + 0.28)
-          .add(pointOnRing(ascAngle + 90, -0.24));
+          .add(pointOnRing(ascAngle + 90, -0.26));
         // Use the owner's real, skin-tinted chart asset. Unicode planet
         // characters vary by font and don't match the chart's glyph family.
         const glyph = await OggettiSempliciRender.getImg(

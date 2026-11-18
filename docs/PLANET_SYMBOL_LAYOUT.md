@@ -74,8 +74,9 @@ options.mostraGradiElementiCelesti = false;
 
 ### Natal axis annotations
 
-Each of the following optional `OpzioniGrafico` flags defaults to `true`;
-legacy callers omitting them also see the requested markers:
+The following optional `OpzioniGrafico` flags default to `true`, except the
+separate MC movement triangle, which defaults to **off** for newly constructed
+settings (legacy callers omitting that property retain the old behavior):
 
 | Option | Effect |
 | --- | --- |
@@ -85,7 +86,7 @@ legacy callers omitting them also see the requested markers:
 | `mostraRetroFrecciaIC` | Plain lavender line with a smooth circular terminal disc of the same enlarged size as DS |
 | `mostraGradiAssi` | ASC and MC: degree + whole arcminutes (e.g. `20° 0′`), rendered in upright serif; ASC degree **below** its name after the arrowhead, MC degree **above** its arrowhead but **below** the name, both centered to their axis |
 | `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour **above the shortened ASC arrow**, if source data exists (no “Ora” caption) |
-| `mostraDirezioneMotoMC` | Filled lilac triangle with its base on the MC shaft halfway along the external arrow; points left or right according to signed `mcSpeed` |
+| `mostraDirezioneMotoMC` | Optional filled lilac movement triangle, **off by default** in new settings to match the reference's clean MC arrow; when explicitly enabled, points left/right according to signed `mcSpeed` |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
 Axis positions always use the house system selected in `settaggi.domificazione_selezionata`;
@@ -94,8 +95,10 @@ degree and whole arcminutes within the sign, rounded to the nearest minute;
 the original seconds and fractions are retained in the input data. DS and IC
 now use small `THREE.CircleGeometry` discs rather than square `THREE.Points`,
 with slightly enlarged radius and stable shape at any display resolution.
-The headings ASC/DSC/MC/IC are drawn using the same Georgia/Times-like canvas
-font in every skin; they do not load font glyphs from astrological-assets. The external ASC/DS/MC/IC strokes now terminate at their **true zodiacal
+The headings ASC/DSC/MC/IC are drawn using the same **bold Times New Roman-like**
+canvas font in every skin, not images from astrological-assets. Their geometry
+preserves the source canvas aspect ratio (512×160) so the text is not squashed
+horizontally. The external ASC/DS/MC/IC strokes terminate at their **true zodiacal
 degree tick**, i.e. the inner radius of the sign ring passed to the marker
 renderer. They never cross the celestial-body band to reach the house circle;
 house cusp dividers inside the house wheel are preserved independently.

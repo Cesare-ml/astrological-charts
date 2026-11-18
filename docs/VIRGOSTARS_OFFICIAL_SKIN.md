@@ -42,13 +42,16 @@ the host's asset resolver.
 ## User-visible controls and compatibility
 
 - `mostraNomiAssi?: boolean` — defaults to on, shows ASC, DSC, MC and IC
-  headings in a Georgia/Times-like serif rendered onto a canvas (not image assets)
+  headings in a bold Times-like serif rendered onto a canvas at the correct
+  aspect ratio (not image assets)
   near their respective terminal markers. Individual arrow/tail
   toggles also hide the corresponding heading.
 - `mostraGradiAssi?: boolean` — degrees and whole arcminutes at ASC and MC
   only. ASC degree is directly beneath the ASC heading, both beyond the short
   left arrow; MC degree sits centered immediately above its short upward arrow,
   with the MC heading above the degree. No repeated degrees at DSC/IC.
+- `mostraDirezioneMotoMC?: boolean` — extra movement triangle hidden by default
+  for new settings to preserve the clean reference MC arrow; users can turn it on.
 - `mostraOraPlanetariaAscendente?: boolean` — uses the supplied planetary-hour
   backend interval, never a guessed ruler.
 - `mostraGradiElementiCelesti?: boolean` — original integer degree beside
