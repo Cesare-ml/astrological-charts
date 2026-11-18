@@ -28,6 +28,9 @@ animations. Several gaps remained:
 8. The shared thick-line geometry/material constructors could throw between
    allocation and returning a line, leaving objects unreachable even when the
    calling composite disposed its previously attached segments.
+9. Basic circle, ring, quadrilateral, triangle and arc factories could also
+   abort after allocating a geometry but before handing the primitive to its
+   parent scene.
 
 ## Implementation
 
@@ -78,6 +81,10 @@ animations. Several gaps remained:
   position/color attribute setup fails; the line factory releases its input
   geometry and any constructed material if scale, resolution or mesh creation
   fails. On success ownership transfers unchanged to the returned Three.js line.
+- Circle, ring, quadrilateral, triangle and arc factories release allocated
+  geometry and any completed material when an intermediate step fails. The
+  optional map passed to an unfinished ring remains owned by its caller; in
+  the successful path the scene disposer handles its map normally.
 
 ## Reproducible regression tests
 
@@ -99,7 +106,7 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Forty-two additional tests cover failures of zodiac glyphs, decan and decade
+- Forty-six additional tests cover failures of zodiac glyphs, decan and decade
   glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
   house glyphs, synastry house dividers, term glyphs, the enclosing house
   module, main planetary glyphs/connectors, solar-resonator artwork and the
@@ -107,7 +114,9 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
   antiscia overlays, ASC/MC planetary-hour glyphs, asynchronous loader errors
   and texture setup failures, textured arc setup, dashed/dotted segments,
   arrow arcs, shared aspect endpoint geometry and multi-theme wrappers, plus
-  thick-line geometry/material construction failures and successful ownership.
+  thick-line geometry/material construction failures and successful ownership,
+  plus basic primitive construction failures and unchanged successful shape
+  ownership, including an externally supplied ring texture.
   Successful nested module construction retains
   resources until the owner explicitly disposes them.
 

@@ -475,6 +475,81 @@ test('successful fat-line construction keeps both resources until owner disposal
   });
 });
 
+test('circle, ring and quadrilateral release allocated geometries if material setup fails', async () => {
+  await withDisposeCounters(async counts => {
+    const externalTexture = new THREE.Texture();
+    let textureDisposals = 0;
+    const originalDispose = externalTexture.dispose.bind(externalTexture);
+    externalTexture.dispose = () => { textureDisposals++; originalDispose(); };
+    await withOverrides([
+      [THREE.Color.prototype, 'set', () => { throw new Error('primitive color failed'); }],
+    ], async () => {
+      assert.throws(() => OggettiSempliciRender.getCerchio(1, '#fff'), /primitive color failed/);
+      assert.throws(() => OggettiSempliciRender.getAnello(1, 2, '#fff',
+        {texture: externalTexture}), /primitive color failed/);
+      assert.throws(() => OggettiSempliciRender.getQuadrilatero(1, 2, '#fff'),
+        /primitive color failed/);
+      assert.equal(counts.geometry, 3);
+      assert.equal(textureDisposals, 0, 'a map supplied by the caller is not owned on failure');
+    });
+    externalTexture.dispose();
+    assert.equal(textureDisposals, 1);
+  });
+});
+
+test('triangle releases its geometry if normal generation aborts', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [THREE.BufferGeometry.prototype, 'computeVertexNormals', () => {
+        throw new Error('triangle normals failed');
+      }],
+    ], async () => {
+      assert.throws(() => OggettiSempliciRender.getTriangolo('#fff'),
+        /triangle normals failed/);
+      assert.equal(counts.geometry, 1);
+    });
+  });
+});
+
+test('arc releases its geometry if point transfer aborts', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [THREE.BufferGeometry.prototype, 'setFromPoints', () => {
+        throw new Error('arc points failed');
+      }],
+    ], async () => {
+      assert.throws(() => OggettiSempliciRender.getArco(1, 0, 90, '#fff'),
+        /arc points failed/);
+      assert.equal(counts.geometry, 1);
+    });
+  });
+});
+
+test('successful primitive shapes keep geometry and external map until caller cleanup', async () => {
+  await withDisposeCounters(async counts => {
+    const texture = new THREE.Texture();
+    let textureDisposals = 0;
+    const originalDispose = texture.dispose.bind(texture);
+    texture.dispose = () => { textureDisposals++; originalDispose(); };
+    const shapes = new THREE.Group();
+    shapes.add(OggettiSempliciRender.getCerchio(1, '#fff'));
+    shapes.add(OggettiSempliciRender.getAnello(1, 2, '#fff', {texture}));
+    shapes.add(OggettiSempliciRender.getQuadrilatero(1, 2, '#fff'));
+    shapes.add(OggettiSempliciRender.getTriangolo('#fff'));
+    shapes.add(OggettiSempliciRender.getArco(1, 0, 90, '#fff'));
+    assert.equal(shapes.children.length, 5);
+    assert.equal(shapes.children[1].material.map, texture);
+    assert.ok(shapes.children[4] instanceof THREE.Line);
+    assert.equal(counts.geometry, 0);
+    assert.equal(counts.material, 0);
+    assert.equal(textureDisposals, 0);
+    disposeSceneResources(shapes);
+    assert.equal(counts.geometry, 5);
+    assert.equal(counts.material, 5);
+    assert.equal(textureDisposals, 1);
+  });
+});
+
 test('axis marker builder frees prior stems and dots when planetary-hour image fails', async () => {
   await withDisposeCounters(async counts => {
     await withMeshes({failImageAt: 1}, async () => {

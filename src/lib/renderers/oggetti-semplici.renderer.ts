@@ -32,12 +32,18 @@ export class OggettiSempliciRender {
     shape.absarc(0, 0, raggio, 0, Math.PI * 2, false);
 
     const geometry = new THREE.RingGeometry(raggio - spessore, raggio, 128);
-    const material = new THREE.MeshBasicMaterial({ 
-      color: colore,
-      side: THREE.DoubleSide 
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    return mesh;
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      material = new THREE.MeshBasicMaterial({
+        color: colore,
+        side: THREE.DoubleSide
+      });
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
 
@@ -53,12 +59,16 @@ export class OggettiSempliciRender {
       map: opzioni?.texture ?? null
     };
 
-    const material = new THREE.MeshBasicMaterial(materialOptions);
-
-    const mesh = new THREE.Mesh(geometry, material);
-    //mesh.rotation.x = Math.PI / 2; // opzionale: orienta l’anello sul piano XY
-
-    return mesh;
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      material = new THREE.MeshBasicMaterial(materialOptions);
+      // The optional map was supplied by the caller, not created here.
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
   public static getSemiArcoGrosso(a, b, yInterno, yEsterno, colore, textureUrl = null) {
@@ -414,9 +424,15 @@ export class OggettiSempliciRender {
 */
   public static getQuadrilatero(w,h,colore) {
     const geometry = new THREE.PlaneGeometry( w, h );
-    const material = new THREE.MeshBasicMaterial( {color: colore, side: THREE.DoubleSide} );
-    const plane = new THREE.Mesh( geometry, material );
-    return plane;
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      material = new THREE.MeshBasicMaterial({color: colore, side: THREE.DoubleSide});
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
   public static getTriangolo(colore: string) {
     // Definisci i vertici del triangolo
@@ -428,18 +444,17 @@ export class OggettiSempliciRender {
 
     // Crea la BufferGeometry e imposta i vertici
     const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-    // Opzionale: calcola la normale automaticamente
-    geom.computeVertexNormals();
-
-    // Crea il materiale
-    const mat = new THREE.MeshBasicMaterial({ color: colore, side: THREE.DoubleSide });
-
-    // Crea la mesh
-    const mesh = new THREE.Mesh(geom, mat);
-
-    return mesh;
+    let mat: THREE.MeshBasicMaterial | undefined;
+    try {
+      geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      geom.computeVertexNormals();
+      mat = new THREE.MeshBasicMaterial({color: colore, side: THREE.DoubleSide});
+      return new THREE.Mesh(geom, mat);
+    } catch (error) {
+      mat?.dispose();
+      geom.dispose();
+      throw error;
+    }
   }
 
 
@@ -453,14 +468,17 @@ export class OggettiSempliciRender {
     );
 
     const points = curve.getPoints( 50 );
-    const geometry = new THREE.BufferGeometry().setFromPoints( points );
-
-    const material = new THREE.LineBasicMaterial( { color : colore } );
-
-    // Create the final object to add to the scene
-    const ellipse = new THREE.Line( geometry, material );
-
-    return ellipse;
+    const geometry = new THREE.BufferGeometry();
+    let material: THREE.LineBasicMaterial | undefined;
+    try {
+      geometry.setFromPoints(points);
+      material = new THREE.LineBasicMaterial({color: colore});
+      return new THREE.Line(geometry, material);
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
   public static async getSfondoQuadrato(assetsImgRef,dim,flipY=false, color?:string) {
