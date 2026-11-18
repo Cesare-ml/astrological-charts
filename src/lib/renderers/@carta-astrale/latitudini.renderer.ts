@@ -8,6 +8,7 @@ import {TransitiRender} from '../moduli/transiti.renderer';
 import { SkinManager } from '../@skin-manager';
 import { AspettiRender } from '../moduli/aspetti.renderer';
 import { latitudePlanetAsset } from './latitude-asset-paths';
+import { disposeSceneResources } from '../scene-resources';
 
 
 export class LatitudiniRender {
@@ -67,6 +68,11 @@ export class LatitudiniRender {
     const as = selectedHouses?.ascendant ?? 0;
 
     var disegno = new THREE.Group();
+    // Sign and natal groups are built before being attached, to preserve the
+    // existing paint order (transits, signs, natal planets). Track them until
+    // ownership transfers to the final scene so errors cannot orphan them.
+    const detachedGroups = new Set<THREE.Object3D>();
+    try {
 
     if (selectedHouses) {
       //var assi = await AssiRender.getAssi(as,mc,diametroAssi,opzioni);
@@ -100,6 +106,7 @@ export class LatitudiniRender {
       opzioni.mostraDecadi,
       opzioni
     );
+    detachedGroups.add(anelloSegni);
     var anelloElementiCelesti = await LatitudiniRender.lr.getAnelloElementiCelesti(
       temaRender,
       as,
@@ -109,6 +116,7 @@ export class LatitudiniRender {
       diametroEclittica,
       false
     );
+    detachedGroups.add(anelloElementiCelesti);
 
     if(opzioni.mostraTransiti && temaRenderTransiti) {
       var transiti = await LatitudiniRender.lr.getAnelloElementiCelesti(
@@ -126,11 +134,21 @@ export class LatitudiniRender {
 
     disegno.add( anelloSegni );
     disegno.add( anelloElementiCelesti );
+    detachedGroups.clear();
 
     if(temaRender.australInversion)
       disegno.rotation.y = Math.PI;
 
     return disegno;
+    } catch (error) {
+      // Add only unattached groups to the same disposal tree, so shared
+      // textures/geometries are released once even when a later module fails.
+      for (const group of detachedGroups) {
+        if (!group.parent) disegno.add(group);
+      }
+      disposeSceneResources(disegno);
+      throw error;
+    }
   }
 
   public async getElementiCelesti(temaRender, opzioni) {
@@ -159,6 +177,7 @@ export class LatitudiniRender {
   // ###########
   public async getAnelloElementiCelesti(temaRender, ascendente: number, opzioni: any, diametroInterno, diametroEsterno, diametroEclittica, usaImgAnello): Promise<any> {
     var group = new THREE.Group();
+    try {
 
     var elementiCelesti = await LatitudiniRender.lr.getElementiCelesti(temaRender,opzioni);
 
@@ -191,6 +210,9 @@ export class LatitudiniRender {
 
       var elRef = latitudePlanetAsset(opzioni.temaGrafico, nome, usaImgAnello);
       var el = await OggettiSempliciRender.getImg(elRef,0.1,0.1,1);
+      // Take ownership immediately: positioning or line creation can throw
+      // before the glyph would otherwise be attached to the result group.
+      group.add(el);
 
       var elLongDiRender = 75-ascendente+15 + elementiCelesti[nome]['longitude'];
       el.rotateZ(THREE.MathUtils.degToRad(elLongDiRender));
@@ -220,12 +242,11 @@ export class LatitudiniRender {
         colore = '#555';
       var speedSign = Math.sign(elementiCelesti[nome].latitudeSpeed);
       var linea = OggettiSempliciRender.getLineaGrossa(new THREE.Vector2(0,speedSign*0.01),new THREE.Vector2(0,speedSign*0.04),colore,2);
+      group.add(linea);
       linea.rotateZ(THREE.MathUtils.degToRad(elLongDiRender));
       linea.translateY(yPos);
       linea.translateZ(0.00001);
 
-      group.add( el );
-      group.add(linea);
     }
 
     //Fasi Sinodiche Latitudinali
@@ -299,5 +320,9 @@ export class LatitudiniRender {
     }*/
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }

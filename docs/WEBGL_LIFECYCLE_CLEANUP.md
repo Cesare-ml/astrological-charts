@@ -12,6 +12,9 @@ animations. Two gaps remained:
 2. `CartaAstraleCreaScena()` could throw after earlier modules had constructed
    groups. The incomplete chart was never returned to the render service, so
    its scene meshes and textures were not reachable by the normal disposer.
+3. The latitude builder could leave its detached sign and natal groups behind
+   when a later async module failed; its latitude-grid group could also be
+   abandoned during glyph loading or indicator creation.
 
 ## Implementation
 
@@ -25,6 +28,12 @@ animations. Two gaps remained:
   service and the natal chart builder's error path.
 - A successfully constructed scene is still owned by the service; the chart
   builder never disposes it on the normal return path.
+- The latitude builder tracks sign and planet groups while they are detached,
+  preserves the original rendering order (houses, background, transits, signs,
+  natal planets), and joins them to the disposal tree on failure.
+- The latitude planet/grid builder cleans up its own partially assembled group
+  on failure. Each loaded glyph and indicator is attached immediately after
+  creation so subsequent placement errors cannot orphan them.
 
 ## Reproducible regression tests
 
@@ -43,6 +52,9 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - A chart builder failure in a later module disposes the previously attached
   group, shared texture, material and geometry **once**, as well as stopping
   animations. Successful construction does not dispose those resources early.
+- Five further tests cover failing first/second latitude glyphs, indicator
+  creation, transit glyphs after a successful natal ring, and successful
+  rendering order with disposal deferred until the caller finishes.
 
 These are lifetime *contracts*, not GPU-memory measurements. The actual
 `WEBGL_lose_context` extension is optional in browsers; `forceContextLoss()`
@@ -53,8 +65,10 @@ not establish parity with the VirgoStars original assets.
 
 ## Remaining limits
 
-Modules which throw **during their own asynchronous group assembly** may
-create individual textures/meshes never attached to a parent. Those must be
-addressed within the modules themselves. The latitude chart builder's partial
-failure path and comprehensive memory/GPU profiling remain separate work.
+Other modules which throw **during their own asynchronous group assembly**
+may create individual textures/meshes never attached to a parent. Those must
+be addressed within the modules themselves. The latitude glyph/grid module's
+partial failure path is covered, but failures inside other nested modules
+(such as house and zodiac ring construction) and comprehensive memory/GPU
+profiling remain separate work.
 No production sites, device firmware, asset locations or public APIs change.
