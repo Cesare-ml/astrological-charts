@@ -98,6 +98,11 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.equal(group.children.find(child => child.userData.axis === 'planetary-hour-glyph')?.userData.planetaryHour, 'Jupiter');
   const markers = Object.fromEntries(group.children.filter(child => child.userData.axisMarker)
     .map(child => [child.userData.axisMarker, child]));
+  assert.equal(group.userData.chartInteractionRole, 'natal-axes');
+  for (const [key, name, longitude] of [['ASC','AS',20.7],['DS','DS',200.7],['MC','MC',298.94],['IC','IC',118.94]]) {
+    assert.equal(markers[key].userData.planet, name);
+    assert.ok(Math.abs(markers[key].userData.trueLongitude - longitude) < 1e-9);
+  }
   assert.ok(markers.ASC.isLineSegments, 'ASC is a simple two-stroke open arrow');
   assert.ok(markers.DS.isMesh && markers.DS.geometry.type === 'CircleGeometry',
     'DS ends in a properly round disc, not a square point');

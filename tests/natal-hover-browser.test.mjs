@@ -22,6 +22,7 @@ test('synthetic chart hover hides and restores aspects through redraw', {timeout
     await page.goto(pathToFileURL(html).href);
     await page.addScriptTag({content:js.outputFiles[0].text});
     await page.evaluate(base => globalThis.hoverHarness.init(base), pathToFileURL(join(root,'assets')+'/').href);
+    assert.deepEqual(await page.evaluate(() => globalThis.hoverHarness.axisGlyphs()), []);
     const point = await page.evaluate(() => globalThis.hoverHarness.point('Jupiter'));
     await page.mouse.move(point.x, point.y);
     let state = await page.evaluate(() => globalThis.hoverHarness.state());
@@ -33,6 +34,42 @@ test('synthetic chart hover hides and restores aspects through redraw', {timeout
     await page.mouse.move(700,700);
     state = await page.evaluate(() => globalThis.hoverHarness.state());
     assert.equal(state.last,null); assert.equal(state.linesVisible,true);
+    for (const [name,id,longitude] of [['ASC','AS',20],['DS','DS',200],['MC','MC',290],['IC','IC',110]]) {
+      const axis = await page.evaluate(value => globalThis.hoverHarness.axisPoint(value),name);
+      await page.mouse.move(axis.x,axis.y);
+      state = await page.evaluate(() => globalThis.hoverHarness.state());
+      assert.equal(state.last?.name,id); assert.equal(state.last.longitude,longitude);
+      assert.equal(state.linesVisible,false);
+      const marker = await page.evaluate(value => globalThis.hoverHarness.axisMarkerPoint(value),name);
+      await page.mouse.move(marker.x,marker.y);
+      state = await page.evaluate(() => globalThis.hoverHarness.state());
+      assert.equal(state.last?.name,id);
+    }
+    for (const [name,longitude] of [['true Node',72],['osc. Apogee',135],['Tyche',240]]) {
+      const glyph = await page.evaluate(value => globalThis.hoverHarness.point(value),name);
+      await page.mouse.move(glyph.x,glyph.y);
+      state = await page.evaluate(() => globalThis.hoverHarness.state());
+      assert.equal(state.last?.name,name); assert.equal(state.last.longitude,longitude);
+    }
+    await page.evaluate(() => globalThis.hoverHarness.initTransits());
+    state = await page.evaluate(() => globalThis.hoverHarness.transitState());
+    assert.ok(state.opacity > 0 && state.opacity <= .22, `natal aspects are translucent: ${JSON.stringify(state)}`);
+    assert.equal(state.vertexColors,false, 'geometry colors do not tint grey natal lines');
+    for (const ring of ['transit','natal']) {
+      const point = await page.evaluate(r => globalThis.hoverHarness.transitPoint('Jupiter',r), ring);
+      await page.mouse.move(point.x,point.y);
+      state = await page.evaluate(() => globalThis.hoverHarness.transitState());
+      assert.equal(state.last?.ring,ring);
+      assert.equal(state.last?.name,'Jupiter');
+      assert.ok(state.lines > 0, 'the supplied cross-aspect is drawn');
+    }
+    await page.mouse.move(700,700);
+    state = await page.evaluate(() => globalThis.hoverHarness.transitState());
+    assert.equal(state.last,null); assert.equal(state.lines,0);
+    await page.evaluate(() => globalThis.hoverHarness.restoreTransit());
+    state = await page.evaluate(() => globalThis.hoverHarness.transitState());
+    assert.equal(state.opacity,1, 'the original natal opacity is restored');
+    assert.equal(state.vertexColors,true, 'the original line colors are restored');
     await page.evaluate(() => globalThis.hoverHarness.destroy());
   } finally { await browser.close(); }
 });

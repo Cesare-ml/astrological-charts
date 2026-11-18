@@ -78,8 +78,9 @@ export class ElementiCelestiRender {
     } else if (axisPresentation === 'synastry-overlay') {
       delete elementiCelesti['DS'];
       delete elementiCelesti['IC'];
-    } else if (axisPresentation === 'default' && opzioni.nascondiAssiDuplicati &&
-      temaRender?.houses?.[opzioni.settaggi.domificazione_selezionata] && !opzioni.mostraEffemeridi) {
+    } else if (axisPresentation === 'default' && opzioni.nascondiAssiDuplicati && !opzioni.mostraEffemeridi &&
+      Number.isFinite(temaRender?.houses?.[opzioni.settaggi.domificazione_selezionata]?.ascendant) &&
+      Number.isFinite(temaRender?.houses?.[opzioni.settaggi.domificazione_selezionata]?.mc)) {
       for (const [axis, option] of [
         ['AS', 'mostraFrecciaAscendente'], ['DS', 'mostraRetroFrecciaDiscendente'],
         ['MC', 'mostraFrecciaMC'], ['IC', 'mostraRetroFrecciaIC'],

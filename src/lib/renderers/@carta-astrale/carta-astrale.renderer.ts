@@ -491,6 +491,11 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
     if (!stato) return null;
 
     const disegno = new THREE.Group();
+    disegno.userData.transitAspectGeometry = {
+        asc: stato.asc,
+        diameter: stato.diametri.diametroCerchioAspetti,
+        transitRadius: stato.diametri.diametroGrigliaTransiti / 2,
+    };
 
     // Skin-only backdrop. The wheel topology and all longitude positions
     // below are exactly the same for official and legacy skins.

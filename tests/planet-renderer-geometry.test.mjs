@@ -93,7 +93,7 @@ function segmentCrossesRectangle(coords, rectangle, padding = 0.005) {
 async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
   outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes,
   axisPresentation = 'default', protectedAxes = [], synastryPrimary = false,
-  transitsPrimary = false, externalConnector = true, houseBoundaryRadius) {
+  transitsPrimary = false, externalConnector = true, houseBoundaryRadius, extraOptions = {}) {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -135,6 +135,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
       },
     };
     const options = structuredClone(defaultOpzioniGrafico);
+    Object.assign(options, extraOptions);
     options.settaggi.skin_id = 'light';
     options.settaggi.elementi_celesti = Object.fromEntries(
       Object.keys(source).map(name => [name, { att: true }]),
@@ -165,6 +166,18 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     globalThis.document = originalDocument;
   }
 }
+
+test('desktop can hide only axes that have visible external markers', async () => {
+  const source = {Sun:10, AS:20, DS:200, MC:290, IC:110};
+  const make = extra => makeScene(true,0,1,outerRadius,innerRadius,source,'default',[],false,false,true,undefined,extra);
+  const names = group => group.children.filter(child => child.userData.planet).map(child => child.userData.planet).sort();
+  const legacy = await make({});
+  assert.deepEqual(names(legacy.group), ['AS','DS','IC','MC','Sun']);
+  const desktop = await make({nascondiAssiDuplicati:true});
+  assert.deepEqual(names(desktop.group), ['Sun']);
+  const noMc = await make({nascondiAssiDuplicati:true, mostraFrecciaMC:false});
+  assert.deepEqual(names(noMc.group), ['MC','Sun']);
+});
 
 test('transits omit their degrees and duplicate axes while natal planets retain degrees', async () => {
   const source = { Sun: 10, Moon: 48, Jupiter: 148, AS: 20, DS: 200, MC: 290, IC: 110 };

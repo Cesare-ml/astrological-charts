@@ -268,7 +268,7 @@ export class MarcatoriAssiRender {
     const longitudes: Record<string, number> = {ASC:asc, DS:(asc+180)%360, MC:mc, IC:(mc+180)%360};
     for (const object of group.children) {
       const key = object.userData.axisName ?? object.userData.axisMarker ?? object.userData.axisStem ?? object.userData.axis;
-      if (typeof key === 'string' && Object.hasOwn(longitudes, key)) {
+      if (typeof key === 'string' && Object.prototype.hasOwnProperty.call(longitudes, key)) {
         object.userData.planet = key === 'ASC' ? 'AS' : key;
         object.userData.trueLongitude = longitudes[key];
       }
