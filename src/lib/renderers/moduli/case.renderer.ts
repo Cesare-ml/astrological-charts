@@ -62,8 +62,10 @@ export class CaseRender {
 
     var diametroConfineEsternoCase = diametroEsterno;
     var diametroConfineInternoCase = diametroInterno;
+    let diametroLimiteNumeriCase = diametroInternoMiniArcoCase;
     if(mostraTermini) {
-      diametroConfineEsternoCase = diametroCerchioInternoTermini;
+      // Share the actual house-number band, not the much wider planet band.
+      diametroLimiteNumeriCase = (diametroInterno + diametroInternoMiniArcoCase) / 2;
 
     //EGIZA + PLACIDO
     } else if(
@@ -116,12 +118,13 @@ export class CaseRender {
       caseRenderedGroup = await CaseRender.renderAnelloCase(
         casePos[opzioni.settaggi.domificazione_selezionata],
         degOffs,
-        0.13*simboliScale,
+        0.13*simboliScale * (mostraTermini ? 0.75 : 1),
         diametroConfineInternoCase,
         diametroInternoMiniArcoCase,
         diametroConfineEsternoCase,
         australInversion,
-        opzioni
+        opzioni,
+        diametroLimiteNumeriCase
       );
     }
 
@@ -129,11 +132,12 @@ export class CaseRender {
       var terminiRenderedGroup = await CaseRender.renderTermini(
         casePos,
         0.075*simboliScale,
-        (diametroEsterno/2 - diametroCerchioInternoTermini/2)/2
-        + diametroCerchioInternoTermini/2,
+        (diametroLimiteNumeriCase + diametroInternoMiniArcoCase) / 4,
         degOffs,
         australInversion,
-        opzioni
+        opzioni,
+        diametroLimiteNumeriCase / 2,
+        diametroInternoMiniArcoCase / 2
       );
       group.add(terminiRenderedGroup);
     }
@@ -144,21 +148,33 @@ export class CaseRender {
   }
 
 
-  public static async renderTermini(casePos,simboliScale,ySimboli,degOffs,australInversion,opzioni) {
+  public static async renderTermini(casePos,simboliScale,ySimboli,degOffs,australInversion,opzioni,raggioInterno?:number,raggioEsterno?:number) {
     var group = new THREE.Group();
+    const asc = casePos[opzioni.settaggi.domificazione_selezionata].ascendant;
+    const offsetZodiaco = 90 - asc + degOffs;
+    const coloreLinea = SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.coloreLinea;
 
     for(var i=0; i<12; i++) {
       for(var j=0; j<5; j++) {
+        const inizio = i * 30 + j * 6 + offsetZodiaco;
+        if (raggioInterno !== undefined && raggioEsterno !== undefined) {
+          const separatore = OggettiSempliciRender.getLinea(
+            {x:0,y:raggioInterno}, {x:0,y:raggioEsterno}, coloreLinea
+          );
+          separatore.rotateZ(THREE.MathUtils.degToRad(inizio));
+          separatore.userData.termineBoundary = i * 5 + j;
+          group.add(separatore);
+        }
         var el = await OggettiSempliciRender.getImg(
-          'simboli/elementi/'+opzioni.settaggi.skin_id+'/875x605/'+((i+j)%4)+'.png',
-          875,605,1/875,australInversion
+          'simboli-bianchi/elementi/'+((i+j)%4)+'.png',
+          875,605,1/875,australInversion, SkinManager.skins[opzioni.settaggi.skin_id].elementi[(i+j)%4]
         );
 
         el.scale.set(simboliScale,simboliScale,1);
-        var offs = 30*j/5 + 3;
-        el.rotateZ(THREE.MathUtils.degToRad(i*30+90-15 + offs + degOffs));
+        el.rotateZ(THREE.MathUtils.degToRad(inizio + 3));
         el.translateY(ySimboli);
         el.rotation.z = 0;
+        el.userData.regoloTermine = i*5+j;
 
         group.add(el);
       }
@@ -174,7 +190,8 @@ export class CaseRender {
     diametroInternoMiniArco, 
     diametroEsterno,
     australInversion, 
-    opzioni
+    opzioni,
+    diametroLimiteNumeri = diametroInternoMiniArco
   ) {
     var group = new THREE.Group();
     
@@ -261,8 +278,9 @@ export class CaseRender {
       }
       casa.rotateZ(THREE.MathUtils.degToRad(casaImgPos + offsetDegRotazione));
       //casa.translateY( ySimboli );
-      casa.translateY( diametroInterno/2 + (diametroInternoMiniArco - diametroInterno)/4 );
+      casa.translateY( diametroInterno/2 + (diametroLimiteNumeri - diametroInterno)/4 );
       casa.rotation.z = 0;
+      casa.userData.houseNumber = i + 1;
 
       group.add(casa);
       group.add(linea);

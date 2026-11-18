@@ -302,6 +302,7 @@ export class MarcatoriAssiRender {
     // even when the duplicate axis glyphs inside the planet ring are hidden.
     const longitudes: Record<string, number> = {ASC:asc, DS:(asc+180)%360, MC:mc, IC:(mc+180)%360};
     for (const object of group.children) {
+      if (temaRender?.australInversion && !opzioni.mostraSinastria && (object.userData.axisName || object.userData.axis === 'ASC' || object.userData.axis === 'MC')) object.scale.x *= -1;
       const key = object.userData.axisName ?? object.userData.axisMarker ?? object.userData.axisStem ?? object.userData.axis;
       if (typeof key === 'string' && Object.prototype.hasOwnProperty.call(longitudes, key)) {
         object.userData.planet = key === 'ASC' ? 'AS' : key;

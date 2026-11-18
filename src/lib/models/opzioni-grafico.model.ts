@@ -100,6 +100,10 @@ export interface OpzioniGrafico {
   mostraStagioni: boolean;
 
   mostraTermini: boolean;
+  mostraDecani?: boolean;
+  mostraDecadi?: boolean;
+  /** Aspect classifications computed by the host; null is deliberately unknown. */
+  applicazioniAspetti?: {modo:'applying'|'separating'; stati:ReadonlyArray<{aspetto:string; da:string; a:string; applicante:boolean|null}>};
   mostraMonomeri: boolean;
   /** Hide a primary-wheel axis glyph when its external marker is displayed. */
   nascondiAssiDuplicati?: boolean;

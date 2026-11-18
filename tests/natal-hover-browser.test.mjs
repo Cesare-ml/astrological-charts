@@ -93,6 +93,10 @@ test('synthetic chart hover hides and restores aspects through redraw', {timeout
     assert.deepEqual(projected.map(item => [item.name,item.longitude,item.kind]),[['Sun',1.6,'RingGeometry'],['Moon',357.9,'RingGeometry']]);
     projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('antisci','Sun'));
     assert.deepEqual(projected.map(item => [item.name,item.longitude]),[['Sun',181.6]]);
+    const subdivisions = await page.evaluate(() => globalThis.hoverHarness.subdivisions());
+    assert.equal(subdivisions.decades.length,36);
+    assert.deepEqual(subdivisions.decades.slice(0,3),[[0,0],[1,4],[2,8]]);
+    assert.equal(subdivisions.terms.length,60);
     await page.evaluate(() => globalThis.hoverHarness.destroy());
   } finally { await browser.close(); }
 });

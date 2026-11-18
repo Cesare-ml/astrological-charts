@@ -1,5 +1,9 @@
 # VirgoStars official skin — chart composition
 
+With decades enabled, the zodiac keeps 30° boundaries and 10° marks while omitting the intermediate 5° marks. Main sign glyphs shrink and move into the remaining outer band; decans and decades share separate inner bands when enabled together. Egyptian-house terms and house numbers share the existing house-number band, with numbers in the inner half and terms in the outer half. This geometry is shared by all skins.
+
+The Regolo terms display divides each sign into five six-degree sectors. Short radial lines mark their boundaries and rotate with the zodiac and ascendant, so the sector under a celestial longitude is visible.
+
 The reference is the approved full-wheel VirgoStars mockup (ASC 20° Aries,
 MC 20° Capricorn, five-body conjunction at 28°–2° across Pisces/Aries).
 `demo/fixtures.ts` has a **synthetic** illustration with these positions:

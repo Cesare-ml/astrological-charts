@@ -369,6 +369,7 @@ export class ElementiCelestiRender {
           glyphPosition.y - Math.cos(tangentAngle) * labelRadialOffset - Math.sin(tangentAngle) * labelOffset, 0.002,
         );
         label.material.opacity = el.material.opacity;
+        if (australInversion) label.scale.x *= -1;
         group.add(label);
       }
 
@@ -386,7 +387,7 @@ export class ElementiCelestiRender {
         var raggioEclitticaDodecatemore =
           (diametroCerchioEsterno/2 - diametroCerchioDodecatemori/2)/2 + diametroCerchioDodecatemori/2;
 
-        var eld = new THREE.Mesh(new THREE.CircleGeometry(0.045, 24),
+        let eld = new THREE.Mesh(new THREE.CircleGeometry(0.045, 24),
           new THREE.MeshBasicMaterial({color:Colori.elementiCelesti[nome] ?? '#777777', side:THREE.DoubleSide}));
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'] + degOffs;
         eld.rotateZ(THREE.MathUtils.degToRad(dodecatemoreDegDiRender));
@@ -409,7 +410,7 @@ export class ElementiCelestiRender {
       }
       // Dodecatemoria singola
       else if(elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == nome && !calcolaPartiArabe) {
-        var eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,Colori.elementiCelesti[nome]);
+        let eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,Colori.elementiCelesti[nome]);
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'];
 
         eld.scale.set(0.23*simboliScale,0.23*simboliScale,1);
@@ -663,14 +664,16 @@ export class ElementiCelestiRender {
     }
 
     if(
-      opzioni.settaggi.transaturniniSeCongiunti
+      (opzioni.settaggi.transaturnini_se_congiunti ?? opzioni.settaggi.transaturniniSeCongiunti)
       && !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
       && !calcolaPartiArabe
     ) {
       var ts = ['Uranus','Neptune','Pluto'];
       for(let i in ts) {
         var nome = ts[i];
-        var elOptAtt = opzioni.settaggi.elementi_celesti[nome].att;
+        const outerOption = opzioni.settaggi.elementi_celesti[nome];
+        if (!outerOption) continue;
+        var elOptAtt = outerOption.att;
         if(
           !elOptAtt
           && (
@@ -682,12 +685,12 @@ export class ElementiCelestiRender {
           for(let p in elementiCelesti) {
             if(nome != p && elementiCelesti[p] && planets[nome]) {
               if(
-                    elementiCelesti[p].longitude < planets[nome].longitude + opzioni.settaggi.elementi_celesti[nome].orb
-                &&  elementiCelesti[p].longitude > planets[nome].longitude - opzioni.settaggi.elementi_celesti[nome].orb
-                ||  elementiCelesti[p].longitude - 360 < planets[nome].longitude + opzioni.settaggi.elementi_celesti[nome].orb
-                &&  elementiCelesti[p].longitude - 360 > planets[nome].longitude - opzioni.settaggi.elementi_celesti[nome].orb
-                ||  elementiCelesti[p].longitude + 360 < planets[nome].longitude + opzioni.settaggi.elementi_celesti[nome].orb
-                &&  elementiCelesti[p].longitude + 360 > planets[nome].longitude - opzioni.settaggi.elementi_celesti[nome].orb
+                    elementiCelesti[p].longitude < planets[nome].longitude + outerOption.orb
+                &&  elementiCelesti[p].longitude > planets[nome].longitude - outerOption.orb
+                ||  elementiCelesti[p].longitude - 360 < planets[nome].longitude + outerOption.orb
+                &&  elementiCelesti[p].longitude - 360 > planets[nome].longitude - outerOption.orb
+                ||  elementiCelesti[p].longitude + 360 < planets[nome].longitude + outerOption.orb
+                &&  elementiCelesti[p].longitude + 360 > planets[nome].longitude - outerOption.orb
               ) {
                 elementiCelesti[nome]=planets[nome];
                 break;

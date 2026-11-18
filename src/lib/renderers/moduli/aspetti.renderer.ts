@@ -469,10 +469,16 @@ export class AspettiRender {
             var coloreAspetto = Colori.aspetti[aspetti[k]];
             var colore = coloreAspetto;
             //console.log(opzioni,opzioni.kleros);
+            const application = opzioni.applicazioniAspetti;
+            const stato = application?.stati?.find(s => s.aspetto === aspetti[k] &&
+              ((s.da === nodi[archi[tipoAspetto][i][0]].name && s.a === nodi[archi[tipoAspetto][i][1]].name) ||
+               (s.a === nodi[archi[tipoAspetto][i][0]].name && s.da === nodi[archi[tipoAspetto][i][1]].name)));
             if (opzioni.dodecatemoriAttivi && opzioni.dodecatemore && opzioni.dodecatemore !== 'tutti') {
               const focused = opzioni.dodecatemore + '-dodecatemoria';
               if (nodi[archi[tipoAspetto][i][0]].name !== focused && nodi[archi[tipoAspetto][i][1]].name !== focused) colore = '#777777';
             } else if (opzioni.proiezioneZodiacale?.tipo) {
+              colore = '#777777';
+            } else if (application && (!stato || stato.applicante === null || stato.applicante !== (application.modo === 'applying'))) {
               colore = '#777777';
             } else if(monocolore){
               colore = monocolore;

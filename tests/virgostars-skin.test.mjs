@@ -6,6 +6,7 @@ const bundle = await build({
   stdin: {
     contents: [
       "export { SegniRender } from './src/lib/renderers/moduli/segni.renderer';",
+      "export { CaseRender } from './src/lib/renderers/moduli/case.renderer';",
       "export { OggettiSempliciRender } from './src/lib/renderers/oggetti-semplici.renderer';",
       "export { SkinManager } from './src/lib/renderers/@skin-manager';",
       "export * as THREE from 'three';",
@@ -14,10 +15,10 @@ const bundle = await build({
   },
   bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022',
 });
-const { SegniRender, OggettiSempliciRender, SkinManager, THREE } =
+const { SegniRender, CaseRender, OggettiSempliciRender, SkinManager, THREE } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
-async function zodiac(skin, mostraTransiti = false) {
+async function zodiac(skin, mostraTransiti = false, extra = {}) {
   const original = OggettiSempliciRender.getImg;
   OggettiSempliciRender.setDimensioniCanvas({x: 1200, y: 1200});
   OggettiSempliciRender.getImg = async () => new THREE.Mesh(
@@ -25,11 +26,58 @@ async function zodiac(skin, mostraTransiti = false) {
   );
   try {
     return await SegniRender.getAnelloSegni(20, 1, 3.9, 4.57, false, false, false,
-      {mostraTransiti, settaggi: {skin_id: skin}});
+      {mostraTransiti, ...extra, settaggi: {skin_id: skin}});
   } finally {
     OggettiSempliciRender.getImg = original;
   }
 }
+
+test('decades retain only ten-degree ticks and give the main signs a separate outer band', async () => {
+  const ordinary = await zodiac('virgostars');
+  const decades = await zodiac('virgostars', false, {mostraDecadi:true});
+  const both = await zodiac('virgostars', false, {mostraDecadi:true,mostraDecani:true});
+  const ticks = group => group.children.filter(c => Number.isInteger(c.userData.zodiacTickDegree));
+  const main = group => group.children.find(c => c.userData.zodiacMainSign === 0);
+  assert.equal(ticks(ordinary).length,72);
+  for (const group of [decades,both]) {
+    assert.equal(ticks(group).length,36);
+    assert.ok(ticks(group).every(tick => tick.userData.zodiacTickDegree % 10 === 0));
+    assert.ok(main(group).scale.x < main(ordinary).scale.x);
+    assert.ok(main(group).position.length() > main(ordinary).position.length());
+    const decade = group.children.flatMap(c => c.children).find(c => c.userData.decadeIndex === 0);
+    assert.ok(decade.position.length() < main(group).position.length());
+  }
+});
+
+test('terms and house numbers occupy separate halves of the house band', async () => {
+  const original = OggettiSempliciRender.getImg;
+  OggettiSempliciRender.setDimensioniCanvas({x:1200,y:1200});
+  OggettiSempliciRender.getImg = async () => new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial());
+  try {
+    const house = {ascendant:37, house:Array.from({length:12},(_,i)=>(37+i*30)%360)};
+    const options = {mostraTermini:true, settaggi:{skin_id:'virgostars',domificazione_selezionata:'egizia'}};
+    const group = await CaseRender.getAnelloCaseCartaAstrale({egizia:house},0,1,'',options,2,3,4.5,2.7,false);
+    const terms = [], numbers = [], boundaries = [];
+    group.traverse(object => {
+      if (Number.isInteger(object.userData.regoloTermine)) terms.push(object);
+      if (Number.isInteger(object.userData.houseNumber)) numbers.push(object);
+      if (Number.isInteger(object.userData.termineBoundary)) boundaries.push(object);
+    });
+    assert.equal(terms.length,60);
+    assert.equal(numbers.length,12);
+    assert.equal(boundaries.length,60);
+    assert.ok(terms.every(term => Math.abs(term.position.length()-1.375) < 1e-9));
+    assert.ok(numbers.every(number => Math.abs(number.position.length()-1.125) < 1e-9));
+    assert.ok(terms.every(term => term.position.length() < 1.5));
+    for (let i = 0; i < 60; i++) {
+      const start = (90 - house.ascendant + i * 6) * Math.PI / 180;
+      assert.ok(Math.abs(Math.sin(boundaries[i].rotation.z) - Math.sin(start)) < 1e-9);
+      assert.ok(Math.abs(Math.cos(boundaries[i].rotation.z) - Math.cos(start)) < 1e-9);
+      assert.ok(Math.abs(terms[i].position.x + 1.375 * Math.sin(start + Math.PI / 60)) < 1e-9);
+      assert.ok(Math.abs(terms[i].position.y - 1.375 * Math.cos(start + Math.PI / 60)) < 1e-9);
+    }
+  } finally { OggettiSempliciRender.getImg = original; }
+});
 
 test('official VirgoStars has twelve pastel zodiac sectors, without bundling asset images', async () => {
   const official = await zodiac('virgostars');

@@ -93,6 +93,22 @@ for (const [index, name] of demoBodies.slice(0,7).entries()) {
     });
     return items;
   },
+  async subdivisions() {
+    options.mostraTransiti = false;
+    options.dodecatemoriAttivi = false;
+    options.proiezioneZodiacale = undefined;
+    options.mostraDecani = true;
+    options.mostraDecadi = true;
+    options.mostraTermini = true;
+    options.settaggi.domificazione_selezionata = 'egizia';
+    await service.disegnaScena(fixture,null,null,'carta-astrale',options);
+    const decades:any[] = [], terms:number[] = [];
+    ((service as any).scene as THREE.Scene).traverse(object => {
+      if (object.userData.decadeIndex !== undefined) decades.push([object.userData.decadeIndex,object.userData.decadeSign]);
+      if (object.userData.regoloTermine !== undefined) terms.push(object.userData.regoloTermine);
+    });
+    return {decades,terms};
+  },
   transitPoint(name: string, ring: string) {
     const scene = (service as any).scene as THREE.Scene;
     let glyph: THREE.Object3D | undefined;

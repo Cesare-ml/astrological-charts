@@ -42,6 +42,22 @@ const planetLongitudes = {
 const innerRadius = 1.43;
 const outerRadius = 1.83;
 
+test('canonical conjunct-outer setting includes hidden bodies across Aries and respects the orb', () => {
+  const options = structuredClone(defaultOpzioniGrafico);
+  for (const option of Object.values(options.settaggi.elementi_celesti)) option.att = false;
+  options.settaggi.elementi_celesti.Sun.att = true;
+  options.settaggi.elementi_celesti.Uranus.orb = 3;
+  options.settaggi.transaturnini_se_congiunti = true;
+  const theme = {planets:{Sun:{longitude:359}, Uranus:{longitude:1}},
+    houses:{[options.settaggi.domificazione_selezionata]:{ascendant:40, mc:130}}};
+  assert.ok(ElementiCelestiRender.getElementiCelesti(theme,options,false).Uranus);
+  theme.planets.Uranus.longitude = 2;
+  assert.equal(ElementiCelestiRender.getElementiCelesti(theme,options,false).Uranus,undefined);
+  options.settaggi.transaturnini_se_congiunti = false;
+  theme.planets.Uranus.longitude = 1;
+  assert.equal(ElementiCelestiRender.getElementiCelesti(theme,options,false).Uranus,undefined);
+});
+
 function polar(degree, radius) {
   const radians = degree * Math.PI / 180;
   return { x: -Math.sin(radians) * radius, y: Math.cos(radians) * radius };

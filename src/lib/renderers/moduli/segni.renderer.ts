@@ -49,7 +49,7 @@ export class SegniRender {
             }
             //let imgFolder = coloreImgFolder ? coloreImgFolder + '/' : '';
             const segno = await OggettiSempliciRender.getImg(
-                `simboli-bianchi/segni/${String(i + 1).padStart(2, '0')}.png`,
+                `simboli-bianchi/segni/${String((i + 4*j)%12 + 1).padStart(2, '0')}.png`,
                 100, 69, 1 / 69, australInversion, colore
             );
     
@@ -60,6 +60,8 @@ export class SegniRender {
               + (diametroCerchioEsterno/2 - diametroCerchioInterno/2)/2,
             );
             segno.rotation.z = 0;
+            segno.userData.decadeSign = (i + 4*j)%12;
+            segno.userData.decadeIndex = i*3+j;
     
             group.add(segno);
           }
@@ -176,6 +178,8 @@ export class SegniRender {
         // Linee principali (ogni 30°), secondarie (ogni 10°) e terziarie (ogni 5°)
         
         for (let i = 0; i < 72; i++) {
+            // The intermediate five-degree marks clutter the decade divisions.
+            if (opzioni.mostraDecadi && i % 2 !== 0) continue;
             const angolo = i * 5 + degOffsAscendente;
             let lunghezza = 0;
 
@@ -199,6 +203,7 @@ export class SegniRender {
             );
 
             linea.rotateZ(THREE.MathUtils.degToRad(angolo));
+            linea.userData.zodiacTickDegree = i * 5;
             group.add(linea);
         }
 
@@ -214,19 +219,25 @@ export class SegniRender {
                 `simboli-bianchi/segni/${String(i + 1).padStart(2, '0')}.png`,
                 100, 69, 1 / 69, australInversion, colore
             );
-            segno.scale.set(0.16, 0.16, 1);
+            const subdivisions = !!opzioni.mostraDecani || !!opzioni.mostraDecadi;
+            const both = !!opzioni.mostraDecani && !!opzioni.mostraDecadi;
+            const size = subdivisions ? (both ? 0.105 : 0.12) : 0.16;
+            segno.scale.set(size, size, 1);
             segno.rotateZ(THREE.MathUtils.degToRad(i * 30 + 15 + degOffsAscendente));
             // Centre the glyph within the actual zodiac band. Previously a
             // fixed fraction of the outer diameter pulled it toward planets.
-            segno.translateY((diametroCerchioInterno + diametroCerchioEsterno) / 4);
+            const innerSignBand = diametroCerchioInterno + (diametroCerchioEsterno - diametroCerchioInterno) *
+                (subdivisions ? (both ? 0.5 : 0.25) : 0);
+            segno.translateY((innerSignBand + diametroCerchioEsterno) / 4);
             segno.rotation.z = 0;
+            segno.userData.zodiacMainSign = i;
             group.add(segno);
         }
 
         if (opzioni.mostraDecani) {
             const decani = await SegniRender.getDecani(
                 degOffsAscendente,
-                simboliScale,
+                simboliScale * 0.55,
                 diametroCerchioInterno,
                 diametroCerchioInterno + (diametroCerchioEsterno-diametroCerchioInterno)/4,
                 australInversion,
@@ -236,12 +247,11 @@ export class SegniRender {
         }
 
         if (opzioni.mostraDecadi) {
-            // TODO: implementare getDecadi
             const decadi = await SegniRender.getDecadi(
                 degOffsAscendente,
-                simboliScale*0.8,
-                diametroCerchioInterno,
-                diametroCerchioInterno + (diametroCerchioEsterno-diametroCerchioInterno)/4,
+                simboliScale * (opzioni.mostraDecani ? 0.42 : 0.55),
+                diametroCerchioInterno + (opzioni.mostraDecani ? (diametroCerchioEsterno-diametroCerchioInterno)/4 : 0),
+                diametroCerchioInterno + (opzioni.mostraDecani ? (diametroCerchioEsterno-diametroCerchioInterno)/2 : (diametroCerchioEsterno-diametroCerchioInterno)/4),
                 australInversion,
                 opzioni
             );
