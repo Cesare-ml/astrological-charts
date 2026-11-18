@@ -10,6 +10,7 @@ export interface MonomericCrossGeometryLike {
     signIndex: number;
     house: number | null;
     signRuler: string;
+    signRulerDomicile?: 'PRIMARY' | 'SECONDARY';
     rulerLongitudeDeg: number;
     rulerHouse: number | null;
   }[];
@@ -43,6 +44,8 @@ export function monomericCrossViewFromGeometry(
     longitudeDeg: arm.longitudeDeg,
     house: arm.house,
     signRuler: translatedPlanet(arm.signRuler),
+    signRulerDomicile: arm.signRulerDomicile === 'PRIMARY' || arm.signRulerDomicile === 'SECONDARY'
+      ? arm.signRulerDomicile : null,
     rulerSign: SIGNS[locale][Math.floor((((arm.rulerLongitudeDeg % 360) + 360) % 360) / 30)],
     rulerHouse: arm.rulerHouse,
     description: null,

@@ -11,6 +11,7 @@ export interface MonomericCrossArmView {
   house: number | null;
   description?: string | null;
   signRuler: string;
+  signRulerDomicile?: 'PRIMARY' | 'SECONDARY' | null;
   rulerSign?: string | null;
   rulerHouse?: number | null;
   rulerDescription?: string | null;

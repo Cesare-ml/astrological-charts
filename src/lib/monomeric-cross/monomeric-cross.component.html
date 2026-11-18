@@ -25,7 +25,7 @@
         <span class="house-label">{{ house(arm.house) }} {{ locale === 'it' ? 'casa' : 'house' }}</span>
         <span class="card-description" *ngIf="arm.description; else noText">{{ arm.description }}</span>
         <ng-template #noText><span class="card-placeholder">{{ locale === 'it' ? 'Monomero non ancora verificato' : 'Monomer not yet verified' }}</span></ng-template>
-        <span class="ruler-line"><span>{{ locale === 'it' ? 'Maestro del segno' : 'Sign ruler' }}</span><strong>{{ arm.signRuler }}</strong></span>
+        <span class="ruler-line"><span>{{ locale === 'it' ? 'Governatore del segno' : 'Sign ruler' }}</span><strong>{{ arm.signRuler }}</strong><span *ngIf="arm.signRulerDomicile">· {{ arm.signRulerDomicile === 'PRIMARY' ? (locale === 'it' ? 'domicilio primario' : 'primary domicile') : (locale === 'it' ? 'domicilio secondario' : 'secondary domicile') }}</span></span>
       </button>
     </div>
 
