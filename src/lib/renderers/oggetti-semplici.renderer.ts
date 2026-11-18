@@ -8,6 +8,19 @@ export class OggettiSempliciRender {
   public static dimensioniCanvas:{x:number, y:number} = null;
   public static baseWidth = 1300;
   public static lineScaleFactorMultiplier = 1;
+  // Protect synchronous Three.js scene construction from unbounded stroke loops.
+  private static readonly MAX_STROKE_PRIMITIVES = 20_000;
+
+  private static strokeSegmentCount(distance: number, step: number, strokesPerSegment: number): number {
+    if (!Number.isFinite(distance) || distance < 0 || !Number.isFinite(step) || step <= 0) {
+      throw new RangeError('Stroke distance must be finite and step must be positive and finite.');
+    }
+    const count = Math.trunc(distance / step);
+    if (!Number.isFinite(count) || count * strokesPerSegment > this.MAX_STROKE_PRIMITIVES) {
+      throw new RangeError('Stroke pattern exceeds the safe primitive limit.');
+    }
+    return count;
+  }
   
   // RENDERER E SIZES
   public static setDimensioniCanvas({x,y}) {
@@ -134,7 +147,7 @@ export class OggettiSempliciRender {
     var group = new THREE.Group();
 
     var distanza = da.distanceTo(a);
-    var segmenti = Math.trunc(distanza/passo);
+    var segmenti = this.strokeSegmentCount(distanza, passo, 1);
 
     var xDelta = (a.x - da.x)/segmenti;
     var yDelta = (a.y - da.y)/segmenti;
@@ -173,13 +186,28 @@ export class OggettiSempliciRender {
   public static getLineaGrossaPuntoLinea(da,a,colore,spessore,trattoLinea) {
     var group = new THREE.Group();
 
+    if (!trattoLinea ||
+        !Number.isSafeInteger(trattoLinea.nLinee) || trattoLinea.nLinee < 0 ||
+        !Number.isSafeInteger(trattoLinea.nPunti) || trattoLinea.nPunti < 0 ||
+        !Number.isFinite(trattoLinea.rateoLineaSpazio) || trattoLinea.rateoLineaSpazio < 0) {
+      throw new RangeError('Stroke pattern counts must be non-negative integers and spacing must be non-negative and finite.');
+    }
+
+    const primitives = trattoLinea.nLinee + trattoLinea.nPunti;
     var distanza = da.distanceTo(a);
-    var segmenti = Math.trunc(distanza/trattoLinea.passo);
+    var segmenti = this.strokeSegmentCount(distanza, trattoLinea.passo, primitives);
+    if (primitives === 0 || segmenti === 0) return group;
 
     var xDelta = (a.x - da.x)/segmenti;
     var yDelta = (a.y - da.y)/segmenti;
 
-    var fract = (trattoLinea.nLinee * (1+trattoLinea.rateoLineaSpazio*(1+trattoLinea.nPunti/trattoLinea.nLinee)));
+    // Equivalent to the original formula when nLinee > 0, but also supports
+    // dot-only patterns (nLinee === 0) without dividing by zero.
+    var fract = trattoLinea.nLinee * (1 + trattoLinea.rateoLineaSpazio)
+              + trattoLinea.rateoLineaSpazio * trattoLinea.nPunti;
+    if (!Number.isFinite(fract) || fract <= 0) {
+      throw new RangeError('Stroke pattern must have positive finite length.');
+    }
     var lineaLenX = xDelta/fract;
     var spazioLenX = trattoLinea.rateoLineaSpazio * lineaLenX;
 
