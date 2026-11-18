@@ -1,0 +1,49 @@
+<section class="monomeric-view" [attr.lang]="locale" [attr.aria-label]="locale === 'it' ? 'Croce monomerica' : 'Monomeric cross'">
+  <header class="cross-heading">
+    <div>
+      <span class="eyebrow">VIRGOSTARS · {{ locale === 'it' ? 'ASTROLOGIA TRADIZIONALE' : 'TRADITIONAL ASTROLOGY' }}</span>
+      <h2>{{ locale === 'it' ? 'Croce monomerica' : 'Monomeric cross' }}</h2>
+      <p>{{ locale === 'it' ? "I quattro punti del pianeta che governa l'ora, fra opposizione e quadrature." : 'Four points around the planetary-hour ruler: opposition and squares.' }}</p>
+    </div>
+    <div class="master-badge" *ngIf="cross">
+      <span>{{ locale === 'it' ? "MAESTRO DELL'ORA" : 'HOUR RULER' }}</span>
+      <strong>{{ cross.hourRuler }}</strong>
+    </div>
+  </header>
+
+  <ng-container *ngIf="cross && cross.arms.length === 4; else missing">
+    <div class="cross-layout" role="group" [attr.aria-label]="locale === 'it' ? 'Quattro bracci della croce' : 'Four arms of the cross'">
+      <span class="cross-horizontal" aria-hidden="true"></span>
+      <span class="cross-vertical" aria-hidden="true"></span>
+      <span class="cross-hub" aria-hidden="true"><span>✦</span></span>
+
+      <button *ngFor="let arm of cross.arms" type="button" class="cross-card"
+        [ngClass]="'position-' + arm.position" [class.active]="selected === arm.position"
+        [attr.aria-pressed]="selected === arm.position" (click)="selected = arm.position">
+        <span class="card-label"><span class="card-dot" aria-hidden="true"></span>{{ label(arm.position) }}</span>
+        <span class="card-title">{{ arm.sign }} <span>{{ degree(arm.longitudeDeg) }}</span></span>
+        <span class="house-label">{{ house(arm.house) }} {{ locale === 'it' ? 'casa' : 'house' }}</span>
+        <span class="card-description" *ngIf="arm.description; else noText">{{ arm.description }}</span>
+        <ng-template #noText><span class="card-placeholder">{{ locale === 'it' ? 'Monomero non ancora verificato' : 'Monomer not yet verified' }}</span></ng-template>
+        <span class="ruler-line"><span>{{ locale === 'it' ? 'Governatore del segno' : 'Sign ruler' }}</span><strong>{{ arm.signRuler }}</strong><span *ngIf="arm.signRulerDomicile">· {{ arm.signRulerDomicile === 'PRIMARY' ? (locale === 'it' ? 'domicilio primario' : 'primary domicile') : (locale === 'it' ? 'domicilio secondario' : 'secondary domicile') }}</span></span>
+      </button>
+    </div>
+
+    <div class="detail" *ngIf="selectedArm as arm" aria-live="polite">
+      <div class="detail-identity"><span class="eyebrow">{{ label(arm.position) }}</span><h3>{{ arm.sign }} · {{ degree(arm.longitudeDeg) }}</h3></div>
+      <div class="detail-content">
+        <p>{{ arm.description || (locale === 'it' ? 'Descrizione storica da verificare.' : 'Historical description awaiting verification.') }}</p>
+        <p class="detail-ruler"><strong>{{ arm.signRuler }}</strong><ng-container *ngIf="arm.rulerSign"> · {{ arm.rulerSign }}</ng-container><ng-container *ngIf="arm.rulerHouse"> · {{ house(arm.rulerHouse) }} {{ locale === 'it' ? 'casa' : 'house' }}</ng-container><span *ngIf="arm.rulerDescription"> — {{ arm.rulerDescription }}</span></p>
+      </div>
+    </div>
+
+    <p class="cross-note">
+      {{ locale === 'it' ? 'Domificazione:' : 'House system:' }} {{ cross.houseSystem }}.
+      <ng-container *ngIf="cross.degreeConvention">{{ cross.degreeConvention }}.</ng-container>
+      <ng-container *ngIf="cross.catalogAttribution">{{ cross.catalogAttribution }}.</ng-container>
+      <ng-container *ngIf="!cross.degreeConvention">{{ locale === 'it' ? 'Le descrizioni non sono assegnate automaticamente senza una convenzione storica verificata.' : 'Descriptions are not assigned automatically without a verified historical degree convention.' }}</ng-container>
+    </p>
+  </ng-container>
+
+  <ng-template #missing><p class="no-data" role="status">{{ locale === 'it' ? "Per creare la Croce servono il Maestro dell'Ora e le posizioni del tema." : 'The planetary-hour ruler and chart positions are required to build the cross.' }}</p></ng-template>
+</section>

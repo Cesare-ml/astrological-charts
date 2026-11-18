@@ -3,6 +3,8 @@
  */
 
 export * from './lib/services/grafico-render.service';
+export * from './lib/monomeric-cross/monomeric-cross.component';
+export * from './lib/monomeric-cross/monomeric-cross.adapter';
 
 export * from './lib/models/tema.model';
 export * from './lib/models/tema-localdb.model';

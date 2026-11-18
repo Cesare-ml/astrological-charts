@@ -1,0 +1,55 @@
+:host { display:block; width:100%; color:var(--vs-text,#1c2943); }
+.monomeric-view { box-sizing:border-box; width:100%; border-radius:24px; padding:clamp(18px,3.2vw,38px); background:var(--vs-surface,#fff); border:1px solid var(--vs-border,#e1e3ee); font-family:inherit; box-shadow:0 10px 36px #1523420a; }
+*,*::before,*::after { box-sizing:border-box; }
+.cross-heading { display:flex; justify-content:space-between; align-items:start; gap:24px; margin-bottom:26px; }
+.cross-heading h2 { font-family:Georgia,serif; font-size:clamp(27px,3.2vw,38px); font-weight:500; letter-spacing:-.04em; margin:8px 0 5px; }
+.cross-heading p { color:var(--vs-text-secondary,#6a7386); font-size:14px; line-height:1.5; margin:0; }
+.eyebrow { color:#ac8241; font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+.master-badge { flex:none; min-width:126px; padding:11px 16px; border:1px solid #d1b074; border-radius:12px; background:#bfa06715; }
+.master-badge span { display:block; color:#a87d35; font-size:10px; letter-spacing:.1em; font-weight:750; }
+.master-badge strong { display:block; margin-top:4px; font-size:15px; font-weight:750; }
+.cross-layout { --spoke:#bb9b64; position:relative; display:grid; grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr); grid-template-rows:auto minmax(132px,auto) auto; gap:26px 12px; align-items:center; min-height:500px; isolation:isolate; }
+.cross-horizontal,.cross-vertical { position:absolute; z-index:-1; pointer-events:none; background:linear-gradient(90deg,transparent,var(--spoke) 16%,var(--spoke) 84%,transparent); }
+.cross-horizontal { height:2px; top:50%; left:17%; right:17%; transform:translateY(-50%); }
+.cross-vertical { width:2px; left:50%; top:9%; bottom:9%; transform:translateX(-50%); background:linear-gradient(180deg,transparent,var(--spoke) 16%,var(--spoke) 84%,transparent); }
+.cross-hub { grid-column:2; grid-row:2; z-index:1; justify-self:center; display:grid; place-items:center; height:42px; width:42px; border:1px solid #d8b979; border-radius:50%; background:var(--vs-surface,#fff); box-shadow:0 0 0 7px #cca86624; color:#b68c48; font-size:22px; }
+.cross-card { min-width:0; display:flex; flex-direction:column; gap:7px; text-align:left; width:100%; height:100%; padding:19px 21px; background:var(--vs-surface,#fff); color:inherit; border:1px solid var(--vs-border,#d5dbe7); border-radius:17px; box-shadow:0 8px 25px #1324450b; font:inherit; cursor:pointer; transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+.cross-card:hover { transform:translateY(-2px); border-color:#b8965e; box-shadow:0 12px 30px #1324451a; }
+.cross-card:focus-visible { outline:3px solid #9c78dd; outline-offset:3px; }
+.cross-card.active { border-color:#b88a3d; box-shadow:0 0 0 2px #c79e5633,0 12px 26px #ad8a4633; }
+.position-master { grid-column:1/4; grid-row:1; max-width:480px; justify-self:center; }
+.position-square-left { grid-column:1; grid-row:2; }
+.position-square-right { grid-column:3; grid-row:2; }
+.position-opposite { grid-column:1/4; grid-row:3; max-width:480px; justify-self:center; }
+.position-master .card-label { color:#ac782e; }
+.card-label { color:#7b88a4; font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+.card-dot { width:7px; height:7px; flex:none; border-radius:100%; background:currentColor; }
+.card-title { font-family:Georgia,serif; font-size:clamp(20px,2.2vw,25px); line-height:1.12; }
+.card-title span { font-family:inherit; font-size:.73em; white-space:nowrap; }
+.house-label { font-size:11px; color:var(--vs-text-secondary,#778197); letter-spacing:.06em; text-transform:uppercase; }
+.card-description { font-size:13px; line-height:1.42; min-height:38px; }
+.card-placeholder { font-size:12px; font-style:italic; color:var(--vs-text-secondary,#778197); min-height:38px; }
+.ruler-line { margin-top:auto; padding-top:11px; display:flex; flex-wrap:wrap; gap:7px; border-top:1px solid var(--vs-border,#e1e4ee); font-size:11px; color:var(--vs-text-secondary,#768092); }
+.ruler-line strong { color:inherit; font-size:11px; letter-spacing:.04em; }
+.detail { display:flex; gap:26px; align-items:start; padding:22px 24px; background:var(--vs-surface-muted,#f7f5f1); border:1px solid var(--vs-border,#e1dfdc); border-radius:16px; }
+.detail-identity { flex:0 0 28%; }
+.detail h3 { font-family:Georgia,serif; font-size:22px; font-weight:500; margin:5px 0 0; }
+.detail-content p { font-size:13px; line-height:1.5; margin:0 0 8px; }
+.detail-content .detail-ruler { margin:0; color:var(--vs-text-secondary,#667184); font-style:italic; }
+.cross-note { font-size:11px; line-height:1.5; color:var(--vs-text-secondary,#6a7386); margin:16px 0 0; }
+.no-data { padding:36px 18px; text-align:center; background:var(--vs-surface-muted,#f6f7fb); border-radius:14px; color:var(--vs-text-secondary,#6a7386); }
+@media (max-width:780px) {
+  .monomeric-view { padding:18px 14px; border-radius:18px; }
+  .cross-heading { flex-direction:column; gap:15px; margin-bottom:22px; }
+  .master-badge { width:100%; }
+  .cross-layout { grid-template-columns:1fr; grid-template-rows:repeat(4,auto); gap:13px; padding-left:18px; min-height:0; }
+  .cross-layout::before { content:''; position:absolute; top:34px; bottom:34px; left:5px; width:2px; background:#b99a65a0; }
+  .cross-horizontal,.cross-vertical,.cross-hub { display:none; }
+  .cross-card { grid-column:1!important; grid-row:auto!important; max-width:none; min-height:130px; padding:17px; position:relative; }
+  .cross-card::before { content:''; position:absolute; left:-18px; top:28px; width:18px; height:2px; background:#b99a65; }
+  .cross-card::after { content:''; position:absolute; left:-22px; top:23px; width:10px; height:10px; background:#b99a65; border:2px solid var(--vs-surface,#fff); border-radius:50%; }
+  .position-master { order:0; }.position-square-left { order:1; }.position-square-right { order:2; }.position-opposite { order:3; }
+  .detail { flex-direction:column; gap:10px; padding:18px; margin-top:17px; }
+  .detail-identity { flex:initial; }
+}
+@media (prefers-reduced-motion:reduce) { .cross-card { transition:none; } }
