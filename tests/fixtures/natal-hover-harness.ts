@@ -88,7 +88,7 @@ for (const [index, name] of demoBodies.slice(0,7).entries()) {
     await service.disegnaScena(fixture,null,null,'carta-astrale',options);
     const items:any[] = [];
     ((service as any).scene as THREE.Scene).traverse(object => {
-      if (object.userData.dodecatemoria) items.push({name:object.userData.dodecatemoria,longitude:object.userData.trueLongitude,kind:'dodeca'});
+      if (object.userData.dodecatemoria) items.push({name:object.userData.dodecatemoria,longitude:object.userData.trueLongitude,kind:'dodeca',geometry:(object as THREE.Mesh).geometry.type,color:(object as THREE.Mesh).material['color']?.getHexString()});
       if (object.userData.projectionPoint) items.push({name:object.userData.projectionPoint,longitude:object.userData.trueLongitude,kind:object.geometry?.type});
     });
     return items;

@@ -386,12 +386,13 @@ export class ElementiCelestiRender {
         var raggioEclitticaDodecatemore =
           (diametroCerchioEsterno/2 - diametroCerchioDodecatemori/2)/2 + diametroCerchioDodecatemori/2;
 
-        var eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,Colori.elementiCelesti[nome]);
-        eld.scale.set(0.14,0.14,1);
+        var eld = new THREE.Mesh(new THREE.CircleGeometry(0.045, 24),
+          new THREE.MeshBasicMaterial({color:Colori.elementiCelesti[nome] ?? '#777777', side:THREE.DoubleSide}));
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'] + degOffs;
         eld.rotateZ(THREE.MathUtils.degToRad(dodecatemoreDegDiRender));
         eld.translateY(raggioEclitticaDodecatemore);
         eld.rotation.z = 0;
+        eld.position.z = 0.02;
 
         eld.userData.dodecatemoria = nome;
         eld.userData.trueLongitude = elementiCelesti[nome]['dodecatemoria']['longitude'];
@@ -408,7 +409,7 @@ export class ElementiCelestiRender {
       }
       // Dodecatemoria singola
       else if(elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == nome && !calcolaPartiArabe) {
-        var eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion);
+        var eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,Colori.elementiCelesti[nome]);
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'];
 
         eld.scale.set(0.23*simboliScale,0.23*simboliScale,1);

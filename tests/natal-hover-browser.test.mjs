@@ -83,8 +83,10 @@ test('synthetic chart hover hides and restores aspects through redraw', {timeout
     assert.equal(await page.evaluate(() => globalThis.hoverHarness.transitAxesCount(true,false)),0);
     let projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('dodecatemoria','tutti'));
     assert.equal(projected.length,7);
+    assert.ok(projected.every(item => item.geometry === 'CircleGeometry'), 'all dodecatemoria are colored dots');
     projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('dodecatemoria','Sun'));
     assert.deepEqual(projected.map(item => [item.name,item.longitude]),[['Sun',35]]);
+    assert.equal(projected[0].color,'ff0000', 'single dodecatemorion stays visible on a light skin');
     projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('antisci','tutti'));
     assert.deepEqual(projected.map(item => [item.name,item.longitude,item.kind]),[['Sun',181.6,'CircleGeometry'],['Moon',177.9,'CircleGeometry']]);
     projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('contrantisci','tutti'));

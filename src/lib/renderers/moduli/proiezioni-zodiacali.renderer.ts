@@ -21,6 +21,7 @@ export class ProiezioniZodiacaliRender {
     const axes:Record<string,number> = {Cardinale:270, Fissa:300, Mutevole:330};
     if (!projection || !['antisci','contrantisci'].includes(projection.tipo) ||
       !Object.prototype.hasOwnProperty.call(axes, projection.asse) || !Array.isArray(projection.punti)) return group;
+    try {
     const bg = new THREE.Color(SkinManager.skins[options.settaggi.skin_id].bgColor);
     const light = bg.r*.2126 + bg.g*.7152 + bg.b*.0722 > .35;
     const axis = OggettiSempliciRender.getLineaGrossa({x:0,y:-zodiacDiameter/2,z:0},
@@ -59,5 +60,22 @@ export class ProiezioniZodiacaliRender {
       group.add(image);
     }
     return group;
+    } catch (error) {
+      // A failed async image load never returns the partial group to the scene owner.
+      const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
+      group.traverse(object => {
+        const mesh = object as THREE.Mesh;
+        if (mesh.geometry) geometries.add(mesh.geometry);
+        for (const material of mesh.material ? (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) : []) {
+          materials.add(material);
+          const map = (material as THREE.MeshBasicMaterial).map;
+          if (map) textures.add(map);
+        }
+      });
+      textures.forEach(texture => texture.dispose());
+      materials.forEach(material => material.dispose());
+      geometries.forEach(geometry => geometry.dispose());
+      throw error;
+    }
   }
 }
