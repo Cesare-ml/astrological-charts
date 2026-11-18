@@ -7,7 +7,7 @@ import {CaseRender} from './case.renderer';
 import {SegniRender} from './segni.renderer';
 import { SkinManager } from '../@skin-manager';
 import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer';
-import { stopSceneAnimations } from '../scene-animations';
+import { disposeSceneResources } from '../scene-resources';
 
 //import {AssiRender} from './assi.renderer';
 
@@ -26,6 +26,7 @@ export class SinastriaRender {
     diametroAnelloCase,
   ): Promise<any> {
     var group = new THREE.Group();
+    let pendingHouseGroup: THREE.Object3D | null = null;
     try {
 
     var as = 0;
@@ -68,6 +69,7 @@ export class SinastriaRender {
         false, //australInversion
         true
       );
+      pendingHouseGroup = anelloCase;
     } else {
       const texture = 
         SkinManager.skins[stato.opzioni.settaggi.skin_id].anelloCase.sinastria?.texture ??
@@ -146,6 +148,7 @@ export class SinastriaRender {
     group.add(anelloSegni);
     if(anelloCase) {
       group.add(anelloCase);
+      pendingHouseGroup = null;
     }
 
 /*
@@ -162,7 +165,10 @@ export class SinastriaRender {
 
     return group;
     } catch (error) {
-      group.traverse(stopSceneAnimations);
+      // Case glyphs render last, but may already be built when a later
+      // planetary/sign module rejects. They still belong to this scene.
+      if (pendingHouseGroup && !pendingHouseGroup.parent) group.add(pendingHouseGroup);
+      disposeSceneResources(group);
       throw error;
     }
   }

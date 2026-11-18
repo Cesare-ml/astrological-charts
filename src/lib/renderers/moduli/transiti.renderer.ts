@@ -6,6 +6,7 @@ import {ElementiCelestiRender} from './elementi-celesti.renderer';
 
 import {Colori} from '../_colori.config';
 import {SkinManager} from '../@skin-manager';
+import {disposeSceneResources} from '../scene-resources';
 
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
@@ -15,6 +16,7 @@ export class TransitiRender {
 
   public static async getAnelloTransiti(temaRender, ascendente, pianetiDaColorare, opzioni: any, diametroCerchioInterno, diametroCerchioEsterno, diametroAssi, renderDodecatemori, mcRiferimento?: number): Promise<any> {
     var group = new THREE.Group();
+    try {
 
     //var img = OggettiSempliciRender.getSfondoQuadrato('grafici/'+opzioni.settaggi.skin_id+'/cartaastrale-transiti.png',diametroCerchioEsterno);
 
@@ -85,10 +87,15 @@ export class TransitiRender {
     }
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
   public static async getAntisci(temaRender, ascRef, opzioni, diametroAnelloCase, diametroAnelloSegni, diametroInternoAnelloAntisci, diametroEsternoAnelloAntisci) {
     var group = new THREE.Group();
+    try {
     var assi = {
       'Cardinale': 270, // Capricorno-Cancro
       'Fissa':     300, // Acquario-Leone
@@ -125,12 +132,14 @@ export class TransitiRender {
         var lngantisci = 2*assi[c] - elementiCelesti[opzioni.antisciTransitiHover.nome].longitude;
 
         var pianeta = OggettiSempliciRender.getCerchio(0.025,coloreCerchio);
+        group.add(pianeta);
         pianeta.rotateZ(THREE.MathUtils.degToRad(
           75-ascendente+15 + elementiCelesti[opzioni.antisciTransitiHover.nome].longitude
         ));
         pianeta.translateY(diametroAnelloCase/2);
 
         var antisci = OggettiSempliciRender.getCerchio(0.025,coloreCerchio);
+        group.add(antisci);
         antisci.rotateZ(THREE.MathUtils.degToRad(
           75-ascendente+15 + lngantisci
         ));
@@ -138,6 +147,7 @@ export class TransitiRender {
 
         var lngContrAntisci = lngantisci+180;
         var contrAntisci = OggettiSempliciRender.getCerchio(0.025,coloreCerchio);
+        group.add(contrAntisci);
         contrAntisci.rotateZ(THREE.MathUtils.degToRad(
           75-ascendente+15 + lngContrAntisci
         ));
@@ -149,18 +159,21 @@ export class TransitiRender {
           Colori.elementiCelesti[opzioni.antisciTransitiHover.nome],
           0.6
         );
+        group.add(lineaA1);
         var lineaA2 = OggettiSempliciRender.getLineaGrossa(
           antisci.position,
           new THREE.Vector3(0,0,0),
           Colori.elementiCelesti[opzioni.antisciTransitiHover.nome],
           0.6
         );
+        group.add(lineaA2);
         var lineaA3 = OggettiSempliciRender.getLineaGrossa(
           new THREE.Vector3(0,0,0),
           pianeta.position,
           Colori.elementiCelesti[opzioni.antisciTransitiHover.nome],
           0.6
         );
+        group.add(lineaA3);
         var lineaB = OggettiSempliciRender.getLineaGrossaTratteggiata(
           new THREE.Vector3(0,0,0),
           contrAntisci.position,
@@ -168,17 +181,14 @@ export class TransitiRender {
           0.6,
           0.05,
         );
-
-        group.add(pianeta);
-        group.add(antisci);
-        group.add(contrAntisci);
-        group.add(lineaA1);
-        group.add(lineaA2);
-        group.add(lineaA3);
         group.add(lineaB);
       }
     }
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }

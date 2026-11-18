@@ -11,7 +11,11 @@ const bundle = await build({
       "export {SegniRender} from './src/lib/renderers/moduli/segni.renderer';",
       "export {AspettiRender} from './src/lib/renderers/moduli/aspetti.renderer';",
       "export {ElementiCelestiRender} from './src/lib/renderers/moduli/elementi-celesti.renderer';",
+      "export {MarcatoriAssiRender} from './src/lib/renderers/moduli/marcatori-assi.renderer';",
+      "export {SinastriaRender} from './src/lib/renderers/moduli/sinastria.renderer';",
+      "export {TransitiRender} from './src/lib/renderers/moduli/transiti.renderer';",
       "export {OggettiSempliciRender} from './src/lib/renderers/oggetti-semplici.renderer';",
+      "export {GestoreImmagini} from './src/lib/renderers/gestore-immagini';",
       "export {disposeSceneResources} from './src/lib/renderers/scene-resources';",
       "export * as THREE from 'three';",
     ].join('\n'),
@@ -21,7 +25,8 @@ const bundle = await build({
   },
   bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022',
 });
-const {CaseRender, SegniRender, AspettiRender, ElementiCelestiRender, OggettiSempliciRender,
+const {CaseRender, SegniRender, AspettiRender, ElementiCelestiRender, MarcatoriAssiRender,
+  SinastriaRender, TransitiRender, OggettiSempliciRender, GestoreImmagini,
   disposeSceneResources, THREE} = await import(
   `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
@@ -32,12 +37,15 @@ const options = {
   settaggi: {skin_id: 'light', domificazione_selezionata: 'egizia'},
 };
 
-async function withMeshes({failImageAt = 0, failLineAt = 0}, run) {
-  const methods = ['getImg', 'getCerchio', 'getLinea', 'getSemiArcoGrosso'];
+async function withMeshes({failImageAt = 0, failLineAt = 0, mockFatLines = false,
+  failFatLineAt = 0}, run) {
+  const methods = ['getImg', 'getCerchio', 'getLinea', 'getSemiArcoGrosso',
+    'getLineaGrossa', 'getLineaGrossaTratteggiata'];
   const originals = methods.map(name => ({name, value: OggettiSempliciRender[name]}));
   const resources = [];
   let imageCount = 0;
   let lineCount = 0;
+  let fatLineCount = 0;
   function track(object, label) {
     const record = {label, disposed: 0};
     const original = object.dispose.bind(object);
@@ -64,6 +72,14 @@ async function withMeshes({failImageAt = 0, failLineAt = 0}, run) {
       return mesh('line');
     };
     OggettiSempliciRender.getSemiArcoGrosso = () => mesh('arc');
+    if (mockFatLines) {
+      OggettiSempliciRender.getLineaGrossa = () => {
+        fatLineCount++;
+        if (fatLineCount === failFatLineAt) throw new Error(`fat line ${fatLineCount} failed`);
+        return mesh(`fat-line:${fatLineCount}`);
+      };
+      OggettiSempliciRender.getLineaGrossaTratteggiata = () => mesh('dashed-line');
+    }
     await run({resources, imageCount: () => imageCount});
   } finally {
     for (const {name, value} of originals) OggettiSempliciRender[name] = value;
@@ -252,6 +268,236 @@ test('completed natal and synastry houses and terms retain resources and order',
     assert.ok(resources.every(resource => resource.disposed === 0));
     for (const group of [natal, synastry, combined]) disposeSceneResources(group);
     assertDisposed(resources);
+  });
+});
+
+async function withOverrides(overrides, run) {
+  const originals = overrides.map(([owner, method]) => [owner, method, owner[method]]);
+  try {
+    for (const [owner, method, replacement] of overrides) owner[method] = replacement;
+    await run();
+  } finally {
+    for (const [owner, method, original] of originals) owner[method] = original;
+  }
+}
+
+function syntheticSubgroup() {
+  const group = new THREE.Group();
+  group.add(OggettiSempliciRender.getCerchio());
+  return group;
+}
+
+const synastryInput = {houses: {egizia: houses}};
+const synastryState = {opzioni: {...options}};
+const renderSynastry = () => SinastriaRender.getAnelloSinastria(
+  synastryInput, 42, [], synastryState, 2, 3, 3.5, 3.7, 3.4, 4);
+
+test('synastry releases detached house ring when planetary renderer fails', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withOverrides([
+      [CaseRender, 'getAnelloCaseCartaAstrale', async () => syntheticSubgroup()],
+      [ElementiCelestiRender, 'getAnelloElementiCelesti', async () => {
+        throw new Error('planet builder failed');
+      }],
+    ], async () => {
+      await assert.rejects(renderSynastry(), /planet builder failed/);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('synastry releases attached planets and detached houses if zodiac rejects', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withOverrides([
+      [CaseRender, 'getAnelloCaseCartaAstrale', async () => syntheticSubgroup()],
+      [ElementiCelestiRender, 'getAnelloElementiCelesti', async () => syntheticSubgroup()],
+      [SegniRender, 'getAnelloSegniSinastria', async () => {
+        throw new Error('zodiac builder failed');
+      }],
+    ], async () => {
+      await assert.rejects(renderSynastry(), /zodiac builder failed/);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('successful synastry preserves original planet, zodiac, house layering', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withOverrides([
+      [CaseRender, 'getAnelloCaseCartaAstrale', async () => syntheticSubgroup()],
+      [ElementiCelestiRender, 'getAnelloElementiCelesti', async () => syntheticSubgroup()],
+      [SegniRender, 'getAnelloSegniSinastria', async () => syntheticSubgroup()],
+    ], async () => {
+      const group = await renderSynastry();
+      assert.equal(group.children.length, 3);
+      assert.ok(resources.every(resource => resource.disposed === 0));
+      disposeSceneResources(group);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('transit ring releases completed planets if antiscia builder rejects', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withOverrides([
+      [ElementiCelestiRender, 'getAnelloElementiCelesti', async () => syntheticSubgroup()],
+      [TransitiRender, 'getAntisci', async () => { throw new Error('antiscia failed'); }],
+    ], async () => {
+      await assert.rejects(TransitiRender.getAnelloTransiti({}, 42, [],
+        {...options, mostraAntisci: true}, 3, 4, 3, false), /antiscia failed/);
+      assertDisposed(resources);
+    });
+  });
+});
+
+const antisciaOptions = {...options, antisci: {Cardinale: true},
+  antisciTransitiHover: {nome: 'Sun'}};
+const renderAntiscia = () => TransitiRender.getAntisci({}, 42, antisciaOptions, 3, 4, 4, 4.2);
+
+test('antiscia frees axes, three dots and early lines if another line rejects', async () => {
+  await withMeshes({mockFatLines: true, failFatLineAt: 3}, async ({resources}) => {
+    await withOverrides([
+      [ElementiCelestiRender, 'getElementiCelesti', () => ({Sun: {longitude: 20}})],
+    ], async () => {
+      await assert.rejects(renderAntiscia(), /fat line 3 failed/);
+      assert.equal(resources.filter(item => item.label === 'geometry:circle').length, 3);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('successful antiscia retains all markers and lines until caller cleanup', async () => {
+  await withMeshes({mockFatLines: true}, async ({resources}) => {
+    await withOverrides([
+      [ElementiCelestiRender, 'getElementiCelesti', () => ({Sun: {longitude: 20}})],
+    ], async () => {
+      const group = await renderAntiscia();
+      assert.equal(group.children.length, 8);
+      assert.ok(resources.every(resource => resource.disposed === 0));
+      disposeSceneResources(group);
+      assertDisposed(resources);
+    });
+  });
+});
+
+const syntheticHour = {
+  dataora: '2026-11-18T12:00:00', alba: '2026-11-18T06:00:00',
+  tramonto: '2026-11-18T17:00:00', albaSucc: '2026-11-19T06:00:00',
+  dh: {diurne: Array.from({length: 12}, () =>
+    ({dataora: '2026-11-18T06:00:00', pianeta: 'Sun'}))},
+};
+const axisOptions = {...options, mostraNomiAssi: false, mostraGradiAssi: false};
+
+async function withDisposeCounters(run) {
+  const oldGeometryDispose = THREE.BufferGeometry.prototype.dispose;
+  const oldMaterialDispose = THREE.Material.prototype.dispose;
+  const counts = {geometry: 0, material: 0};
+  THREE.BufferGeometry.prototype.dispose = function () {
+    counts.geometry++;
+    return oldGeometryDispose.call(this);
+  };
+  THREE.Material.prototype.dispose = function () {
+    counts.material++;
+    return oldMaterialDispose.call(this);
+  };
+  try {
+    await run(counts);
+  } finally {
+    THREE.BufferGeometry.prototype.dispose = oldGeometryDispose;
+    THREE.Material.prototype.dispose = oldMaterialDispose;
+  }
+}
+
+test('axis marker builder frees prior stems and dots when planetary-hour image fails', async () => {
+  await withDisposeCounters(async counts => {
+    await withMeshes({failImageAt: 1}, async () => {
+      await assert.rejects(MarcatoriAssiRender.creaMarcatori(42, 80, 2,
+        axisOptions, {orePlanetarie: syntheticHour}), /image 1 failed/);
+      assert.ok(counts.geometry >= 8, 'four axis stems and arrow/dot heads must be disposed');
+      assert.ok(counts.material >= 8, 'their line and dot materials must be disposed');
+    });
+  });
+});
+
+test('successful axis markers retain resources until their owner disposes them', async () => {
+  await withDisposeCounters(async counts => {
+    await withMeshes({}, async ({resources}) => {
+      const group = await MarcatoriAssiRender.creaMarcatori(42, 80, 2,
+        axisOptions, {orePlanetarie: syntheticHour});
+      assert.equal(counts.geometry, 0);
+      assert.equal(counts.material, 0);
+      assert.ok(group.children.some(child => child.userData.axis === 'planetary-hour-glyph'));
+      disposeSceneResources(group);
+      assert.ok(counts.geometry >= 8);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('asynchronous texture loader disposes its unreturned texture on error', async () => {
+  const texture = new THREE.Texture();
+  let disposed = 0;
+  const original = texture.dispose.bind(texture);
+  texture.dispose = () => { disposed++; original(); };
+  await withOverrides([
+    [THREE.TextureLoader.prototype, 'load', (_url, _loaded, _progress, error) => {
+      queueMicrotask(error);
+      return texture;
+    }],
+  ], async () => {
+    await assert.rejects(GestoreImmagini.loadAsync('synthetic/missing.png'),
+      /Unable to load chart asset/);
+    assert.equal(disposed, 1);
+  });
+});
+
+test('synchronous loader rejection before returning a texture also disposes it once', async () => {
+  const texture = new THREE.Texture();
+  let disposed = 0;
+  const original = texture.dispose.bind(texture);
+  texture.dispose = () => { disposed++; original(); };
+  await withOverrides([
+    [THREE.TextureLoader.prototype, 'load', (_url, _loaded, _progress, error) => {
+      error();
+      return texture;
+    }],
+  ], async () => {
+    await assert.rejects(GestoreImmagini.loadAsync('synthetic/missing.png'),
+      /Unable to load chart asset/);
+    assert.equal(disposed, 1);
+  });
+});
+
+test('successful texture loading keeps ownership with the returned caller', async () => {
+  const texture = new THREE.Texture();
+  let disposed = 0;
+  const original = texture.dispose.bind(texture);
+  texture.dispose = () => { disposed++; original(); };
+  await withOverrides([
+    [THREE.TextureLoader.prototype, 'load', (_url, loaded) => {
+      queueMicrotask(() => loaded(texture));
+      return texture;
+    }],
+  ], async () => {
+    assert.equal(await GestoreImmagini.loadAsync('synthetic/ok.png'), texture);
+    assert.equal(disposed, 0);
+    texture.dispose();
+    assert.equal(disposed, 1);
+  });
+});
+
+test('material setup failure disposes the texture already loaded', async () => {
+  const texture = new THREE.Texture();
+  let disposed = 0;
+  const original = texture.dispose.bind(texture);
+  texture.dispose = () => { disposed++; original(); };
+  texture.center.set = () => { throw new Error('center setup failed'); };
+  await withOverrides([
+    [GestoreImmagini, 'loadAsync', async () => texture],
+  ], async () => {
+    await assert.rejects(OggettiSempliciRender.getMaterial('synthetic/ok.png', true),
+      /center setup failed/);
+    assert.equal(disposed, 1);
   });
 });
 

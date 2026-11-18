@@ -436,16 +436,31 @@ export class OggettiSempliciRender {
   }
 
   public static async getSfondoQuadrato(assetsImgRef,dim,flipY=false, color?:string) {
-    var img = await OggettiSempliciRender.getMaterial(assetsImgRef,flipY, color);
-
-    var plane = new THREE.Mesh(new THREE.PlaneGeometry(dim, dim),img);
-    return plane;
+    const material = await OggettiSempliciRender.getMaterial(assetsImgRef,flipY, color);
+    let geometry: THREE.PlaneGeometry | undefined;
+    try {
+      geometry = new THREE.PlaneGeometry(dim, dim);
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry?.dispose();
+      material.map?.dispose();
+      material.dispose();
+      throw error;
+    }
   }
 
   public static async getImg(assetsImgRef: string, w: number, h: number, scale: number, flipY = false, color?:string) {
     const material = await OggettiSempliciRender.getMaterial(assetsImgRef, flipY, color);
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w * scale, h * scale), material);
-    return plane;
+    let geometry: THREE.PlaneGeometry | undefined;
+    try {
+      geometry = new THREE.PlaneGeometry(w * scale, h * scale);
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry?.dispose();
+      material.map?.dispose();
+      material.dispose();
+      throw error;
+    }
   }
 /*
   public static loadTexture(path: string): Promise<THREE.Texture> {
@@ -462,24 +477,28 @@ export class OggettiSempliciRender {
 
   public static async getMaterial(assetsImgRef: string, flipY: boolean, color?: string) {
     const texture = await GestoreImmagini.loadAsync('../../../assets/img/' + assetsImgRef);
+    try {
+      if(flipY) {
+        texture.center.set(0.5, 0.5);
+        texture.rotation = Math.PI;
+        texture.flipY = false;
+      } else {
+        texture.rotation = 0;
+        texture.flipY = true;
+      }
 
-    if(flipY) {
-      texture.center.set(0.5, 0.5);
-      texture.rotation = Math.PI;
-      texture.flipY = false;
-    } else {
-      texture.rotation = 0;
-      texture.flipY = true;
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        color: color ?? 'white',
+        side: THREE.DoubleSide,
+      });
+
+      return material;
+    } catch (error) {
+      texture.dispose();
+      throw error;
     }
-
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      color: color ?? 'white',
-      side: THREE.DoubleSide,
-    });
-
-    return material;
   }
 
 

@@ -53,10 +53,32 @@ export class GestoreImmagini {
     
     const loader = new THREE.TextureLoader();
     const url = this.resolveAssetUrl(ref);
-    const promise = new Promise<THREE.Texture>((resolve, reject) => {
-      loader.load(url, resolve, undefined, () => reject(new Error(`Unable to load chart asset: ${url}`)));
+    return new Promise<THREE.Texture>((resolve, reject) => {
+      let texture: THREE.Texture | undefined;
+      let settled = false;
+      let failedBeforeReturn = false;
+      const onError = () => {
+        if (settled) return;
+        settled = true;
+        failedBeforeReturn = true;
+        texture?.dispose();
+        reject(new Error(`Unable to load chart asset: ${url}`));
+      };
+      try {
+        texture = loader.load(url, loaded => {
+          if (settled) return;
+          settled = true;
+          resolve(loaded);
+        }, undefined, onError);
+        // A synthetic/cached loader may invoke onError before load returns.
+        if (failedBeforeReturn) texture?.dispose();
+      } catch (error) {
+        if (settled) return;
+        settled = true;
+        texture?.dispose();
+        reject(error);
+      }
     });
-    return promise;
   }
 
 

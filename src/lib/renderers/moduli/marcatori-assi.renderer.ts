@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
 import { SkinManager } from '../@skin-manager';
+import { disposeSceneResources } from '../scene-resources';
 
 const HOUR_PLANETS = new Set(['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']);
 
@@ -118,6 +119,7 @@ export class MarcatoriAssiRender {
   public static async creaMarcatori(asc: number, mc: number, zodiacRadius: number,
     opzioni: any, temaRender: any, degreeTickRadius = zodiacRadius * 103 / 120): Promise<THREE.Group> {
     const group = new THREE.Group();
+    try {
     const colors = SkinManager.getAxisColors(opzioni?.settaggi?.skin_id);
     const ascAngle = 90;
     const dsAngle = 270;
@@ -228,11 +230,11 @@ export class MarcatoriAssiRender {
           `simboli-bianchi/elementi-celesti/${name}.png`, 875, 605, 1 / 875,
           false, colors.asc,
         );
+        group.add(glyph);
         glyph.scale.set(0.21, 0.21, 1);
         glyph.position.set(position.x, position.y, 0.031);
         glyph.userData.axis = 'planetary-hour-glyph';
         glyph.userData.planetaryHour = name;
-        group.add(glyph);
       }
     }
 
@@ -264,5 +266,9 @@ export class MarcatoriAssiRender {
     }
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }

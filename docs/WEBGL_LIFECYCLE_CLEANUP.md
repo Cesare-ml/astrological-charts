@@ -5,7 +5,7 @@
 The chart renderer creates temporary Three.js groups for redraw and a new
 offscreen `WebGLRenderer` plus canvas for each PNG export. Normal redraws
 already dispose scene geometry, materials, texture properties and registered
-animations. Four gaps remained:
+animations. Several gaps remained:
 
 1. `WebGLRenderer.dispose()` releases Three.js internals but does not explicitly
    relinquish the offscreen canvas's underlying WebGL context.
@@ -18,6 +18,10 @@ animations. Four gaps remained:
 4. Nested zodiac, decan, decade, latitude-house and aspect-background modules
    could fail during asynchronous artwork loading, losing access to their
    already constructed groups before the parent scene received them.
+5. Synastry, transit/antiscia and ASC/MC marker builders could similarly
+   abandon already constructed meshes after a later module or glyph failed.
+6. The lower-level asynchronous texture loader could reject while retaining an
+   unreturned Three.js texture; setup exceptions could orphan the loaded map.
 
 ## Implementation
 
@@ -49,6 +53,15 @@ animations. Four gaps remained:
   paint order and the normal successful return path are preserved.
 - A failed aspect-background child also causes the unfinished enclosing
   aspect-circle group to release its own resources.
+- The synastry wrapper tracks its house ring while it is detached, and disposes
+  both it and completed planets if a later module fails. Transit/antiscia
+  wrappers dispose their own partial groups; antiscia dots and lines are added
+  in original order as they are created.
+- The ASC/MC marker builder releases existing stems, terminal dots, arrows and
+  text textures if the planetary-hour image or later geometry fails.
+- The async texture loader disposes textures on failure, including callbacks
+  triggered before the loader returns. Material setup and image mesh creation
+  also release their already acquired texture/material on synchronous failure.
 
 ## Reproducible regression tests
 
@@ -70,11 +83,13 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Seventeen additional tests cover failures of zodiac glyphs, decan and decade
+- Twenty-nine additional tests cover failures of zodiac glyphs, decan and decade
   glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
   house glyphs, synastry house dividers, term glyphs, the enclosing house
   module, main planetary glyphs/connectors, solar-resonator artwork and the
-  enclosing aspect-circle group. Successful nested module construction retains
+  enclosing aspect-circle group, detached synastry houses, transit and
+  antiscia overlays, ASC/MC planetary-hour glyphs, asynchronous loader errors
+  and texture setup failures. Successful nested module construction retains
   resources until the owner explicitly disposes them.
 
 These are lifetime *contracts*, not GPU-memory measurements. The actual
@@ -88,8 +103,9 @@ not establish parity with the VirgoStars original assets.
 
 Other modules which throw **during their own asynchronous group assembly**
 may still create individual textures/meshes never attached to a parent.
-Lower-level image loader failures and advanced chart-mode paths outside the
-covered groups still require dedicated auditing. The covered module paths
-do not establish full lifecycle parity for all chart modes. Comprehensive
-memory/GPU profiling remains separate work.
+Uncovered primitive constructors, less-common advanced paths and browser
+image-loading races still require dedicated auditing: the synthetic loader
+tests do not establish real browser parity. The covered module paths do not
+prove full lifecycle parity in all chart modes. Comprehensive memory/GPU
+profiling remains separate work.
 No production sites, device firmware, asset locations or public APIs change.
