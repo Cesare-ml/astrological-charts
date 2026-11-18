@@ -90,6 +90,12 @@ export class ElementiCelestiRender {
     } else if (axisPresentation === 'synastry-overlay') {
       delete elementiCelesti['DS'];
       delete elementiCelesti['IC'];
+    } else if (axisPresentation === 'default' && opzioni.nascondiAssiDuplicati &&
+      temaRender?.houses?.[opzioni.settaggi.domificazione_selezionata] && !opzioni.mostraEffemeridi) {
+      for (const [axis, option] of [
+        ['AS', 'mostraFrecciaAscendente'], ['DS', 'mostraRetroFrecciaDiscendente'],
+        ['MC', 'mostraFrecciaMC'], ['IC', 'mostraRetroFrecciaIC'],
+      ]) if (opzioni[option] !== false) delete elementiCelesti[axis];
     }
 
     if(offsDirezioniSemplificateFasullo) {

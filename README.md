@@ -60,6 +60,7 @@ These commands and `npm run preflight` passed on Windows with Node 22.18.0. The 
 - [Asset-only local preview: 78 synthetic PNGs or an approved independent pack](docs/LOCAL_ASSET_PREVIEW.md)
 - [Angular renderer demo and browser tests](docs/ANGULAR_DEMO.md)
 - [Official VirgoStars skin and shared geometry](docs/VIRGOSTARS_OFFICIAL_SKIN.md)
+- [Opt-in natal planet hover API](docs/NATAL_PLANET_HOVER.md)
 - [Integration plan — not active](docs/INTEGRATION_PLAN.md)
 - [Technical reference snapshots](docs/reference/README.md)
 

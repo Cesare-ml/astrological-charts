@@ -92,6 +92,8 @@ export interface OpzioniGrafico {
 
   mostraTermini: boolean;
   mostraMonomeri: boolean;
+  /** Hide a primary-wheel axis glyph when its external marker is displayed. */
+  nascondiAssiDuplicati?: boolean;
   mostraAspetti: boolean;
   mostraInfoPianeti: boolean;
   /** Shows 0–29° beside each celestial symbol; defaults on, including for legacy callers omitting this field. */
