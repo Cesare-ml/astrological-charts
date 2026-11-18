@@ -236,6 +236,8 @@ export class AspettiRender {
     if(nodi.length > 0) {
       for(let k=0; k<aspetti.length; k++) {
         let tipoAspetto = Settaggi.aspetti[aspetti[k]].g;
+        // Declination aspects must never fall through to longitude matching.
+        const isDeclinationAspect = aspetti[k] === 'parallelodideclinazione' || aspetti[k] === 'antiparallelo';
         for(let i=0; i<nodi.length; i++) {
           if(aspettiVerso.indexOf(nodi[i].name) != -1) {
             for(var j=0; j<nodi2.length; j++) {
@@ -247,6 +249,7 @@ export class AspettiRender {
                 aspettiVerso.indexOf(nodi2[j].name) != -1
                 &&(
                   !(aspetti[k] == 'phisolare' || aspetti[k] == "philunare")
+                  && !isDeclinationAspect
                   &&(
                         nodi[i].longitude + tipoAspetto < nodi2[j].longitude + orb
                     &&  nodi[i].longitude + tipoAspetto > nodi2[j].longitude - orb
@@ -262,6 +265,22 @@ export class AspettiRender {
                   &&(
                         nodi[i].longitude + tipoAspetto < nodi2[j].longitude + orb
                     &&  nodi[i].longitude + tipoAspetto > nodi2[j].longitude - orb
+                  )
+                  ||
+                  aspetti[k] == 'parallelodideclinazione'
+                  &&(
+                    nodi[i].declinazione != undefined
+                    && nodi2[j].declinazione != undefined
+                    && nodi[i].declinazione < nodi2[j].declinazione + 1
+                    && nodi[i].declinazione > nodi2[j].declinazione - 1
+                  )
+                  ||
+                  aspetti[k] == 'antiparallelo'
+                  &&(
+                    nodi[i].declinazione != undefined
+                    && nodi2[j].declinazione != undefined
+                    && nodi[i].declinazione < -nodi2[j].declinazione + 1
+                    && nodi[i].declinazione > -nodi2[j].declinazione - 1
                   )
                 )
               ) {
@@ -292,6 +311,8 @@ export class AspettiRender {
     if(nodi.length > 0) {
       for(let k=0; k<aspetti.length; k++) {
         let tipoAspetto = Settaggi.aspetti[aspetti[k]].g;
+        // Declination aspects must never fall through to longitude matching.
+        const isDeclinationAspect = aspetti[k] === 'parallelodideclinazione' || aspetti[k] === 'antiparallelo';
         for(let i=0; i<nodi.length; i++) {
           if(aspettiVerso.indexOf(nodi[i].name) != -1 || nodi[i].name.indexOf('-dodecatemoria')>=0) {
             for(var j=i+1; j<nodi.length; j++) {
@@ -303,6 +324,7 @@ export class AspettiRender {
                 aspettiVerso.indexOf(nodi[j].name) != -1
                 &&(
                   !(aspetti[k] == 'phisolare' || aspetti[k] == "philunare")
+                  && !isDeclinationAspect
                   &&(
                         nodi[i].longitude + tipoAspetto < nodi[j].longitude + orb
                     &&  nodi[i].longitude + tipoAspetto > nodi[j].longitude - orb
