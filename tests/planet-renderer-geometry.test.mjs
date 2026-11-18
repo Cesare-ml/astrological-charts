@@ -93,7 +93,7 @@ function segmentCrossesRectangle(coords, rectangle, padding = 0.005) {
 async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
   outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes,
   axisPresentation = 'default', protectedAxes = [], synastryPrimary = false,
-  transitsPrimary = false, externalConnector = true, houseBoundaryRadius) {
+  transitsPrimary = false, externalConnector = true, houseBoundaryRadius, extraOptions = {}) {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -135,6 +135,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
       },
     };
     const options = structuredClone(defaultOpzioniGrafico);
+    Object.assign(options, extraOptions);
     options.settaggi.skin_id = 'light';
     options.settaggi.elementi_celesti = Object.fromEntries(
       Object.keys(source).map(name => [name, { att: true }]),
@@ -165,6 +166,18 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     globalThis.document = originalDocument;
   }
 }
+
+test('desktop can hide only axes that have visible external markers', async () => {
+  const source = {Sun:10, AS:20, DS:200, MC:290, IC:110};
+  const make = extra => makeScene(true,0,1,outerRadius,innerRadius,source,'default',[],false,false,true,undefined,extra);
+  const names = group => group.children.filter(child => child.userData.planet).map(child => child.userData.planet).sort();
+  const legacy = await make({});
+  assert.deepEqual(names(legacy.group), ['AS','DS','IC','MC','Sun']);
+  const desktop = await make({nascondiAssiDuplicati:true});
+  assert.deepEqual(names(desktop.group), ['Sun']);
+  const noMc = await make({nascondiAssiDuplicati:true, mostraFrecciaMC:false});
+  assert.deepEqual(names(noMc.group), ['MC','Sun']);
+});
 
 test('transits omit their degrees and duplicate axes while natal planets retain degrees', async () => {
   const source = { Sun: 10, Moon: 48, Jupiter: 148, AS: 20, DS: 200, MC: 290, IC: 110 };
@@ -426,6 +439,30 @@ test('isolated planets are enlarged while a five-body conjunction keeps uniform 
       if (meshes[i].owner === meshes[j].owner) continue;
       assert.ok(overlapArea(meshes[i].box, meshes[j].box) < 0.00001,
         `isolated vs crowded: overlapping glyph/badge at rotation ${offset}`);
+    }
+  }
+});
+
+test('wide natal renderer keeps Mercury/Venus and Saturn/Neptune large without overlaps', async () => {
+  const natalInner = 4.5723 * 67.1 / 120 / 2;
+  const natalOuter = 4.5723 * 103 / 120 / 2;
+  for (const source of [{Mercury: 7, Venus: 23}, {Saturn: 1, Neptune: 8}]) {
+    for (const rotation of [0, 45, 90, 135, 270]) {
+      const {group} = await makeScene(true, rotation, 1, natalOuter, natalInner, source);
+      const glyphs = group.children.filter(child => child.userData.planet);
+      assert.equal(glyphs.length, 2);
+      assert.ok(glyphs.every(glyph => Math.abs(glyph.scale.x - 0.24) < 1e-8),
+        `rotation ${rotation}: both glyphs should retain the isolated size`);
+      const badges = group.children.filter(child => child.material?.map?.isCanvasTexture);
+      const boxes = glyphs.flatMap((glyph, index) => [
+        {name: glyph.userData.planet, box: visibleRectangle(glyph)},
+        {name: glyph.userData.planet, box: visibleRectangle(badges[index])},
+      ]);
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        if (boxes[i].name === boxes[j].name) continue;
+        assert.equal(overlapArea(boxes[i].box, boxes[j].box), 0,
+          `rotation ${rotation}: ${boxes[i].name}/${boxes[j].name} overlap`);
+      }
     }
   }
 });

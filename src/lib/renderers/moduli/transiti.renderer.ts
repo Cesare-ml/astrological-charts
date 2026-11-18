@@ -58,6 +58,7 @@ export class TransitiRender {
     
     
     //group.add(img);
+    anelloElementiCelesti.userData.chartInteractionRole = 'transit-planets';
     group.add(anelloElementiCelesti);
     /*
     if(temaRender.houses && Object.keys(temaRender.houses).length) {

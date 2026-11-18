@@ -18,7 +18,14 @@ import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer'
 import {SkinManager} from '../renderers/@skin-manager';
 import { debounceTime, fromEvent, map, startWith } from 'rxjs';
 import {NatalHoverController, type NatalPlanetHover} from './natal-hover';
+import {TransitHoverController, type TransitPointHover} from './transit-hover';
+import {AspettiRender} from '../renderers/moduli/aspetti.renderer';
+import {Settaggi} from '../models/settaggi.model';
 export type {NatalPlanetHover} from './natal-hover';
+export type {TransitPointHover} from './transit-hover';
+
+/** Already calculated cross-chart aspects; the renderer never evaluates astrology. */
+export interface TransitAspectLine { aspect: string; transitName: string; transitLongitude: number; natalName: string; natalLongitude: number; }
 
 async function waitForSceneTextures(root: THREE.Object3D): Promise<void> {
   const textures = new Set<THREE.Texture>();
@@ -54,6 +61,9 @@ export class GraficoRenderService implements OnDestroy {
   public camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;
   private natalHover: NatalHoverController | null = null;
+  private transitHover: TransitHoverController | null = null;
+  private transitLines: THREE.Group | null = null;
+  private natalAspectMaterials = new Map<THREE.Material, {color: THREE.Color; opacity: number; transparent: boolean; depthWrite: boolean; vertexColors: boolean}>();
   
   public scale = 1;
 
@@ -94,6 +104,7 @@ export class GraficoRenderService implements OnDestroy {
       this.camera.zoom = this.zoomValue;
       this.camera.updateProjectionMatrix();
       this.natalHover?.refresh();
+      this.transitHover?.refresh();
       this.render();
     }
   }
@@ -113,6 +124,10 @@ export class GraficoRenderService implements OnDestroy {
     ++this.drawGeneration;
     this.natalHover?.dispose();
     this.natalHover = null;
+    this.transitHover?.dispose();
+    this.transitHover = null;
+    this.natalAspectMaterials.clear();
+    this.transitLines = null;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
     
     if(this.resizeSub) {
@@ -271,6 +286,8 @@ export class GraficoRenderService implements OnDestroy {
         return;
       }
       if (!this.scene) this.scene = new THREE.Scene();
+      this.natalAspectMaterials.clear();
+      this.transitLines = null;
       disposeSceneResources(this.scene);
       this.scene.clear();
       const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
@@ -282,6 +299,7 @@ export class GraficoRenderService implements OnDestroy {
       }
       if (disegno) this.scene.add(disegno);
       this.natalHover?.sceneChanged();
+      this.transitHover?.sceneChanged();
       this.render();
     });
   }
@@ -300,6 +318,77 @@ export class GraficoRenderService implements OnDestroy {
     this.natalHover?.dispose();
     this.natalHover = listener && this.canvas
       ? new NatalHoverController(this.canvas, () => this.scene, () => this.camera, listener) : null;
+  }
+
+  /** Optional two-ring pointer listener, independent of the natal-only listener. */
+  public setTransitPointHoverListener(listener: ((value: TransitPointHover | null) => void) | null): void {
+    this.transitHover?.dispose();
+    this.transitHover = listener && this.canvas
+      ? new TransitHoverController(this.canvas, () => this.scene, () => this.camera, listener) : null;
+  }
+
+  /** Dim the existing radix aspects, preserving their original material properties. */
+  public setNatalAspectsDimmed(dimmed: boolean): void {
+    if (!dimmed) {
+      for (const [material, state] of this.natalAspectMaterials) {
+        const colored = material as THREE.Material & {color: THREE.Color};
+        colored.color.copy(state.color);
+        material.opacity = state.opacity;
+        material.transparent = state.transparent;
+        material.depthWrite = state.depthWrite;
+        material.vertexColors = state.vertexColors;
+        material.needsUpdate = true;
+      }
+      this.natalAspectMaterials.clear();
+    } else {
+      this.scene?.traverse(object => {
+        if (object.userData.chartInteractionRole !== 'natal-aspect-lines') return;
+        object.traverse(child => {
+          const raw = (child as THREE.Mesh).material;
+          for (const material of raw ? (Array.isArray(raw) ? raw : [raw]) : []) {
+            const colored = material as THREE.Material & {color?: THREE.Color};
+            if (!colored.color || this.natalAspectMaterials.has(material)) continue;
+            this.natalAspectMaterials.set(material, {color:colored.color.clone(), opacity:material.opacity,
+              transparent:material.transparent, depthWrite:material.depthWrite, vertexColors:material.vertexColors});
+            colored.color.set('#777777');
+            // Aspect lines carry their original colors in the geometry. Disable
+            // those vertex colors while dimmed so the lines are truly grey.
+            material.vertexColors = false;
+            material.opacity *= 0.22;
+            material.transparent = true;
+            material.depthWrite = false;
+            material.needsUpdate = true;
+          }
+        });
+      });
+    }
+    if (this.isInizializzato) this.render();
+  }
+
+  /** Draw supplied directional aspects using the active wheel's real geometry and existing styles. */
+  public setTransitAspectLines(lines: readonly TransitAspectLine[]): void {
+    if (this.transitLines) {
+      this.transitLines.removeFromParent();
+      disposeSceneResources(this.transitLines);
+      this.transitLines = null;
+    }
+    const wheel = this.scene?.children.find(child => child.userData.transitAspectGeometry);
+    const geometry = wheel?.userData.transitAspectGeometry;
+    if (wheel && geometry && lines.length) {
+      const nodes: any[] = [], arcs: Record<number, number[][]> = {}, aspects: string[] = [];
+      for (const line of lines) {
+        const definition = Settaggi.aspetti[line.aspect];
+        if (!definition || !Number.isFinite(line.transitLongitude) || !Number.isFinite(line.natalLongitude)) continue;
+        const start = nodes.length;
+        nodes.push({name:line.transitName, longitude:line.transitLongitude, y:geometry.transitRadius},
+          {name:line.natalName, longitude:line.natalLongitude, y:geometry.diameter / 2});
+        (arcs[definition.g] ??= []).push([start, start + 1]);
+        if (!aspects.includes(line.aspect)) aspects.push(line.aspect);
+      }
+      this.transitLines = AspettiRender.renderArchi(geometry.asc, nodes, arcs, aspects, {}, geometry.diameter, false);
+      wheel.add(this.transitLines);
+    }
+    if (this.isInizializzato) this.render();
   }
 
   /** Temporarily hides natal aspect lines, without modifying chart settings or exports. */

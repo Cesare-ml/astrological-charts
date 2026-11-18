@@ -13,7 +13,7 @@ placement modes used by the rendered celestial glyphs:
 
 1. unwraps zodiac positions at their largest empty arc (so 359° and 0° are neighbours);
 2. allows up to **±5°** in the wide natal band and searches one main orbit first, adding **only one fixed inner orbit** when necessary;
-3. draws truly isolated natal bodies larger (`0.24 × symbolScale`) and slightly farther from the zodiac, while planets in a nearby conjunction retain their equal compact size (`0.18 × symbolScale`) and degree labels radially inward, toward the houses; narrow transit/synastry rings retain `0.17 × symbolScale`;
+3. draws isolated natal bodies and two-body pairs that fit without overlap larger (`0.24 × symbolScale`) and slightly farther from the zodiac, while genuinely crowded conjunctions retain equal compact symbols (`0.18 × symbolScale`) and degree labels radially inward, toward the houses; narrow transit/synastry rings retain `0.17 × symbolScale`;
 4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions and each degree label against **every true-longitude house tick segment**;
 5. retains an emergency adaptive fallback **only for ordinary natal charts** whose conjunctions are mathematically impossible within the angular bound; composite wheels instead use a dedicated strict one/two-orbit solver;
 6. anchors the one retained, paler-gray outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed; a separate small tick starts **exactly on the outer house boundary**, never inside its ring.
@@ -23,8 +23,15 @@ orders and half-degree steps within ±5°. The default five-body Aries-point
 fixture fits at a uniform compact glyph size (`0.18 × symbolScale`) on only
 two radii; **isolated** planets are instead enlarged to `0.24 × symbolScale`
 and placed on a slightly more inward orbit (an extra `0.05 × symbolScale`
-radial gap from the signs). Nearby planets keep their
-compact glyphs even if their group fits on the main orbit. The labels sit
+radial gap from the signs). Nearby planets are **not** made compact solely
+because their longitudes fall within a fixed 16° grouping interval: actual
+full-size glyph/badge rectangles are checked after wheel rotation, and pairs
+try both large-size tracks before shrinking. In a close three-body knot the
+solver prefers two placements on the zodiac side and one toward the houses
+when possible; it tests the last body in longitude order as the inward body
+first, then other assignments if necessary. The existing ±5° bound and
+collision rules still apply, and crowded five-body groups remain compact.
+The labels sit
 `0.152 × glyph scale` world units inward from their glyphs, on the same radial bearing. A pathologically
 dense arrangement (e.g. eight exactly coincident planets) may be impossible
 with full-size symbols, just two tracks and the ±5° limit simultaneously.
