@@ -44,6 +44,13 @@ export function resolveChartAssetUrl(reference: string, publicAssetsBase: string
   if (typeof publicAssetsBase !== 'string' || !publicAssetsBase.trim()) {
     throw new TypeError('Public assets base must be a non-empty string.');
   }
-  const root = publicAssetsBase.trim().replace(/\/+$/, '') + '/';
+  const base = publicAssetsBase.trim();
+  // The configured root is a directory URL prefix. Query strings and fragments
+  // would make appended asset filenames part of URL metadata instead of the path.
+  // Backslashes and control bytes are ambiguous between file and HTTP URLs.
+  if (/[?#\\\u0000-\u001f\u007f]/.test(base)) {
+    throw new Error(`Invalid public assets base: ${publicAssetsBase}`);
+  }
+  const root = base.replace(/\/+$/, '') + '/';
   return root + path;
 }

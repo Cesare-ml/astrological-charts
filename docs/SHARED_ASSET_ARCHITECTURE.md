@@ -47,6 +47,8 @@ GestoreImmagini.configurePublicAssetsBase('/assets/');
 GestoreImmagini.configurePublicAssetsBase('https://static.example.org/assets/');
 ```
 
+The `publicAssetsBase` configuration must be a directory URL prefix (local `/assets/`, an offline `file:///.../assets/`, or a CDN URL). Query strings (`?`), fragments (`#`), backslashes, and control characters are rejected rather than appending chart asset filenames to an ambiguous URL. Percent-encoded directory names in an explicitly configured base remain allowed. Caller-controlled absolute asset references are still passed through unchanged; they require separate input trust checks.
+
 The pre-existing `assetsBase` raw prefix is kept as a **legacy override** for compatibility. For new consumers use `configurePublicAssetsBase`. The actual values above are examples, not deployed CDN addresses.
 
 ### Important delivery detail
