@@ -8,7 +8,7 @@ import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer'
 export class SegniRender {
 
   /** One real-degree tick per degree, at the outside rim of the zodiac.
-   * Geometry is the same for every skin and does not depend on textures. */
+   * This is drawn only while transits are enabled; geometry is skin-independent. */
   public static creaScalaGradi(degOffsAscendente: number, raggioEsterno: number, colore: string): THREE.LineSegments {
     const points: THREE.Vector3[] = [];
     for (let degree = 0; degree < 360; degree++) {
@@ -165,8 +165,12 @@ export class SegniRender {
             group.add(OggettiSempliciRender.getCerchio(diametroCerchioEsterno / 2, coloreLinea));
         }
 
-        group.add(SegniRender.creaScalaGradi(degOffsAscendente,
-          diametroCerchioEsterno / 2, coloreLinea));
+        // A clean natal wheel has no external degree ruler. The outer scale
+        // belongs to the transit layout and is shared by every skin.
+        if (opzioni.mostraTransiti === true) {
+            group.add(SegniRender.creaScalaGradi(degOffsAscendente,
+              diametroCerchioEsterno / 2, coloreLinea));
+        }
         
         // Linee principali e secondarie
         // Linee principali (ogni 30°), secondarie (ogni 10°) e terziarie (ogni 5°)
@@ -319,8 +323,11 @@ export class SegniRender {
             group.add(OggettiSempliciRender.getCerchio(diametroCerchioEsterno / 2, coloreLinea));
         }
 
-        group.add(SegniRender.creaScalaGradi(degOffsAscendente,
-          diametroCerchioEsterno / 2, coloreLinea));
+        // Sinastry by itself never enables the transit degree ruler.
+        if (stato.opzioni.mostraTransiti === true) {
+            group.add(SegniRender.creaScalaGradi(degOffsAscendente,
+              diametroCerchioEsterno / 2, coloreLinea));
+        }
         
         // Linee principali e secondarie
         // Linee principali (ogni 30°), secondarie (ogni 10°) e terziarie (ogni 5°)

@@ -17,7 +17,9 @@ export class SkinManager {
                 'imgRisuonatoreSolareHeight': 2222,
                 'imgRisuonatoreColore': '#b8aba5',
                 'imgRisuonatoreScale': 2.43,
-                'imgRisuonatoreSolareOpacity': 0.16,
+                // The approved reference uses a nearly imperceptible motif,
+                // not the dark, filled petals of the original artwork.
+                'imgRisuonatoreSolareOpacity': 0.055,
             },
             'anelloElementiCelesti': {
                 'coloreLinea': '#777b7e',

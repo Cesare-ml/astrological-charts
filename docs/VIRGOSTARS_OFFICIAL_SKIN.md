@@ -13,13 +13,15 @@ longitudes, speeds and house cusps in `TemaRender`.
 
 | Only `virgostars` skin | Every skin, including older selections |
 | --- | --- |
-| Pastel red/green/ochre/lavender backgrounds alternating by sign element | Zodiac width, position, sign glyph center and degree ruler |
-| Warm ivory wheel and delicate solar resonator tint | Zodiac outer ruler: every degree, longer marks at 5° and 10° |
+| Pastel red/green/ochre/lavender backgrounds alternating by sign element | Zodiac width, position, sign glyph center and optional transit degree ruler |
+| Warm ivory wheel and highly translucent solar resonator tint | Zodiac outer ruler **only when `mostraTransiti` is true**: every degree, longer marks at 5° and 10° |
 | Color palette of the zodiac, houses and ASC/DSC/MC/IC | True-longitude ticks on house boundary for every rendered celestial body |
 | Serif axis-heading typography, gentle line contrast | Open ASC/MC arrowheads, circular DSC/IC tails, labels and positions |
 | Color styling of celestial signs/planet glyphs | Collision-aware stellium placement, with two fixed radial tracks when possible |
 
-The ruler, body boundary ticks and aspect markers follow astronomical longitude
+When transit mode is off, the external 360-degree scale is **not rendered**, so
+the natal wheel remains uncluttered. This applies to all skins and to standalone
+synastry charts. The transit-only ruler, body boundary ticks and aspect markers follow astronomical longitude
 (`longitude`), **never** a symbol's display-only offset. Glyph displacements are
 bounded by the existing symbol-layout solver; retrograde is encoded alongside
 its glyph, rather than attached to a degree caption. For each body the renderer

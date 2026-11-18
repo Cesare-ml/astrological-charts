@@ -17,7 +17,7 @@ const bundle = await build({
 const { SegniRender, OggettiSempliciRender, SkinManager, THREE } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
-async function zodiac(skin) {
+async function zodiac(skin, mostraTransiti = false) {
   const original = OggettiSempliciRender.getImg;
   OggettiSempliciRender.setDimensioniCanvas({x: 1200, y: 1200});
   OggettiSempliciRender.getImg = async () => new THREE.Mesh(
@@ -25,7 +25,7 @@ async function zodiac(skin) {
   );
   try {
     return await SegniRender.getAnelloSegni(20, 1, 3.9, 4.57, false, false, false,
-      {settaggi: {skin_id: skin}});
+      {mostraTransiti, settaggi: {skin_id: skin}});
   } finally {
     OggettiSempliciRender.getImg = original;
   }
@@ -44,12 +44,19 @@ test('official VirgoStars has twelve pastel zodiac sectors, without bundling ass
     'changing the new official look must not recolor the original skins');
   assert.equal(SkinManager.getAxisColors('light').asc, '#cb5c12');
   assert.equal(SkinManager.getAxisColors('virgostars').asc, '#e65b12');
+  assert.ok(SkinManager.skins.virgostars.cerchioAspetti.imgRisuonatoreSolareOpacity < 0.08,
+    'the official center motif should be as delicate as the approved reference');
 });
 
-test('all skins share the exact 360-degree external ruler and unchanged layout coordinates', async () => {
-  const official = await zodiac('virgostars');
-  const other = await zodiac('dark');
+test('only transit charts draw the external ruler, for any skin', async () => {
   const scale = group => group.children.find(child => child.name === 'zodiac-degree-scale');
+  for (const skin of ['virgostars', 'dark', 'light']) {
+    assert.equal(scale(await zodiac(skin)), undefined,
+      `${skin}: natal charts must not show the transit-only ruler`);
+  }
+
+  const official = await zodiac('virgostars', true);
+  const other = await zodiac('dark', true);
   assert.ok(scale(official)?.isLineSegments && scale(other)?.isLineSegments);
   assert.equal(scale(official).userData.tickCount, 360);
   assert.equal(scale(official).geometry.attributes.position.count, 720);
@@ -65,4 +72,23 @@ test('all skins share the exact 360-degree external ruler and unchanged layout c
   };
   assert.ok(pairLength(0) > pairLength(5) && pairLength(5) > pairLength(1),
     '10°, 5° and 1° marks must be hierarchically legible');
+});
+
+test('synastry zodiac does not add a transit ruler unless transits are enabled', async () => {
+  const original = OggettiSempliciRender.getImg;
+  OggettiSempliciRender.setDimensioniCanvas({x: 1200, y: 1200});
+  OggettiSempliciRender.getImg = async () => new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial(),
+  );
+  try {
+    const render = async mostraTransiti => SegniRender.getAnelloSegniSinastria(
+      20, 1.4, 2.0, false,
+      {opzioni: {mostraTransiti, settaggi: {skin_id: 'virgostars'}}},
+    );
+    const ruler = group => group.children.find(child => child.name === 'zodiac-degree-scale');
+    assert.equal(ruler(await render(false)), undefined);
+    assert.equal(ruler(await render(true))?.userData.tickCount, 360);
+  } finally {
+    OggettiSempliciRender.getImg = original;
+  }
 });
