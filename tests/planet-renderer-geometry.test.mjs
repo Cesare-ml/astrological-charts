@@ -179,8 +179,8 @@ test('five close planets keep full identical glyph sizes on at most two radii wi
     assert.equal(labels.length, 5);
     assert.equal(new Set(glyphs.map(mesh => mesh.scale.x.toFixed(6))).size, 1,
       'every glyph in the conjunction must have exactly the same dimensions');
-    assert.ok(Math.abs(glyphs[0].scale.x - 0.17) < 1e-8,
-      'conjunction does not shrink individual planets');
+    assert.ok(Math.abs(glyphs[0].scale.x - 0.18) < 1e-8,
+      'the natal conjunction keeps the newly enlarged uniform glyph size');
     assert.ok(new Set(glyphs.map(mesh => Math.hypot(mesh.position.x, mesh.position.y).toFixed(6))).size <= 2,
       'planet glyphs use one main orbit and at most one inner orbit');
     for (let i = 0; i < glyphs.length; i++) {
@@ -191,7 +191,7 @@ test('five close planets keep full identical glyph sizes on at most two radii wi
       assert.ok(drift <= 5 + 1e-8, `${i}: exceeds the five-degree tolerance (${drift})`);
       const glyphRadius = Math.hypot(glyph.position.x, glyph.position.y);
       const labelRadius = Math.hypot(label.position.x, label.position.y);
-      assert.ok(Math.abs(glyphRadius - labelRadius - 0.15) < 1e-5,
+      assert.ok(Math.abs(glyphRadius - labelRadius - 0.152) < 1e-5,
         'degree label must be inward toward the houses, close to its planet');
     }
   }
@@ -209,10 +209,10 @@ test('isolated planets are enlarged while a five-body conjunction keeps uniform 
     const glyphs = Object.fromEntries(group.children.filter(child => child.userData.ref)
       .map(child => [Object.keys(source).find(name => child.userData.ref.endsWith(`/${name}.png`)), child]));
     const size = name => glyphs[name].scale.x;
-    assert.ok(Math.abs(size('Jupiter') - 0.22) < 1e-8, 'isolated Jupiter must have the larger size');
-    assert.ok(Math.abs(size('Saturn') - 0.22) < 1e-8, 'isolated Saturn must have the larger size');
+    assert.ok(Math.abs(size('Jupiter') - 0.23) < 1e-8, 'isolated Jupiter must have the larger size');
+    assert.ok(Math.abs(size('Saturn') - 0.23) < 1e-8, 'isolated Saturn must have the larger size');
     for (const name of ['Sun','Moon','Mercury','Venus','Mars']) {
-      assert.ok(Math.abs(size(name) - 0.17) < 1e-8,
+      assert.ok(Math.abs(size(name) - 0.18) < 1e-8,
         `${name} in the conjunction must retain the compact size`);
     }
     const allGlyphs = Object.values(glyphs);

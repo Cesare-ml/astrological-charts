@@ -126,16 +126,16 @@ export class MarcatoriAssiRender {
     // Like the traditional hand-drawn natal chart: an open V at the end of a
     // thin axis line, not a triangle with a wide base.
     const makeAscPointer = () => {
-      addStem('ASC', ascAngle, zodiacRadius + 0.28, colors.asc);
-      const pointer = openArrowhead(ascAngle, zodiacRadius + 0.28, colors.asc);
+      addStem('ASC', ascAngle, zodiacRadius + 0.17, colors.asc);
+      const pointer = openArrowhead(ascAngle, zodiacRadius + 0.17, colors.asc);
       pointer.userData.axisMarker = 'ASC';
       group.add(pointer);
     };
 
     // The descending axis has the same visible terminal dot as the IC.
     const makeDsLine = () => {
-      addStem('DS', dsAngle, zodiacRadius + 0.38, colors.ds);
-      const dot = circularTerminal(dsAngle, zodiacRadius + 0.38, colors.ds);
+      addStem('DS', dsAngle, zodiacRadius + 0.22, colors.ds);
+      const dot = circularTerminal(dsAngle, zodiacRadius + 0.22, colors.ds);
       dot.userData.axisMarker = 'DS';
       group.add(dot);
     };
@@ -143,16 +143,16 @@ export class MarcatoriAssiRender {
     // MC repeats the same simple arrow vocabulary as ASC.
     const makeMcPointer = () => {
       const angle = mcAngle;
-      addStem('MC', angle, zodiacRadius + 0.31, colors.mc);
-      const pointer = openArrowhead(angle, zodiacRadius + 0.31, colors.mc);
+      addStem('MC', angle, zodiacRadius + 0.18, colors.mc);
+      const pointer = openArrowhead(angle, zodiacRadius + 0.18, colors.mc);
       pointer.userData.axisMarker = 'MC';
       group.add(pointer);
     };
 
     // A small terminal point, as in the photographed Imum Coeli axis.
     const makeIcLine = () => {
-      addStem('IC', icAngle, zodiacRadius + 0.39, colors.ic);
-      const marker = circularTerminal(icAngle, zodiacRadius + 0.39, colors.ic);
+      addStem('IC', icAngle, zodiacRadius + 0.22, colors.ic);
+      const marker = circularTerminal(icAngle, zodiacRadius + 0.22, colors.ic);
       marker.userData.axisMarker = 'IC';
       group.add(marker);
     };
@@ -167,9 +167,9 @@ export class MarcatoriAssiRender {
       // never loaded as glyphs from astrological-assets. Their layout is
       // universal; only the text color remains skin-specific.
       for (const [key, title, angle, shift, tangentShift, visible] of [
-        ['ASC', 'ASC', ascAngle, 0.48, -0.063, opzioni.mostraFrecciaAscendente !== false],
+        ['ASC', 'ASC', ascAngle, 0.41, -0.063, opzioni.mostraFrecciaAscendente !== false],
         ['DS', 'DSC', dsAngle, 0.52, 0, opzioni.mostraRetroFrecciaDiscendente !== false],
-        ['MC', 'MC', mcAngle, 0.61, 0, opzioni.mostraFrecciaMC !== false],
+        ['MC', 'MC', mcAngle, 0.53, 0, opzioni.mostraFrecciaMC !== false],
         ['IC', 'IC', icAngle, 0.50, 0, opzioni.mostraRetroFrecciaIC !== false],
       ] as const) {
         if (!visible) continue;
@@ -189,9 +189,9 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraGradiAssi !== false) {
       for (const [key, longitude, angle, color, radialOffset, tangentOffset] of [
         // ASC: beyond the arrowhead, directly UNDER the ASC heading.
-        ['ASC', asc, ascAngle, colors.asc, 0.48, 0.12],
+        ['ASC', asc, ascAngle, colors.asc, 0.41, 0.12],
         // MC: centered on the axis, between the shortened arrow and MC title.
-        ['MC', mc, mcAngle, colors.mc, 0.45, 0],
+        ['MC', mc, mcAngle, colors.mc, 0.38, 0],
       ] as const) {
         const label = textLabel(formatAxisDegreeMinutes(longitude),
           color, 0.64, 0.18, 'normal 102px "Times New Roman", Georgia, serif');
@@ -209,7 +209,7 @@ export class MarcatoriAssiRender {
       if (name) {
         // Keep the real planetary-hour glyph above the shortened ASC arrow,
         // with the heading and its degree in the separate two-line caption.
-        const position = pointOnRing(ascAngle, zodiacRadius + 0.28)
+        const position = pointOnRing(ascAngle, zodiacRadius + 0.20)
           .add(pointOnRing(ascAngle + 90, -0.26));
         // Use the owner's real, skin-tinted chart asset. Unicode planet
         // characters vary by font and don't match the chart's glyph family.

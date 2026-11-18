@@ -141,7 +141,7 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
     const toRadius = Math.hypot(vertex[3], vertex[4]);
     assert.ok(Math.abs(fromRadius - tickRadius) < 1e-6,
       `${stem.userData.axisStem}: line must end at zodiac degree tick, not a house cusp`);
-    const extensions = { ASC: 0.28, DS: 0.38, MC: 0.31, IC: 0.39 };
+    const extensions = { ASC: 0.17, DS: 0.22, MC: 0.18, IC: 0.22 };
     assert.ok(Math.abs(toRadius - radius - extensions[stem.userData.axisStem]) < 1e-6,
       `${stem.userData.axisStem}: marker stem extension differs from the approved layout`);
   }
@@ -155,7 +155,7 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
     'the ASC degree must be directly below the ASC heading');
   assert.ok(ascDegree.position.y < ascName.position.y - 0.18,
     'ASC degree must be below the label, not along the arrow shaft');
-  assert.ok(ascName.position.x < -(radius + 0.28),
+  assert.ok(ascName.position.x < -(radius + 0.17),
     'ASC heading must sit beyond the shortened arrowhead');
   assert.ok(planetaryHour.position.x > ascDegree.position.x + 0.18,
     'planetary-hour glyph belongs above the arrow, not in the two-line ASC caption');
@@ -176,8 +176,14 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
   const mcRadial = {x: -Math.sin(mcAngle), y: Math.cos(mcAngle)};
   const projection = point => point.x * mcRadial.x + point.y * mcRadial.y;
   assert.ok(projection(mcName.position) > projection(mcDegree.position) &&
-    projection(mcDegree.position) > radius + 0.31,
+    projection(mcDegree.position) > radius + 0.18,
     'the MC heading must be above its degree, which is above the arrowhead');
+  for (const axis of ['DS', 'IC']) {
+    const terminal = group.children.find(child => child.userData.axisMarker === axis);
+    const heading = group.children.find(child => child.userData.axisName === axis);
+    assert.ok(terminal.position.distanceTo(heading.position) > 0.27,
+      `${axis}: short marker must leave visible space before its serif name`);
+  }
   assert.ok(Math.abs(mcDegree.position.x * mcRadial.y - mcDegree.position.y * mcRadial.x) < 1e-6,
     'MC degree must be centered on the axis, never displaced to its left');
   for (const axis of ['ASC', 'MC']) {

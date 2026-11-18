@@ -13,18 +13,18 @@ placement modes used by the rendered celestial glyphs:
 
 1. unwraps zodiac positions at their largest empty arc (so 359° and 0° are neighbours);
 2. allows up to **±5°** in the wide natal band and searches one main orbit first, adding **only one fixed inner orbit** when necessary;
-3. draws truly isolated bodies larger (`0.22 × symbolScale`), while planets in a nearby conjunction retain their equal compact size (`0.17 × symbolScale`) and degree labels radially inward, toward the houses;
+3. draws truly isolated natal bodies larger (`0.23 × symbolScale`), while planets in a nearby conjunction retain their equal compact size (`0.18 × symbolScale`) and degree labels radially inward, toward the houses; narrow transit/synastry rings retain `0.17 × symbolScale`;
 4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions;
 5. retains an emergency adaptive fallback for groups that are mathematically impossible in two lanes while respecting the angular bound;
 6. anchors the one retained outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed; a separate small tick starts **outside** the house boundary, never inside its ring.
 
 For ordinary natal conjunctions, the two-track solver tests multiple insertion
 orders and half-degree steps within ±5°. The default five-body Aries-point
-fixture fits at a uniform compact glyph size (`0.17 × symbolScale`) on only
-two radii; **isolated** planets are instead enlarged to `0.22 × symbolScale`
+fixture fits at a uniform compact glyph size (`0.18 × symbolScale`) on only
+two radii; **isolated** planets are instead enlarged to `0.23 × symbolScale`
 while sharing exactly the same primary orbit. Nearby planets keep their
 compact glyphs even if their group fits on the main orbit. The labels sit
-`0.15 × glyph scale` world units inward from their glyphs, on the same radial bearing. A pathologically
+`0.152 × glyph scale` world units inward from their glyphs, on the same radial bearing. A pathologically
 dense arrangement (e.g. eight exactly coincident planets) may be impossible
 with full-size symbols, just two tracks and the ±5° limit simultaneously.
 The renderer currently uses the previous collision-safe adaptive scaling
@@ -95,7 +95,10 @@ degree and whole arcminutes within the sign, rounded to the nearest minute;
 the original seconds and fractions are retained in the input data. DS and IC
 now use small `THREE.CircleGeometry` discs rather than square `THREE.Points`,
 with slightly enlarged radius and stable shape at any display resolution.
-The headings ASC/DSC/MC/IC are drawn using the same **bold Times New Roman-like**
+The external axis stems have been further shortened: ASC +0.17, DSC +0.22,
+MC +0.18 and IC +0.22 world units outside the zodiac, leaving more air
+between the small terminal dots and the DSC/IC captions. The headings
+ASC/DSC/MC/IC are drawn using the same **bold Times New Roman-like**
 canvas font in every skin, not images from astrological-assets. Their geometry
 preserves the source canvas aspect ratio (512×160) so the text is not squashed
 horizontally. The external ASC/DS/MC/IC strokes terminate at their **true zodiacal

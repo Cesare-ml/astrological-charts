@@ -103,6 +103,10 @@ export class ElementiCelestiRender {
     // Transit/synastry rings may be considerably thinner. Preserve their
     // compact tangential labels instead of squeezing symbols past the rim.
     const hasWidePlanetBand = raggioConfineAnelloPianeti - innerRingRadius >= 0.45;
+    // Natal glyphs gain a little visual weight, with the very same footprint
+    // passed to the collision solver. The narrow transit/synastry bands stay
+    // at their established compact size.
+    const glyphBaseSize = hasWidePlanetBand ? 0.18 : 0.17;
     const elementiCelestiRenderPos = this.getRenderPosPianeti(
       elementiCelesti, parametroDiRender,
       // The wider celestial band offers many radial tracks near the houses;
@@ -204,7 +208,7 @@ export class ElementiCelestiRender {
       }
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
       const glyphScale = elementiCelestiRenderPos[nome].scale ?? 1;
-      el.scale.set(0.17 * simboliScale * glyphScale, 0.17 * simboliScale * glyphScale, 1);
+      el.scale.set(glyphBaseSize * simboliScale * glyphScale, glyphBaseSize * simboliScale * glyphScale, 1);
       const trueDegree = elementiCelesti[nome][parametroDiRender];
       const elDegDiRender = 90 - ascendente + trueDegree + degOffs;
       const glyphDegree = 90 - ascendente + elementiCelestiRenderPos[nome][parametroDiRender] + degOffs;
@@ -268,7 +272,7 @@ export class ElementiCelestiRender {
 
       // Every connector starts on the *true* astronomical degree; only its
       // symbol end may move into another radial lane to avoid a conjunction.
-      const glyphHalfHeight = 0.17 * simboliScale * glyphScale * 605 / 875 / 2;
+      const glyphHalfHeight = glyphBaseSize * simboliScale * glyphScale * 605 / 875 / 2;
       if(lineaSuCerchioEsterno) {
         const p2 = this.pointOnRing(elDegDiRender, raggioConfineAnelloPianeti);
         const p1 = this.pointOnRing(glyphDegree, glyphRadius + glyphHalfHeight + 0.012);
@@ -304,7 +308,7 @@ export class ElementiCelestiRender {
           simboliScale * glyphScale, !hasWidePlanetBand);
         const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);
         const labelOffset = (hasWidePlanetBand ? 0 : 0.17) * simboliScale * glyphScale;
-        const labelRadialOffset = (hasWidePlanetBand ? 0.15 : 0) * simboliScale * glyphScale;
+        const labelRadialOffset = (hasWidePlanetBand ? 0.152 : 0) * simboliScale * glyphScale;
         label.position.set(
           glyphPosition.x + Math.sin(tangentAngle) * labelRadialOffset - Math.cos(tangentAngle) * labelOffset,
           glyphPosition.y - Math.cos(tangentAngle) * labelRadialOffset - Math.sin(tangentAngle) * labelOffset, 0.002,
@@ -404,17 +408,18 @@ export class ElementiCelestiRender {
   ) {
     const longitudes: Record<string, number> = {};
     for (const nome in elementiCelesti) longitudes[nome] = elementiCelesti[nome][parametroDiRender];
+    const glyphBaseSize = largeDegreeLabels ? 0.18 : 0.17;
     const positions = layoutPlanetSymbols(
       longitudes, raggioInterno, raggioEsterno,
-      0.17 * simboliScale, 0.17 * simboliScale * 605 / 875, mostraGradi, chartRotation,
+      glyphBaseSize * simboliScale, glyphBaseSize * simboliScale * 605 / 875, mostraGradi, chartRotation,
       raggioEsterno - raggioInterno > 0.06 ? {
         maxAngularDisplacement: largeDegreeLabels ? 5 : 3,
         fixedTwoLanes: largeDegreeLabels,
-        isolatedScale: largeDegreeLabels ? 0.22 / 0.17 : 1,
+        isolatedScale: largeDegreeLabels ? 0.23 / glyphBaseSize : 1,
         labelWidth: (largeDegreeLabels ? 0.13 : 0.12) * simboliScale,
         labelHeight: (largeDegreeLabels ? 0.075 : 0.06) * simboliScale,
         labelTangentOffset: (largeDegreeLabels ? 0 : 0.17) * simboliScale,
-        labelRadialOffset: (largeDegreeLabels ? 0.15 : 0) * simboliScale,
+        labelRadialOffset: (largeDegreeLabels ? 0.152 : 0) * simboliScale,
       } : undefined,
     );
     const result = {};
