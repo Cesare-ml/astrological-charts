@@ -1334,3 +1334,13 @@ recover when geometry returns. These are screen-only chart ownership
 checks; native geometry, export PNG/JPEG and public interfaces are
 unchanged. Full Node/Angular/Chromium/Firefox and visual review
 remain required before merging draft PR #22.
+
+## Windows build and source-test repair — 2026-11-18
+
+The library target now explicitly selects its existing ES2022 library
+configuration with Angular partial compilation; without that selection the
+packager default rejected `Object.hasOwn`. Four source-extraction test probes
+were updated to model current controller revision fields and helper methods,
+including the current rule that an invalid planet reference leaves the pinned
+selection unchanged. These changes do not modify renderer behavior or establish
+visual parity. They are scoped to the experimental interaction branch.
