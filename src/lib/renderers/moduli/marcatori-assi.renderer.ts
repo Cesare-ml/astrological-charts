@@ -55,10 +55,19 @@ export function planetaryHourAt(orePlanetarie: any): string | null {
 }
 
 function axisLine(a: THREE.Vector2, b: THREE.Vector2, color: string, z = 0.015): THREE.Line {
-  const geometry = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(a.x, a.y, z), new THREE.Vector3(b.x, b.y, z),
-  ]);
-  return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 }));
+  const geometry = new THREE.BufferGeometry();
+  let material: THREE.LineBasicMaterial | undefined;
+  try {
+    geometry.setFromPoints([
+      new THREE.Vector3(a.x, a.y, z), new THREE.Vector3(b.x, b.y, z),
+    ]);
+    material = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 });
+    return new THREE.Line(geometry, material);
+  } catch (error) {
+    material?.dispose();
+    geometry.dispose();
+    throw error;
+  }
 }
 
 /** Two straight strokes with the measured reference V proportions. */
@@ -67,18 +76,34 @@ function openArrowhead(angle: number, radius: number, color: string): THREE.Line
   const base = pointOnRing(angle, radius - 0.075);
   const tangent = pointOnRing(angle + 90, 0.043);
   const sides = [base.clone().add(tangent), tip, base.clone().sub(tangent), tip];
-  const geometry = new THREE.BufferGeometry().setFromPoints(
-    sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
-  return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color }));
+  const geometry = new THREE.BufferGeometry();
+  let material: THREE.LineBasicMaterial | undefined;
+  try {
+    geometry.setFromPoints(sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
+    material = new THREE.LineBasicMaterial({ color });
+    return new THREE.LineSegments(geometry, material);
+  } catch (error) {
+    material?.dispose();
+    geometry.dispose();
+    throw error;
+  }
 }
 
 /** Three.js points render as squares without a texture; a real disc stays round. */
 function circularTerminal(angle: number, radius: number, color: string): THREE.Mesh {
   const position = pointOnRing(angle, radius);
-  const marker = new THREE.Mesh(new THREE.CircleGeometry(0.033, 32),
-    new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
-  marker.position.set(position.x, position.y, 0.024);
-  return marker;
+  const geometry = new THREE.CircleGeometry(0.033, 32);
+  let material: THREE.MeshBasicMaterial | undefined;
+  try {
+    material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+    const marker = new THREE.Mesh(geometry, material);
+    marker.position.set(position.x, position.y, 0.024);
+    return marker;
+  } catch (error) {
+    material?.dispose();
+    geometry.dispose();
+    throw error;
+  }
 }
 
 function textLabel(value: string, color: string, width: number, height: number,
@@ -267,11 +292,19 @@ export class MarcatoriAssiRender {
         shape.lineTo(baseB.x, baseB.y);
         shape.lineTo(tip.x, tip.y);
         shape.closePath();
-        const marker = new THREE.Mesh(new THREE.ShapeGeometry(shape),
-          new THREE.MeshBasicMaterial({ color: colors.motoMC, side: THREE.DoubleSide }));
-        marker.position.z = 0.024;
-        marker.userData.axisMarker = 'MC-motion';
-        group.add(marker);
+        const geometry = new THREE.ShapeGeometry(shape);
+        let material: THREE.MeshBasicMaterial | undefined;
+        try {
+          material = new THREE.MeshBasicMaterial({ color: colors.motoMC, side: THREE.DoubleSide });
+          const marker = new THREE.Mesh(geometry, material);
+          marker.position.z = 0.024;
+          marker.userData.axisMarker = 'MC-motion';
+          group.add(marker);
+        } catch (error) {
+          material?.dispose();
+          geometry.dispose();
+          throw error;
+        }
       }
     }
 

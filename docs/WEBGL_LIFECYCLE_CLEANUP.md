@@ -34,6 +34,9 @@ animations. Several gaps remained:
 10. Canvas-backed degree and axis labels could allocate a texture, then fail
     while constructing the matching plane/material before the chart group
     received the label.
+11. Individual ASC/DS/MC/IC stems, open arrowheads, terminal discs and the MC
+    motion triangle could fail between geometry allocation and handoff to the
+    enclosing marker group, leaving the unfinished primitive unreachable.
 
 ## Implementation
 
@@ -91,6 +94,10 @@ animations. Several gaps remained:
 - Canvas-backed planet-degree and ASC/MC label builders now release their
   generated canvas texture and any completed material/plane on setup failure.
   Successful labels retain their original dimensions and scene ownership.
+- Axis stems, open V heads, circular terminals and the MC motion triangle now
+  release unreturned geometry and any completed material if an intermediate
+  step fails. The enclosing group still disposes earlier successful markers;
+  successful markers preserve their positions, appearance and paint order.
 
 ## Reproducible regression tests
 
@@ -112,7 +119,7 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Forty-nine additional tests cover failures of zodiac glyphs, decan and decade
+- Fifty-four additional tests cover failures of zodiac glyphs, decan and decade
   glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
   house glyphs, synastry house dividers, term glyphs, the enclosing house
   module, main planetary glyphs/connectors, solar-resonator artwork and the
@@ -123,7 +130,9 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
   thick-line geometry/material construction failures and successful ownership,
   plus basic primitive construction failures and unchanged successful shape
   ownership, including an externally supplied ring texture, plus canvas-backed
-  degree/axis label failures and successful cleanup after caller ownership.
+  degree/axis label failures and successful cleanup after caller ownership,
+  plus unfinished axis stems, V heads, circular terminals and MC direction
+  triangles, including successful ownership of all nine axis elements.
   Successful nested module construction retains
   resources until the owner explicitly disposes them.
 

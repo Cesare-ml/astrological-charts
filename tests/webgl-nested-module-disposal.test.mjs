@@ -658,6 +658,102 @@ test('axis marker builder frees prior stems and dots when planetary-hour image f
   });
 });
 
+const noCanvasAxisOptions = {...axisOptions,
+  mostraOraPlanetariaAscendente: false, mostraDirezioneMotoMC: false};
+
+test('axis stem releases its allocated buffer when point attributes fail', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [THREE.BufferGeometry.prototype, 'setFromPoints', () => {
+        throw new Error('axis stem points failed');
+      }],
+    ], async () => {
+      await assert.rejects(MarcatoriAssiRender.creaMarcatori(42, 80, 2,
+        {...noCanvasAxisOptions, mostraRetroFrecciaDiscendente: false,
+          mostraFrecciaMC: false, mostraRetroFrecciaIC: false}, {}),
+      /axis stem points failed/);
+      assert.equal(counts.geometry, 1);
+      assert.equal(counts.material, 0);
+    });
+  });
+});
+
+test('unfinished ASC arrowhead frees its buffer and the already attached stem', async () => {
+  await withDisposeCounters(async counts => {
+    const setFromPoints = THREE.BufferGeometry.prototype.setFromPoints;
+    let calls = 0;
+    await withOverrides([
+      [THREE.BufferGeometry.prototype, 'setFromPoints', function (points) {
+        if (++calls === 2) throw new Error('axis arrowhead points failed');
+        return setFromPoints.call(this, points);
+      }],
+    ], async () => {
+      await assert.rejects(MarcatoriAssiRender.creaMarcatori(42, 80, 2,
+        {...noCanvasAxisOptions, mostraRetroFrecciaDiscendente: false,
+          mostraFrecciaMC: false, mostraRetroFrecciaIC: false}, {}),
+      /axis arrowhead points failed/);
+      assert.equal(calls, 2);
+      assert.equal(counts.geometry, 2);
+      assert.equal(counts.material, 1);
+    });
+  });
+});
+
+test('DS terminal dot releases its geometry on material setup failure', async () => {
+  await withDisposeCounters(async counts => {
+    const setValues = THREE.Material.prototype.setValues;
+    await withOverrides([
+      [THREE.Material.prototype, 'setValues', function (values) {
+        if (this.isMeshBasicMaterial) throw new Error('axis dot material failed');
+        return setValues.call(this, values);
+      }],
+    ], async () => {
+      await assert.rejects(MarcatoriAssiRender.creaMarcatori(42, 80, 2,
+        {...noCanvasAxisOptions, mostraFrecciaAscendente: false,
+          mostraFrecciaMC: false, mostraRetroFrecciaIC: false}, {}),
+      /axis dot material failed/);
+      assert.equal(counts.geometry, 2);
+      assert.equal(counts.material, 1);
+    });
+  });
+});
+
+test('MC motion marker releases its geometry when material creation aborts', async () => {
+  await withDisposeCounters(async counts => {
+    const setValues = THREE.Material.prototype.setValues;
+    await withOverrides([
+      [THREE.Material.prototype, 'setValues', function (values) {
+        if (this.isMeshBasicMaterial) throw new Error('MC motion material failed');
+        return setValues.call(this, values);
+      }],
+    ], async () => {
+      await assert.rejects(MarcatoriAssiRender.creaMarcatori(42, 80, 2,
+        {...noCanvasAxisOptions, mostraFrecciaAscendente: false,
+          mostraRetroFrecciaDiscendente: false, mostraRetroFrecciaIC: false,
+          mostraDirezioneMotoMC: true}, {}),
+      /MC motion material failed/);
+      assert.equal(counts.geometry, 3, 'MC stem, V arrow and unfinished triangle');
+      assert.equal(counts.material, 2, 'two completed lines');
+    });
+  });
+});
+
+test('successful axis stems, dots and MC motion triangle retain original ownership', async () => {
+  await withDisposeCounters(async counts => {
+    const group = await MarcatoriAssiRender.creaMarcatori(42, 80, 2,
+      {...noCanvasAxisOptions, mostraDirezioneMotoMC: true}, {});
+    assert.equal(group.children.length, 9);
+    assert.equal(group.children.filter(child => child.userData.axisStem).length, 4);
+    assert.equal(group.children.filter(child => child.userData.axisMarker).length, 5);
+    assert.ok(group.children.some(child => child.userData.axisMarker === 'MC-motion'));
+    assert.equal(counts.geometry, 0);
+    assert.equal(counts.material, 0);
+    disposeSceneResources(group);
+    assert.equal(counts.geometry, 9);
+    assert.equal(counts.material, 9);
+  });
+});
+
 test('successful axis markers retain resources until their owner disposes them', async () => {
   await withDisposeCounters(async counts => {
     await withMeshes({}, async ({resources}) => {
