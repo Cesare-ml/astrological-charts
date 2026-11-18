@@ -19,6 +19,7 @@ import {SkinManager} from '../renderers/@skin-manager';
 import { debounceTime, fromEvent, map, startWith } from 'rxjs';
 import {NatalHoverController, type NatalPlanetHover} from './natal-hover';
 import {TransitHoverController, type TransitPointHover} from './transit-hover';
+import {FixedStarHoverController} from './fixed-star-hover';
 import {AspettiRender} from '../renderers/moduli/aspetti.renderer';
 import {Settaggi} from '../models/settaggi.model';
 export type {NatalPlanetHover} from './natal-hover';
@@ -83,6 +84,7 @@ export class GraficoRenderService implements OnDestroy {
   private scene: THREE.Scene;
   private natalHover: NatalHoverController | null = null;
   private transitHover: TransitHoverController | null = null;
+  private fixedStarHover: FixedStarHoverController | null = null;
   private transitLines: THREE.Group | null = null;
   private natalAspectMaterials = new Map<THREE.Material, {color: THREE.Color; opacity: number; transparent: boolean; depthWrite: boolean; vertexColors: boolean}>();
   
@@ -127,6 +129,7 @@ export class GraficoRenderService implements OnDestroy {
       this.camera.updateProjectionMatrix();
       this.natalHover?.refresh();
       this.transitHover?.refresh();
+      this.fixedStarHover?.refresh();
       this.render();
     }
   }
@@ -148,6 +151,8 @@ export class GraficoRenderService implements OnDestroy {
     this.natalHover = null;
     this.transitHover?.dispose();
     this.transitHover = null;
+    this.fixedStarHover?.dispose();
+    this.fixedStarHover = null;
     this.natalAspectMaterials.clear();
     this.transitLines = null;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
@@ -322,6 +327,7 @@ export class GraficoRenderService implements OnDestroy {
       if (disegno) this.scene.add(disegno);
       this.natalHover?.sceneChanged();
       this.transitHover?.sceneChanged();
+      this.fixedStarHover?.sceneChanged();
       this.render();
     });
   }
@@ -340,6 +346,12 @@ export class GraficoRenderService implements OnDestroy {
     this.natalHover?.dispose();
     this.natalHover = listener && this.canvas
       ? new NatalHoverController(this.canvas, () => this.scene, () => this.camera, listener) : null;
+  }
+
+  public setFixedStarHoverListener(listener: ((id:number | null) => void) | null): void {
+    this.fixedStarHover?.dispose();
+    this.fixedStarHover = listener && this.canvas
+      ? new FixedStarHoverController(this.canvas, () => this.scene, () => this.camera, listener) : null;
   }
 
   /** Optional two-ring pointer listener, independent of the natal-only listener. */

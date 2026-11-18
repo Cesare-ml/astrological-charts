@@ -557,7 +557,7 @@ export class ElementiCelestiRender {
 
         var degOffsPartiArabe = lngDestinazione - planets[opzioni.partiArabe.nomeElCeleste].longitude;
         for(var p in planets){
-          planets[p].longitude = (planets[p].longitude+degOffsPartiArabe)%360;
+          planets[p].longitude = ((planets[p].longitude+degOffsPartiArabe)%360+360)%360;
         }
       } else {
         //da formula abumashar o essenziali
@@ -584,7 +584,7 @@ export class ElementiCelestiRender {
 
           //ad ogni pianeta applico l'offset in lng
           for(var p in planets){
-            planets[p].longitude = (planets[p].longitude+formula.lngOffs)%360;
+            planets[p].longitude = ((planets[p].longitude+formula.lngOffs)%360+360)%360;
           }
         }
       }

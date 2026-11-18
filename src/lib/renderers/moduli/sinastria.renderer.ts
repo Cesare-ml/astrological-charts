@@ -8,6 +8,7 @@ import {SegniRender} from './segni.renderer';
 import { SkinManager } from '../@skin-manager';
 import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer';
 import { stopSceneAnimations } from '../scene-animations';
+import { synastryDeflectionOffset } from './synastry-deflection';
 
 //import {AssiRender} from './assi.renderer';
 
@@ -40,18 +41,14 @@ export class SinastriaRender {
     var imgRefCase;
     var simboliScaleCase = 0.7;
     var offsSinastriaDeflettiva=0;
-    /*
-    if(opzioni.sinastria.sinastriaDeflettiva) {
-      imgRefCase = 'sinastria-deflettiva-case-interno';
-      simboliScaleCase = 0.7;
-      offsSinastriaDeflettiva =
-        (opzioni.sinastria.deflettiSuCasa-1)*30
-        +(ascendenteTemaDiRiferimento-as)
-      ;
-    } else {
-      imgRefCase = 'sinastria-case-interno';
-      simboliScaleCase = 0.7
-    }*/
+    if (stato.opzioni.sinastria?.sinastriaDeflettiva) {
+      if (stato.opzioni.settaggi.domificazione_selezionata !== 'egizia' ||
+          !temaRender.houses?.egizia || !stato.temaRender?.houses?.egizia ||
+          !Number.isFinite(stato.temaRender.houses.egizia.ascendant))
+        throw new RangeError('Deflective synastry requires both Vehlow house sets');
+      offsSinastriaDeflettiva = synastryDeflectionOffset(
+        ascendenteTemaDiRiferimento, as, stato.opzioni.sinastria.deflettiSuCasa ?? 1);
+    }
 
     var anelloCase;
     if(temaRender.houses && Object.keys(temaRender.houses).length) {

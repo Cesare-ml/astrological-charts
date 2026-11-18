@@ -42,8 +42,9 @@ export function planetaryHourAt(orePlanetarie: any): string | null {
   const tramonto = orePlanetarie?.tramonto;
   const albaSucc = orePlanetarie?.albaSucc;
   if (![time, alba, tramonto, albaSucc].every(value => typeof value === 'string')) return null;
-  const comparable = (value: string) => value.slice(0, 19).replace('T', ' ');
+  const comparable = (value: string) => Date.parse(value.includes('T') ? value : value.replace(' ', 'T') + 'Z');
   const instant = comparable(time);
+  if (![time, alba, tramonto, albaSucc].every(value => Number.isFinite(comparable(value)))) return null;
   if (instant < comparable(alba) || instant >= comparable(albaSucc)) return null;
   const isDay = instant < comparable(tramonto);
   const hours = isDay ? orePlanetarie?.dh?.diurne : orePlanetarie?.dh?.notturne;

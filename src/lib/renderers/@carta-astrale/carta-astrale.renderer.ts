@@ -10,6 +10,8 @@ import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
 import { stopSceneAnimations } from '../scene-animations';
 import { MarcatoriAssiRender } from '../moduli/marcatori-assi.renderer';
 import { ProiezioniZodiacaliRender } from '../moduli/proiezioni-zodiacali.renderer';
+import { directionOverlayOffsets } from '../moduli/direction-overlay';
+import { createFixedStarRing } from '../moduli/fixed-stars.renderer';
 
 // ---------------------------
 // Stato globale per tutti i renderer
@@ -429,6 +431,12 @@ async function creaMarcatoriAssi(stato: StatoCartaAstrale) {
     );
 }
 
+async function creaStelle(stato: StatoCartaAstrale) {
+    const stars = stato.temaRender?.fixedStars;
+    if (!Array.isArray(stars) || !stars.length) return null;
+    return createFixedStarRing(stars, stato.asc, stato.diametri.diametroAnelloSegni / 2 + .12);
+}
+
 async function creaMarcatoriAssiTransiti(stato: StatoCartaAstrale) {
     if (!stato.opzioni.mostraTransiti || !stato.opzioni.mostraAssiTransiti || stato.opzioni.mostraEffemeridi) return null;
     const house = stato.temaRenderTransiti?.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
@@ -465,6 +473,23 @@ async function creaTransiti(stato: StatoCartaAstrale) {
     );
     stato.gruppoTransiti = group;
     return group;
+}
+
+/** The caller supplies the directed chart; the renderer only positions its ring. */
+async function creaDirezioni(stato: StatoCartaAstrale) {
+    if (!stato.opzioni.mostraDirezioni || !stato.temaRenderDirezione ||
+        !['primarieSemplificate', 'simboliche'].includes(stato.opzioni.direzioniModalita)) return null;
+    const house = stato.temaRenderDirezione.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
+    if (!house || !Number.isFinite(house.ascendant)) throw new RangeError('Direction chart house system unavailable');
+    const offsets = directionOverlayOffsets(stato.asc, house.ascendant,
+      stato.opzioni.direzioniModalita, stato.opzioni.direzioniDegOffs);
+    const d = stato.diametri;
+    const inner = (d.diametroInternoAnelloElementoCelesti + d.diametroAnelloElementiCelesti) / 2;
+    return ElementiCelestiRender.getAnelloElementiCelesti(
+      stato.temaRenderDirezione, stato.asc, [], stato.simboliScale.AnelloElementiCelesti,
+      stato.opzioni, [], [], inner, d.diametroAnelloElementiCelesti,
+      d.diametroDodecatemoriAnelloElementoCelesti, true, false, 'longitude', true,
+      false, 0, offsets.geometry, offsets.symbolicAxis, false, false, 'synastry-overlay');
 }
 
 
@@ -530,10 +555,11 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
 
     // Aggiungi tutti i moduli principali
     const moduli = [
-        //creaStelle,
+        creaStelle,
         creaTransiti,
         creaSegni,
         creaElementiCelesti,
+        creaDirezioni,
         creaProiezioniZodiacali,
         creaCase,
         creaAspetti,

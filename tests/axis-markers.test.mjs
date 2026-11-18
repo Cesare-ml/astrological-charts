@@ -84,6 +84,15 @@ test('planetary hour comes from the matching time interval, not a guessed weekda
   assert.equal(planetaryHourAt({}), null);
 });
 
+test('planetary hour respects a fractional-second transition', () => {
+  const day = structuredClone(hours);
+  day.dh.diurne[1].dataora = '2000-01-01T07:00:00.500Z';
+  day.dataora = '2000-01-01T07:00:00.499Z';
+  assert.equal(planetaryHourAt(day), 'Saturn');
+  day.dataora = '2000-01-01T07:00:00.500Z';
+  assert.equal(planetaryHourAt(day), 'Jupiter');
+});
+
 test('ASC, DS, MC and IC each have separate visible toggles and use source longitudes', async () => {
   const { group, texts, assets, fonts } = await makeMarkers();
   const ids = group.children.map(child => child.userData.axisMarker).filter(Boolean);
