@@ -8,6 +8,21 @@ import { registerSceneAnimation } from '../scene-animations';
 import { disposeSceneResources } from '../scene-resources';
 import { normalizeDegree, layoutPlanetSymbols, layoutCompositePlanetSymbols } from './planet-symbol-layout';
 
+/** Ownership of an unfinished thin line remains here until its scene receives it. */
+function createThinLine(points: THREE.Vector3[], options: THREE.LineBasicMaterialParameters): THREE.Line {
+  const geometry = new THREE.BufferGeometry();
+  let material: THREE.LineBasicMaterial | undefined;
+  try {
+    geometry.setFromPoints(points);
+    material = new THREE.LineBasicMaterial(options);
+    return new THREE.Line(geometry, material);
+  } catch (error) {
+    material?.dispose();
+    geometry.dispose();
+    throw error;
+  }
+}
+
 
 export class ElementiCelestiRender {
 
@@ -335,14 +350,11 @@ export class ElementiCelestiRender {
         // regardless of any tangential displacement used to separate glyphs.
         const gridAnchor = this.pointOnRing(elDegDiRender, innerRingRadius + 0.012);
         const symbolEnd = this.pointOnRing(glyphDegree, glyphRadius - glyphHalfHeight - 0.012);
-        const transitConnector = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([
+        const transitConnector = createThinLine([
             new THREE.Vector3(symbolEnd.x, symbolEnd.y, 0.012),
             new THREE.Vector3(gridAnchor.x, gridAnchor.y, 0.012),
-          ]),
-          new THREE.LineBasicMaterial({color: coloreLineeSegni, transparent: true,
-            opacity: 0.45, depthWrite: false}),
-        );
+          ], {color: coloreLineeSegni, transparent: true,
+            opacity: 0.45, depthWrite: false});
         transitConnector.userData.transitConnector = nome;
         transitConnector.userData.trueLongitude = trueDegree;
         group.add(transitConnector);
@@ -357,13 +369,10 @@ export class ElementiCelestiRender {
         const houseTickRadius = raggioBordoCase;
         const start = this.pointOnRing(elDegDiRender, houseTickRadius);
         const end = this.pointOnRing(elDegDiRender, houseTickRadius + 0.060);
-        const houseTick = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([
+        const houseTick = createThinLine([
             new THREE.Vector3(start.x, start.y, 0.019),
             new THREE.Vector3(end.x, end.y, 0.019),
-          ]),
-          new THREE.LineBasicMaterial({ color: coloreLinea }),
-        );
+          ], { color: coloreLinea });
         houseTick.userData.planetHouseTick = nome;
         houseTick.userData.trueLongitude = trueDegree;
         group.add(houseTick);

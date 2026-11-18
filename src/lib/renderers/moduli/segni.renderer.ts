@@ -19,11 +19,20 @@ export class SegniRender {
         points.push(new THREE.Vector3(-Math.sin(angle) * radius, Math.cos(angle) * radius, 0.009));
       }
     }
-    const ticks = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points),
-      new THREE.LineBasicMaterial({ color: colore, transparent: true, opacity: 0.88 }));
-    ticks.name = 'zodiac-degree-scale';
-    ticks.userData.tickCount = 360;
-    return ticks;
+    const geometry = new THREE.BufferGeometry();
+    let material: THREE.LineBasicMaterial | undefined;
+    try {
+      geometry.setFromPoints(points);
+      material = new THREE.LineBasicMaterial({ color: colore, transparent: true, opacity: 0.88 });
+      const ticks = new THREE.LineSegments(geometry, material);
+      ticks.name = 'zodiac-degree-scale';
+      ticks.userData.tickCount = 360;
+      return ticks;
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
   public static sequenzaDecani = [

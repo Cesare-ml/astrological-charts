@@ -202,7 +202,7 @@ test('house wrapper owns detached completed case ring while terms await', async 
   });
 });
 
-async function withPlanetLayout(run) {
+async function withPlanetLayout(run, axisPresentation = 'default') {
   const oldGetElements = ElementiCelestiRender.getElementiCelesti;
   const oldGetPositions = ElementiCelestiRender.getRenderPosPianeti;
   const bodies = {
@@ -216,7 +216,8 @@ async function withPlanetLayout(run) {
         {longitude: body.longitude, radius: 1.25, scale: 1}]));
     const opts = {...options, mostraGradiElementiCelesti: false};
     await run(() => ElementiCelestiRender.getAnelloElementiCelesti(
-      {}, 0, [], 1, opts, [], [], 2, 3, 2, true, false));
+      {}, 0, [], 1, opts, [], [], 2, 3, 2, true, false,
+      'longitude', true, false, 0, 0, 0, false, false, axisPresentation));
   } finally {
     ElementiCelestiRender.getElementiCelesti = oldGetElements;
     ElementiCelestiRender.getRenderPosPianeti = oldGetPositions;
@@ -253,6 +254,120 @@ test('successful main planet ring keeps its resources until caller disposal', as
       assert.ok(resources.every(resource => resource.disposed === 0));
       disposeSceneResources(group);
       assertDisposed(resources);
+    });
+  });
+});
+
+test('transit connector disposes its unreturned buffer on point setup failure', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withDisposeCounters(async counts => {
+      await withOverrides([
+        [THREE.BufferGeometry.prototype, 'setFromPoints', () => {
+          throw new Error('transit connector points failed');
+        }],
+      ], async () => {
+        await withPlanetLayout(async render => {
+          await assert.rejects(render(), /transit connector points failed/);
+          assert.equal(counts.geometry, 3, 'image, prior connector and unfinished thin line');
+          assert.equal(counts.material, 2);
+          assertDisposed(resources);
+        }, 'transit-overlay');
+      });
+    });
+  });
+});
+
+test('transit connector disposes its unreturned buffer on material failure', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withDisposeCounters(async counts => {
+      const setValues = THREE.Material.prototype.setValues;
+      await withOverrides([
+        [THREE.Material.prototype, 'setValues', function (values) {
+          if (this.isLineBasicMaterial) throw new Error('transit connector material failed');
+          return setValues.call(this, values);
+        }],
+      ], async () => {
+        await withPlanetLayout(async render => {
+          await assert.rejects(render(), /transit connector material failed/);
+          assert.equal(counts.geometry, 3);
+          assert.equal(counts.material, 2);
+          assertDisposed(resources);
+        }, 'transit-overlay');
+      });
+    });
+  });
+});
+
+test('natal house tick releases its geometry if line material fails', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withDisposeCounters(async counts => {
+      const setValues = THREE.Material.prototype.setValues;
+      await withOverrides([
+        [THREE.Material.prototype, 'setValues', function (values) {
+          if (this.isLineBasicMaterial) throw new Error('house tick material failed');
+          return setValues.call(this, values);
+        }],
+      ], async () => {
+        await withPlanetLayout(async render => {
+          await assert.rejects(render(), /house tick material failed/);
+          assert.equal(counts.geometry, 3, 'image, completed connector and unfinished tick');
+          assert.equal(counts.material, 2);
+          assertDisposed(resources);
+        });
+      });
+    });
+  });
+});
+
+test('outer degree scale releases unfinished geometry if point transfer fails', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [THREE.BufferGeometry.prototype, 'setFromPoints', () => {
+        throw new Error('zodiac scale points failed');
+      }],
+    ], async () => {
+      assert.throws(() => SegniRender.creaScalaGradi(42, 2, '#fff'),
+        /zodiac scale points failed/);
+      assert.equal(counts.geometry, 1);
+      assert.equal(counts.material, 0);
+    });
+  });
+});
+
+test('outer degree scale releases its geometry if line material fails', async () => {
+  await withDisposeCounters(async counts => {
+    const setValues = THREE.Material.prototype.setValues;
+    await withOverrides([
+      [THREE.Material.prototype, 'setValues', function (values) {
+        if (this.isLineBasicMaterial) throw new Error('zodiac scale material failed');
+        return setValues.call(this, values);
+      }],
+    ], async () => {
+      assert.throws(() => SegniRender.creaScalaGradi(42, 2, '#fff'),
+        /zodiac scale material failed/);
+      assert.equal(counts.geometry, 1);
+      assert.equal(counts.material, 0);
+    });
+  });
+});
+
+test('successful transit connectors, house ticks and degree scale keep their resources', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withDisposeCounters(async counts => {
+      await withPlanetLayout(async render => {
+        const group = await render();
+        const scale = SegniRender.creaScalaGradi(42, 2, '#fff');
+        assert.equal(group.children.filter(child => child.userData.transitConnector).length, 2);
+        assert.equal(group.children.filter(child => child.userData.planetHouseTick).length, 2);
+        assert.equal(scale.userData.tickCount, 360);
+        assert.equal(counts.geometry, 0);
+        assert.equal(counts.material, 0);
+        disposeSceneResources(group);
+        disposeSceneResources(scale);
+        assert.ok(counts.geometry > 4);
+        assert.ok(counts.material > 4);
+        assertDisposed(resources);
+      }, 'transit-overlay');
     });
   });
 });

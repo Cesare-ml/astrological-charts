@@ -37,6 +37,9 @@ animations. Several gaps remained:
 11. Individual ASC/DS/MC/IC stems, open arrowheads, terminal discs and the MC
     motion triangle could fail between geometry allocation and handoff to the
     enclosing marker group, leaving the unfinished primitive unreachable.
+12. Thin true-longitude connectors in transit overlays, house-boundary ticks
+    and the outer 360-degree scale could likewise lose a geometry when point
+    attributes or line materials failed before their scene received the line.
 
 ## Implementation
 
@@ -98,6 +101,10 @@ animations. Several gaps remained:
   release unreturned geometry and any completed material if an intermediate
   step fails. The enclosing group still disposes earlier successful markers;
   successful markers preserve their positions, appearance and paint order.
+- A shared private thin-line constructor now retains ownership of transit
+  connectors and house-boundary ticks until each line is returned; the zodiac
+  degree scale likewise cleans up its geometry/material if construction fails.
+  Successful paths keep the same two endpoints, colors and draw order.
 
 ## Reproducible regression tests
 
@@ -119,7 +126,7 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Fifty-four additional tests cover failures of zodiac glyphs, decan and decade
+- Sixty additional tests cover failures of zodiac glyphs, decan and decade
   glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
   house glyphs, synastry house dividers, term glyphs, the enclosing house
   module, main planetary glyphs/connectors, solar-resonator artwork and the
@@ -132,7 +139,9 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
   ownership, including an externally supplied ring texture, plus canvas-backed
   degree/axis label failures and successful cleanup after caller ownership,
   plus unfinished axis stems, V heads, circular terminals and MC direction
-  triangles, including successful ownership of all nine axis elements.
+  triangles, including successful ownership of all nine axis elements, plus
+  transit connector and house-tick setup failures, outer 360-degree scale
+  failures and successful resource ownership for all three paths.
   Successful nested module construction retains
   resources until the owner explicitly disposes them.
 
