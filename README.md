@@ -16,6 +16,13 @@ Celestial glyphs use a collision-aware layout: isolated natal planets are larger
 
 The new default `virgostars` skin provides the official pastel zodiac, subtle wheel background and coordinated axis colors. Geometry, angular references and collision rules are shared by **all eight selectable skins**, including the seven previous skins. See [official skin and layout specification](docs/VIRGOSTARS_OFFICIAL_SKIN.md).
 
+In transit charts, planetary glyphs prefer an orbit just beyond the external
+degree grid, each with a translucent line anchored to its true longitude; the
+four axis strokes remain visible but their textual annotations are hidden.
+The overlaid natal planet band keeps full-size glyphs and house/planet spacing.
+In synastry, the shorter planet-band edge no longer displaces true-degree house
+ticks, which now physically touch the actual house ring.
+
 **Important:** The renderer loads images from a host asset root; the library does not bundle them. A private owner-authorized image pack is available separately in `astrological-assets`, without the unknown-license font. Building TypeScript does not by itself prove visual correctness.
 
 ## Start developing

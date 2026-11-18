@@ -33,6 +33,13 @@ a house. A separate, softly lightened-gray connector reaches the true degree
 near the sign. Short aspect endpoint discs make their exact longitude
 easier to identify, including when a stellium is displayed on two tracks.
 
+With transits enabled, the four axis strokes remain but their outer names,
+degree values, planetary-hour glyph and MC direction triangle are omitted.
+Transit glyphs sit close to the degree ruler with a 45%-opaque true-longitude
+connector; their own degree badges are hidden. A synastry display omits
+planet degrees on both wheels, and its house ticks start on the **actual
+outer house-circle radius**, even though the celestial-body band is narrower.
+
 The previous `light`, `dark`, `light-bn`, `dark-bn`, `sun`, `astrolabio` and
 `astrolabio-girasole` skins retain their existing palettes, while adopting the
 shared geometrical changes. `virgostars` is the **new default** for callers who

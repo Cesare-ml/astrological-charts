@@ -151,12 +151,36 @@ display angles to prevent contact.
 **Synastry** retains the independently computed AS and MC of the inner partner
 chart (DS and IC are their opposites), but never shows planet degrees on
 either the outer or inner wheel. The **outer wheel's planetary annulus is
-narrower**: only its inner planet boundary moves from `75.1/120` to `82/120`
+narrower**: only its inner planet boundary moves from `75.1/120` to `77/120`
 of the outer diameter. House-circle and sign-ring dimensions remain unchanged.
 Both synastry planetary rings obey the strict two-orbit maximum. Input
 `TemaRender`, houses, aspects, original longitudes and true-degree anchors
 are unchanged. The low-level renderer retains full-axis behaviour except
 when `primary-overlay`, `transit-overlay` or `synastry-overlay` is requested.
+
+### Composite refinement: external grid and actual house edge
+
+- With **transits enabled**, the ASC/DS/MC/IC **stems, arrowheads and terminal
+  discs remain**, but their large headings, ASC/MC degree values, planetary
+  hour glyph and optional MC movement triangle are automatically suppressed.
+  The natal-only mode retains all user-selected annotations.
+- The **transiting planets** prefer the orbit immediately outside the longest
+  degree-grid marks, rather than the far transit-ring rim. Each planet now has
+  one lightly tinted **45%-opaque connector** from its displayed glyph to
+  its *true ecliptic longitude* at the base of the external grid; this remains
+  correct when collision avoidance shifts its displayed glyph in angle.
+- The **primary natal chart under transits** regains the same house/planet
+  proportions (`67.1/120`, `66.16/120` etc.) as a standalone natal chart;
+  previously its compact `75.1/120` inner planet boundary silently switched
+  the solver to its small-glyph, multi-radius fallback. The reduced overall
+  transit wheel can spread a conjunction up to 16° visually to preserve full
+  natal glyph and degree-badge sizes on one or two fixed orbits, while tick
+  segments and computations remain at their true longitudes. Synastry keeps
+  the nested house geometry for its second chart.
+- The short true-longitude **house ticks** now receive the *actual rendered
+  house ring's outer radius*, rather than assuming the inner planet-band
+  radius is also the house boundary. This fixes floating ticks especially in
+  synastry, where the band has its own narrowed inner diameter.
 
 The zodiac glyph is centred radially in its own sign ring, rather than being
 biased toward the celestial bodies. The Angular demo exposes **Show celestial

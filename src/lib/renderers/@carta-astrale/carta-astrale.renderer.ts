@@ -147,6 +147,11 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
     diametri.diametroAnelloSegni = diametroAnelloSegni;
 
     // Diametri proporzionali
+    // Ordinary transit charts keep the same roomy proportions as the natal
+    // wheel. The former 75.1/120 house rim made the natal planetary band too
+    // thin and silently changed its glyph size and collision algorithm.
+    // Synastry still reserves room in the centre for its second house wheel.
+    const nestedHouseWheel = opzioni.mostraSinastria || opzioni.mostraTransitiSinodici;
     const proporzioni = {
         diametroAnelloTransitiSinodici: 440 / 120,
         diametroUltimaOrbitaTransitiSinodici: 412.5 / 120,
@@ -160,10 +165,10 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
         diametroAnelloElementiCelesti: 103 / 120,
         diametroCerchioDodecatemori: 91.66 / 120,
         diametroCerchioDodecatemori2: 87.5 / 120,
-        diametroInternoMiniArcoCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 75.1 : 67.1) / 120,
-        diametroAnelloCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 74.16 : 66.16) / 120,
-        diametroCerchioInternoTermini: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 70.03 : 62.03) / 120,
-        diametroInternoAnelloCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 63.36 : 55.36) / 120
+        diametroInternoMiniArcoCase: (nestedHouseWheel ? 75.1 : 67.1) / 120,
+        diametroAnelloCase: (nestedHouseWheel ? 74.16 : 66.16) / 120,
+        diametroCerchioInternoTermini: (nestedHouseWheel ? 70.03 : 62.03) / 120,
+        diametroInternoAnelloCase: (nestedHouseWheel ? 63.36 : 55.36) / 120
     };
 
     for (const key in proporzioni) {
@@ -241,10 +246,10 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
 
     // Elementi Celesti
     // Synastry does not need a radial row of degree badges on the outer
-    // chart. Use a narrower celestial band without altering the house wheel
+    // chart. Use a slightly narrower celestial band without altering the house wheel
     // or the thickness of the zodiac signs.
     diametri.diametroInternoAnelloElementoCelesti = opzioni.mostraSinastria
-        ? diametroAnelloSegni * 82 / 120
+        ? diametroAnelloSegni * 77 / 120
         : diametri.diametroInternoMiniArcoCase;
     // Orario Sconosciuto togle le case ed assi
     diametri.diametroEsternoAnelloElementoCelesti = diametri.diametroAnelloElementiCelesti;
@@ -361,6 +366,8 @@ async function creaElementiCelesti(stato: StatoCartaAstrale) {
         false,//cerchia la luna
         false,//isElementiSinastria
         stato.opzioni.mostraTransiti || stato.opzioni.mostraSinastria ? 'primary-overlay' : 'default',
+        [],
+        stato.diametri.diametroAnelloCase / 2,
     );
     stato.gruppoElementiCelesti = group;
     return group;
@@ -405,7 +412,7 @@ async function creaMarcatoriAssi(stato: StatoCartaAstrale) {
         !Number.isFinite(caseTema.mc) || stato.opzioni.mostraEffemeridi) return null;
     return MarcatoriAssiRender.creaMarcatori(
         stato.asc, stato.mc, stato.diametri.diametroAnelloSegni / 2,
-      stato.opzioni, stato.temaRender,
+      MarcatoriAssiRender.getPresentationOptions(stato.opzioni), stato.temaRender,
       stato.diametri.diametroAnelloElementiCelesti / 2,
     );
 }

@@ -76,7 +76,8 @@ function segmentCrossesRectangle(coords, rectangle, padding = 0.005) {
 
 async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
   outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes,
-  axisPresentation = 'default', protectedAxes = [], synastryPrimary = false) {
+  axisPresentation = 'default', protectedAxes = [], synastryPrimary = false,
+  transitsPrimary = false, externalConnector = true, houseBoundaryRadius) {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -125,6 +126,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     if (showDegrees !== undefined) options.mostraGradiElementiCelesti = showDegrees;
     else delete options.mostraGradiElementiCelesti;
     if (synastryPrimary) options.mostraSinastria = true;
+    if (transitsPrimary) options.mostraTransiti = true;
     const theme = {
       planets: Object.fromEntries(
         Object.entries(source).map(([name, longitude]) =>
@@ -135,8 +137,9 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     const initial = structuredClone(theme);
     const group = await ElementiCelestiRender.getAnelloElementiCelesti(
       theme, 0, [], symbolScale, options, [], [], innerRingRadius * 2, outerRingRadius * 2,
-      innerRingRadius * 2, true, false, 'longitude', true, false, 0, 0, 0, false, false,
-      axisPresentation, protectedAxes,
+      innerRingRadius * 2, externalConnector, false, 'longitude', true, false,
+      0, 0, 0, false, false,
+      axisPresentation, protectedAxes, houseBoundaryRadius,
     );
     assert.deepEqual(theme, initial, 'renderer must not mutate original positions');
     return { group, labels, fonts };
@@ -187,10 +190,21 @@ test('composite planets stay on at most two radii without intersecting primary a
     const protectedAxes = [(natalAsc + offset) % 360, (natalMc + offset) % 360];
     const { group, labels } = await makeScene(true, 0, 1,
       3.7355 * 146.64 / 120 / 2, 3.7355 / 2,
-      shifted, 'transit-overlay', protectedAxes);
+      shifted, 'transit-overlay', protectedAxes, false, false, false);
     assert.deepEqual(labels, [], 'transits need no additional degree labels');
     const glyphs = group.children.filter(child => child.userData.planet);
+    const leaderLines = group.children.filter(child => child.userData.transitConnector);
     assert.equal(glyphs.length, Object.keys(source).length);
+    assert.equal(leaderLines.length, Object.keys(source).length,
+      'every transit planet gets a translucent true-longitude link to the degree grid');
+    for (const connector of leaderLines) {
+      assert.equal(connector.material.transparent, true);
+      assert.equal(connector.material.opacity, 0.45);
+      const p = connector.geometry.attributes.position.array;
+      const anchor = polar(90 + shifted[connector.userData.transitConnector], 3.7355 / 2 + 0.012);
+      assert.ok(distance({x: p[3], y: p[4]}, anchor) < 1e-6,
+        `${connector.userData.transitConnector} leader must hit its true astronomical longitude`);
+    }
     const radii = new Set(glyphs.map(mesh => Math.hypot(mesh.position.x, mesh.position.y).toFixed(6)));
     assert.ok(radii.size <= 2, `composite layout used ${radii.size} planet radii`);
     assert.ok(radii.size >= 1);
@@ -206,6 +220,50 @@ test('composite planets stay on at most two radii without intersecting primary a
       assert.equal(overlapArea(visibleRectangle(glyphs[i]), visibleRectangle(glyphs[j])), 0,
         `${glyphs[i].userData.planet}/${glyphs[j].userData.planet} overlap at rotation ${offset}`);
     }
+  }
+});
+
+test('transits preserve a roomy natal planet band with integer degrees and a true house boundary tick', async () => {
+  const outer = 3.7355 * 103 / 120 / 2;
+  const inner = 3.7355 * 67.1 / 120 / 2;
+  const houseBoundary = 3.7355 * 66.16 / 120 / 2;
+  const source = {Sun: 358.4, Moon: 359.1, Mercury: 0.3, Venus: 1.2, Mars: 2.4};
+  const {group, labels} = await makeScene(true, 0, 1, outer, inner, source,
+    'primary-overlay', [], false, true, true, houseBoundary);
+  assert.equal(labels.length, 5, 'natal degrees must remain visible alongside transits');
+  const glyphs = group.children.filter(child => child.userData.planet);
+  assert.equal(glyphs.length, 5);
+  assert.ok(glyphs.every(glyph => Math.abs(glyph.scale.x - 0.18) < 1e-8),
+    'natal conjunctions should keep their usual larger full-size glyphs');
+  assert.ok(new Set(glyphs.map(glyph => Math.hypot(glyph.position.x, glyph.position.y).toFixed(6))).size <= 2,
+    `transit mode must not send natal conjunctions into multiple arbitrary radii: ${JSON.stringify(glyphs.map(glyph => [glyph.userData.planet,Math.hypot(glyph.position.x,glyph.position.y),glyph.scale.x]))}`);
+  const badges = group.children.filter(child => child.material?.map?.isCanvasTexture);
+  const visible = [...glyphs, ...badges];
+  for (let i = 0; i < visible.length; i++) for (let j = i + 1; j < visible.length; j++) {
+    if (i < glyphs.length && j - glyphs.length === i) continue; // own degree badge
+    assert.equal(overlapArea(visibleRectangle(visible[i]), visibleRectangle(visible[j])), 0,
+      `natal glyphs and degree badges must remain separated when transits are enabled: ${visible[i].userData.planet??`badge${badges.indexOf(visible[i])}`} / ${visible[j].userData.planet??`badge${badges.indexOf(visible[j])}`}`);
+  }
+  const ticks = group.children.filter(child => child.userData.planetHouseTick);
+  assert.equal(ticks.length, 5);
+  for (const tick of ticks) {
+    const p = tick.geometry.attributes.position.array;
+    assert.ok(Math.abs(Math.hypot(p[0], p[1]) - houseBoundary) < 1e-6,
+      'reference tick must start precisely on the visible house ring');
+  }
+});
+
+test('synastry natal house ticks touch the house ring even when its glyph band is narrower', async () => {
+  const outer = 4.5723 * 103 / 120 / 2;
+  const planetBandInner = 4.5723 * 77 / 120 / 2;
+  const houseBoundary = 4.5723 * 74.16 / 120 / 2;
+  const {group, labels} = await makeScene(true, 0, 1, outer, planetBandInner,
+    {Sun: 45, Moon: 78, Venus: 155}, 'primary-overlay', [], true,
+    false, true, houseBoundary);
+  assert.equal(labels.length, 0);
+  for (const tick of group.children.filter(child => child.userData.planetHouseTick)) {
+    const p = tick.geometry.attributes.position.array;
+    assert.ok(Math.abs(Math.hypot(p[0], p[1]) - houseBoundary) < 1e-6);
   }
 });
 

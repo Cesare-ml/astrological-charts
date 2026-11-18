@@ -42,6 +42,18 @@ test('composite layout is deterministic and never introduces a third orbit', () 
   }
 });
 
+test('isolated transiting planets sit on the orbit closest to the external degree ruler', () => {
+  const gridRadius = 3.7355 / 2;
+  const positions = layoutCompositePlanetSymbols({Sun: 80, Saturn: 210},
+    gridRadius, gridRadius * 146.64 / 120, 0.17, 0.17 * 605 / 875,
+    90, {preferInnerOrbit: true});
+  const preferredRadius = gridRadius + 0.08 + 0.17 / 2 + 0.015 + 0.012;
+  for (const [name, position] of Object.entries(positions)) {
+    assert.ok(Math.abs(position.radius - preferredRadius) < 1e-8,
+      `${name}: isolated transit should be beside the ruler, not on the far rim`);
+  }
+});
+
 test('isolated symbols stay exactly on their true degrees', () => {
   const source = { Sun: 12.5, Moon: 90.2, Venus: 180.5, Mars: 280.1 };
   const positions = layoutPlanetSymbols(source, inner, outer, width, height, true);

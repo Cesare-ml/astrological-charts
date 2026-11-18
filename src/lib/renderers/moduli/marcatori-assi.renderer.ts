@@ -104,6 +104,17 @@ function textLabel(value: string, color: string, width: number, height: number,
 
 /** Restrained hand-drawn-style axis markers, independently switchable. */
 export class MarcatoriAssiRender {
+  /** In transit charts preserve the four axis strokes, but not their labels. */
+  public static getPresentationOptions(opzioni: any): any {
+    return opzioni?.mostraTransiti === true ? {
+      ...opzioni,
+      mostraNomiAssi: false,
+      mostraGradiAssi: false,
+      mostraOraPlanetariaAscendente: false,
+      mostraDirezioneMotoMC: false,
+    } : opzioni;
+  }
+
   public static async creaMarcatori(asc: number, mc: number, zodiacRadius: number,
     opzioni: any, temaRender: any, degreeTickRadius = zodiacRadius * 103 / 120): Promise<THREE.Group> {
     const group = new THREE.Group();

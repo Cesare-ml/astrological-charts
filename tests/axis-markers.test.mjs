@@ -129,6 +129,25 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.deepEqual(hidden.texts, []);
 });
 
+test('transit charts retain their axis stems but hide names, degrees, hour and MC motion', async () => {
+  const original = structuredClone(defaultOpzioniGrafico);
+  original.mostraDirezioneMotoMC = true;
+  const normal = MarcatoriAssiRender.getPresentationOptions(original);
+  assert.equal(normal, original, 'ordinary natal presentation must remain identical');
+  const suppressed = MarcatoriAssiRender.getPresentationOptions({...original, mostraTransiti: true});
+  for (const option of ['mostraNomiAssi', 'mostraGradiAssi',
+    'mostraOraPlanetariaAscendente', 'mostraDirezioneMotoMC']) {
+    assert.equal(suppressed[option], false);
+  }
+  const {group, texts, assets} = await makeMarkers(suppressed);
+  assert.deepEqual(texts, []);
+  assert.deepEqual(assets, []);
+  assert.deepEqual(group.children.filter(child => child.userData.axisStem)
+    .map(child => child.userData.axisStem).sort(), ['ASC','DS','IC','MC']);
+  assert.ok(!group.children.some(child => child.userData.axisMarker === 'MC-motion'));
+  assert.ok(!group.children.some(child => child.userData.axisName || child.userData.axis));
+});
+
 test('axis strokes stop at the zodiac degree ticks and degree captions follow the reference placement', async () => {
   const radius = 2.286;
   const tickRadius = radius * 103 / 120;

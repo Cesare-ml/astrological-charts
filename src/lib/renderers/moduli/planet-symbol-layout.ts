@@ -30,11 +30,15 @@ export interface BoundedSymbolOptions {
   /** Real house-boundary ticks, checked against each degree badge separately. */
   houseTickInnerRadius?: number;
   houseTickOuterRadius?: number;
+  /** Preserve the full-size natal symbols within a reduced composite wheel. */
+  compactPrimaryTransit?: boolean;
 }
 
 export interface CompositeSymbolOptions {
   /** Longitudes of the primary chart's axes, whose external arrows must stay clear. */
   protectedAxisDegrees?: number[];
+  /** Transits sit directly outside the external degree ruler, not at the far edge. */
+  preferInnerOrbit?: boolean;
 }
 
 interface Body {
@@ -73,12 +77,20 @@ export function layoutCompositePlanetSymbols(
   // A margin around the full square bounding box keeps rotated positions
   // inside the thin ring even at 45 degrees on the screen.
   const clearance = Math.max(symbolWidth, symbolHeight) / 2 + 0.015;
-  const mainRadius = outerRadius - clearance;
+  // In transit mode the ruler extends up to 0.08 beyond the zodiac. Keep the
+  // main planet orbit just past that tick line, and use the outer orbit only
+  // when needed for conjunctions. Synastry uses its existing outer preference.
+  const nearGridRadius = innerRadius + 0.08 + clearance + 0.012;
+  const mainRadius = options.preferInnerOrbit ? nearGridRadius : outerRadius - clearance;
   if (mainRadius <= innerRadius + clearance) {
     throw new Error('Insufficient space for the composite planetary ring');
   }
-  const secondRadius = mainRadius - Math.max(symbolWidth, symbolHeight) - 0.015;
-  const radii = secondRadius >= innerRadius + clearance
+  const secondRadius = options.preferInnerOrbit
+    ? outerRadius - clearance : mainRadius - Math.max(symbolWidth, symbolHeight) - 0.015;
+  const secondFits = options.preferInnerOrbit
+    ? secondRadius > mainRadius + 0.065
+    : secondRadius >= innerRadius + clearance;
+  const radii = secondFits
     ? [mainRadius, secondRadius] : [mainRadius];
   const protectedDegrees = (options.protectedAxisDegrees ?? [])
     .filter(Number.isFinite)
@@ -235,10 +247,16 @@ function layoutTwoFixedLanes(
   const isolatedScale = Math.max(1, options.isolatedScale ?? 1);
   // Reserve enough room for the isolated large glyph independently: making
   // its inward inset should not unnecessarily compress the conjunction lanes.
-  const outerLane = outerRadius - symbolWidth / 2 - 0.03;
+  const compactPrimaryTransit = options.compactPrimaryTransit === true;
+  const outerLane = outerRadius - symbolWidth / 2 - (compactPrimaryTransit ? 0.012 : 0.03);
   const isolatedLane = Math.min(outerLane,
     outerRadius - symbolWidth * isolatedScale / 2 - 0.01 - Math.max(0, options.isolatedRadialInset ?? 0));
-  const innerLane = innerRadius + (showDegrees ? radialOffset + labelWidth / 2 : symbolWidth / 2) + 0.01;
+  const innerLane = Math.max(
+    innerRadius + (showDegrees ? radialOffset + labelWidth / 2 : symbolWidth / 2) + 0.01,
+    compactPrimaryTransit && showDegrees && options.houseTickOuterRadius !== undefined
+      ? options.houseTickOuterRadius + radialOffset + labelHeight / 2 + 0.006
+      : 0,
+  );
   if (innerLane >= outerLane - symbolWidth - 0.015) return undefined;
   const ticks = showDegrees ? houseTickSegments(bodies, chartRotation, options) : [];
 
@@ -302,7 +320,7 @@ function layoutTwoFixedLanes(
         let explored = 0;
         // A dense seven-body group may be geometrically impossible within two
         // fixed tracks. Bound the search so rendering never stalls the UI.
-        const maxSearchNodes = group.length >= 7 ? 3000 : 13000;
+        const maxSearchNodes = compactPrimaryTransit ? 150000 : group.length >= 7 ? 3000 : 13000;
         const search = (i: number): boolean => {
           if (i === order.length) return true;
           if (++explored > maxSearchNodes) return false;
