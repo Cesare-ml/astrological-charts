@@ -94,6 +94,10 @@ export class ElementiCelestiRender {
       coloreImgFolder =  SkinManager.skins[opzioni.settaggi.skin_id].anelloElementiCelesti.sinastria?.coloreImgFolder ??
         coloreImgFolder;
     }
+    // Only the guides from the bodies to the zodiac become lighter. The
+    // precise position ticks on the house boundary retain their own contrast.
+    const coloreLineeSegni = new THREE.Color(coloreLinea)
+      .lerp(new THREE.Color('#ffffff'), 0.45).getStyle();
 
     var raggioConfineAnelloPianeti = diametroCerchioEsterno/2;
 
@@ -103,6 +107,8 @@ export class ElementiCelestiRender {
     // Transit/synastry rings may be considerably thinner. Preserve their
     // compact tangential labels instead of squeezing symbols past the rim.
     const hasWidePlanetBand = raggioConfineAnelloPianeti - innerRingRadius >= 0.45;
+    const mostraTrattiniCase = lineaSuCerchioEsterno && !isElementiSinastria &&
+      parametroDiRender === 'longitude';
     // Natal glyphs gain a little visual weight, with the very same footprint
     // passed to the collision solver. The narrow transit/synastry bands stay
     // at their established compact size.
@@ -114,6 +120,7 @@ export class ElementiCelestiRender {
       hasWidePlanetBand ? innerRingRadius + 0.015 * simboliScale : innerRingRadius,
       hasWidePlanetBand ? raggioConfineAnelloPianeti - 0.015 * simboliScale : raggioConfineAnelloPianeti,
       simboliScale, mostraGradi, 90 - ascendente + degOffs, hasWidePlanetBand,
+      mostraTrattiniCase ? innerRingRadius : undefined,
     );
 
     //parti arabe render freccia+elemento in evidenza
@@ -276,7 +283,8 @@ export class ElementiCelestiRender {
       if(lineaSuCerchioEsterno) {
         const p2 = this.pointOnRing(elDegDiRender, raggioConfineAnelloPianeti);
         const p1 = this.pointOnRing(glyphDegree, glyphRadius + glyphHalfHeight + 0.012);
-        var lineaB = OggettiSempliciRender.getLinea(p1,p2,coloreLinea);
+        var lineaB = OggettiSempliciRender.getLinea(p1,p2,coloreLineeSegni);
+        lineaB.userData.planetConnector = nome;
         group.add(lineaB);
       }
 
@@ -285,10 +293,9 @@ export class ElementiCelestiRender {
       // Neither endpoint may cross into the house-number/aspect ring. It is NOT a
       // connector from the glyph to the house and never follows the glyph's
       // displaced visual angle. Cardinal axes have their own markers.
-      if (lineaSuCerchioEsterno && !isElementiSinastria &&
-          parametroDiRender === 'longitude' && !['AS', 'DS', 'MC', 'IC'].includes(nome)) {
+      if (mostraTrattiniCase && !['AS', 'DS', 'MC', 'IC'].includes(nome)) {
         const houseTickRadius = innerRingRadius;
-        const start = this.pointOnRing(elDegDiRender, houseTickRadius + 0.007);
+        const start = this.pointOnRing(elDegDiRender, houseTickRadius);
         const end = this.pointOnRing(elDegDiRender, houseTickRadius + 0.060);
         const houseTick = new THREE.Line(
           new THREE.BufferGeometry().setFromPoints([
@@ -405,6 +412,7 @@ export class ElementiCelestiRender {
     elementiCelesti, parametroDiRender,
     raggioInterno = 1.4, raggioEsterno = 1.8,
     simboliScale = 1, mostraGradi = true, chartRotation = 0, largeDegreeLabels = false,
+    houseTickInnerRadius?: number,
   ) {
     const longitudes: Record<string, number> = {};
     for (const nome in elementiCelesti) longitudes[nome] = elementiCelesti[nome][parametroDiRender];
@@ -415,11 +423,14 @@ export class ElementiCelestiRender {
       raggioEsterno - raggioInterno > 0.06 ? {
         maxAngularDisplacement: largeDegreeLabels ? 5 : 3,
         fixedTwoLanes: largeDegreeLabels,
-        isolatedScale: largeDegreeLabels ? 0.23 / glyphBaseSize : 1,
+        isolatedScale: largeDegreeLabels ? 0.24 / glyphBaseSize : 1,
+        isolatedRadialInset: largeDegreeLabels ? 0.05 * simboliScale : 0,
         labelWidth: (largeDegreeLabels ? 0.13 : 0.12) * simboliScale,
         labelHeight: (largeDegreeLabels ? 0.075 : 0.06) * simboliScale,
         labelTangentOffset: (largeDegreeLabels ? 0 : 0.17) * simboliScale,
         labelRadialOffset: (largeDegreeLabels ? 0.152 : 0) * simboliScale,
+        houseTickInnerRadius,
+        houseTickOuterRadius: houseTickInnerRadius === undefined ? undefined : houseTickInnerRadius + 0.06,
       } : undefined,
     );
     const result = {};

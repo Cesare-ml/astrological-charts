@@ -13,16 +13,17 @@ placement modes used by the rendered celestial glyphs:
 
 1. unwraps zodiac positions at their largest empty arc (so 359° and 0° are neighbours);
 2. allows up to **±5°** in the wide natal band and searches one main orbit first, adding **only one fixed inner orbit** when necessary;
-3. draws truly isolated natal bodies larger (`0.23 × symbolScale`), while planets in a nearby conjunction retain their equal compact size (`0.18 × symbolScale`) and degree labels radially inward, toward the houses; narrow transit/synastry rings retain `0.17 × symbolScale`;
-4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions;
+3. draws truly isolated natal bodies larger (`0.24 × symbolScale`) and slightly farther from the zodiac, while planets in a nearby conjunction retain their equal compact size (`0.18 × symbolScale`) and degree labels radially inward, toward the houses; narrow transit/synastry rings retain `0.17 × symbolScale`;
+4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions and each degree label against **every true-longitude house tick segment**;
 5. retains an emergency adaptive fallback for groups that are mathematically impossible in two lanes while respecting the angular bound;
-6. anchors the one retained outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed; a separate small tick starts **outside** the house boundary, never inside its ring.
+6. anchors the one retained, paler-gray outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed; a separate small tick starts **exactly on the outer house boundary**, never inside its ring.
 
 For ordinary natal conjunctions, the two-track solver tests multiple insertion
 orders and half-degree steps within ±5°. The default five-body Aries-point
 fixture fits at a uniform compact glyph size (`0.18 × symbolScale`) on only
-two radii; **isolated** planets are instead enlarged to `0.23 × symbolScale`
-while sharing exactly the same primary orbit. Nearby planets keep their
+two radii; **isolated** planets are instead enlarged to `0.24 × symbolScale`
+and placed on a slightly more inward orbit (an extra `0.05 × symbolScale`
+radial gap from the signs). Nearby planets keep their
 compact glyphs even if their group fits on the main orbit. The labels sit
 `0.152 × glyph scale` world units inward from their glyphs, on the same radial bearing. A pathologically
 dense arrangement (e.g. eight exactly coincident planets) may be impossible
@@ -42,7 +43,10 @@ instead of `75.1/120`); transit and synastry house proportions are left
 unchanged. Planet degree badges now sit **directly beside their glyphs**,
 instead of occupying an independent ring far away. The two-track solver accounts
 for the badge size, so the two cannot collide with another planet or badge.
-The glyphs retain a margin before the sign ring. Transit and synastry rings
+The layout also clips candidate degree-badge rectangles against all exact tick
+segments from the house ring's outer edge to `+0.06` world units. Only those
+specific segments are protected; a planet group is not squeezed away from
+the entire house circumference. The glyphs retain a margin before the sign ring. Transit and synastry rings
 also use bounded placement with their smaller pre-existing degree label when
 there is a nonzero usable radial band; degenerate near-zero-width rings retain
 the legacy layout to avoid making chart rendering fail.
@@ -85,8 +89,8 @@ settings (legacy callers omitting that property retain the old behavior):
 | `mostraFrecciaMC` | Short violet axis ending in the same broad, two-stroke open V arrowhead |
 | `mostraRetroFrecciaIC` | Plain lavender line with a smooth circular terminal disc of the same enlarged size as DS |
 | `mostraGradiAssi` | ASC and MC: degree + whole arcminutes (e.g. `20° 0′`), rendered in upright serif; ASC degree **below** its name after the arrowhead, MC degree **above** its arrowhead but **below** the name, both centered to their axis |
-| `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour **above the shortened ASC arrow**, if source data exists (no “Ora” caption) |
-| `mostraDirezioneMotoMC` | Optional filled lilac movement triangle, **off by default** in new settings to match the reference's clean MC arrow; when explicitly enabled, points left/right according to signed `mcSpeed` |
+| `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour **centred above the ASC heading**, if source data exists (no “Ora” caption) |
+| `mostraDirezioneMotoMC` | Optional filled lilac movement triangle, **off by default** in new settings to match the reference's clean MC arrow; when explicitly enabled, it sits halfway between the zodiac edge and the arrowhead base and points left/right according to signed `mcSpeed` |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
 Axis positions always use the house system selected in `settaggi.domificazione_selezionata`;
@@ -95,10 +99,11 @@ degree and whole arcminutes within the sign, rounded to the nearest minute;
 the original seconds and fractions are retained in the input data. DS and IC
 now use small `THREE.CircleGeometry` discs rather than square `THREE.Points`,
 with slightly enlarged radius and stable shape at any display resolution.
-The external axis stems have been further shortened: ASC +0.17, DSC +0.22,
+The external axis stems have been further shortened: ASC +0.17, DS +0.22,
 MC +0.18 and IC +0.22 world units outside the zodiac, leaving more air
-between the small terminal dots and the DSC/IC captions. The headings
-ASC/DSC/MC/IC are drawn using the same **bold Times New Roman-like**
+around the small terminal dots; the **DS and IC headings are now closer** to
+their respective dots, without touching them. The headings
+ASC/DS/MC/IC are drawn using the same **bold Times New Roman-like**
 canvas font in every skin, not images from astrological-assets. Their geometry
 preserves the source canvas aspect ratio (512×160) so the text is not squashed
 horizontally. The external ASC/DS/MC/IC strokes terminate at their **true zodiacal
@@ -115,7 +120,7 @@ host-asset resolver and tints it to match ASC; it does not use a Unicode planet
 character or bundle an additional image.
 
 The filled MC movement triangle has its base directly on the arrow shaft,
-near the midpoint of the **shortened** external part of the axis. It points toward increasing ecliptic longitude for an
+halfway between the **zodiac boundary and start of the V arrowhead**. It points toward increasing ecliptic longitude for an
 ordinary instant in the sky. To override it for a chart calculated through
 directions/progressions, supply a signed `mcSpeed` under
 `TemaRender.houses[selectedHouseSystem]` (or `TemaRender.mcSpeed`). A negative

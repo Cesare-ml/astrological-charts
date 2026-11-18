@@ -157,8 +157,8 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
     'ASC degree must be below the label, not along the arrow shaft');
   assert.ok(ascName.position.x < -(radius + 0.17),
     'ASC heading must sit beyond the shortened arrowhead');
-  assert.ok(planetaryHour.position.x > ascDegree.position.x + 0.18,
-    'planetary-hour glyph belongs above the arrow, not in the two-line ASC caption');
+  assert.ok(Math.abs(planetaryHour.position.x - ascName.position.x) < 1e-6,
+    'the planetary-hour glyph must be horizontally centered above ASC');
   assert.ok(planetaryHour.position.y > ascName.position.y + 0.18,
     'planetary hour must remain above the shaft');
   for (const axis of ['DS', 'IC']) {
@@ -181,8 +181,9 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
   for (const axis of ['DS', 'IC']) {
     const terminal = group.children.find(child => child.userData.axisMarker === axis);
     const heading = group.children.find(child => child.userData.axisName === axis);
-    assert.ok(terminal.position.distanceTo(heading.position) > 0.27,
-      `${axis}: short marker must leave visible space before its serif name`);
+    assert.ok(terminal.position.distanceTo(heading.position) >= 0.18 &&
+      terminal.position.distanceTo(heading.position) <= 0.22,
+      `${axis}: shortened name-to-dot spacing must be close but not overlapping`);
   }
   assert.ok(Math.abs(mcDegree.position.x * mcRadial.y - mcDegree.position.y * mcRadial.x) < 1e-6,
     'MC degree must be centered on the axis, never displaced to its left');
@@ -216,6 +217,15 @@ test('individual annotations and signed MC motion can be hidden independently', 
     [...backwards.geometry.attributes.position.array],
     'the small MC arrow must reverse if the supplied MC velocity is negative',
   );
+  const mcAngle = (90 - 20.7 + 298.94) * Math.PI / 180;
+  const radial = {x: -Math.sin(mcAngle), y: Math.cos(mcAngle)};
+  const radii = [...Array.from(forwards.geometry.attributes.position.array)].reduce((result, coordinate, index, arr) => {
+    if (index % 3 === 0) result.push(coordinate * radial.x + arr[index + 1] * radial.y);
+    return result;
+  }, []);
+  const triangleMidpoint = (Math.min(...radii) + Math.max(...radii)) / 2;
+  assert.ok(Math.abs(triangleMidpoint - (2.286 + (0.18 - 0.075) / 2)) < 0.01,
+    'MC movement triangle belongs halfway between the signs and the arrowhead base');
 });
 
 test('axis names are geometry-shared between skins, but the official palette is skin-scoped', async () => {
@@ -233,7 +243,7 @@ test('axis names are geometry-shared between skins, but the official palette is 
   assert.equal(originalMc.material.color.getHexString(), 'b58bd8');
   assert.equal(officialMc.material.color.getHexString(), 'a981d6');
   assert.ok(official.fonts.some(font => font.includes('Georgia')), 'official heading typography');
-  assert.ok(official.texts.includes('DSC'));
-  assert.ok(!official.texts.some(value => value.startsWith('DSC ') || value.startsWith('IC ')),
-    'DSC/IC must not repeat the opposite cardinal degree');
+  assert.ok(official.texts.includes('DS') && !official.texts.includes('DSC'));
+  assert.ok(!official.texts.some(value => value.startsWith('DS ') || value.startsWith('IC ')),
+    'DS/IC must not repeat the opposite cardinal degree');
 });

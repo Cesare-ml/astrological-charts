@@ -168,9 +168,9 @@ export class MarcatoriAssiRender {
       // universal; only the text color remains skin-specific.
       for (const [key, title, angle, shift, tangentShift, visible] of [
         ['ASC', 'ASC', ascAngle, 0.41, -0.063, opzioni.mostraFrecciaAscendente !== false],
-        ['DS', 'DSC', dsAngle, 0.52, 0, opzioni.mostraRetroFrecciaDiscendente !== false],
+        ['DS', 'DS', dsAngle, 0.41, 0, opzioni.mostraRetroFrecciaDiscendente !== false],
         ['MC', 'MC', mcAngle, 0.53, 0, opzioni.mostraFrecciaMC !== false],
-        ['IC', 'IC', icAngle, 0.50, 0, opzioni.mostraRetroFrecciaIC !== false],
+        ['IC', 'IC', icAngle, 0.43, 0, opzioni.mostraRetroFrecciaIC !== false],
       ] as const) {
         if (!visible) continue;
         // Canvas is 512×160 (3.2:1). Matching that aspect ratio on the plane
@@ -207,10 +207,10 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraOraPlanetariaAscendente !== false) {
       const name = planetaryHourAt(temaRender?.orePlanetarie);
       if (name) {
-        // Keep the real planetary-hour glyph above the shortened ASC arrow,
-        // with the heading and its degree in the separate two-line caption.
-        const position = pointOnRing(ascAngle, zodiacRadius + 0.20)
-          .add(pointOnRing(ascAngle + 90, -0.26));
+        // Centre the planetary hour exactly above the ASC heading, not above
+        // the arrow's shaft (the hour and heading share a radial bearing).
+        const position = pointOnRing(ascAngle, zodiacRadius + 0.41)
+          .add(pointOnRing(ascAngle + 90, -0.30));
         // Use the owner's real, skin-tinted chart asset. Unicode planet
         // characters vary by font and don't match the chart's glyph family.
         const glyph = await OggettiSempliciRender.getImg(
@@ -232,9 +232,9 @@ export class MarcatoriAssiRender {
       const house = temaRender?.houses?.[opzioni?.settaggi?.domificazione_selezionata];
       const speed = house?.mcSpeed ?? temaRender?.mcSpeed ?? 1;
       if (Number.isFinite(speed) && speed !== 0) {
-        // A filled directional triangle sits with its base exactly on the
-        // shaft, approximately halfway along the external MC arrow.
-        const radius = zodiacRadius + 0.12;
+        // Centre the directional triangle halfway between the zodiac edge
+        // and the beginning of the MC arrowhead, well below the open V.
+        const radius = zodiacRadius + (0.18 - 0.075) / 2;
         const baseA = pointOnRing(mcAngle, radius - 0.038);
         const baseB = pointOnRing(mcAngle, radius + 0.038);
         const tip = pointOnRing(mcAngle, radius)

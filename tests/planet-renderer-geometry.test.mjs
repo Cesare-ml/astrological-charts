@@ -50,6 +50,30 @@ function overlapArea(a, b) {
   return Math.max(0, width) * Math.max(0, height);
 }
 
+function segmentCrossesRectangle(coords, rectangle, padding = 0.005) {
+  const xMin = rectangle.x - rectangle.width / 2 - padding;
+  const xMax = rectangle.x + rectangle.width / 2 + padding;
+  const yMin = rectangle.y - rectangle.height / 2 - padding;
+  const yMax = rectangle.y + rectangle.height / 2 + padding;
+  let minT = 0, maxT = 1;
+  for (const [start, end, min, max] of [
+    [coords[0], coords[3], xMin, xMax],
+    [coords[1], coords[4], yMin, yMax],
+  ]) {
+    const delta = end - start;
+    if (Math.abs(delta) < 1e-12) {
+      if (start < min || start > max) return false;
+    } else {
+      const lo = (min - start) / delta;
+      const hi = (max - start) / delta;
+      minT = Math.max(minT, Math.min(lo, hi));
+      maxT = Math.min(maxT, Math.max(lo, hi));
+      if (minT > maxT) return false;
+    }
+  }
+  return true;
+}
+
 async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
   outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes) {
   const originalGetImg = OggettiSempliciRender.getImg;
@@ -66,11 +90,12 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
       mesh.userData.ref = ref;
       return mesh;
     };
-    OggettiSempliciRender.getLinea = (from, to) => {
+    OggettiSempliciRender.getLinea = (from, to, color) => {
       const line = new THREE.Group();
       line.userData.connector = {
         from: { x: from.x, y: from.y },
         to: { x: to.x, y: to.y },
+        color,
       };
       return line;
     };
@@ -151,14 +176,18 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
     assert.ok(tick, `${name}: missing house boundary reference`);
     assert.equal(tick.userData.trueLongitude, longitude);
     const coords = tick.geometry.attributes.position.array;
-    const start = polar(90 + longitude, innerRadius + 0.007);
+    const start = polar(90 + longitude, innerRadius);
     const end = polar(90 + longitude, innerRadius + 0.060);
     assert.ok(distance({ x: coords[0], y: coords[1] }, start) < 1e-6,
       `${name}: outer house tick must start at the real, not displaced, longitude`);
     assert.ok(distance({ x: coords[3], y: coords[4] }, end) < 1e-6);
-    assert.ok(Math.hypot(coords[0], coords[1]) > innerRadius &&
+    assert.ok(Math.abs(Math.hypot(coords[0], coords[1]) - innerRadius) < 1e-6 &&
       Math.hypot(coords[3], coords[4]) > innerRadius,
-    `${name}: the house tick must not intrude into the house ring`);
+    `${name}: the tick must touch the outside edge without entering the house ring`);
+    const connector = lines.find(line => distance(line.userData.connector.to, outerAnchor) < 1e-8);
+    const lighter = new THREE.Color(connector.userData.connector.color);
+    assert.ok(lighter.r > tick.material.color.r && lighter.g > tick.material.color.g,
+      `${name}: outer connector must be lighter than the true-degree house tick`);
     const glyphRadius = Math.hypot(glyph.position.x, glyph.position.y);
     assert.ok(glyphRadius > innerRadius && glyphRadius < outerRadius, `${name} outside ring`);
     const drawnAngle = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;
@@ -209,15 +238,21 @@ test('isolated planets are enlarged while a five-body conjunction keeps uniform 
     const glyphs = Object.fromEntries(group.children.filter(child => child.userData.ref)
       .map(child => [Object.keys(source).find(name => child.userData.ref.endsWith(`/${name}.png`)), child]));
     const size = name => glyphs[name].scale.x;
-    assert.ok(Math.abs(size('Jupiter') - 0.23) < 1e-8, 'isolated Jupiter must have the larger size');
-    assert.ok(Math.abs(size('Saturn') - 0.23) < 1e-8, 'isolated Saturn must have the larger size');
+    assert.ok(Math.abs(size('Jupiter') - 0.24) < 1e-8, 'isolated Jupiter must be slightly larger again');
+    assert.ok(Math.abs(size('Saturn') - 0.24) < 1e-8, 'isolated Saturn must be slightly larger again');
     for (const name of ['Sun','Moon','Mercury','Venus','Mars']) {
       assert.ok(Math.abs(size(name) - 0.18) < 1e-8,
         `${name} in the conjunction must retain the compact size`);
     }
     const allGlyphs = Object.values(glyphs);
-    assert.ok(new Set(allGlyphs.map(mesh => Math.hypot(mesh.position.x, mesh.position.y).toFixed(6))).size <= 2,
-      'larger isolated glyphs must not introduce extra planet orbits');
+    assert.ok(new Set(['Sun','Moon','Mercury','Venus','Mars'].map(name =>
+      Math.hypot(glyphs[name].position.x, glyphs[name].position.y).toFixed(6))).size <= 2,
+      'the conjunction must still use at most two tracks');
+    const isolatedOuterEdge = Math.hypot(glyphs.Jupiter.position.x, glyphs.Jupiter.position.y) + 0.24 / 2;
+    const compactOuterEdge = Math.max(...['Sun','Moon','Mercury','Venus','Mars'].map(name =>
+      Math.hypot(glyphs[name].position.x, glyphs[name].position.y) + 0.18 / 2));
+    assert.ok(compactOuterEdge - isolatedOuterEdge >= 0.025,
+      `rotation ${offset}: isolated large planets need a greater zodiac gap (actual ${compactOuterEdge - isolatedOuterEdge})`);
     for (const [name, longitude] of Object.entries(source)) {
       const glyph = glyphs[name];
       const display = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;
@@ -324,5 +359,28 @@ test('degree badge collision geometry stays consistent near the wide-band thresh
     if (a.owner === b.owner) continue;
     assert.ok(overlapArea(a.box, b.box) < 0.00001,
       `${a.owner}/${b.owner}: badge and glyph footprints diverged`);
+  }
+});
+
+test('planetary degree labels never cover any real-longitude tick on the house boundary', async () => {
+  const natalInner = 4.5723 * 67.1 / 120 / 2;
+  const natalOuter = 4.5723 * 103 / 120 / 2;
+  const dataSets = [
+    planetLongitudes,
+    {Sun: 358.4, Moon: 359.1, Mercury: 0.3, Venus: 1.2, Mars: 2.4},
+    {Sun: 1, Moon: 1.15, Mercury: 1.3, Venus: 1.45,
+      Mars: 1.6, Jupiter: 1.75, Saturn: 1.9, Uranus: 2.05},
+  ];
+  for (const source of dataSets) for (const offset of [0, 30, 60, 90, 145, 210, 270, 315]) {
+    const {group} = await makeScene(true, offset, 1, natalOuter, natalInner, source);
+    const labels = group.children.filter(child => child.material?.map?.isCanvasTexture);
+    const ticks = group.children.filter(child => child.userData.planetHouseTick);
+    assert.equal(labels.length, Object.keys(source).length);
+    assert.equal(ticks.length, Object.keys(source).length);
+    for (const label of labels) for (const tick of ticks) {
+      const coords = tick.geometry.attributes.position.array;
+      assert.equal(segmentCrossesRectangle(coords, visibleRectangle(label)), false,
+        `rotation ${offset}: a degree badge covers ${tick.userData.planetHouseTick}'s house tick`);
+    }
   }
 });
