@@ -2,11 +2,18 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { chromium, firefox } from 'playwright-core';
+import { installTextureCounters, summarizeTextureCheckpoints } from './texture-benchmark-core.mjs';
 
 const browserName = process.env.CHART_TEST_BROWSER || 'chromium';
 assert.ok(['chromium', 'firefox'].includes(browserName), 'CHART_TEST_BROWSER must be chromium or firefox');
 const count = Number(process.env.CHART_BENCH_REDRAWS || '30');
 assert.ok(Number.isInteger(count) && count >= 1 && count <= 200, 'CHART_BENCH_REDRAWS must be an integer from 1 to 200');
+const rawGrowthLimit = process.env.CHART_BENCH_MAX_TEXTURE_GROWTH;
+assert.ok(rawGrowthLimit === undefined || /^(0|[1-9]\d*)$/.test(rawGrowthLimit),
+  'CHART_BENCH_MAX_TEXTURE_GROWTH must be a nonnegative integer');
+const maxTextureGrowth = rawGrowthLimit === undefined ? null : Number(rawGrowthLimit);
+assert.ok(maxTextureGrowth === null || Number.isSafeInteger(maxTextureGrowth),
+  'CHART_BENCH_MAX_TEXTURE_GROWTH must be a safe integer');
 const candidates = browserName === 'firefox'
   ? [process.env.FIREFOX_PATH, firefox.executablePath()]
   : [process.env.CHROME_PATH, 'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -20,18 +27,7 @@ const browser = browserName === 'firefox'
 
 try {
   const page = await browser.newPage({viewport: {width: 1200, height: 1000}});
-  await page.addInitScript(() => {
-    const stats = {created: 0, deleted: 0, contextLost: 0};
-    globalThis.__benchmarkWebGL = stats;
-    document.addEventListener('webglcontextlost', () => { stats.contextLost++; }, true);
-    for (const type of [globalThis.WebGLRenderingContext, globalThis.WebGL2RenderingContext]) {
-      if (!type) continue;
-      for (const [name, field] of [['createTexture', 'created'], ['deleteTexture', 'deleted']]) {
-        const original = type.prototype[name];
-        type.prototype[name] = function(...args) { stats[field]++; return original.apply(this, args); };
-      }
-    }
-  });
+  await page.addInitScript(installTextureCounters);
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
@@ -63,6 +59,11 @@ try {
   const round = n => Math.round(n * 10) / 10;
   const percentile = p => round(sorted[Math.ceil(p * sorted.length) - 1]);
   const webgl = await page.evaluate(() => globalThis.__benchmarkWebGL);
+  const textureHandles = summarizeTextureCheckpoints(checkpoints);
+  if (maxTextureGrowth !== null) {
+    assert.ok(textureHandles.netGrowth <= maxTextureGrowth,
+      `Outstanding texture-handle growth ${textureHandles.netGrowth} exceeds configured limit ${maxTextureGrowth}`);
+  }
   assert.deepEqual(errors, [], `browser errors: ${errors.join('; ')}`);
   assert.equal(webgl.contextLost, 0, 'WebGL context was lost');
   assert.ok(webgl.created > 0 && webgl.deleted > 0, 'expected texture creation and deletion calls');
@@ -72,7 +73,7 @@ try {
     viewport: {width: 1200, height: 1000}, chart: 'natal', alternatingSkins: ['dark', 'light'],
     initialNavigationToReadyMs: round(initialMs), redraws: count,
     redrawMs: {min: round(sorted[0]), median: percentile(0.5), p95: percentile(0.95), max: round(sorted.at(-1))},
-    webglCalls: webgl, checkpoints,
-    limitations: 'End-to-end browser automation timings include UI and scheduling; asset provenance is determined by the running server. Texture calls are not GPU memory or leak measurements. No production artwork, e-ink or hardware compatibility is implied.',
+    webglCalls: webgl, textureHandles, maxTextureGrowth,
+    limitations: 'End-to-end browser automation timings include UI and scheduling; asset provenance is determined by the running server. Texture API counts and sampled outstanding handles are not GPU memory or proof of a leak. No production artwork, e-ink or hardware compatibility is implied.',
   }, null, 2));
 } finally { await browser.close(); }
