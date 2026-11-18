@@ -3,8 +3,60 @@
 export class SkinManager {
     
     public static skins = {
+        // Official VirgoStars look: palette and zodiac backgrounds are skin
+        // choices. Planet/house geometry remains shared with every skin.
+        'virgostars': {
+            'bgColor': '#fffaf7',
+            'sfondoRuota': true,
+            'elementi': ['#ef3136', '#31a51a', '#e5a900', '#5347db'],
+            'cerchioAspetti': {
+                'coloreTexture': '#fffaf7',
+                'texture': null,
+                'imgRisuonatoreSolare': 'risuonatore-solare-vetro-satinato.png',
+                'imgRisuonatoreSolareWidth': 2222,
+                'imgRisuonatoreSolareHeight': 2222,
+                'imgRisuonatoreColore': '#b8aba5',
+                'imgRisuonatoreScale': 2.43,
+                // The approved reference uses a nearly imperceptible motif,
+                // not the dark, filled petals of the original artwork.
+                'imgRisuonatoreSolareOpacity': 0.055,
+            },
+            'anelloElementiCelesti': {
+                'coloreLinea': '#777b7e',
+                'coloreSimboli': '#3d3c3b',
+                'coloreImgFolder': 'nero',
+            },
+            'anelloSegni': {
+                'coloreLinea': '#565e63',
+                'coloreSimboli': 'elementi',
+                'coloreImgFolder': 'bianco',
+                'coloreTexture': '#fffaf7',
+                'texture': null,
+                // Aries, Taurus, Gemini, Cancer; repeated for each element.
+                'coloriSettori': ['#ffebe9', '#eaf5e3', '#fff1dc', '#f0eafd'],
+            },
+            'anelloCase': {
+                'coloreLinea': '#adb3b7',
+                'coloreSimboli': 'elementi',
+                'coloreImgFolder': null,
+                'texture': null,
+            },
+            'anelloTransiti': {
+                'coloreLinea': '#767b7e',
+                'coloreImgFolder': 'nero',
+            },
+            'assi': {
+                'asc': '#e65b12', 'ds': '#13945a',
+                'mc': '#6322c7', 'ic': '#6322c7',
+                'testo': '#22272b', 'motoMC': '#a981d6',
+            },
+            'latitudini': {
+                'elementiCelesti': { 'coloreGriglia': '#b5b5b5', 'coloreEclittica': '#ea655f' },
+            },
+        },
         'dark': {
             'bgColor': '#333',
+            'assi': { 'testo': '#ffffff' },
             'elementi': [
                 '#ff0000',
                 '#29cc09',
@@ -54,6 +106,8 @@ export class SkinManager {
         },
         'dark-bn': {
             'bgColor': '#000',
+            'assi': { 'asc': '#ffffff', 'ds': '#ffffff', 'mc': '#ffffff',
+                'ic': '#ffffff', 'testo': '#ffffff', 'motoMC': '#ffffff' },
             'elementi': [
                 '#ff0000',
                 '#29cc09',
@@ -153,6 +207,8 @@ export class SkinManager {
         },
         'light-bn': {
             'bgColor': '#fefefe',
+            'assi': { 'asc': '#000000', 'ds': '#000000', 'mc': '#000000',
+                'ic': '#000000', 'testo': '#000000', 'motoMC': '#000000' },
             'elementi': [
                 '#ff0000',
                 '#29cc09',
@@ -413,4 +469,15 @@ export class SkinManager {
             }
         }
     };
+
+    public static getAxisColors(id: string): {
+        asc: string; ds: string; mc: string; ic: string; testo: string; motoMC: string;
+    } {
+        const fallback = {
+            asc: '#cb5c12', ds: '#148663', mc: '#6831bf', ic: '#9976ce',
+            testo: '#313131', motoMC: '#b58bd8',
+        };
+        const skin = this.skins[id] as { assi?: Partial<typeof fallback> } | undefined;
+        return { ...fallback, ...skin?.assi };
+    }
 }

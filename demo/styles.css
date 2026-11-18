@@ -17,9 +17,26 @@ button { cursor: pointer; } button:disabled { opacity: .55; cursor: wait; }
 .buttons button { flex: 1; } .buttons .primary { flex: 3; color: #171322; background: #bfabff; border-color: #bfabff; font-weight: 700; }
 h2 { font-size: 16px; margin: 0; } .muted, footer { color: #a3a8b8; font-size: 13px; }
 .status { color: #a9e6c5; overflow-wrap: anywhere; } .status.error { color: #ffb1ab; }
-.stage { display: grid; place-items: center; min-width: 0; }
+.stage { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
 canvas { width: min(100%, 800px); aspect-ratio: 1; display: block; }
 footer { margin-top: 20px; }
 @media (max-width: 700px) { main { padding: 20px 14px; } .workspace { grid-template-columns: 1fr; } .stage { grid-row: 1; padding: 10px; } header { align-items: start; } }
 aside label.check-setting { display: flex; align-items: center; gap: 0.45rem; font-size: 13px; font-weight: 500; }
 .check-setting input { width: auto; margin: 0; }
+.skin-picker { align-self: stretch; padding: 14px; background: #171a25; border: 1px solid #353a4d; border-radius: 12px; }
+.skin-picker-heading { display: flex; align-items: end; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+.skin-picker-heading h2 { font-size: 18px; margin: 0; }
+.skin-picker-kicker { margin: 0 0 3px; font-size: 10px; font-weight: 750; letter-spacing: .13em; color: #b7a4f7; }
+.skin-select-field { min-width: 150px; }
+.skin-select-field label { display: block; font-size: 11px; font-weight: 600; color: #aeb5cc; margin: 0 0 4px; }
+.skin-select-field select { padding: 7px 10px; min-height: 38px; }
+.skin-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.skin-choice { display: flex; align-items: center; justify-content: flex-start; gap: 7px; padding: 7px 9px; min-width: 0; min-height: 42px; font-size: 12px; text-align: left; border: 1px solid #3f4456; background: #222636; color: #d3d7e5; transition: border-color .15s, background .15s; }
+.skin-choice:hover:not(:disabled) { border-color: #b5a5ee; background: #303348; }
+.skin-choice.selected { border-color: #d6c5ff; background: #393049; color: #fff; box-shadow: 0 0 0 1px #a78bfa55 inset; }
+.skin-choice:focus-visible, .skin-select-field select:focus-visible { outline: 2px solid #e3d7ff; outline-offset: 2px; }
+.skin-swatch { display: grid; place-items: center; flex: 0 0 22px; width: 22px; height: 22px; border: 1px solid #ffffff55; border-radius: 50%; }
+.skin-swatch span { width: 12px; height: 12px; border-radius: 50%; }
+.skin-picker-hint { margin: 10px 0 0; color: #a3a8b8; font-size: 11px; }
+@media (max-width: 920px) { .skin-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .skin-picker-heading { align-items: stretch; flex-direction: column; } .skin-select-field { width: 100%; } }

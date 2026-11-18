@@ -2,9 +2,11 @@ import { TemaRender } from '../src/public-api';
 
 // Illustrative longitudes, not calculated ephemerides and not real birth data.
 export const demoBodies = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
-// First five bodies form an intentionally dense conjunction across 0° Aries.
-// This is wholly synthetic: it is not the maintainer's birth chart.
-const longitudes = [358.4, 359.1, 0.3, 1.2, 2.4, 195, 255, 278, 308, 338];
+// Reference composition from the approved VirgoStars mockup: Sun 28° Pisces,
+// Mercury 29° Pisces, Venus 1° Aries, Mars/Moon 2° Aries. The ten bodies,
+// equal houses, ASC 20° Aries and MC 20° Capricorn are illustrative input,
+// NOT calculated ephemerides or a person's natal data.
+const longitudes = [358.4, 2.1, 359.2, 1.1, 2.4, 195, 255, 278, 308, 338];
 export function makeDemoTheme(offset: number): TemaRender {
   const ascendant = (20 + offset) % 360;
   const mc = (290 + offset) % 360;

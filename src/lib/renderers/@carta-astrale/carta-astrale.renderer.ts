@@ -123,7 +123,7 @@ function creaStatoCartaAstrale(opzioni, temaRender, temaRenderTransiti, temaRend
 }
 
 // 2. Calcolo diametri
-function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSinastria) {
+export function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSinastria) {
 
     const diametri: any = {};
 
@@ -135,7 +135,9 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
     let simboliScaleCase = 0.9;
 
     // Diametro base anello segni
-    let diametroAnelloSegni = opzioni.mostraTransiti ? 3.7355 : 4.5723;
+    // Keep the zodiac wheel at the same scale when the transit overlay is
+    // toggled. The external transit grid has its own proportional annulus.
+    let diametroAnelloSegni = 4.5723;
 
     // Transiti sinodici
     if (opzioni.mostraTransitiSinodici && temaRender?.transitiSinodici) {
@@ -147,6 +149,11 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
     diametri.diametroAnelloSegni = diametroAnelloSegni;
 
     // Diametri proporzionali
+    // Ordinary transit charts keep the same roomy proportions as the natal
+    // wheel. The former 75.1/120 house rim made the natal planetary band too
+    // thin and silently changed its glyph size and collision algorithm.
+    // Synastry still reserves room in the centre for its second house wheel.
+    const nestedHouseWheel = opzioni.mostraSinastria || opzioni.mostraTransitiSinodici;
     const proporzioni = {
         diametroAnelloTransitiSinodici: 440 / 120,
         diametroUltimaOrbitaTransitiSinodici: 412.5 / 120,
@@ -160,10 +167,10 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
         diametroAnelloElementiCelesti: 103 / 120,
         diametroCerchioDodecatemori: 91.66 / 120,
         diametroCerchioDodecatemori2: 87.5 / 120,
-        diametroInternoMiniArcoCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 75.1 : 67.1) / 120,
-        diametroAnelloCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 74.16 : 66.16) / 120,
-        diametroCerchioInternoTermini: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 70.03 : 62.03) / 120,
-        diametroInternoAnelloCase: (opzioni.mostraTransiti || opzioni.mostraSinastria ? 63.36 : 55.36) / 120
+        diametroInternoMiniArcoCase: (nestedHouseWheel ? 75.1 : 67.1) / 120,
+        diametroAnelloCase: (nestedHouseWheel ? 74.16 : 66.16) / 120,
+        diametroCerchioInternoTermini: (nestedHouseWheel ? 70.03 : 62.03) / 120,
+        diametroInternoAnelloCase: (nestedHouseWheel ? 63.36 : 55.36) / 120
     };
 
     for (const key in proporzioni) {
@@ -240,7 +247,12 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
     //diametri.coloreCerchio = coloreCerchio;
 
     // Elementi Celesti
-    diametri.diametroInternoAnelloElementoCelesti = diametri.diametroInternoMiniArcoCase;
+    // Synastry does not need a radial row of degree badges on the outer
+    // chart. Use a slightly narrower celestial band without altering the house wheel
+    // or the thickness of the zodiac signs.
+    diametri.diametroInternoAnelloElementoCelesti = opzioni.mostraSinastria
+        ? diametroAnelloSegni * 77 / 120
+        : diametri.diametroInternoMiniArcoCase;
     // Orario Sconosciuto togle le case ed assi
     diametri.diametroEsternoAnelloElementoCelesti = diametri.diametroAnelloElementiCelesti;
     diametri.diametroDodecatemoriAnelloElementoCelesti = diametri.diametroCerchioDodecatemori;
@@ -353,7 +365,11 @@ async function creaElementiCelesti(stato: StatoCartaAstrale) {
         0,//degOffs
         0,//offsDirezioniSemplificate
         0,//offsDirezioniSemplificateFasullo
-        false//cerchia la luna
+        false,//cerchia la luna
+        false,//isElementiSinastria
+        stato.opzioni.mostraTransiti || stato.opzioni.mostraSinastria ? 'primary-overlay' : 'default',
+        [],
+        stato.diametri.diametroAnelloCase / 2,
     );
     stato.gruppoElementiCelesti = group;
     return group;
@@ -398,7 +414,7 @@ async function creaMarcatoriAssi(stato: StatoCartaAstrale) {
         !Number.isFinite(caseTema.mc) || stato.opzioni.mostraEffemeridi) return null;
     return MarcatoriAssiRender.creaMarcatori(
         stato.asc, stato.mc, stato.diametri.diametroAnelloSegni / 2,
-      stato.opzioni, stato.temaRender,
+      MarcatoriAssiRender.getPresentationOptions(stato.opzioni), stato.temaRender,
       stato.diametri.diametroAnelloElementiCelesti / 2,
     );
 }
@@ -426,7 +442,8 @@ async function creaTransiti(stato: StatoCartaAstrale) {
         stato.diametri.diametroGrigliaTransiti,
         stato.diametri.diametroAnelloTransiti,
         stato.diametri.diametroAssiTransiti,//diametro degli assi
-        true
+        true,
+        stato.mc,
     );
     stato.gruppoTransiti = group;
     return group;
@@ -473,6 +490,19 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
     if (!stato) return null;
 
     const disegno = new THREE.Group();
+
+    // Skin-only backdrop. The wheel topology and all longitude positions
+    // below are exactly the same for official and legacy skins.
+    const skin = SkinManager.skins[opzioni.settaggi.skin_id] as {
+        bgColor: string; sfondoRuota?: boolean;
+    };
+    if (skin?.sfondoRuota) {
+        const background = OggettiSempliciRender.getAnello(0,
+          stato.diametri.diametroAnelloSegni / 2, skin.bgColor);
+        background.position.z = -0.012;
+        background.name = 'skin-wheel-background';
+        disegno.add(background);
+    }
 
 
     // Aggiungi tutti i moduli principali

@@ -7,6 +7,24 @@ import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer'
 
 export class SegniRender {
 
+  /** One real-degree tick per degree, at the outside rim of the zodiac.
+   * This is drawn only while transits are enabled; geometry is skin-independent. */
+  public static creaScalaGradi(degOffsAscendente: number, raggioEsterno: number, colore: string): THREE.LineSegments {
+    const points: THREE.Vector3[] = [];
+    for (let degree = 0; degree < 360; degree++) {
+      const angle = THREE.MathUtils.degToRad(degree + degOffsAscendente);
+      const length = degree % 10 === 0 ? 0.080 : degree % 5 === 0 ? 0.053 : 0.024;
+      for (const radius of [raggioEsterno + 0.006, raggioEsterno + length]) {
+        points.push(new THREE.Vector3(-Math.sin(angle) * radius, Math.cos(angle) * radius, 0.009));
+      }
+    }
+    const ticks = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: colore, transparent: true, opacity: 0.88 }));
+    ticks.name = 'zodiac-degree-scale';
+    ticks.userData.tickCount = 360;
+    return ticks;
+  }
+
   public static sequenzaDecani = [
     'Mars', 'Sun', 'Venus', 'Mercury', 'Moon', 'Saturn', 'Jupiter'
   ];
@@ -109,9 +127,28 @@ export class SegniRender {
 
         const { coloreLinea, coloreSimboli, coloreTexture, texture, coloreImgFolder } =
             SkinManager.skins[opzioni.settaggi.skin_id].anelloSegni;
+        const coloriSettori = (SkinManager.skins[opzioni.settaggi.skin_id].anelloSegni as {
+          coloriSettori?: readonly string[];
+        }).coloriSettori;
 
         // Semi archi dei segni
-        if(texture) {
+        if (coloriSettori?.length === 4) {
+            for (let i = 0; i < 12; i++) {
+                // EllipseCurve measures angles from +X, while the natal
+                // wheel's zodiac positions measure them from +Y.
+                const settore = OggettiSempliciRender.getSemiArcoGrosso(
+                    i * 30 + degOffsAscendente + 90,
+                    (i + 1) * 30 + degOffsAscendente + 90,
+                    diametroCerchioInterno / 2,
+                    diametroCerchioEsterno / 2,
+                    coloriSettori[i % 4],
+                );
+                settore.position.z = -0.003 * (australInversion ? -1 : 1);
+                settore.userData.zodiacSector = i;
+                group.add(settore);
+            }
+            group.add(OggettiSempliciRender.getCerchio(diametroCerchioEsterno / 2, coloreLinea));
+        } else if(texture) {
             for (let i = 0; i < 12; i++) {
                 const arco = OggettiSempliciRender.getSemiArcoGrosso(
                     i * 30 + degOffsAscendente,
@@ -125,8 +162,14 @@ export class SegniRender {
                 group.add(arco);
             }
         } else {
-            console.log('asd');
             group.add(OggettiSempliciRender.getCerchio(diametroCerchioEsterno / 2, coloreLinea));
+        }
+
+        // A clean natal wheel has no external degree ruler. The outer scale
+        // belongs to the transit layout and is shared by every skin.
+        if (opzioni.mostraTransiti === true) {
+            group.add(SegniRender.creaScalaGradi(degOffsAscendente,
+              diametroCerchioEsterno / 2, coloreLinea));
         }
         
         // Linee principali e secondarie
@@ -244,9 +287,26 @@ export class SegniRender {
         
         const { coloreLinea, coloreSimboli, coloreTexture, texture, coloreImgFolder } =
             SkinManager.skins[stato.opzioni.settaggi.skin_id].anelloSegni;
+        const coloriSettori = (SkinManager.skins[stato.opzioni.settaggi.skin_id].anelloSegni as {
+          coloriSettori?: readonly string[];
+        }).coloriSettori;
 
         // Semi archi dei segni
-        if(texture) {
+        if (coloriSettori?.length === 4) {
+            for (let i = 0; i < 12; i++) {
+                const settore = OggettiSempliciRender.getSemiArcoGrosso(
+                    i * 30 + degOffsAscendente + 90,
+                    (i + 1) * 30 + degOffsAscendente + 90,
+                    diametroCerchioInterno / 2,
+                    diametroCerchioEsterno / 2,
+                    coloriSettori[i % 4],
+                );
+                settore.position.z = -0.003 * (australInversion ? -1 : 1);
+                settore.userData.zodiacSector = i;
+                group.add(settore);
+            }
+            group.add(OggettiSempliciRender.getCerchio(diametroCerchioEsterno / 2, coloreLinea));
+        } else if(texture) {
             for (let i = 0; i < 12; i++) {
                 const arco = OggettiSempliciRender.getSemiArcoGrosso(
                     i * 30 + degOffsAscendente,
@@ -261,6 +321,12 @@ export class SegniRender {
             }
         } else {
             group.add(OggettiSempliciRender.getCerchio(diametroCerchioEsterno / 2, coloreLinea));
+        }
+
+        // Sinastry by itself never enables the transit degree ruler.
+        if (stato.opzioni.mostraTransiti === true) {
+            group.add(SegniRender.creaScalaGradi(degOffsAscendente,
+              diametroCerchioEsterno / 2, coloreLinea));
         }
         
         // Linee principali e secondarie

@@ -41,7 +41,7 @@ It scans asset-related lines in the extracted source. It does not fetch/copy ass
 2. Explicitly approve in-repository copies **only** if compatible with the intended private/public distribution.
 3. Make a single asset resolver (browser/headless) without changes to production paths.
 4. Generate an asset manifest with IDs/checksums and error handling for missing essentials.
-5. Test all seven skins and active natal/transits/synastry/latitude modes against the manifest.
+5. Test all eight skins and active natal/transits/synastry/latitude modes against the manifest.
 6. Treat original Risuonatore Solare art and branded skins as separate from generic astrological symbols when assessing any future open-source release.
 
 Do not infer ownership simply because an image is already inside the private VirgoStars repository.

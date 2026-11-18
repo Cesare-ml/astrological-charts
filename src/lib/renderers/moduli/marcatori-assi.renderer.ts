@@ -1,12 +1,6 @@
 import * as THREE from 'three';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
-
-const AXIS_PALETTE = {
-  asc: '#cb5c12',
-  ds: '#148663',
-  mc: '#6831bf',
-  ic: '#9976ce',
-};
+import { SkinManager } from '../@skin-manager';
 
 const HOUR_PLANETS = new Set(['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']);
 
@@ -66,11 +60,11 @@ function axisLine(a: THREE.Vector2, b: THREE.Vector2, color: string, z = 0.015):
   return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 }));
 }
 
-/** Two fine strokes form a traditional, unfilled arrowhead. */
+/** Two straight strokes with the measured reference V proportions. */
 function openArrowhead(angle: number, radius: number, color: string): THREE.LineSegments {
   const tip = pointOnRing(angle, radius);
-  const base = pointOnRing(angle, radius - 0.095);
-  const tangent = pointOnRing(angle + 90, 0.045);
+  const base = pointOnRing(angle, radius - 0.075);
+  const tangent = pointOnRing(angle + 90, 0.043);
   const sides = [base.clone().add(tangent), tip, base.clone().sub(tangent), tip];
   const geometry = new THREE.BufferGeometry().setFromPoints(
     sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
@@ -86,14 +80,15 @@ function circularTerminal(angle: number, radius: number, color: string): THREE.M
   return marker;
 }
 
-function textLabel(value: string, color: string, width: number, height: number): THREE.Mesh {
+function textLabel(value: string, color: string, width: number, height: number,
+  font = 'bold 94px Arial, sans-serif'): THREE.Mesh {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 160;
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Impossibile creare il testo degli assi');
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.font = 'bold 94px Arial, sans-serif';
+  context.font = font;
   context.textBaseline = 'middle';
   context.textAlign = 'center';
   context.fillStyle = color;
@@ -109,9 +104,21 @@ function textLabel(value: string, color: string, width: number, height: number):
 
 /** Restrained hand-drawn-style axis markers, independently switchable. */
 export class MarcatoriAssiRender {
+  /** In transit charts preserve the four axis strokes, but not their labels. */
+  public static getPresentationOptions(opzioni: any): any {
+    return opzioni?.mostraTransiti === true ? {
+      ...opzioni,
+      mostraNomiAssi: false,
+      mostraGradiAssi: false,
+      mostraOraPlanetariaAscendente: false,
+      mostraDirezioneMotoMC: false,
+    } : opzioni;
+  }
+
   public static async creaMarcatori(asc: number, mc: number, zodiacRadius: number,
     opzioni: any, temaRender: any, degreeTickRadius = zodiacRadius * 103 / 120): Promise<THREE.Group> {
     const group = new THREE.Group();
+    const colors = SkinManager.getAxisColors(opzioni?.settaggi?.skin_id);
     const ascAngle = 90;
     const dsAngle = 270;
     const mcAngle = 90 - asc + mc;
@@ -130,16 +137,16 @@ export class MarcatoriAssiRender {
     // Like the traditional hand-drawn natal chart: an open V at the end of a
     // thin axis line, not a triangle with a wide base.
     const makeAscPointer = () => {
-      addStem('ASC', ascAngle, zodiacRadius + 0.47, AXIS_PALETTE.asc);
-      const pointer = openArrowhead(ascAngle, zodiacRadius + 0.47, AXIS_PALETTE.asc);
+      addStem('ASC', ascAngle, zodiacRadius + 0.17, colors.asc);
+      const pointer = openArrowhead(ascAngle, zodiacRadius + 0.17, colors.asc);
       pointer.userData.axisMarker = 'ASC';
       group.add(pointer);
     };
 
     // The descending axis has the same visible terminal dot as the IC.
     const makeDsLine = () => {
-      addStem('DS', dsAngle, zodiacRadius + 0.38, AXIS_PALETTE.ds);
-      const dot = circularTerminal(dsAngle, zodiacRadius + 0.38, AXIS_PALETTE.ds);
+      addStem('DS', dsAngle, zodiacRadius + 0.22, colors.ds);
+      const dot = circularTerminal(dsAngle, zodiacRadius + 0.22, colors.ds);
       dot.userData.axisMarker = 'DS';
       group.add(dot);
     };
@@ -147,16 +154,16 @@ export class MarcatoriAssiRender {
     // MC repeats the same simple arrow vocabulary as ASC.
     const makeMcPointer = () => {
       const angle = mcAngle;
-      addStem('MC', angle, zodiacRadius + 0.48, AXIS_PALETTE.mc);
-      const pointer = openArrowhead(angle, zodiacRadius + 0.48, AXIS_PALETTE.mc);
+      addStem('MC', angle, zodiacRadius + 0.18, colors.mc);
+      const pointer = openArrowhead(angle, zodiacRadius + 0.18, colors.mc);
       pointer.userData.axisMarker = 'MC';
       group.add(pointer);
     };
 
     // A small terminal point, as in the photographed Imum Coeli axis.
     const makeIcLine = () => {
-      addStem('IC', icAngle, zodiacRadius + 0.39, AXIS_PALETTE.ic);
-      const marker = circularTerminal(icAngle, zodiacRadius + 0.39, AXIS_PALETTE.ic);
+      addStem('IC', icAngle, zodiacRadius + 0.22, colors.ic);
+      const marker = circularTerminal(icAngle, zodiacRadius + 0.22, colors.ic);
       marker.userData.axisMarker = 'IC';
       group.add(marker);
     };
@@ -166,16 +173,39 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraFrecciaMC !== false) makeMcPointer();
     if (opzioni.mostraRetroFrecciaIC !== false) makeIcLine();
 
+    if (opzioni.mostraNomiAssi !== false) {
+      // These four headings are drawn from a real serif font on canvas,
+      // never loaded as glyphs from astrological-assets. Their layout is
+      // universal; only the text color remains skin-specific.
+      for (const [key, title, angle, shift, tangentShift, visible] of [
+        ['ASC', 'ASC', ascAngle, 0.41, -0.063, opzioni.mostraFrecciaAscendente !== false],
+        ['DS', 'DS', dsAngle, 0.41, 0, opzioni.mostraRetroFrecciaDiscendente !== false],
+        ['MC', 'MC', mcAngle, 0.45, 0, opzioni.mostraFrecciaMC !== false],
+        ['IC', 'IC', icAngle, 0.43, 0, opzioni.mostraRetroFrecciaIC !== false],
+      ] as const) {
+        if (!visible) continue;
+        // Canvas is 512×160 (3.2:1). Matching that aspect ratio on the plane
+        // avoids the previous ~45% horizontal compression of all axis names.
+        const label = textLabel(title, colors.testo, 0.77, 0.24,
+          'bold 114px "Times New Roman", Georgia, serif');
+        const position = pointOnRing(angle, zodiacRadius + shift)
+          .add(pointOnRing(angle + 90, tangentShift));
+        label.position.x = position.x;
+        label.position.y = position.y;
+        label.userData.axisName = key;
+        group.add(label);
+      }
+    }
+
     if (opzioni.mostraGradiAssi !== false) {
       for (const [key, longitude, angle, color, radialOffset, tangentOffset] of [
-        // Centre the degree between the zodiac's outer edge and the base of
-        // the arrowhead, slightly above the shaft (clear of the line).
-        ['ASC', asc, ascAngle, AXIS_PALETTE.asc, 0.1875, -0.035],
-        // MC: the degree is beside the *left* of the rising MC arrow.
-        ['MC', mc, mcAngle, AXIS_PALETTE.mc, 0.36, 0.315],
+        // ASC: beyond the arrowhead, directly UNDER the ASC heading.
+        ['ASC', asc, ascAngle, colors.asc, 0.41, 0.12],
+        // MC: centered on the axis, between the shortened arrow and MC title.
+        ['MC', mc, mcAngle, colors.mc, 0.30, 0],
       ] as const) {
         const label = textLabel(formatAxisDegreeMinutes(longitude),
-          color, key === 'ASC' ? 0.32 : 0.47, key === 'ASC' ? 0.10 : 0.12);
+          color, 0.64, 0.18, 'normal 102px "Times New Roman", Georgia, serif');
         const position = pointOnRing(angle, zodiacRadius + radialOffset)
           .add(pointOnRing(angle + 90, tangentOffset));
         label.position.x = position.x;
@@ -188,15 +218,15 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraOraPlanetariaAscendente !== false) {
       const name = planetaryHourAt(temaRender?.orePlanetarie);
       if (name) {
-        // Share the degree's radial midpoint so both are centred over the
-        // arrow shaft. Stack the planetary ruler *above* the ASC degree.
-        const position = pointOnRing(ascAngle, zodiacRadius + 0.1875)
-          .add(pointOnRing(ascAngle + 90, -0.18));
+        // Centre the planetary hour exactly above the ASC heading, not above
+        // the arrow's shaft (the hour and heading share a radial bearing).
+        const position = pointOnRing(ascAngle, zodiacRadius + 0.41)
+          .add(pointOnRing(ascAngle + 90, -0.30));
         // Use the owner's real, skin-tinted chart asset. Unicode planet
         // characters vary by font and don't match the chart's glyph family.
         const glyph = await OggettiSempliciRender.getImg(
           `simboli-bianchi/elementi-celesti/${name}.png`, 875, 605, 1 / 875,
-          false, AXIS_PALETTE.asc,
+          false, colors.asc,
         );
         glyph.scale.set(0.21, 0.21, 1);
         glyph.position.set(position.x, position.y, 0.031);
@@ -213,20 +243,20 @@ export class MarcatoriAssiRender {
       const house = temaRender?.houses?.[opzioni?.settaggi?.domificazione_selezionata];
       const speed = house?.mcSpeed ?? temaRender?.mcSpeed ?? 1;
       if (Number.isFinite(speed) && speed !== 0) {
-        // A filled directional triangle sits with its base exactly on the
-        // shaft, approximately halfway along the external MC arrow.
-        const radius = zodiacRadius + 0.23;
-        const baseA = pointOnRing(mcAngle, radius - 0.038);
-        const baseB = pointOnRing(mcAngle, radius + 0.038);
+        // Centre the directional triangle halfway between the zodiac edge
+        // and the beginning of the MC arrowhead, well below the open V.
+        const radius = zodiacRadius + (0.18 - 0.075) / 2;
+        const baseA = pointOnRing(mcAngle, radius - 0.019);
+        const baseB = pointOnRing(mcAngle, radius + 0.019);
         const tip = pointOnRing(mcAngle, radius)
-          .add(pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.095));
+          .add(pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.047));
         const shape = new THREE.Shape();
         shape.moveTo(baseA.x, baseA.y);
         shape.lineTo(baseB.x, baseB.y);
         shape.lineTo(tip.x, tip.y);
         shape.closePath();
         const marker = new THREE.Mesh(new THREE.ShapeGeometry(shape),
-          new THREE.MeshBasicMaterial({ color: '#b58bd8', side: THREE.DoubleSide }));
+          new THREE.MeshBasicMaterial({ color: colors.motoMC, side: THREE.DoubleSide }));
         marker.position.z = 0.024;
         marker.userData.axisMarker = 'MC-motion';
         group.add(marker);

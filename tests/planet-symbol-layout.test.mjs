@@ -6,7 +6,7 @@ import { build } from 'esbuild';
 // the Three.js renderer imports, with no DOM or original artwork required.
 const bundle = await build({ entryPoints: ['src/lib/renderers/moduli/planet-symbol-layout.ts'],
   bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022' });
-const { layoutPlanetSymbols, normalizeDegree, degreeWithinSign } =
+const { layoutPlanetSymbols, layoutCompositePlanetSymbols, normalizeDegree, degreeWithinSign } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
 const inner = 1.43, outer = 1.83, width = 0.22, height = 0.22 * 605 / 875;
@@ -14,6 +14,45 @@ const inner = 1.43, outer = 1.83, width = 0.22, height = 0.22 * 605 / 875;
 function angularDistance(a, b) {
   return Math.abs(((a - b + 540) % 360) - 180);
 }
+
+test('composite layout is deterministic and never introduces a third orbit', () => {
+  const transitInner = 4.5723 / 2, transitOuter = 4.5723 * 146.64 / 120 / 2;
+  const compositeWidth = 0.17, compositeHeight = 0.17 * 605 / 875;
+  for (let seed = 1; seed <= 60; seed++) {
+    const bodies = Object.fromEntries(Array.from({length: 16}, (_, i) => [
+      `body${i}`, (i < 8 ? seed * 13 + i * 0.35 : seed * 11 + i * 137.5) % 360,
+    ]));
+    const shuffled = Object.fromEntries(Object.entries(bodies).reverse());
+    const protectedAxisDegrees = [seed * 13 % 360, (seed * 13 + 270) % 360];
+    const args = [transitInner, transitOuter, compositeWidth, compositeHeight, seed * 29,
+      { protectedAxisDegrees }];
+    const positions = layoutCompositePlanetSymbols(bodies, ...args);
+    assert.deepEqual(positions, layoutCompositePlanetSymbols(shuffled, ...args),
+      `seed ${seed}: order of input keys should not change positions`);
+    assert.ok(new Set(Object.values(positions).map(position => position.radius.toFixed(8))).size <= 2);
+    const boxes = Object.values(positions).map(position => {
+      const angle = (seed * 29 + position.displayDegree) * Math.PI / 180;
+      return {x: -Math.sin(angle) * position.radius, y: Math.cos(angle) * position.radius};
+    });
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i], b = boxes[j];
+      assert.ok(Math.abs(a.x - b.x) >= compositeWidth ||
+        Math.abs(a.y - b.y) >= compositeHeight, `seed ${seed}: glyphs overlap`);
+    }
+  }
+});
+
+test('isolated transiting planets sit on the orbit closest to the external degree ruler', () => {
+  const gridRadius = 4.5723 / 2;
+  const positions = layoutCompositePlanetSymbols({Sun: 80, Saturn: 210},
+    gridRadius, gridRadius * 146.64 / 120, 0.17, 0.17 * 605 / 875,
+    90, {preferInnerOrbit: true});
+  const preferredRadius = gridRadius + 0.08 + 0.17 / 2 + 0.015 + 0.012;
+  for (const [name, position] of Object.entries(positions)) {
+    assert.ok(Math.abs(position.radius - preferredRadius) < 1e-8,
+      `${name}: isolated transit should be beside the ruler, not on the far rim`);
+  }
+});
 
 test('isolated symbols stay exactly on their true degrees', () => {
   const source = { Sun: 12.5, Moon: 90.2, Venus: 180.5, Mars: 280.1 };

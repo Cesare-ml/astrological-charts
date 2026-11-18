@@ -25,6 +25,20 @@ export interface BoundedSymbolOptions {
   labelRadialOffset?: number;
   /** Enlargement reserved for genuinely isolated bodies, not conjunctions. */
   isolatedScale?: number;
+  /** Extra inward gap between an isolated glyph and the zodiac ring. */
+  isolatedRadialInset?: number;
+  /** Real house-boundary ticks, checked against each degree badge separately. */
+  houseTickInnerRadius?: number;
+  houseTickOuterRadius?: number;
+  /** Preserve the full-size natal symbols within a reduced composite wheel. */
+  compactPrimaryTransit?: boolean;
+}
+
+export interface CompositeSymbolOptions {
+  /** Longitudes of the primary chart's axes, whose external arrows must stay clear. */
+  protectedAxisDegrees?: number[];
+  /** Transits sit directly outside the external degree ruler, not at the far edge. */
+  preferInnerOrbit?: boolean;
 }
 
 interface Body {
@@ -40,6 +54,105 @@ export function normalizeDegree(degree: number): number {
 /** Integer degree within the current sign (0–29), never the displaced angle. */
 export function degreeWithinSign(longitude: number): number {
   return Math.floor(normalizeDegree(longitude) % 30);
+}
+
+/**
+ * Compact composite wheels (transits and synastry) use exactly one preferred
+ * orbit, with a single second orbit for conjunctions. Their relatively thin
+ * bands must never trigger the adaptive multi-radius natal fallback.
+ *
+ * The true longitude is deliberately untouched: only the display angle may
+ * shift, and all geometry/ephemerides retain their source coordinates.
+ */
+export function layoutCompositePlanetSymbols(
+  longitudes: Record<string, number>, innerRadius: number, outerRadius: number,
+  symbolWidth: number, symbolHeight: number, chartRotation = 0,
+  options: CompositeSymbolOptions = {},
+): Record<string, SymbolPosition> {
+  const bodies = Object.entries(longitudes)
+    .filter(([, longitude]) => Number.isFinite(longitude))
+    .map(([key, longitude]) => ({key, degree: normalizeDegree(longitude)}));
+  if (!bodies.length) return {};
+
+  // A margin around the full square bounding box keeps rotated positions
+  // inside the thin ring even at 45 degrees on the screen.
+  const clearance = Math.max(symbolWidth, symbolHeight) / 2 + 0.015;
+  // In transit mode the ruler extends up to 0.08 beyond the zodiac. Keep the
+  // main planet orbit just past that tick line, and use the outer orbit only
+  // when needed for conjunctions. Synastry uses its existing outer preference.
+  const nearGridRadius = innerRadius + 0.08 + clearance + 0.012;
+  const mainRadius = options.preferInnerOrbit ? nearGridRadius : outerRadius - clearance;
+  if (mainRadius <= innerRadius + clearance) {
+    throw new Error('Insufficient space for the composite planetary ring');
+  }
+  const secondRadius = options.preferInnerOrbit
+    ? outerRadius - clearance : mainRadius - Math.max(symbolWidth, symbolHeight) - 0.015;
+  const secondFits = options.preferInnerOrbit
+    ? secondRadius > mainRadius + 0.065
+    : secondRadius >= innerRadius + clearance;
+  const radii = secondFits
+    ? [mainRadius, secondRadius] : [mainRadius];
+  const protectedDegrees = (options.protectedAxisDegrees ?? [])
+    .filter(Number.isFinite)
+    .flatMap(degree => [normalizeDegree(degree), normalizeDegree(degree + 180)]);
+  const minAxisGap = (radius: number) =>
+    Math.asin(Math.min(1, (Math.max(symbolWidth, symbolHeight) / 2 + 0.035) / radius)) * 180 / Math.PI + 3.5;
+  const distanceDegrees = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+  const blockedByAxis = (angle: number, radius: number) =>
+    protectedDegrees.some(axis => distanceDegrees(angle, axis) < minAxisGap(radius));
+
+  function collides(a: SymbolPosition, b: SymbolPosition): boolean {
+    const ar = (chartRotation + a.displayDegree) * Math.PI / 180;
+    const br = (chartRotation + b.displayDegree) * Math.PI / 180;
+    const ax = -Math.sin(ar) * a.radius, ay = Math.cos(ar) * a.radius;
+    const bx = -Math.sin(br) * b.radius, by = Math.cos(br) * b.radius;
+    return Math.abs(ax - bx) < symbolWidth + 0.012 &&
+      Math.abs(ay - by) < symbolHeight + 0.012;
+  }
+
+  // Place tight conjunctions from their centre first, and keep the result
+  // independent of the caller's planet enumeration order. An isolated body
+  // stays on the main orbit at its true longitude whenever possible.
+  const ordered = [...bodies].sort((a, b) => {
+    const density = (body: typeof a) => Math.min(...bodies
+      .filter(other => other.key !== body.key)
+      .map(other => distanceDegrees(body.degree, other.degree)), 360);
+    return density(a) - density(b) || a.degree - b.degree || a.key.localeCompare(b.key);
+  });
+
+  const placements: Record<string, SymbolPosition> = {};
+  const occupied: SymbolPosition[] = [];
+  // The inner lane costs roughly 2 degrees of display movement: ordinary
+  // isolated symbols therefore occupy one shared radius, while conjunctions
+  // can share their real longitude on two clearly separated radial tracks.
+  const proposals: Array<{delta: number; lane: number; cost: number}> = [];
+  for (let step = 0; step <= 240; step++) {
+    const magnitude = step * 0.5;
+    for (const sign of step ? [-1, 1] : [1]) {
+      radii.forEach((_, lane) => proposals.push({
+        delta: sign * magnitude, lane, cost: magnitude + (lane ? 2 : 0),
+      }));
+    }
+  }
+  proposals.sort((a, b) => a.cost - b.cost || a.lane - b.lane ||
+    Math.abs(a.delta) - Math.abs(b.delta) || a.delta - b.delta);
+
+  for (const body of ordered) {
+    const found = proposals.find(({delta, lane}) => {
+      const displayDegree = normalizeDegree(body.degree + delta);
+      const radius = radii[lane];
+      if (blockedByAxis(displayDegree, radius)) return false;
+      return !occupied.some(other => collides({displayDegree, radius}, other));
+    });
+    if (!found) {
+      throw new Error(`Unable to place composite planet ${body.key} on two orbits`);
+    }
+    const position = {displayDegree: normalizeDegree(body.degree + found.delta),
+      radius: radii[found.lane]};
+    placements[body.key] = position;
+    occupied.push(position);
+  }
+  return placements;
 }
 
 // Least-squares projection onto ordered positions separated by minGap. The
@@ -67,6 +180,57 @@ function spreadLane(bodies: Body[], minGap: number): number[] {
   return result;
 }
 
+interface TickSegment { x1: number; y1: number; x2: number; y2: number }
+
+function houseTickSegments(bodies: Body[], rotation: number, options: BoundedSymbolOptions): TickSegment[] {
+  const from = options.houseTickInnerRadius;
+  const to = options.houseTickOuterRadius;
+  if (from === undefined || to === undefined || to <= from) return [];
+  return bodies.filter(body => !['AS', 'DS', 'MC', 'IC'].includes(body.key)).map(body => {
+    const radians = (rotation + body.degree) * Math.PI / 180;
+    return { x1: -Math.sin(radians) * from, y1: Math.cos(radians) * from,
+      x2: -Math.sin(radians) * to, y2: Math.cos(radians) * to };
+  });
+}
+
+/** The degree's actual rectangular footprint may not cover *any* tick line. */
+function badgeClearsTicks(position: SymbolPosition, rotation: number,
+  radialOffset: number, tangentOffset: number, labelWidth: number, labelHeight: number,
+  ticks: TickSegment[]): boolean {
+  if (!ticks.length) return true;
+  const scale = position.scale ?? 1;
+  const angle = (rotation + position.displayDegree) * Math.PI / 180;
+  const x = -Math.sin(angle) * (position.radius - radialOffset * scale) - Math.cos(angle) * tangentOffset * scale;
+  const y = Math.cos(angle) * (position.radius - radialOffset * scale) - Math.sin(angle) * tangentOffset * scale;
+  const clearance = 0.006; // line thickness + a small screen-space breathing room
+  const left = x - labelWidth * scale / 2 - clearance;
+  const right = x + labelWidth * scale / 2 + clearance;
+  const bottom = y - labelHeight * scale / 2 - clearance;
+  const top = y + labelHeight * scale / 2 + clearance;
+
+  for (const tick of ticks) {
+    // Parametric segment vs axis-aligned rectangle (slab clipping). A line
+    // may cross a badge even when both endpoints lie outside its rectangle.
+    let start = 0, end = 1;
+    for (const [coordinate, delta, min, max] of [
+      [tick.x1, tick.x2 - tick.x1, left, right],
+      [tick.y1, tick.y2 - tick.y1, bottom, top],
+    ]) {
+      if (Math.abs(delta) < 1e-12) {
+        if (coordinate < min || coordinate > max) { start = 2; break; }
+      } else {
+        const a = (min - coordinate) / delta;
+        const b = (max - coordinate) / delta;
+        start = Math.max(start, Math.min(a, b));
+        end = Math.min(end, Math.max(a, b));
+        if (start > end) break;
+      }
+    }
+    if (start <= end) return false;
+  }
+  return true;
+}
+
 /** Fixed-size, two-track layout for ordinary conjunctions.
  * For mathematically overfull clusters the caller can retain the established
  * adaptive fallback rather than losing a planet or failing the entire chart.
@@ -81,11 +245,20 @@ function layoutTwoFixedLanes(
   const radialOffset = options.labelRadialOffset ?? 0.15;
   const tangentOffset = options.labelTangentOffset ?? 0;
   const isolatedScale = Math.max(1, options.isolatedScale ?? 1);
-  // Keep one primary orbit for every glyph, including enlarged isolated
-  // planets: their larger footprint must still fit inside the planet band.
-  const outerLane = outerRadius - symbolWidth * isolatedScale / 2 - 0.01;
-  const innerLane = innerRadius + (showDegrees ? radialOffset + labelWidth / 2 : symbolWidth / 2) + 0.01;
+  // Reserve enough room for the isolated large glyph independently: making
+  // its inward inset should not unnecessarily compress the conjunction lanes.
+  const compactPrimaryTransit = options.compactPrimaryTransit === true;
+  const outerLane = outerRadius - symbolWidth / 2 - (compactPrimaryTransit ? 0.012 : 0.03);
+  const isolatedLane = Math.min(outerLane,
+    outerRadius - symbolWidth * isolatedScale / 2 - 0.01 - Math.max(0, options.isolatedRadialInset ?? 0));
+  const innerLane = Math.max(
+    innerRadius + (showDegrees ? radialOffset + labelWidth / 2 : symbolWidth / 2) + 0.01,
+    compactPrimaryTransit && showDegrees && options.houseTickOuterRadius !== undefined
+      ? options.houseTickOuterRadius + radialOffset + labelHeight / 2 + 0.006
+      : 0,
+  );
   if (innerLane >= outerLane - symbolWidth - 0.015) return undefined;
+  const ticks = showDegrees ? houseTickSegments(bodies, chartRotation, options) : [];
 
   function boxes(position: SymbolPosition) {
     const scale = position.scale ?? 1;
@@ -147,13 +320,15 @@ function layoutTwoFixedLanes(
         let explored = 0;
         // A dense seven-body group may be geometrically impossible within two
         // fixed tracks. Bound the search so rendering never stalls the UI.
-        const maxSearchNodes = group.length >= 7 ? 3000 : 13000;
+        const maxSearchNodes = compactPrimaryTransit ? 150000 : group.length >= 7 ? 3000 : 13000;
         const search = (i: number): boolean => {
           if (i === order.length) return true;
           if (++explored > maxSearchNodes) return false;
           const body = order[i];
           for (const delta of deltas) for (const radius of radii) {
             const candidate = {displayDegree: normalizeDegree(body.degree + delta), radius, scale: groupScale};
+            if (!badgeClearsTicks(candidate, chartRotation, radialOffset, tangentOffset,
+              labelWidth, labelHeight, ticks)) continue;
             if (fixed.some(other => collides(candidate, other)) ||
                 Object.values(chosen).some(other => collides(candidate, other))) continue;
             chosen[body.key] = candidate;
@@ -172,8 +347,9 @@ function layoutTwoFixedLanes(
     const minimumSameLaneGap = 2 * Math.atan2(Math.min(symbolWidth, symbolHeight) / 2,
       outerLane) * 180 / Math.PI;
     const needsTwoLanes = span < (group.length - 1) * minimumSameLaneGap;
-    const match = (needsTwoLanes ? undefined : tryGroup([outerLane])) ??
-      tryGroup([outerLane, innerLane]);
+    const radii = group.length === 1 ? [isolatedLane] : [outerLane, innerLane];
+    const match = (needsTwoLanes ? undefined : tryGroup([radii[0]])) ??
+      (group.length === 1 ? undefined : tryGroup(radii));
     if (!match) return undefined;
     Object.assign(placed, match);
   }
@@ -199,6 +375,8 @@ function layoutBoundedSymbols(
   const tangentOffset = options.labelTangentOffset ?? symbolWidth * (0.17 / 0.22);
   const radialOffset = options.labelRadialOffset ?? 0;
   const radiusMid = (innerRadius + outerRadius) / 2;
+  const isolatedScale = Math.max(1, options.isolatedScale ?? 1);
+  const ticks = showDegrees ? houseTickSegments(bodies, chartRotation, options) : [];
 
   function rectangles(placement: SymbolPosition) {
     const angle = (chartRotation + placement.displayDegree) * Math.PI / 180;
@@ -258,8 +436,13 @@ function layoutBoundedSymbols(
 
     // Uniform scaling within a dense group prevents misleading emphasis on an
     // individual planet; isolated planets always retain their full glyph size.
-    for (const scale of [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5,
+    const preferredScale = group.length === 1 ? isolatedScale : 1;
+    const targetRadius = group.length === 1
+      ? outerRadius - symbolWidth * preferredScale / 2 - 0.01 - Math.max(0, options.isolatedRadialInset ?? 0)
+      : radiusMid;
+    for (const fraction of [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5,
       0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1, 0.07, 0.04, 0.02]) {
+      const scale = fraction * preferredScale;
       const radialMargin = symbolHeight * scale / 2 + 0.007;
       if (band < 2 * radialMargin) continue;
       const radialStep = Math.max(0.01, symbolHeight * scale * 0.42);
@@ -268,7 +451,7 @@ function layoutBoundedSymbols(
         radialSlots.push(Math.min(radius, outerRadius - radialMargin));
       }
       radialSlots.push(outerRadius - radialMargin);
-      radialSlots.sort((a, b) => Math.abs(a - radiusMid) - Math.abs(b - radiusMid));
+      radialSlots.sort((a, b) => Math.abs(a - targetRadius) - Math.abs(b - targetRadius));
       const offsets: number[] = [0];
       const angularStep = maxDrift ? Math.min(0.5, maxDrift) : 1;
       for (let value = angularStep; value < maxDrift + 1e-8; value += angularStep) {
@@ -286,7 +469,8 @@ function layoutBoundedSymbols(
         let possible = true;
         for (const body of order) {
           const location = candidates(body).find(candidate =>
-            !fixed.some(other => collides(candidate, other)) &&
+          badgeClearsTicks(candidate, chartRotation, radialOffset, tangentOffset,
+            labelWidth, labelHeight, ticks) && !fixed.some(other => collides(candidate, other)) &&
             !Object.values(selected).some(other => collides(candidate, other)));
           if (!location) { possible = false; break; }
           selected[body.key] = location;

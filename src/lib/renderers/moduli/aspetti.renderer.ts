@@ -405,6 +405,7 @@ export class AspettiRender {
 
   public static renderArchi(as,nodi,archi,aspetti,opzioni,diametroCerchio,monocolore,parametroDiRender="longitude",nomeElementoCelesteInEvidenza=false) {
     var group = new THREE.Group();
+    let endpointGeometry: THREE.CircleGeometry | undefined;
 
     if(Object.keys(archi).length > 0) {
       for(let k=0; k<aspetti.length; k++) {
@@ -504,6 +505,22 @@ export class AspettiRender {
                 linea = OggettiSempliciRender.getLineaGrossa(a,b,colore,spessore);
             }
             group.add(linea);
+
+            // The glyph may shift into another concentric lane in a stellium.
+            // Small endpoint discs reveal exactly which TRUE longitude an
+            // aspect reaches, without connecting an aspect to a shifted glyph.
+            endpointGeometry ??= new THREE.CircleGeometry(0.017, 16);
+            for (const [point, node] of [
+              [a, nodi[archi[tipoAspetto][i][0]]],
+              [b, nodi[archi[tipoAspetto][i][1]]],
+            ] as const) {
+              const dot = new THREE.Mesh(endpointGeometry,
+                new THREE.MeshBasicMaterial({ color: colore, side: THREE.DoubleSide }));
+              dot.position.set(point.x, point.y, 0.025);
+              dot.userData.aspectEndpoint = node.name;
+              dot.userData.trueLongitude = node[parametroDiRender];
+              group.add(dot);
+            }
 
             if(nodi[archi[tipoAspetto][i][0]].y != diametroCerchio/2) {
               var linea2 = OggettiSempliciRender.getLineaGrossaTratteggiata(a,a2,colore,0.15,0.05);

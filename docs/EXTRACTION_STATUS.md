@@ -9,7 +9,7 @@
 - Minimal fixes for three imports from the package into itself (converted to relative imports).
 - Contributor instructions, PR template and upstream technical reference snapshots.
 - Extraction source-integrity script (`npm run check:extraction`); this **does not** test the renderer.
-- An independent Angular demo renders natal, transit, synastry and latitude fixtures with seven selectable skins and PNG export using locally generated placeholder assets.
+- An independent Angular demo renders natal, transit, synastry and latitude fixtures with eight selectable skins (including the new official `virgostars` palette) and PNG export using locally generated placeholder assets.
 - Browser smoke tests exercise Chromium and Firefox with both synthetic and private original images; the separate Firefox offline test uses local synthetic files and does not exercise the shipped Astrolabio adapter.
 - The extraction and downstream PRs were integrated in order after their local preflight and build checks. The extracted #1 renderer also passed a synthetic browser smoke test; those checks do not establish original-artwork fidelity.
 
@@ -17,7 +17,7 @@
 
 - Align `TemaRender` and `OpzioniGrafico` input contracts with actual renderer use.
 - The owner authorized private sharing of imported artwork, including font-derived images; the font's license and public redistribution remain unresolved. Keep the current production source unchanged and validate the separate pack before any migration.
-- Compare the four chart modes and seven skins against approved real-artwork baselines; synthetic screenshots alone do not establish visual fidelity.
+- Compare the four chart modes and all eight skins against approved real-artwork baselines; synthetic screenshots alone do not establish visual fidelity.
 - Verify no resource growth after repeated redraw and PNG export.
 - Rebuild VirgoStars web, mobile PNG, Astrolabio UI and actual headless/e-ink render before any consumer migration.
 - Decide strategy for version pinning and release notes; **no automatic updates to shipped devices**.

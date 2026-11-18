@@ -20,7 +20,7 @@ function launchBrowser() {
     ? firefox.launch({executablePath, headless:true, firefoxUserPrefs:{'webgl.disabled':false, 'webgl.force-enabled':true}})
     : chromium.launch({executablePath, headless:true, args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
 }
-const skins = ['dark', 'dark-bn', 'light', 'light-bn', 'sun', 'astrolabio', 'astrolabio-girasole'];
+const skins = ['virgostars', 'dark', 'dark-bn', 'light', 'light-bn', 'sun', 'astrolabio', 'astrolabio-girasole'];
 const modes = ['natal', 'transits', 'synastry', 'latitude'];
 
 test('Angular demo renders every chart and skin, exports PNG and reports missing assets', {timeout: 180000}, async () => {
@@ -57,6 +57,16 @@ test('Angular demo renders every chart and skin, exports PNG and reports missing
   try {
     await page.goto('http://127.0.0.1:4200/', {waitUntil: 'domcontentloaded'});
     await ready();
+    assert.equal(await page.locator('[data-testid="skin-option"]').count(), skins.length,
+      'the chart stage must expose a quick selection for every supported skin');
+    await page.locator('[data-skin="dark"]').click(); await ready();
+    assert.equal(await page.locator('#skin').inputValue(), 'dark',
+      'quick selection must synchronize the native skin selector');
+    assert.equal(await page.locator('[data-skin="dark"]').getAttribute('aria-pressed'), 'true',
+      'the active skin must be visible to screen readers');
+    await page.selectOption('#skin', 'virgostars'); await ready();
+    assert.equal(await page.locator('[data-skin="virgostars"]').getAttribute('aria-pressed'), 'true',
+      'changing the dropdown must update the quick-selection state');
     for (const mode of modes) {
       await page.selectOption('#mode', mode); await ready();
       for (const skin of skins) {
@@ -132,7 +142,7 @@ test('Angular demo renders every chart and skin, exports PNG and reports missing
     await missingPage.waitForFunction(() => (document.querySelector('[data-testid=status]')?.textContent || '').includes('Rendering failed'), {timeout: 30000});
     assert.match(await missingPage.locator('[data-testid=status]').textContent(), /simboli-bianchi\/segni\/01\.png/);
     await missingPage.close();
-    console.log(`28 chart/skin combinations repeated twice, PNG export and mobile viewport checked in ${Math.round(performance.now()-started)} ms.`);
+    console.log(`${skins.length * modes.length} chart/skin combinations repeated twice, PNG export and mobile viewport checked in ${Math.round(performance.now()-started)} ms.`);
   } finally { await browser.close(); }
 });
 
