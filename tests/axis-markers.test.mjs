@@ -153,6 +153,27 @@ test('transit charts retain their axis stems but hide names, degrees, hour and M
   assert.ok(!group.children.some(child => child.userData.axisName || child.userData.axis));
 });
 
+test('opt-in transit markers use the transit longitudes and the natal orientation', () => {
+  const options = structuredClone(defaultOpzioniGrafico);
+  assert.equal(options.mostraAssiTransiti, false);
+  const group = MarcatoriAssiRender.creaMarcatoriTransiti(20, 72, 315, 2.286, 2.794, options);
+  assert.equal(group.userData.chartInteractionRole, 'transit-axes');
+  const stems = group.children.filter(child => child.userData.axisStem);
+  assert.equal(stems.length, 4);
+  for (const [key, name, longitude, angle] of [['ASC','AS',72,142],['DS','DS',252,322],['MC','MC',315,385],['IC','IC',135,565]]) {
+    const line = stems.find(child => child.userData.axisStem === key);
+    assert.equal(line.userData.planet,name);
+    assert.equal(line.userData.trueLongitude,longitude);
+    assert.equal(line.material.type,'LineDashedMaterial');
+    assert.ok(line.geometry.getAttribute('lineDistance'));
+    const vertices = line.geometry.attributes.position.array;
+    const expected = angle * Math.PI / 180;
+    assert.ok(Math.abs(vertices[3] + Math.sin(expected) * 2.894) < 1e-6);
+    assert.ok(Math.abs(vertices[4] - Math.cos(expected) * 2.894) < 1e-6);
+  }
+  assert.deepEqual(group.children.filter(child => child.userData.axisMarker).map(child => child.userData.axisMarker).sort(), ['ASC','DS','IC','MC']);
+});
+
 test('axis strokes stop at the zodiac degree ticks and degree captions follow the reference placement', async () => {
   const radius = 2.286;
   const tickRadius = radius * 103 / 120;

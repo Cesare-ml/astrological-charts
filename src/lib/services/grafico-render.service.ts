@@ -111,6 +111,7 @@ export class GraficoRenderService implements OnDestroy {
       'mostraFrecciaMC', 'mostraRetroFrecciaIC',
       'mostraGradiAssi', 'mostraOraPlanetariaAscendente',
     ];
+    if (opzioni?.mostraTransiti && opzioni?.mostraAssiTransiti) return 3.98;
     // Keep the arrowheads and their degree/hour captions within the viewport.
     return markers.some(option => opzioni?.[option] !== false) ? 3.98 : 2.98;
   }

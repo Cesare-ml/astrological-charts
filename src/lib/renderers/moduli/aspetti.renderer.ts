@@ -469,7 +469,12 @@ export class AspettiRender {
             var coloreAspetto = Colori.aspetti[aspetti[k]];
             var colore = coloreAspetto;
             //console.log(opzioni,opzioni.kleros);
-            if(monocolore){
+            if (opzioni.dodecatemoriAttivi && opzioni.dodecatemore && opzioni.dodecatemore !== 'tutti') {
+              const focused = opzioni.dodecatemore + '-dodecatemoria';
+              if (nodi[archi[tipoAspetto][i][0]].name !== focused && nodi[archi[tipoAspetto][i][1]].name !== focused) colore = '#777777';
+            } else if (opzioni.proiezioneZodiacale?.tipo) {
+              colore = '#777777';
+            } else if(monocolore){
               colore = monocolore;
             } else {
               //per esempio quando nel radix viene messo in evidenza un pianeta ed i suoi aspetti

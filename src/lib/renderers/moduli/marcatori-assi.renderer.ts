@@ -104,6 +104,41 @@ function textLabel(value: string, color: string, width: number, height: number,
 
 /** Restrained hand-drawn-style axis markers, independently switchable. */
 export class MarcatoriAssiRender {
+  /** The moving chart's own axes, oriented to the natal ascendant. */
+  public static creaMarcatoriTransiti(ascRef: number, asc: number, mc: number,
+    zodiacRadius: number, transitRadius: number, opzioni: any): THREE.Group {
+    const group = new THREE.Group();
+    group.userData.chartInteractionRole = 'transit-axes';
+    const colors = SkinManager.getAxisColors(opzioni?.settaggi?.skin_id);
+    const axes = [
+      {key:'ASC', name:'AS', longitude:asc, angle:90 - ascRef + asc, color:colors.asc, arrow:true},
+      {key:'DS', name:'DS', longitude:(asc + 180) % 360, angle:270 - ascRef + asc, color:colors.ds, arrow:false},
+      {key:'MC', name:'MC', longitude:mc, angle:90 - ascRef + mc, color:colors.mc, arrow:true},
+      {key:'IC', name:'IC', longitude:(mc + 180) % 360, angle:270 - ascRef + mc, color:colors.ic, arrow:false},
+    ];
+    for (const axis of axes) {
+      const start = pointOnRing(axis.angle, zodiacRadius + 0.02);
+      const end = pointOnRing(axis.angle, transitRadius + 0.10);
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(start.x,start.y,0.035), new THREE.Vector3(end.x,end.y,0.035),
+      ]);
+      const stem = new THREE.Line(geometry, new THREE.LineDashedMaterial({color:axis.color, dashSize:0.055, gapSize:0.035}));
+      stem.computeLineDistances();
+      stem.userData.axisStem = axis.key;
+      stem.userData.planet = axis.name;
+      stem.userData.trueLongitude = ((axis.longitude % 360) + 360) % 360;
+      group.add(stem);
+      const marker = axis.arrow ? openArrowhead(axis.angle, transitRadius + 0.10, axis.color)
+        : circularTerminal(axis.angle, transitRadius + 0.10, axis.color);
+      marker.userData.axisMarker = axis.key;
+      marker.userData.planet = axis.name;
+      marker.userData.trueLongitude = stem.userData.trueLongitude;
+      marker.position.z = 0.04;
+      group.add(marker);
+    }
+    return group;
+  }
+
   /** In transit charts preserve the four axis strokes, but not their labels. */
   public static getPresentationOptions(opzioni: any): any {
     return opzioni?.mostraTransiti === true ? {

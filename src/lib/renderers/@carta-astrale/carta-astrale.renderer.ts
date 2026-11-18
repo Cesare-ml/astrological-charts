@@ -9,6 +9,7 @@ import { SinastriaRender } from '../moduli/sinastria.renderer';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
 import { stopSceneAnimations } from '../scene-animations';
 import { MarcatoriAssiRender } from '../moduli/marcatori-assi.renderer';
+import { ProiezioniZodiacaliRender } from '../moduli/proiezioni-zodiacali.renderer';
 
 // ---------------------------
 // Stato globale per tutti i renderer
@@ -409,6 +410,14 @@ async function creaAspetti(stato: StatoCartaAstrale) {
     return group;
 }
 
+async function creaProiezioniZodiacali(stato: StatoCartaAstrale) {
+    if (!stato.opzioni.proiezioneZodiacale?.tipo) return null;
+    return ProiezioniZodiacaliRender.getLayer(stato.opzioni, stato.asc, stato.diametri.diametroAnelloSegni,
+      stato.diametri.diametroAnelloCase, stato.diametri.diametroInternoAnelloElementoCelesti,
+      stato.diametri.diametroAnelloElementiCelesti, stato.simboliScale.AnelloElementiCelesti,
+      stato.temaRender.australInversion && !stato.opzioni.mostraSinastria);
+}
+
 async function creaMarcatoriAssi(stato: StatoCartaAstrale) {
     const caseTema = stato.temaRender?.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
     if (!caseTema || !Number.isFinite(caseTema.ascendant) ||
@@ -418,6 +427,14 @@ async function creaMarcatoriAssi(stato: StatoCartaAstrale) {
       MarcatoriAssiRender.getPresentationOptions(stato.opzioni), stato.temaRender,
       stato.diametri.diametroAnelloElementiCelesti / 2,
     );
+}
+
+async function creaMarcatoriAssiTransiti(stato: StatoCartaAstrale) {
+    if (!stato.opzioni.mostraTransiti || !stato.opzioni.mostraAssiTransiti || stato.opzioni.mostraEffemeridi) return null;
+    const house = stato.temaRenderTransiti?.houses?.[stato.opzioni.settaggi.domificazione_selezionata];
+    if (!house || !Number.isFinite(house.ascendant) || !Number.isFinite(house.mc)) return null;
+    return MarcatoriAssiRender.creaMarcatoriTransiti(stato.asc, house.ascendant, house.mc,
+      stato.diametri.diametroAnelloSegni / 2, stato.diametri.diametroAnelloTransiti / 2, stato.opzioni);
 }
 
 
@@ -517,9 +534,11 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
         creaTransiti,
         creaSegni,
         creaElementiCelesti,
+        creaProiezioniZodiacali,
         creaCase,
         creaAspetti,
         creaMarcatoriAssi,
+        creaMarcatoriAssiTransiti,
         creaSinastria
         // puoi aggiungere altre funzioni come direzioni, lunazioni, ecc.
     ];

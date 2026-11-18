@@ -253,7 +253,9 @@ export class ElementiCelestiRender {
       el.userData.planet = nome;
       el.userData.trueLongitude = trueDegree;
 
-      if(opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') {
+      if((opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') ||
+        (axisPresentation !== 'transit-overlay' && axisPresentation !== 'synastry-overlay' &&
+          opzioni.proiezioneZodiacale?.tipo && opzioni.proiezioneZodiacale?.pianeta !== 'tutti')) {
         el.material.opacity = 0.3;
       }
 
@@ -384,13 +386,15 @@ export class ElementiCelestiRender {
         var raggioEclitticaDodecatemore =
           (diametroCerchioEsterno/2 - diametroCerchioDodecatemori/2)/2 + diametroCerchioDodecatemori/2;
 
-        var eld = await OggettiSempliciRender.getImg('simboli/elementi-celesti/'+opzioni.settaggi.skin_id+'/cerchio/'+nome+'.png',1,1,0.6);
-        eld.scale.set(0.1,0.1,1);
+        var eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,Colori.elementiCelesti[nome]);
+        eld.scale.set(0.14,0.14,1);
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'] + degOffs;
         eld.rotateZ(THREE.MathUtils.degToRad(dodecatemoreDegDiRender));
         eld.translateY(raggioEclitticaDodecatemore);
         eld.rotation.z = 0;
 
+        eld.userData.dodecatemoria = nome;
+        eld.userData.trueLongitude = elementiCelesti[nome]['dodecatemoria']['longitude'];
         group.add(eld);
 /*
         if(eventiMouseDodecatemori) {
@@ -414,6 +418,8 @@ export class ElementiCelestiRender {
         eld.translateY(raggioEclittica);
         eld.rotation.z = 0;
 
+        eld.userData.dodecatemoria = nome;
+        eld.userData.trueLongitude = elementiCelesti[nome]['dodecatemoria']['longitude'];
         group.add(eld);
 /*
         if(eventiMouseDodecatemori) {

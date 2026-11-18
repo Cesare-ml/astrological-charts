@@ -27,3 +27,5 @@ device visual acceptance, and shipped consumer integration remain separate.
 
 The optional two-ring hover listener distinguishes the natal ring and its axis markers from transit glyphs, including when the two bodies share a name. `setNatalAspectsDimmed` saves and restores existing material properties; `setTransitAspectLines` draws caller-supplied, already-calculated directional aspects with the wheel geometry and existing aspect styles. Replacing a scene or destroying the renderer disposes scene-owned resources. Neither method computes astrological aspects. These methods affect the interactive scene only, not offscreen exports.
 
+`mostraAssiTransiti` is opt-in and defaults to false. When enabled on a transit wheel, the transit chart's selected house system supplies ASC and MC; DS and IC are their opposites. Four dashed markers follow those longitudes relative to the natal wheel, and are pickable as transit points. Missing or non-finite transit axes produce no markers. No house positions are calculated by the renderer.
+

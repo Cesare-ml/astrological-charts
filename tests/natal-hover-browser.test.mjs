@@ -63,6 +63,14 @@ test('synthetic chart hover hides and restores aspects through redraw', {timeout
       assert.equal(state.last?.name,'Jupiter');
       assert.ok(state.lines > 0, 'the supplied cross-aspect is drawn');
     }
+    for (const [name,id,longitude] of [['ASC','AS',72],['DS','DS',252],['MC','MC',342],['IC','IC',162]]) {
+      const point = await page.evaluate(n => globalThis.hoverHarness.transitAxisPoint(n), name);
+      await page.mouse.move(point.x,point.y);
+      state = await page.evaluate(() => globalThis.hoverHarness.transitState());
+      assert.equal(state.last?.ring,'transit');
+      assert.equal(state.last?.name,id);
+      assert.equal(state.last?.longitude,longitude);
+    }
     await page.mouse.move(700,700);
     state = await page.evaluate(() => globalThis.hoverHarness.transitState());
     assert.equal(state.last,null); assert.equal(state.lines,0);
@@ -70,6 +78,19 @@ test('synthetic chart hover hides and restores aspects through redraw', {timeout
     state = await page.evaluate(() => globalThis.hoverHarness.transitState());
     assert.equal(state.opacity,1, 'the original natal opacity is restored');
     assert.equal(state.vertexColors,true, 'the original line colors are restored');
+    assert.equal(await page.evaluate(() => globalThis.hoverHarness.transitAxesCount(true,true)),4);
+    assert.equal(await page.evaluate(() => globalThis.hoverHarness.transitAxesCount(false,true)),0);
+    assert.equal(await page.evaluate(() => globalThis.hoverHarness.transitAxesCount(true,false)),0);
+    let projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('dodecatemoria','tutti'));
+    assert.equal(projected.length,7);
+    projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('dodecatemoria','Sun'));
+    assert.deepEqual(projected.map(item => [item.name,item.longitude]),[['Sun',35]]);
+    projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('antisci','tutti'));
+    assert.deepEqual(projected.map(item => [item.name,item.longitude,item.kind]),[['Sun',181.6,'CircleGeometry'],['Moon',177.9,'CircleGeometry']]);
+    projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('contrantisci','tutti'));
+    assert.deepEqual(projected.map(item => [item.name,item.longitude,item.kind]),[['Sun',1.6,'RingGeometry'],['Moon',357.9,'RingGeometry']]);
+    projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('antisci','Sun'));
+    assert.deepEqual(projected.map(item => [item.name,item.longitude]),[['Sun',181.6]]);
     await page.evaluate(() => globalThis.hoverHarness.destroy());
   } finally { await browser.close(); }
 });

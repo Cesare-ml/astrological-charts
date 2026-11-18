@@ -23,6 +23,9 @@ for (const [name, longitude] of [['true Node',72], ['osc. Apogee',135], ['Tyche'
   fixture.planets[name] = {...fixture.planets.Sun, longitude};
   options.settaggi.elementi_celesti[name].att = true;
 }
+for (const [index, name] of demoBodies.slice(0,7).entries()) {
+  fixture.planets[name].dodecatemoria = {longitude:(35+index*37)%360, longitudeSpeed:1};
+}
 (globalThis as any).hoverHarness = {
   async init(base: string) {
     GestoreImmagini.configurePublicAssetsBase(base);
@@ -38,11 +41,57 @@ for (const [name, longitude] of [['true Node',72], ['osc. Apogee',135], ['Tyche'
       service.setTransitAspectLines(value ? [{aspect:'trigono', transitName:'Jupiter', transitLongitude:120,
         natalName:'Sun', natalLongitude:0}] : []);
     });
-    const transit = makeDemoTheme(0);
+    const transit = makeDemoTheme(52);
     transit.planets.Jupiter.longitude = 120;
     options.mostraTransiti = true;
+    options.mostraAssiTransiti = true;
     await service.disegnaScena(fixture, transit, null, 'carta-astrale', options);
     service.setNatalAspectsDimmed(true);
+  },
+  transitAxisPoint(name: string) {
+    const scene = (service as any).scene as THREE.Scene;
+    let marker: THREE.Object3D | undefined;
+    scene.traverse(group => {
+      if (group.userData.chartInteractionRole === 'transit-axes') group.traverse(object => {
+        if (object.userData.axisMarker === name) marker = object;
+      });
+    });
+    if (!marker) throw Error(`Missing transit axis ${name}`);
+    scene.updateMatrixWorld(true);
+    const line = marker as THREE.LineSegments;
+    const position = marker instanceof THREE.LineSegments
+      ? new THREE.Vector3().fromBufferAttribute(line.geometry.attributes.position, 1) : new THREE.Vector3();
+    const p = marker.localToWorld(position).project(service.camera);
+    const r = canvas.getBoundingClientRect();
+    return {x:r.left+(p.x+1)*r.width/2,y:r.top+(1-p.y)*r.height/2};
+  },
+  async transitAxesCount(enabled: boolean, hasHouses: boolean) {
+    const transit = makeDemoTheme(52);
+    if (!hasHouses) transit.houses = {};
+    options.mostraAssiTransiti = enabled;
+    await service.disegnaScena(fixture, transit, null, 'carta-astrale', options);
+    let count = 0;
+    ((service as any).scene as THREE.Scene).traverse(group => {
+      if (group.userData.chartInteractionRole === 'transit-axes') count += group.children.filter(child => child.userData.axisStem).length;
+    });
+    return count;
+  },
+  async projectionState(mode:string, selected:string) {
+    options.mostraTransiti = false;
+    options.dodecatemoriAttivi = mode === 'dodecatemoria';
+    options.dodecatemore = mode === 'dodecatemoria' ? selected : undefined;
+    options.proiezioneZodiacale = mode === 'antisci' || mode === 'contrantisci' ? {
+      tipo:mode, asse:'Cardinale', pianeta:selected,
+      punti:[{name:'Sun',longitude:358.4,antiscia:181.6,contraAntiscia:1.6,retrograde:false},
+        {name:'Moon',longitude:2.1,antiscia:177.9,contraAntiscia:357.9,retrograde:false}],
+    } : undefined;
+    await service.disegnaScena(fixture,null,null,'carta-astrale',options);
+    const items:any[] = [];
+    ((service as any).scene as THREE.Scene).traverse(object => {
+      if (object.userData.dodecatemoria) items.push({name:object.userData.dodecatemoria,longitude:object.userData.trueLongitude,kind:'dodeca'});
+      if (object.userData.projectionPoint) items.push({name:object.userData.projectionPoint,longitude:object.userData.trueLongitude,kind:object.geometry?.type});
+    });
+    return items;
   },
   transitPoint(name: string, ring: string) {
     const scene = (service as any).scene as THREE.Scene;

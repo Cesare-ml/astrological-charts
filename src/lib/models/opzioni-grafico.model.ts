@@ -59,6 +59,13 @@ export interface OpzioniGrafico {
 
   dodecatemoriAttivi: boolean;
   dodecatemore?: any;
+  /** Precomputed reflection facts supplied by the host, not calculated by the renderer. */
+  proiezioneZodiacale?: {
+    tipo: 'antisci' | 'contrantisci';
+    asse: 'Cardinale' | 'Fissa' | 'Mutevole';
+    pianeta: string;
+    punti: ReadonlyArray<{name:string; longitude:number; antiscia:number; contraAntiscia:number; retrograde:boolean}>;
+  };
 
   chakramAttivi: boolean;
   chakram?: any;
@@ -72,6 +79,8 @@ export interface OpzioniGrafico {
   temaRadixElementoCelesteFocusAspetti: { id: string; nome: string };
 
   mostraTransiti: boolean;
+  /** Draw the transit chart's ASC/DS/MC/IC as dashed external markers. Opt-in. */
+  mostraAssiTransiti?: boolean;
   mostraTransitiSinodici: boolean;
   transitoSinodicoNomePianeta?: string;
   transitoSinodicoFase: string;
@@ -194,6 +203,7 @@ export const createDefaultOpzioniGrafico = (): OpzioniGrafico => ({
   temaRadixElementoCelesteFocusAspetti: { id: '0', nome: 'Sun' },
 
   mostraTransiti: false,
+  mostraAssiTransiti: false,
   mostraTransitiSinodici: false,
   transitoSinodicoNomePianeta: undefined,
   transitoSinodicoFase: 'd1',
