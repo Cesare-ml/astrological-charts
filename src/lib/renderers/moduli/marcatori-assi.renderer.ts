@@ -263,6 +263,17 @@ export class MarcatoriAssiRender {
       }
     }
 
+    // The external stems, arrowheads, terminal dots and labels remain pickable
+    // even when the duplicate axis glyphs inside the planet ring are hidden.
+    const longitudes: Record<string, number> = {ASC:asc, DS:(asc+180)%360, MC:mc, IC:(mc+180)%360};
+    for (const object of group.children) {
+      const key = object.userData.axisName ?? object.userData.axisMarker ?? object.userData.axisStem ?? object.userData.axis;
+      if (typeof key === 'string' && Object.hasOwn(longitudes, key)) {
+        object.userData.planet = key === 'ASC' ? 'AS' : key;
+        object.userData.trueLongitude = longitudes[key];
+      }
+    }
+    group.userData.chartInteractionRole = 'natal-axes';
     return group;
   }
 }

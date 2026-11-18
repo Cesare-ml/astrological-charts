@@ -372,6 +372,7 @@ async function creaElementiCelesti(stato: StatoCartaAstrale) {
         stato.diametri.diametroAnelloCase / 2,
     );
     stato.gruppoElementiCelesti = group;
+    group.userData.chartInteractionRole = 'natal-planets';
     return group;
 }
 

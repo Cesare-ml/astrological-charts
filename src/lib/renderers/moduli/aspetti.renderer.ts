@@ -160,13 +160,16 @@ export class AspettiRender {
    
     //aggiungo gli archi
     var archi = AspettiRender.getArchi(nodi,aspetti,aspettiVerso,spetti_orbite);
-    var group = AspettiRender.renderArchi(
+    const lines = AspettiRender.renderArchi(
       as,
       nodi,archi,aspetti,
       opzioni, //'estrapola','visualizza sorti'
       diametroCerchio,monocolore,"longitude",
       nomeElementoCelesteInEvidenza
     );
+    lines.userData.chartInteractionRole = 'natal-aspect-lines';
+    const group = new THREE.Group();
+    group.add(lines);
     group.add(await this.getBackgroundAspetti(diametroCerchio,opzioni,australInversion));
 
     return group;

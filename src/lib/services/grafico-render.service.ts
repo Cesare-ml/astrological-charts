@@ -17,6 +17,8 @@ import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer'
 
 import {SkinManager} from '../renderers/@skin-manager';
 import { debounceTime, fromEvent, map, startWith } from 'rxjs';
+import {NatalHoverController, type NatalPlanetHover} from './natal-hover';
+export type {NatalPlanetHover} from './natal-hover';
 
 /** Dispose resources owned by a generated scene, once per object identity. */
 function disposeSceneResources(root: THREE.Object3D): void {
@@ -72,6 +74,7 @@ export class GraficoRenderService implements OnDestroy {
   private renderer: THREE.WebGLRenderer;
   public camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;
+  private natalHover: NatalHoverController | null = null;
   
   public scale = 1;
 
@@ -111,6 +114,7 @@ export class GraficoRenderService implements OnDestroy {
     if (this.camera) {
       this.camera.zoom = this.zoomValue;
       this.camera.updateProjectionMatrix();
+      this.natalHover?.refresh();
       this.render();
     }
   }
@@ -128,6 +132,8 @@ export class GraficoRenderService implements OnDestroy {
 
   public ngOnDestroy(): void {
     ++this.drawGeneration;
+    this.natalHover?.dispose();
+    this.natalHover = null;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
     
     if(this.resizeSub) {
@@ -296,6 +302,7 @@ export class GraficoRenderService implements OnDestroy {
         this.scene.add(this.camera);
       }
       if (disegno) this.scene.add(disegno);
+      this.natalHover?.sceneChanged();
       this.render();
     });
   }
@@ -307,6 +314,21 @@ export class GraficoRenderService implements OnDestroy {
     }
     
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Opt-in; passing null detaches all pointer listeners and clears hover. */
+  public setNatalPlanetHoverListener(listener: ((value: NatalPlanetHover | null) => void) | null): void {
+    this.natalHover?.dispose();
+    this.natalHover = listener && this.canvas
+      ? new NatalHoverController(this.canvas, () => this.scene, () => this.camera, listener) : null;
+  }
+
+  /** Temporarily hides natal aspect lines, without modifying chart settings or exports. */
+  public setNatalAspectsVisible(visible: boolean): void {
+    this.scene?.traverse(object => {
+      if (object.userData.chartInteractionRole === 'natal-aspect-lines') object.visible = visible;
+    });
+    if (this.isInizializzato) this.render();
   }
 
   public async generaImmagine(
