@@ -196,3 +196,42 @@ test('bounded natal layout never shifts a glyph more than three degrees or overl
     }
   }
 });
+
+test('three nearly coincident glyphs prefer two sign-side positions and one house-side position', () => {
+  const options = {maxAngularDisplacement: 5, fixedTwoLanes: true,
+    isolatedScale: 0.24 / 0.18, isolatedRadialInset: 0.05,
+    labelWidth: 0.13, labelHeight: 0.075, labelRadialOffset: 0.152,
+    houseTickInnerRadius: 1.278, houseTickOuterRadius: 1.338};
+  const source = {SouthNode: 25, Mars: 25.8, Jupiter: 26.4};
+  for (const rotation of [0, 30, 45, 90, 135, 180, 270]) {
+    const result = layoutPlanetSymbols(source, 1.293, 1.947,
+      0.18, 0.18 * 605 / 875, true, rotation, options);
+    assert.equal(result.Mars.radius, result.SouthNode.radius,
+      `rotation ${rotation}: Mars and South Node should share the zodiac-side lane`);
+    assert.ok(result.Jupiter.radius < result.Mars.radius,
+      `rotation ${rotation}: only Jupiter should use the house-side lane`);
+    for (const [key, degree] of Object.entries(source)) {
+      assert.ok(angularDistance(result[key].displayDegree, degree) <= 5,
+        `${key} must remain within the natal display-angle tolerance`);
+      assert.equal(result[key].scale, 1, 'the actual three-body conjunction remains compact');
+    }
+  }
+});
+
+test('two distinct bodies retain full isolated size whenever their actual glyphs fit', () => {
+  const options = {maxAngularDisplacement: 5, fixedTwoLanes: true,
+    isolatedScale: 0.24 / 0.18, isolatedRadialInset: 0.05,
+    labelWidth: 0.13, labelHeight: 0.075, labelRadialOffset: 0.152,
+    houseTickInnerRadius: 1.278, houseTickOuterRadius: 1.338};
+  for (const source of [{Mercury: 7, Venus: 23}, {Saturn: 1, Neptune: 8}]) {
+    for (const rotation of [0, 45, 90, 135, 180, 270]) {
+      const result = layoutPlanetSymbols(source, 1.293, 1.947,
+        0.18, 0.18 * 605 / 875, true, rotation, options);
+      for (const name of Object.keys(source)) {
+        assert.equal(result[name].scale, 0.24 / 0.18,
+          `rotation ${rotation}: ${name} should not be shrunken solely by angular proximity`);
+        assert.ok(angularDistance(result[name].displayDegree, source[name]) <= 5);
+      }
+    }
+  }
+});

@@ -259,6 +259,12 @@ function layoutTwoFixedLanes(
   );
   if (innerLane >= outerLane - symbolWidth - 0.015) return undefined;
   const ticks = showDegrees ? houseTickSegments(bodies, chartRotation, options) : [];
+  // A large pair needs its own clearances: the compact inner lane and outer
+  // lane were measured for the smaller conjunction glyphs and badges.
+  const largeInnerLane = Math.max(innerLane,
+    (options.houseTickOuterRadius ?? innerRadius) +
+    (showDegrees ? radialOffset * isolatedScale + labelHeight * isolatedScale / 2
+      : symbolWidth * isolatedScale / 2) + 0.012);
 
   function boxes(position: SymbolPosition) {
     const scale = position.scale ?? 1;
@@ -294,7 +300,15 @@ function layoutTwoFixedLanes(
   });
   const groups: Body[][] = [];
   for (const body of circular) {
-    if (!groups.length || body.unwrapped - groups[groups.length - 1][groups[groups.length - 1].length - 1].unwrapped > 16) groups.push([]);
+    const lastGroup = groups[groups.length - 1];
+    const previous = lastGroup?.[lastGroup.length - 1];
+    // Angular proximity alone is not a collision. In particular, two bodies
+    // 8–16° apart can often keep the full-size glyphs. Split only where the
+    // actual enlarged glyph/degree rectangles are already disjoint.
+    const separate = previous && !collides(
+      {displayDegree: previous.degree, radius: isolatedLane, scale: isolatedScale},
+      {displayDegree: body.degree, radius: isolatedLane, scale: isolatedScale});
+    if (!previous || body.unwrapped - previous.unwrapped > 16 || separate) groups.push([]);
     groups[groups.length - 1].push(body);
   }
   const placed: Record<string, SymbolPosition> = {};
@@ -306,16 +320,25 @@ function layoutTwoFixedLanes(
   if (deltas.every(delta => Math.abs(delta) < driftLimit - 1e-8)) deltas.push(-driftLimit, driftLimit);
 
   for (const group of groups) {
-    // Every truly solitary body is larger. Neighbours in a conjunction keep
-    // the compact uniform footprint, whether they occupy one or two lanes.
-    const groupScale = group.length === 1 ? isolatedScale : 1;
+    // A pair should not be miniaturized merely because its longitudes are
+    // close. Try both full-size tracks first; only a geometrically impossible
+    // pair (or a denser cluster) gets the uniform compact footprint.
+    const groupScale = group.length <= 2 ? isolatedScale : 1;
     const fixed = Object.values(placed);
     const center = (group[0].unwrapped + group[group.length - 1].unwrapped) / 2;
     const centerFirst = [...group].sort((a, b) =>
       Math.abs(a.unwrapped - center) - Math.abs(b.unwrapped - center) || a.unwrapped - b.unwrapped);
-    const orders = [centerFirst, group, [...group].reverse(), [...centerFirst].reverse()];
-    const tryGroup = (radii: number[]): Record<string, SymbolPosition> | undefined => {
-      for (const order of orders) {
+    // Keep the source zodiac order when several equally good two-lane
+    // layouts exist; a middle-first search tended to sacrifice the first
+    // (outer) glyph just to keep the last one near the signs.
+    const orders = [group, centerFirst, [...group].reverse(), [...centerFirst].reverse()];
+    const tryGroup = (radii: number[], scale: number, maxInner = group.length,
+      soleInnerKey?: string): Record<string, SymbolPosition> | undefined => {
+      const searchOrders = soleInnerKey ? [
+        [...group.filter(body => body.key === soleInnerKey),
+          ...group.filter(body => body.key !== soleInnerKey)], ...orders,
+      ] : orders;
+      for (const order of searchOrders) {
         const chosen: Record<string, SymbolPosition> = {};
         let explored = 0;
         // A dense seven-body group may be geometrically impossible within two
@@ -325,8 +348,10 @@ function layoutTwoFixedLanes(
           if (i === order.length) return true;
           if (++explored > maxSearchNodes) return false;
           const body = order[i];
-          for (const delta of deltas) for (const radius of radii) {
-            const candidate = {displayDegree: normalizeDegree(body.degree + delta), radius, scale: groupScale};
+          for (const delta of deltas) for (const [lane, radius] of radii.entries()) {
+            if (soleInnerKey && ((lane === 1) !== (body.key === soleInnerKey))) continue;
+            if (lane === 1 && Object.values(chosen).filter(position => position.radius === radii[1]).length >= maxInner) continue;
+            const candidate = {displayDegree: normalizeDegree(body.degree + delta), radius, scale};
             if (!badgeClearsTicks(candidate, chartRotation, radialOffset, tangentOffset,
               labelWidth, labelHeight, ticks)) continue;
             if (fixed.some(other => collides(candidate, other)) ||
@@ -347,9 +372,31 @@ function layoutTwoFixedLanes(
     const minimumSameLaneGap = 2 * Math.atan2(Math.min(symbolWidth, symbolHeight) / 2,
       outerLane) * 180 / Math.PI;
     const needsTwoLanes = span < (group.length - 1) * minimumSameLaneGap;
-    const radii = group.length === 1 ? [isolatedLane] : [outerLane, innerLane];
-    const match = (needsTwoLanes ? undefined : tryGroup([radii[0]])) ??
-      (group.length === 1 ? undefined : tryGroup(radii));
+    const radii = group.length === 1 ? [isolatedLane] :
+      group.length === 2 ? [isolatedLane, largeInnerLane] : [outerLane, innerLane];
+    const tryPreferred = (scale: number, lanes: number[]) => {
+      const onOne = needsTwoLanes && group.length > 2 ? undefined : tryGroup([lanes[0]], scale);
+      if (onOne) return onOne;
+      if (lanes.length === 1 || lanes[1] >= lanes[0] - symbolWidth * scale * 0.65) return undefined;
+      // Prefer as many glyphs as possible next to the zodiac ring. The old
+      // first-valid backtracking could leave two of three near the houses.
+      if (group.length > 3) return tryGroup(lanes, scale);
+      for (let innerCount = 1; innerCount <= group.length; innerCount++) {
+        if (innerCount === 1 && group.length === 3) {
+          // In a three-body knot, first see whether the outermost-longitude
+          // body can take the house-side track, leaving the two preceding
+          // glyphs beside the signs. This avoids an order-of-search artifact
+          // where the middle planet is tucked inward unnecessarily.
+          const lastInside = tryGroup(lanes, scale, 1, group[group.length - 1].key);
+          if (lastInside) return lastInside;
+        }
+        const match = tryGroup(lanes, scale, innerCount);
+        if (match) return match;
+      }
+      return undefined;
+    };
+    const match = tryPreferred(groupScale, radii) ??
+      (group.length === 2 ? tryPreferred(1, [outerLane, innerLane]) : undefined);
     if (!match) return undefined;
     Object.assign(placed, match);
   }

@@ -443,6 +443,30 @@ test('isolated planets are enlarged while a five-body conjunction keeps uniform 
   }
 });
 
+test('wide natal renderer keeps Mercury/Venus and Saturn/Neptune large without overlaps', async () => {
+  const natalInner = 4.5723 * 67.1 / 120 / 2;
+  const natalOuter = 4.5723 * 103 / 120 / 2;
+  for (const source of [{Mercury: 7, Venus: 23}, {Saturn: 1, Neptune: 8}]) {
+    for (const rotation of [0, 45, 90, 135, 270]) {
+      const {group} = await makeScene(true, rotation, 1, natalOuter, natalInner, source);
+      const glyphs = group.children.filter(child => child.userData.planet);
+      assert.equal(glyphs.length, 2);
+      assert.ok(glyphs.every(glyph => Math.abs(glyph.scale.x - 0.24) < 1e-8),
+        `rotation ${rotation}: both glyphs should retain the isolated size`);
+      const badges = group.children.filter(child => child.material?.map?.isCanvasTexture);
+      const boxes = glyphs.flatMap((glyph, index) => [
+        {name: glyph.userData.planet, box: visibleRectangle(glyph)},
+        {name: glyph.userData.planet, box: visibleRectangle(badges[index])},
+      ]);
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        if (boxes[i].name === boxes[j].name) continue;
+        assert.equal(overlapArea(boxes[i].box, boxes[j].box), 0,
+          `rotation ${rotation}: ${boxes[i].name}/${boxes[j].name} overlap`);
+      }
+    }
+  }
+});
+
 test('the degree display is optional and defaults to on for legacy callers', async () => {
   const hidden = await makeScene(false);
   const omitted = await makeScene(undefined);
