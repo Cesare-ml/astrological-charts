@@ -58,11 +58,23 @@ export class ElementiCelestiRender {
     offsDirezioniSemplificate=0,
     offsDirezioniSemplificateFasullo=0,
     isCerchiaLaLuna=false,
-    isElementiSinastria=false
+    isElementiSinastria=false,
+    axisPresentation: 'default' | 'primary-overlay' | 'secondary-overlay' = 'default',
   ): Promise<any> {
     var group = new THREE.Group();
     try {
     var elementiCelesti = ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,usaAssi,parametroDiRender,calcolaPartiArabe,offsDirezioniSemplificate);
+
+    // In a composite chart the primary axes already have their full-sized
+    // external arrows and labels. Repeating all four as planets makes both
+    // rings illegible. The partner/transit layer keeps only its independent
+    // AS and MC positions; its DS and IC are the exact opposite points.
+    if (axisPresentation === 'primary-overlay') {
+      for (const key of ['AS', 'DS', 'MC', 'IC']) delete elementiCelesti[key];
+    } else if (axisPresentation === 'secondary-overlay') {
+      delete elementiCelesti['DS'];
+      delete elementiCelesti['IC'];
+    }
 
     if(offsDirezioniSemplificateFasullo) {
       elementiCelesti['AS'][parametroDiRender] =
@@ -310,7 +322,9 @@ export class ElementiCelestiRender {
       }
 
       group.add( el );
-      if (mostraGradi) {
+      // Axis markers in an overlay are already identifiable by their glyphs;
+      // tiny degree labels beside them produced dense, repeated annotations.
+      if (mostraGradi && !(axisPresentation !== 'default' && ['AS', 'DS', 'MC', 'IC'].includes(nome))) {
         const label = this.makeDegreeLabel(trueDegree, coloreSimboli,
           simboliScale * glyphScale, !hasWidePlanetBand);
         const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);

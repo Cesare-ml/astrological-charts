@@ -48,6 +48,18 @@ test('official VirgoStars has twelve pastel zodiac sectors, without bundling ass
     'the official center motif should be as delicate as the approved reference');
 });
 
+test('dark skin headings are white and monochrome skins use monochrome axis strokes', () => {
+  const dark = SkinManager.getAxisColors('dark');
+  const darkMono = SkinManager.getAxisColors('dark-bn');
+  const lightMono = SkinManager.getAxisColors('light-bn');
+  assert.equal(dark.testo, '#ffffff', 'dark axis captions must contrast with the charcoal background');
+  assert.equal(dark.asc, '#cb5c12', 'ordinary dark skin keeps its coloured axis arrows');
+  for (const key of ['asc', 'ds', 'mc', 'ic', 'testo', 'motoMC']) {
+    assert.equal(darkMono[key], '#ffffff', `dark B/N ${key} must be pure white`);
+    assert.equal(lightMono[key], '#000000', `light B/N ${key} must be pure black`);
+  }
+});
+
 test('only transit charts draw the external ruler, for any skin', async () => {
   const scale = group => group.children.find(child => child.name === 'zodiac-degree-scale');
   for (const skin of ['virgostars', 'dark', 'light']) {

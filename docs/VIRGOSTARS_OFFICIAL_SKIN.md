@@ -64,6 +64,9 @@ the host's asset resolver.
   explicitly in existing consumers, or rely on the new default for new settings.
 
 The helper `SkinManager.getAxisColors(id)` keeps axis colors skin-configurable.
+The `dark` skin now renders ASC/DS/MC/IC headings in white while keeping its
+colored axis strokes; `dark-bn` uses white for all axis strokes, dots, captions
+and movement marker, and `light-bn` uses black for the same elements.
 Unknown/older skins use the original axis colors. This change requires no new
 PNG files and does not modify planetary algorithms, house calculations or
 aspect orbs. Consumer compatibility (VirgoStars web/mobile, offline Astrolabio)

@@ -75,7 +75,8 @@ function segmentCrossesRectangle(coords, rectangle, padding = 0.005) {
 }
 
 async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
-  outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes) {
+  outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes,
+  axisPresentation = 'default') {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -128,11 +129,13 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
         Object.entries(source).map(([name, longitude]) =>
           [name, { longitude: (longitude + longitudeOffset) % 360, longitudeSpeed: 0 }]),
       ),
+      houses: { [options.settaggi.domificazione_selezionata]: { ascendant: 20, mc: 290 } },
     };
     const initial = structuredClone(theme);
     const group = await ElementiCelestiRender.getAnelloElementiCelesti(
       theme, 0, [], symbolScale, options, [], [], innerRingRadius * 2, outerRingRadius * 2,
-      innerRingRadius * 2, true, false,
+      innerRingRadius * 2, true, false, 'longitude', true, false, 0, 0, 0, false, false,
+      axisPresentation,
     );
     assert.deepEqual(theme, initial, 'renderer must not mutate original positions');
     return { group, labels, fonts };
@@ -142,6 +145,22 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     globalThis.document = originalDocument;
   }
 }
+
+test('composite primary and secondary wheels avoid four repeated axis glyphs and degree captions', async () => {
+  const source = { Sun: 10, Moon: 48, Jupiter: 148, AS: 20, DS: 200, MC: 290, IC: 110 };
+  const primary = await makeScene(true, 0, 1, outerRadius, innerRadius, source, 'primary-overlay');
+  const secondary = await makeScene(true, 0, 1, outerRadius, innerRadius, source, 'secondary-overlay');
+  const names = group => group.children.filter(child => child.userData.planet)
+    .map(child => child.userData.planet).sort();
+  assert.deepEqual(names(primary.group), ['Jupiter', 'Moon', 'Sun'],
+    'external natal arrows already supply all four main axis positions');
+  assert.deepEqual(names(secondary.group), ['AS', 'Jupiter', 'MC', 'Moon', 'Sun'],
+    'partner/transit retains only its independent AS and MC glyphs');
+  assert.deepEqual(primary.labels.sort(), ['10°', '18°', '28°'].sort(),
+    'primary planets still display their true sign degrees');
+  assert.deepEqual(secondary.labels.sort(), ['10°', '18°', '28°'].sort(),
+    'secondary AS/MC must not duplicate compact degree captions');
+});
 
 test('Three.js scene keeps every glyph connector anchored at the true degree', async () => {
   const { group, labels, fonts } = await makeScene(true);

@@ -56,6 +56,7 @@ export class SkinManager {
         },
         'dark': {
             'bgColor': '#333',
+            'assi': { 'testo': '#ffffff' },
             'elementi': [
                 '#ff0000',
                 '#29cc09',
@@ -105,6 +106,8 @@ export class SkinManager {
         },
         'dark-bn': {
             'bgColor': '#000',
+            'assi': { 'asc': '#ffffff', 'ds': '#ffffff', 'mc': '#ffffff',
+                'ic': '#ffffff', 'testo': '#ffffff', 'motoMC': '#ffffff' },
             'elementi': [
                 '#ff0000',
                 '#29cc09',
@@ -204,6 +207,8 @@ export class SkinManager {
         },
         'light-bn': {
             'bgColor': '#fefefe',
+            'assi': { 'asc': '#000000', 'ds': '#000000', 'mc': '#000000',
+                'ic': '#000000', 'testo': '#000000', 'motoMC': '#000000' },
             'elementi': [
                 '#ff0000',
                 '#29cc09',

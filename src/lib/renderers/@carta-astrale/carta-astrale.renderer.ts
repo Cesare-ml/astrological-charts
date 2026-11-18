@@ -353,7 +353,9 @@ async function creaElementiCelesti(stato: StatoCartaAstrale) {
         0,//degOffs
         0,//offsDirezioniSemplificate
         0,//offsDirezioniSemplificateFasullo
-        false//cerchia la luna
+        false,//cerchia la luna
+        false,//isElementiSinastria
+        stato.opzioni.mostraTransiti || stato.opzioni.mostraSinastria ? 'primary-overlay' : 'default',
     );
     stato.gruppoElementiCelesti = group;
     return group;

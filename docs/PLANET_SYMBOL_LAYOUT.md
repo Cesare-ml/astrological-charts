@@ -134,6 +134,20 @@ external annotations. Markers use native Three.js geometry, disposable
 canvas-textured text and the same host-owned symbol assets already required
 by the rest of the chart.
 
+### Composite charts: transit and synastry annotations
+
+When a transit or synastry wheel is visible, the **primary** body band no
+longer repeats AS/DS/MC/IC as four extra planetary glyphs: their true
+positions remain readable from the primary external axis arrows. The
+**secondary** celestial band keeps its independently computed AS and MC
+glyphs, without superfluous degree badges, but suppresses DS/IC because
+they are exactly opposite the former two points. Ordinary planetary glyphs
+and integer degree badges remain visible in both layers. This is purely a
+rendering/presentation rule: input `TemaRender`, houses, aspects, longitudes
+and the exact degree of every retained symbol are unchanged. Direct callers
+of the low-level body renderer retain its existing full-axis behavior unless
+they explicitly choose `primary-overlay` or `secondary-overlay`.
+
 The zodiac glyph is centred radially in its own sign ring, rather than being
 biased toward the celestial bodies. The Angular demo exposes **Show celestial
 degrees**, per-axis controls, the house numeral scale, and a **Conjunction
