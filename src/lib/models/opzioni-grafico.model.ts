@@ -1,6 +1,6 @@
 import {Settaggi} from './settaggi.model'
 
-type TemaGrafico = 'dark' | 'light' | 'astrolabio' | 'sun' | 'light-bn' | 'dark-bn';
+type TemaGrafico = 'virgostars' | 'dark' | 'light' | 'astrolabio' | 'astrolabio-girasole' | 'sun' | 'light-bn' | 'dark-bn';
 type Pianeta =
   | 'Moon'
   | 'Mercury'
@@ -102,6 +102,8 @@ export interface OpzioniGrafico {
   mostraFrecciaMC?: boolean;
   mostraRetroFrecciaIC?: boolean;
   mostraGradiAssi?: boolean;
+  /** ASC, DSC, MC and IC names just beyond their markers. Defaults on. */
+  mostraNomiAssi?: boolean;
   mostraOraPlanetariaAscendente?: boolean;
   mostraDirezioneMotoMC?: boolean;
   /** House numeral multiplier, e.g. 1.25. */
@@ -149,7 +151,7 @@ export interface OpzioniGrafico {
 
 export const defaultOpzioniGrafico: OpzioniGrafico = {
   settaggi: new Settaggi(),
-  temaGrafico: 'light',
+  temaGrafico: 'virgostars',
 
   elementi: { mostraDodecatemori: false },
 
@@ -216,6 +218,7 @@ export const defaultOpzioniGrafico: OpzioniGrafico = {
   mostraFrecciaMC: true,
   mostraRetroFrecciaIC: true,
   mostraGradiAssi: true,
+  mostraNomiAssi: true,
   mostraOraPlanetariaAscendente: true,
   mostraDirezioneMotoMC: true,
   dimensioneNumeriCase: 1.25,

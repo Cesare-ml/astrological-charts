@@ -1,5 +1,9 @@
 # Celestial symbols — compact conjunction layout
 
+For the official pastel skin, short true-longitude house-boundary ticks,
+skin-independent one-degree external ruler and visible aspect endpoint dots,
+see [VirgoStars official skin and shared geometry](VIRGOSTARS_OFFICIAL_SKIN.md).
+
 ## Changes
 
 The old renderer displaced each glyph by running a forward-only 7° gap pass

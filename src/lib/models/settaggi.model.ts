@@ -84,7 +84,7 @@ export class SettaggiAspettiOrbite {
 
 export class Settaggi {
   public id: number = 0;
-  public skin_id: string = 'light';
+  public skin_id: string = 'virgostars';
   public utente_id: number = 0;
   public tema_account_id: number = 0;
   public transaturnini_se_congiunti: boolean = true;
@@ -169,7 +169,7 @@ export class Settaggi {
 
 export const settaggiDefault:Settaggi = {
   "id":null,
-  "skin_id":'light',
+  "skin_id":'virgostars',
   "utente_id":null,
   "tema_account_id":null,
   "domificazione_selezionata":"placido",

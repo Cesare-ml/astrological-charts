@@ -12,7 +12,9 @@ Invite known contributors to develop the astrological renderer using Codex, Clau
 
 The imported source includes Three.js rendering of natal charts, transits, synastry and latitude charts, plus browser PNG export. Calculation of planetary positions and interpretation of astrology are not part of the library.
 
-Celestial glyphs use a collision-aware layout: isolated natal planets are larger, while ordinary conjunctions retain equal-size compact symbols on one or, only where crowded, two fixed-radius tracks, within ±5° of their true longitude. Extremely dense, geometrically impossible clusters still have a collision-safe adaptive fallback. The single outward connector marks the true degree; no spoke runs from the glyph to the houses. `mostraGradiElementiCelesti` (default `true`) shows **only the integer sign degree** on the inward side of each planet, closer to its glyph than to the houses. The natal aspect/house wheel is slightly smaller to leave room for planets without reducing the sign ring. ASC and MC show degree and whole arcminutes (e.g. `20° 0′`), with the ASC centred on the free arrow shaft below the planetary-hour glyph and the MC left of the arrow beside its filled direction triangle. DS and IC have smooth, enlarged circular terminal discs. See [symbol layout and integration notes](docs/PLANET_SYMBOL_LAYOUT.md).
+Celestial glyphs use a collision-aware layout: isolated natal planets are larger, while ordinary conjunctions retain equal-size compact symbols on one or, only where crowded, two fixed-radius tracks, within ±5° of their true longitude. Extremely dense, geometrically impossible clusters still have a collision-safe adaptive fallback. The single outward connector marks the true degree; a short independent tick at the inner house boundary marks the same longitude, without a spoke from glyph to house. `mostraGradiElementiCelesti` (default `true`) shows **only the integer sign degree** inward of each planet. The natal house/aspect wheel is slightly smaller to leave room for the planets. The external one-degree scale and true-degree aspect-endpoint dots are shared by all skins. ASC and MC show degrees and whole arcminutes (e.g. `20° 0′`); DSC/IC do not repeat their opposite degrees. The planetary-hour glyph appears above ASC. ASC and MC have open arrows; DSC/IC have circular terminal discs. See [symbol layout and integration notes](docs/PLANET_SYMBOL_LAYOUT.md).
+
+The new default `virgostars` skin provides the official pastel zodiac, subtle wheel background and coordinated axis colors. Geometry, angular references and collision rules are shared by **all eight selectable skins**, including the seven previous skins. See [official skin and layout specification](docs/VIRGOSTARS_OFFICIAL_SKIN.md).
 
 **Important:** The renderer loads images from a host asset root; the library does not bundle them. A private owner-authorized image pack is available separately in `astrological-assets`, without the unknown-license font. Building TypeScript does not by itself prove visual correctness.
 
@@ -50,6 +52,7 @@ These commands and `npm run preflight` passed on Windows with Node 22.18.0. The 
 - [Three-repository integration checkpoint, release gates and open blockers](docs/MULTIREPO_INTEGRATION_CHECKPOINT.md)
 - [Asset-only local preview: 78 synthetic PNGs or an approved independent pack](docs/LOCAL_ASSET_PREVIEW.md)
 - [Angular renderer demo and browser tests](docs/ANGULAR_DEMO.md)
+- [Official VirgoStars skin and shared geometry](docs/VIRGOSTARS_OFFICIAL_SKIN.md)
 - [Integration plan — not active](docs/INTEGRATION_PLAN.md)
 - [Technical reference snapshots](docs/reference/README.md)
 
@@ -68,7 +71,7 @@ Work on feature branches and submit pull requests. No production changes, AWS ac
 
 ## Browser preview of a synthetic asset pack
 
-For the interactive renderer demo, including all four modes and seven selectable skins, follow [the Angular demo guide](docs/ANGULAR_DEMO.md). It uses locally generated placeholder assets; visual compatibility with the original artwork has not been verified.
+For the interactive renderer demo, including all four modes and eight selectable skins, follow [the Angular demo guide](docs/ANGULAR_DEMO.md). It uses locally generated placeholder assets; visual compatibility with the original artwork has not been verified.
 
 Before the real images are reviewed/imported, Windows contributors can open a **local gallery of 78 generated checkerboard PNGs** using:
 

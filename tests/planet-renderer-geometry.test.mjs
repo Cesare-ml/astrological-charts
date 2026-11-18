@@ -125,9 +125,12 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
   const lines = group.children.filter(child => child.userData.connector);
   const numberLabels = group.children.filter(child =>
     child.material?.map?.isCanvasTexture);
+  const houseTicks = group.children.filter(child => child.userData.planetHouseTick);
   assert.equal(glyphs.length, names.length);
   assert.equal(lines.length, names.length, 'only the true-degree outer connector remains');
   assert.equal(numberLabels.length, names.length);
+  assert.equal(houseTicks.length, names.length,
+    'each celestial body needs one discrete mark on the house boundary');
   assert.deepEqual(labels.sort(), ['0°', '1°', '2°', '28°', '29°', '3°', '4°'].sort());
   assert.ok(fonts.includes('bold 90px Arial, sans-serif'), 'integer planet degrees must remain legible');
   for (const label of numberLabels) {
@@ -144,6 +147,15 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
     const outerAnchor = polar(90 + longitude, outerRadius);
     assert.ok(lines.some(line =>
       distance(line.userData.connector.to, outerAnchor) < 1e-8), `${name} must have a true-degree outer anchor`);
+    const tick = houseTicks.find(child => child.userData.planetHouseTick === name);
+    assert.ok(tick, `${name}: missing house boundary reference`);
+    assert.equal(tick.userData.trueLongitude, longitude);
+    const coords = tick.geometry.attributes.position.array;
+    const start = polar(90 + longitude, innerRadius - 0.043);
+    const end = polar(90 + longitude, innerRadius + 0.014);
+    assert.ok(distance({ x: coords[0], y: coords[1] }, start) < 1e-6,
+      `${name}: inner tick must start at the real, not displaced, longitude`);
+    assert.ok(distance({ x: coords[3], y: coords[4] }, end) < 1e-6);
     const glyphRadius = Math.hypot(glyph.position.x, glyph.position.y);
     assert.ok(glyphRadius > innerRadius && glyphRadius < outerRadius, `${name} outside ring`);
     const drawnAngle = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;

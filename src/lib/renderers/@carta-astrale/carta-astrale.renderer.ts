@@ -474,6 +474,19 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
 
     const disegno = new THREE.Group();
 
+    // Skin-only backdrop. The wheel topology and all longitude positions
+    // below are exactly the same for official and legacy skins.
+    const skin = SkinManager.skins[opzioni.settaggi.skin_id] as {
+        bgColor: string; sfondoRuota?: boolean;
+    };
+    if (skin?.sfondoRuota) {
+        const background = OggettiSempliciRender.getAnello(0,
+          stato.diametri.diametroAnelloSegni / 2, skin.bgColor);
+        background.position.z = -0.012;
+        background.name = 'skin-wheel-background';
+        disegno.add(background);
+    }
+
 
     // Aggiungi tutti i moduli principali
     const moduli = [

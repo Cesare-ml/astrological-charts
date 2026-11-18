@@ -53,6 +53,7 @@ async function makeMarkers(options = {}, overrides = {}) {
   };
   try {
     const opts = { ...structuredClone(defaultOpzioniGrafico), ...options };
+    if (!options.settaggi) opts.settaggi.skin_id = 'light';
     const theme = { orePlanetarie: structuredClone(hours), houses: { egizia: { mcSpeed: 1, ...overrides } } };
     return { group: await MarcatoriAssiRender.creaMarcatori(20.7, 298.94, 2.286, opts, theme), texts, assets, fonts };
   } finally { globalThis.document = previousDocument; OggettiSempliciRender.getImg = originalGetImg; }
@@ -112,7 +113,7 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   const hidden = await makeMarkers({
     mostraFrecciaAscendente: false, mostraRetroFrecciaDiscendente: false,
     mostraFrecciaMC: false, mostraRetroFrecciaIC: false,
-    mostraGradiAssi: false, mostraOraPlanetariaAscendente: false,
+    mostraGradiAssi: false, mostraNomiAssi: false, mostraOraPlanetariaAscendente: false,
     mostraDirezioneMotoMC: false,
   });
   assert.equal(hidden.group.children.length, 0);
@@ -166,7 +167,7 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
 
 test('individual annotations and signed MC motion can be hidden independently', async () => {
   const { group, texts } = await makeMarkers({
-    mostraGradiAssi: false, mostraOraPlanetariaAscendente: false,
+    mostraGradiAssi: false, mostraNomiAssi: false, mostraOraPlanetariaAscendente: false,
     mostraRetroFrecciaDiscendente: false, mostraDirezioneMotoMC: false,
   });
   assert.deepEqual(texts, []);
@@ -181,4 +182,24 @@ test('individual annotations and signed MC motion can be hidden independently', 
     [...backwards.geometry.attributes.position.array],
     'the small MC arrow must reverse if the supplied MC velocity is negative',
   );
+});
+
+test('axis names are geometry-shared between skins, but the official palette is skin-scoped', async () => {
+  const original = await makeMarkers();
+  const official = await makeMarkers({ settaggi: { skin_id: 'virgostars' } });
+  const names = group => group.children.filter(child => child.userData.axisName);
+  assert.deepEqual(names(original.group).map(child => child.userData.axisName), ['ASC','DS','MC','IC']);
+  assert.deepEqual(names(official.group).map(child => child.userData.axisName), ['ASC','DS','MC','IC']);
+  for (let i = 0; i < 4; i++) {
+    assert.equal(names(original.group)[i].position.x, names(official.group)[i].position.x);
+    assert.equal(names(original.group)[i].position.y, names(official.group)[i].position.y);
+  }
+  const originalMc = original.group.children.find(child => child.userData.axisMarker === 'MC-motion');
+  const officialMc = official.group.children.find(child => child.userData.axisMarker === 'MC-motion');
+  assert.equal(originalMc.material.color.getHexString(), 'b58bd8');
+  assert.equal(officialMc.material.color.getHexString(), 'a981d6');
+  assert.ok(official.fonts.some(font => font.includes('Georgia')), 'official heading typography');
+  assert.ok(official.texts.includes('DSC'));
+  assert.ok(!official.texts.some(value => value.startsWith('DSC ') || value.startsWith('IC ')),
+    'DSC/IC must not repeat the opposite cardinal degree');
 });

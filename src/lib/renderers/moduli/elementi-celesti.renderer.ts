@@ -211,6 +211,8 @@ export class ElementiCelestiRender {
       const glyphRadius = elementiCelestiRenderPos[nome].radius ?? raggioEclittica;
       const glyphPosition = this.pointOnRing(glyphDegree, glyphRadius);
       el.position.set(glyphPosition.x, glyphPosition.y, 0);
+      el.userData.planet = nome;
+      el.userData.trueLongitude = trueDegree;
 
       if(opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') {
         el.material.opacity = 0.3;
@@ -274,8 +276,27 @@ export class ElementiCelestiRender {
         group.add(lineaB);
       }
 
-      // The inward spoke to the houses is deliberately omitted. The outer
-      // tick still anchors the symbol to its exact astronomical longitude.
+      // A tiny tick precisely on the boundary of the house wheel makes the
+      // planet's actual house unambiguous, even if its displayed glyph had
+      // to move a few degrees or into a second radial lane. This is NOT a
+      // connector from the glyph to the house and never follows the glyph's
+      // displaced visual angle. Cardinal axes have their own markers.
+      if (lineaSuCerchioEsterno && !isElementiSinastria &&
+          parametroDiRender === 'longitude' && !['AS', 'DS', 'MC', 'IC'].includes(nome)) {
+        const houseTickRadius = innerRingRadius;
+        const start = this.pointOnRing(elDegDiRender, houseTickRadius - 0.043);
+        const end = this.pointOnRing(elDegDiRender, houseTickRadius + 0.014);
+        const houseTick = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(start.x, start.y, 0.019),
+            new THREE.Vector3(end.x, end.y, 0.019),
+          ]),
+          new THREE.LineBasicMaterial({ color: coloreLinea }),
+        );
+        houseTick.userData.planetHouseTick = nome;
+        houseTick.userData.trueLongitude = trueDegree;
+        group.add(houseTick);
+      }
 
       group.add( el );
       if (mostraGradi) {

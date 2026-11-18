@@ -58,14 +58,15 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   private readonly changes = inject(ChangeDetectorRef);
   readonly skins = Object.keys(SkinManager.skins);
   mode: Mode = 'natal';
-  skin = 'light';
+  skin = 'virgostars';
   showDegrees = true;
   readonly axisSettings = [
     {key: 'mostraFrecciaAscendente', label: 'ASC · orange arrow'},
     {key: 'mostraRetroFrecciaDiscendente', label: 'DS · green tail'},
     {key: 'mostraFrecciaMC', label: 'MC · violet arrow'},
     {key: 'mostraRetroFrecciaIC', label: 'IC · lavender tail'},
-    {key: 'mostraGradiAssi', label: 'ASC & MC · degrees / minutes / seconds'},
+    {key: 'mostraGradiAssi', label: 'ASC & MC · degrees / minutes'},
+    {key: 'mostraNomiAssi', label: 'ASC / DSC / MC / IC names'},
     {key: 'mostraOraPlanetariaAscendente', label: 'Planetary hour by ASC'},
     {key: 'mostraDirezioneMotoMC', label: 'MC movement indicator'},
   ];
