@@ -37,6 +37,8 @@ export class CaseRender {
     isCaseSinastria=false
   ) {
     var group = new THREE.Group();
+    let pendingHouseGroup: THREE.Object3D | null = null;
+    try {
     // Legacy render options omit this; normal house numerals are 25% larger.
     simboliScale *= opzioni.dimensioneNumeriCase ?? 1.25;
     var mostraTermini =
@@ -92,11 +94,13 @@ export class CaseRender {
         australInversion,
         opzioni
       );
+      pendingHouseGroup = casePlacidoRenderedGroup;
 
 
       var cerchioDivisorioCase = OggettiSempliciRender.getCerchio(diametroEsternoPlacido/2,coloreCerchio);
 
       group.add(casePlacidoRenderedGroup);
+      pendingHouseGroup = null;
       group.add(cerchioDivisorioCase);
     }
 
@@ -125,6 +129,7 @@ export class CaseRender {
         opzioni
       );
     }
+    pendingHouseGroup = caseRenderedGroup;
 
     if(mostraTermini) {
       var terminiRenderedGroup = await CaseRender.renderTermini(
@@ -140,13 +145,22 @@ export class CaseRender {
     }
 
     group.add(caseRenderedGroup);
+    pendingHouseGroup = null;
 
     return group;
+    } catch (error) {
+      // Case groups are deliberately attached after terms to retain the
+      // existing layer order. Recover any returned-but-unattached group.
+      if (pendingHouseGroup && !pendingHouseGroup.parent) group.add(pendingHouseGroup);
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
 
   public static async renderTermini(casePos,simboliScale,ySimboli,degOffs,australInversion,opzioni) {
     var group = new THREE.Group();
+    try {
 
     for(var i=0; i<12; i++) {
       for(var j=0; j<5; j++) {
@@ -154,6 +168,7 @@ export class CaseRender {
           'simboli/elementi/'+opzioni.settaggi.skin_id+'/875x605/'+((i+j)%4)+'.png',
           875,605,1/875,australInversion
         );
+        group.add(el);
 
         el.scale.set(simboliScale,simboliScale,1);
         var offs = 30*j/5 + 3;
@@ -161,10 +176,13 @@ export class CaseRender {
         el.translateY(ySimboli);
         el.rotation.z = 0;
 
-        group.add(el);
       }
     }
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
   public static async renderAnelloCase(
@@ -178,6 +196,8 @@ export class CaseRender {
     opzioni
   ) {
     var group = new THREE.Group();
+    let pendingLine: THREE.Object3D | null = null;
+    try {
     
     var coloreLinea = SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.coloreLinea;
     var coloreCase = SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.coloreSimboli;
@@ -208,6 +228,7 @@ export class CaseRender {
         {x:0,y:diametroEsterno/2},
         coloreLinea
       );
+      pendingLine = linea;
       linea.rotateZ(THREE.MathUtils.degToRad(casePos[i] + offsetDegRotazione));
 
       if ( SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
@@ -252,6 +273,7 @@ export class CaseRender {
         725,460,1/725,australInversion,
         colore
       );
+      group.add(casa);
       casa.scale.set(simboliScale,simboliScale,1);
 
       var casaImgPos;
@@ -265,12 +287,17 @@ export class CaseRender {
       casa.translateY( diametroInterno/2 + (diametroInternoMiniArco - diametroInterno)/4 );
       casa.rotation.z = 0;
 
-      group.add(casa);
       group.add(linea);
+      pendingLine = null;
 
     }
 
     return group;
+    } catch (error) {
+      if (pendingLine) group.add(pendingLine);
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
   public static async renderAnelloCaseSinastria(
@@ -284,6 +311,8 @@ export class CaseRender {
     opzioni, 
   ) {
     var group = new THREE.Group();
+    let pendingLine: THREE.Object3D | null = null;
+    try {
     
     var coloreLinea = 
       SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.sinastria?.coloreLinea ??
@@ -326,6 +355,7 @@ export class CaseRender {
         {x:0,y:diametroEsterno/2},
         coloreLinea
       );
+      pendingLine = linea;
       linea.rotateZ(THREE.MathUtils.degToRad(casePos[i] + offsetDegRotazione));
 
       if ( texture ) {
@@ -371,6 +401,7 @@ export class CaseRender {
         725,460,1/725,australInversion,
         colore
       );
+      group.add(casa);
       casa.scale.set(simboliScale*0.9,simboliScale*0.95,1);
 
       var casaImgPos;
@@ -384,12 +415,17 @@ export class CaseRender {
       casa.translateY( diametroMiniArco/2 + (diametroEsterno/2 - diametroMiniArco/2)/2 );
       casa.rotation.z = 0;
 
-      group.add(casa);
       group.add(linea);
+      pendingLine = null;
 
     }
 
     return group;
+    } catch (error) {
+      if (pendingLine) group.add(pendingLine);
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
   public static async renderAnelloCaseLatitudini(

@@ -5,7 +5,7 @@
 The chart renderer creates temporary Three.js groups for redraw and a new
 offscreen `WebGLRenderer` plus canvas for each PNG export. Normal redraws
 already dispose scene geometry, materials, texture properties and registered
-animations. Two gaps remained:
+animations. Four gaps remained:
 
 1. `WebGLRenderer.dispose()` releases Three.js internals but does not explicitly
    relinquish the offscreen canvas's underlying WebGL context.
@@ -42,6 +42,11 @@ animations. Two gaps remained:
   groups if their asynchronous construction fails. Loaded images are attached
   as soon as they are created; latitude house divider lines are tracked until
   their matching glyphs are ready, retaining the original draw order.
+- Natal and synastry house rings, term glyphs, the enclosing house module and
+  the main celestial ring now also release partially assembled resources on
+  failure. Pending divider lines, detached completed house rings and planet
+  glyphs not yet attached to the parent are tracked explicitly; the original
+  paint order and the normal successful return path are preserved.
 - A failed aspect-background child also causes the unfinished enclosing
   aspect-circle group to release its own resources.
 
@@ -65,11 +70,12 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Nine additional tests cover failures of zodiac glyphs, decan and decade
-  glyphs, nested decan/decade assembly, synastry zodiac, latitude house glyphs,
-  solar-resonator artwork and the enclosing aspect-circle group. Successful
-  nested module construction retains resources until the owner explicitly
-  disposes them.
+- Seventeen additional tests cover failures of zodiac glyphs, decan and decade
+  glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
+  house glyphs, synastry house dividers, term glyphs, the enclosing house
+  module, main planetary glyphs/connectors, solar-resonator artwork and the
+  enclosing aspect-circle group. Successful nested module construction retains
+  resources until the owner explicitly disposes them.
 
 These are lifetime *contracts*, not GPU-memory measurements. The actual
 `WEBGL_lose_context` extension is optional in browsers; `forceContextLoss()`
@@ -81,10 +87,9 @@ not establish parity with the VirgoStars original assets.
 ## Remaining limits
 
 Other modules which throw **during their own asynchronous group assembly**
-may still create individual textures/meshes never attached to a parent. For
-example, non-latitude house rings, parts of the main planetary ring, and
-lower-level image loader failures still require dedicated auditing. The
-covered zodiac and latitude paths do not establish full lifecycle parity
-for all advanced chart modes. Comprehensive memory/GPU profiling remains
-separate work.
+may still create individual textures/meshes never attached to a parent.
+Lower-level image loader failures and advanced chart-mode paths outside the
+covered groups still require dedicated auditing. The covered module paths
+do not establish full lifecycle parity for all chart modes. Comprehensive
+memory/GPU profiling remains separate work.
 No production sites, device firmware, asset locations or public APIs change.

@@ -32,11 +32,12 @@ const options = {
   settaggi: {skin_id: 'light', domificazione_selezionata: 'egizia'},
 };
 
-async function withMeshes({failImageAt = 0}, run) {
+async function withMeshes({failImageAt = 0, failLineAt = 0}, run) {
   const methods = ['getImg', 'getCerchio', 'getLinea', 'getSemiArcoGrosso'];
   const originals = methods.map(name => ({name, value: OggettiSempliciRender[name]}));
   const resources = [];
   let imageCount = 0;
+  let lineCount = 0;
   function track(object, label) {
     const record = {label, disposed: 0};
     const original = object.dispose.bind(object);
@@ -57,7 +58,11 @@ async function withMeshes({failImageAt = 0}, run) {
       return mesh(`image:${imageCount}`);
     };
     OggettiSempliciRender.getCerchio = () => mesh('circle');
-    OggettiSempliciRender.getLinea = () => mesh('line');
+    OggettiSempliciRender.getLinea = () => {
+      lineCount++;
+      if (lineCount === failLineAt) throw new Error(`line ${lineCount} failed`);
+      return mesh('line');
+    };
     OggettiSempliciRender.getSemiArcoGrosso = () => mesh('arc');
     await run({resources, imageCount: () => imageCount});
   } finally {
@@ -127,6 +132,125 @@ test('latitude house ring frees completed dividers on an image failure', async (
       CaseRender.renderAnelloCaseLatitudini(houses, 0.36, 3.67, false, options),
       /image 2 failed/);
     assert.ok(resources.some(item => item.label === 'geometry:line'));
+    assertDisposed(resources);
+  });
+});
+
+test('natal house ring frees all previous dividers on image failure', async () => {
+  await withMeshes({failImageAt: 2}, async ({resources}) => {
+    await assert.rejects(
+      CaseRender.renderAnelloCase(houses, 0, 0.1, 0.36, 0.5, 3.67, false, options),
+      /image 2 failed/);
+    assert.ok(resources.some(item => item.label === 'geometry:line'));
+    assertDisposed(resources);
+  });
+});
+
+test('synastry house ring cleans previous imagery and dividers on error', async () => {
+  await withMeshes({failImageAt: 2}, async ({resources}) => {
+    await assert.rejects(
+      CaseRender.renderAnelloCaseSinastria(houses, 0, 0.1, 0.36, 0.5, 3.67, false, options),
+      /image 2 failed/);
+    assertDisposed(resources);
+  });
+});
+
+test('terms renderer disposes its partial 60-glyph group on early failure', async () => {
+  await withMeshes({failImageAt: 3}, async ({resources}) => {
+    await assert.rejects(CaseRender.renderTermini({}, 0.1, 1, 0, false, options),
+      /image 3 failed/);
+    assert.ok(resources.some(item => item.label === 'geometry:image:2'));
+    assertDisposed(resources);
+  });
+});
+
+test('house wrapper owns detached completed case ring while terms await', async () => {
+  await withMeshes({failImageAt: 2}, async ({resources}) => {
+    const original = CaseRender.renderAnelloCase;
+    CaseRender.renderAnelloCase = async () => {
+      const child = new THREE.Group();
+      child.add(OggettiSempliciRender.getCerchio());
+      return child;
+    };
+    try {
+      await assert.rejects(
+        CaseRender.getAnelloCaseCartaAstrale({egizia: houses}, 0, 0.1, '',
+          {...options, mostraTermini: true}, 0.36, 0.5, 3.67, 1.2, false),
+        /image 2 failed/);
+      assert.ok(resources.some(item => item.label === 'geometry:circle'));
+      assertDisposed(resources);
+    } finally {
+      CaseRender.renderAnelloCase = original;
+    }
+  });
+});
+
+async function withPlanetLayout(run) {
+  const oldGetElements = ElementiCelestiRender.getElementiCelesti;
+  const oldGetPositions = ElementiCelestiRender.getRenderPosPianeti;
+  const bodies = {
+    Sun: {longitude: 20, longitudeSpeed: 1},
+    Moon: {longitude: 50, longitudeSpeed: 1},
+  };
+  try {
+    ElementiCelestiRender.getElementiCelesti = () => bodies;
+    ElementiCelestiRender.getRenderPosPianeti = () => Object.fromEntries(
+      Object.entries(bodies).map(([name, body]) => [name,
+        {longitude: body.longitude, radius: 1.25, scale: 1}]));
+    const opts = {...options, mostraGradiElementiCelesti: false};
+    await run(() => ElementiCelestiRender.getAnelloElementiCelesti(
+      {}, 0, [], 1, opts, [], [], 2, 3, 2, true, false));
+  } finally {
+    ElementiCelestiRender.getElementiCelesti = oldGetElements;
+    ElementiCelestiRender.getRenderPosPianeti = oldGetPositions;
+  }
+}
+
+test('main planetary ring frees earlier glyphs and connectors when next image fails', async () => {
+  await withMeshes({failImageAt: 2}, async ({resources}) => {
+    await withPlanetLayout(async render => {
+      await assert.rejects(render(), /image 2 failed/);
+      assert.ok(resources.some(item => item.label === 'geometry:image:1'));
+      assert.ok(resources.some(item => item.label === 'geometry:line'));
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('main planet glyph pending during connector failure is not orphaned', async () => {
+  await withMeshes({failLineAt: 1}, async ({resources}) => {
+    await withPlanetLayout(async render => {
+      await assert.rejects(render(), /line 1 failed/);
+      assert.ok(resources.some(item => item.label === 'geometry:image:1'));
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('successful main planet ring keeps its resources until caller disposal', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withPlanetLayout(async render => {
+      const group = await render();
+      assert.ok(group.children.some(child => child.userData.planet === 'Sun'));
+      assert.ok(group.children.some(child => child.userData.planet === 'Moon'));
+      assert.ok(resources.every(resource => resource.disposed === 0));
+      disposeSceneResources(group);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('completed natal and synastry houses and terms retain resources and order', async () => {
+  await withMeshes({}, async ({resources}) => {
+    const natal = await CaseRender.renderAnelloCase(houses, 0, 0.1, 0.36, 0.5, 3.67, false, options);
+    const synastry = await CaseRender.renderAnelloCaseSinastria(houses, 0, 0.1, 0.36, 0.5, 3.67, false, options);
+    const combined = await CaseRender.getAnelloCaseCartaAstrale({egizia: houses}, 0, 0.1, '',
+      {...options, mostraTermini: true}, 0.36, 0.5, 3.67, 1.2, false);
+    assert.equal(combined.children.length, 3);
+    assert.equal(combined.children[1].children.length, 60, 'terms remain before the house ring');
+    assert.ok(combined.children[2].children.length > 12, 'house ring remains the last layer');
+    assert.ok(resources.every(resource => resource.disposed === 0));
+    for (const group of [natal, synastry, combined]) disposeSceneResources(group);
     assertDisposed(resources);
   });
 });

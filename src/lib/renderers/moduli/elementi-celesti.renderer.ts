@@ -4,7 +4,8 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
-import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
+import { registerSceneAnimation } from '../scene-animations';
+import { disposeSceneResources } from '../scene-resources';
 import { normalizeDegree, layoutPlanetSymbols, layoutCompositePlanetSymbols } from './planet-symbol-layout';
 
 
@@ -64,6 +65,7 @@ export class ElementiCelestiRender {
     houseBoundaryRadius?: number,
   ): Promise<any> {
     var group = new THREE.Group();
+    let pendingGlyph: THREE.Object3D | null = null;
     try {
     var elementiCelesti = ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,usaAssi,parametroDiRender,calcolaPartiArabe,offsDirezioniSemplificate);
 
@@ -235,6 +237,9 @@ export class ElementiCelestiRender {
         elRef = 'simboli-bianchi/elementi-celesti/'+nome+'.png';
       }
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
+      // Keep the established paint order (connectors before glyphs), while
+      // retaining ownership if an intermediate connector/label throws.
+      pendingGlyph = el;
       const glyphScale = elementiCelestiRenderPos[nome].scale ?? 1;
       el.scale.set(glyphBaseSize * simboliScale * glyphScale, glyphBaseSize * simboliScale * glyphScale, 1);
       const trueDegree = elementiCelesti[nome][parametroDiRender];
@@ -349,6 +354,7 @@ export class ElementiCelestiRender {
       }
 
       group.add( el );
+      pendingGlyph = null;
       if (mostraGradi && !(axisPresentation !== 'default' && ['AS', 'DS', 'MC', 'IC'].includes(nome))) {
         const label = this.makeDegreeLabel(trueDegree, coloreSimboli,
           simboliScale * glyphScale, !hasWidePlanetBand);
@@ -378,13 +384,13 @@ export class ElementiCelestiRender {
           (diametroCerchioEsterno/2 - diametroCerchioDodecatemori/2)/2 + diametroCerchioDodecatemori/2;
 
         var eld = await OggettiSempliciRender.getImg('simboli/elementi-celesti/'+opzioni.settaggi.skin_id+'/cerchio/'+nome+'.png',1,1,0.6);
+        group.add(eld);
         eld.scale.set(0.1,0.1,1);
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'] + degOffs;
         eld.rotateZ(THREE.MathUtils.degToRad(dodecatemoreDegDiRender));
         eld.translateY(raggioEclitticaDodecatemore);
         eld.rotation.z = 0;
 
-        group.add(eld);
 /*
         if(eventiMouseDodecatemori) {
           GestoreEventiMouse.gem.aggiungiOggetto(
@@ -398,6 +404,7 @@ export class ElementiCelestiRender {
       // Dodecatemoria singola
       else if(elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == nome && !calcolaPartiArabe) {
         var eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion);
+        group.add(eld);
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'];
 
         eld.scale.set(0.23*simboliScale,0.23*simboliScale,1);
@@ -407,7 +414,6 @@ export class ElementiCelestiRender {
         eld.translateY(raggioEclittica);
         eld.rotation.z = 0;
 
-        group.add(eld);
 /*
         if(eventiMouseDodecatemori) {
           GestoreEventiMouse.gem.aggiungiOggetto(
@@ -440,9 +446,10 @@ export class ElementiCelestiRender {
 
     return group;
     } catch (error) {
-      // The group is not returned to the service when construction fails, so
-      // its animations must be stopped here rather than during scene disposal.
-      stopSceneAnimations(group);
+      // The group is never returned on failure. Stop its animations AND free
+      // its meshes, including the current glyph if it was not yet attached.
+      if (pendingGlyph && !pendingGlyph.parent) group.add(pendingGlyph);
+      disposeSceneResources(group);
       throw error;
     }
   }
