@@ -227,11 +227,15 @@ test('repeated programmatic focus and unchanged natal palette avoid repainting',
   });
   const code = ts.transpileModule(`class FocusProbe {
     pinned: any = null;
+    hovered: any = null;
+    disposed = false;
+    sceneRevision = 1;
+    visualRevision = 0;
     scene: any = {};
     natalAspectPresentation = 'all';
     visualUpdates = 0;
     renderRequests = 0;
-    updateVisuals(): void { this.visualUpdates++; }
+    updateVisuals(): void { this.visualUpdates++; this.visualRevision++; }
     requestRender(): void { this.renderRequests++; }
     ${methods.join('\n')}
   }`, {compilerOptions: {module:ts.ModuleKind.None, target:ts.ScriptTarget.ES2022}}).outputText;
@@ -251,7 +255,7 @@ test('repeated programmatic focus and unchanged natal palette avoid repainting',
   probe.scene = null;
   probe.highlight(natalMoon); record();
   assert.deepEqual(checks, [
-    [1,1], [1,1], [2,2], [3,3], [3,3],
+    [1,1], [1,1], [2,2], [2,2], [3,3],
     [4,4], [4,4], [5,5], [6,5],
   ], 'identical selections/modes must never schedule duplicate renders');
 });
@@ -412,6 +416,7 @@ test('active aspect endpoints skip glyphs transferred outside the source chart',
     scene: any;
     glyphs = new Map<string,any[]>();
     constructor(scene: any) { this.scene=scene; }
+    ${method('ownsChartObject')}
     ${method('ownsGlyph')}
     ${method('activeGlyph')}
   }`,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
@@ -605,6 +610,8 @@ test('hover-to-pin callback paints once and preserves deferred button focus', ()
     scene: any = {};
     sceneRevision = 1;
     visualRevision = 0;
+    pointerRevision = 0;
+    pendingHoverExit: any = null;
     pinned: any = null;
     hovered: any = null;
     canvas: any = {style: {cursor:''}};
@@ -760,6 +767,7 @@ test('pinned focus emits detail updates without needless orb-only WebGL repaint'
     visuals = 0;
     renders = 0;
     updateVisuals(): void { this.visuals++; }
+    recolorTransitGuides(): boolean { return false; }
     requestRender(): void { this.renders++; }
     send(type: string, planet: any): void {
       this.events.push({type, planet, aspects: relatedChartAspects(planet, this.relations)});
@@ -767,9 +775,9 @@ test('pinned focus emits detail updates without needless orb-only WebGL repaint'
     ${method.getText(ast)}
   }`, {compilerOptions: {module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022}}).outputText;
   const Probe = new Function('snapshotChartAspects', 'sameChartAspects',
-    'sameChartAspectVisuals', 'relatedChartAspects', code + '\nreturn RelationProbe;')(
+    'sameChartAspectVisuals', 'sameChartAspectStructure', 'sameChartPlanet', 'relatedChartAspects', code + '\nreturn RelationProbe;')(
       api.snapshotChartAspects, api.sameChartAspects,
-      api.sameChartAspectVisuals, api.relatedChartAspects);
+      api.sameChartAspectVisuals, api.sameChartAspectStructure, api.sameChartPlanet, api.relatedChartAspects);
   const probe = new Probe();
   probe.pinned = {...transitSaturn};
   const selected = {from: {...natalSun}, to: {...transitSaturn}, type: 'quadrato', orb: 1};
