@@ -132,7 +132,9 @@ export class LatitudiniRender {
 
       if(
         temaRender.planets[nome]
-        && temaRender.planets[nome].latitude
+        // Latitude 0° is a valid position on the ecliptic (normally the Sun).
+        // Exclude missing/invalid coordinates, not legitimate zero values.
+        && Number.isFinite(temaRender.planets[nome].latitude)
         && elOpt.att
       ) {
         elementiCelesti[nome]=temaRender.planets[nome];

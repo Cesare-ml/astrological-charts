@@ -919,15 +919,20 @@ Il parametro `temaRenderSinastria` ricevuto da `creaScena()` non viene usato nel
 
 ## Selezione corpi
 
-La condizione corrente richiede:
+La selezione dei corpi richiede:
 
 ```ts
 temaRender.planets[nome]
-&& temaRender.planets[nome].latitude
+&& Number.isFinite(temaRender.planets[nome].latitude)
 && elOpt.att
 ```
 
-Poiché `0` è falsy, una latitudine esattamente `0°` viene esclusa. Il test corretto futuro deve verificare `latitude != null` / `Number.isFinite`.
+Una latitudine esattamente `0°` è valida: il Sole si trova normalmente
+sull'eclittica e deve apparire sul relativo cerchio. Il precedente controllo
+di verità escludeva il Sole; `Number.isFinite` accetta lo zero ma rifiuta
+coordinate assenti o non numeriche. Il test `tests/latitude-zero-sun.test.mjs`
+verifica sia il filtro sia l'effettivo glifo solare sul raggio eclittico,
+senza richiedere WebGL o asset proprietari.
 
 ## Mappatura latitudine → raggio
 
