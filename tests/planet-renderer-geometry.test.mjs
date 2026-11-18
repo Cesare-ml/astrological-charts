@@ -76,7 +76,7 @@ function segmentCrossesRectangle(coords, rectangle, padding = 0.005) {
 
 async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
   outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes,
-  axisPresentation = 'default') {
+  axisPresentation = 'default', protectedAxes = [], synastryPrimary = false) {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
@@ -124,6 +124,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     );
     if (showDegrees !== undefined) options.mostraGradiElementiCelesti = showDegrees;
     else delete options.mostraGradiElementiCelesti;
+    if (synastryPrimary) options.mostraSinastria = true;
     const theme = {
       planets: Object.fromEntries(
         Object.entries(source).map(([name, longitude]) =>
@@ -135,7 +136,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     const group = await ElementiCelestiRender.getAnelloElementiCelesti(
       theme, 0, [], symbolScale, options, [], [], innerRingRadius * 2, outerRingRadius * 2,
       innerRingRadius * 2, true, false, 'longitude', true, false, 0, 0, 0, false, false,
-      axisPresentation,
+      axisPresentation, protectedAxes,
     );
     assert.deepEqual(theme, initial, 'renderer must not mutate original positions');
     return { group, labels, fonts };
@@ -146,20 +147,83 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
   }
 }
 
-test('composite primary and secondary wheels avoid four repeated axis glyphs and degree captions', async () => {
+test('transits omit their degrees and duplicate axes while natal planets retain degrees', async () => {
   const source = { Sun: 10, Moon: 48, Jupiter: 148, AS: 20, DS: 200, MC: 290, IC: 110 };
   const primary = await makeScene(true, 0, 1, outerRadius, innerRadius, source, 'primary-overlay');
-  const secondary = await makeScene(true, 0, 1, outerRadius, innerRadius, source, 'secondary-overlay');
+  const secondary = await makeScene(true, 0, 1, outerRadius, innerRadius, source, 'transit-overlay');
   const names = group => group.children.filter(child => child.userData.planet)
     .map(child => child.userData.planet).sort();
   assert.deepEqual(names(primary.group), ['Jupiter', 'Moon', 'Sun'],
     'external natal arrows already supply all four main axis positions');
-  assert.deepEqual(names(secondary.group), ['AS', 'Jupiter', 'MC', 'Moon', 'Sun'],
-    'partner/transit retains only its independent AS and MC glyphs');
+  assert.deepEqual(names(secondary.group), ['Jupiter', 'Moon', 'Sun'],
+    'transits must not repeat the primary axis markings');
   assert.deepEqual(primary.labels.sort(), ['10°', '18°', '28°'].sort(),
     'primary planets still display their true sign degrees');
-  assert.deepEqual(secondary.labels.sort(), ['10°', '18°', '28°'].sort(),
-    'secondary AS/MC must not duplicate compact degree captions');
+  assert.deepEqual(secondary.labels, [], 'transiting planets never show degree badges');
+});
+
+test('synastry has no planet degrees on either wheel and keeps its independent AS/MC', async () => {
+  const source = { Sun: 10, Moon: 48, Jupiter: 148, AS: 20, DS: 200, MC: 290, IC: 110 };
+  const primary = await makeScene(true, 0, 1, outerRadius, innerRadius, source,
+    'primary-overlay', [], true);
+  const secondary = await makeScene(true, 0, 0.8, 1.207, 0.870, source,
+    'synastry-overlay');
+  assert.deepEqual(primary.labels, [], 'no natal degree badges in synastry mode');
+  assert.deepEqual(secondary.labels, [], 'no partner degree badges in synastry mode');
+  assert.deepEqual(secondary.group.children.filter(child => child.userData.planet)
+    .map(child => child.userData.planet).sort(), ['AS', 'Jupiter', 'MC', 'Moon', 'Sun']);
+});
+
+test('composite planets stay on at most two radii without intersecting primary axis arrows', async () => {
+  const natalAsc = 20, natalMc = 290;
+  const source = {
+    Sun: 8.4, Moon: 8.7, Mercury: 9, Venus: 9.2, Mars: 9.5,
+    Jupiter: 19.1, Saturn: 20.3, Uranus: 289, Neptune: 290, Pluto: 290.5,
+    NorthNode: 355, Lilith: 120,
+  };
+  for (const offset of [0, 45, 120]) {
+    const shifted = Object.fromEntries(Object.entries(source).map(([name, value]) =>
+      [name, (value + offset) % 360]));
+    const protectedAxes = [(natalAsc + offset) % 360, (natalMc + offset) % 360];
+    const { group, labels } = await makeScene(true, 0, 1,
+      3.7355 * 146.64 / 120 / 2, 3.7355 / 2,
+      shifted, 'transit-overlay', protectedAxes);
+    assert.deepEqual(labels, [], 'transits need no additional degree labels');
+    const glyphs = group.children.filter(child => child.userData.planet);
+    assert.equal(glyphs.length, Object.keys(source).length);
+    const radii = new Set(glyphs.map(mesh => Math.hypot(mesh.position.x, mesh.position.y).toFixed(6)));
+    assert.ok(radii.size <= 2, `composite layout used ${radii.size} planet radii`);
+    assert.ok(radii.size >= 1);
+    for (const glyph of glyphs) {
+      const rendered = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;
+      for (const axis of protectedAxes.flatMap(x => [x, (x + 180) % 360])) {
+        const gap = Math.abs(((rendered - axis + 540) % 360) - 180);
+        assert.ok(gap >= 5, `${glyph.userData.planet}: crosses the primary axis at ${axis}°`);
+      }
+      assert.equal(glyph.userData.trueLongitude, shifted[glyph.userData.planet]);
+    }
+    for (let i = 0; i < glyphs.length; i++) for (let j = i + 1; j < glyphs.length; j++) {
+      assert.equal(overlapArea(visibleRectangle(glyphs[i]), visibleRectangle(glyphs[j])), 0,
+        `${glyphs[i].userData.planet}/${glyphs[j].userData.planet} overlap at rotation ${offset}`);
+    }
+  }
+});
+
+test('inner synastry planets use only two radii for tight conjunctions', async () => {
+  const source = {
+    Sun: 358, Moon: 358.2, Mercury: 358.4, Venus: 359, Mars: 359.1,
+    Jupiter: 0.1, Saturn: 0.2, Uranus: 0.5, Neptune: 0.8,
+  };
+  const { group, labels } = await makeScene(true, 0, 0.8,
+    4.5723 * 63.36 / 120 / 2, 4.5723 * 45.6666667 / 120 / 2,
+    source, 'synastry-overlay');
+  assert.deepEqual(labels, []);
+  const glyphs = group.children.filter(child => child.userData.planet);
+  assert.equal(glyphs.length, 9);
+  assert.ok(new Set(glyphs.map(glyph => Math.hypot(glyph.position.x, glyph.position.y).toFixed(6))).size <= 2);
+  for (let i = 0; i < glyphs.length; i++) for (let j = i + 1; j < glyphs.length; j++) {
+    assert.equal(overlapArea(visibleRectangle(glyphs[i]), visibleRectangle(glyphs[j])), 0);
+  }
 });
 
 test('Three.js scene keeps every glyph connector anchored at the true degree', async () => {

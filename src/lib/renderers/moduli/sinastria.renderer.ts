@@ -112,7 +112,7 @@ export class SinastriaRender {
       0,//offsDirezioniSemplificateFasullo
       stato.opzioni.direzioniModalita == 'temaProgresso' && stato.opzioni.mostraDirezioni, //cerchia la luna
       true, //isElementiSinastria
-      'secondary-overlay',
+      'synastry-overlay',
     );
     // Own the completed animated subscene before the next awaited operation.
     group.add(anelloElementiCelesti);

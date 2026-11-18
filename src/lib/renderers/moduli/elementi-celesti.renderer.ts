@@ -5,7 +5,7 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
 import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
-import { normalizeDegree, layoutPlanetSymbols } from './planet-symbol-layout';
+import { normalizeDegree, layoutPlanetSymbols, layoutCompositePlanetSymbols } from './planet-symbol-layout';
 
 
 export class ElementiCelestiRender {
@@ -59,7 +59,8 @@ export class ElementiCelestiRender {
     offsDirezioniSemplificateFasullo=0,
     isCerchiaLaLuna=false,
     isElementiSinastria=false,
-    axisPresentation: 'default' | 'primary-overlay' | 'secondary-overlay' = 'default',
+    axisPresentation: 'default' | 'primary-overlay' | 'transit-overlay' | 'synastry-overlay' = 'default',
+    protectedAxes: number[] = [],
   ): Promise<any> {
     var group = new THREE.Group();
     try {
@@ -67,28 +68,24 @@ export class ElementiCelestiRender {
 
     // In a composite chart the primary axes already have their full-sized
     // external arrows and labels. Repeating all four as planets makes both
-    // rings illegible. The partner/transit layer keeps only its independent
-    // AS and MC positions; its DS and IC are the exact opposite points.
+    // rings illegible. In transit mode there are no secondary axis glyphs;
+    // synastry retains the partner's independent AS and MC positions.
     if (axisPresentation === 'primary-overlay') {
       for (const key of ['AS', 'DS', 'MC', 'IC']) delete elementiCelesti[key];
-    } else if (axisPresentation === 'secondary-overlay') {
+    } else if (axisPresentation === 'transit-overlay') {
+      for (const key of ['AS', 'DS', 'MC', 'IC']) delete elementiCelesti[key];
+    } else if (axisPresentation === 'synastry-overlay') {
       delete elementiCelesti['DS'];
       delete elementiCelesti['IC'];
     }
 
     if(offsDirezioniSemplificateFasullo) {
-      elementiCelesti['AS'][parametroDiRender] =
-        ( elementiCelesti['AS'][parametroDiRender]
-        - offsDirezioniSemplificateFasullo
-        + 360
-        )%360
-      ;
-      elementiCelesti['DS'][parametroDiRender] =
-        ( elementiCelesti['DS'][parametroDiRender]
-        - offsDirezioniSemplificateFasullo
-        + 360
-        )%360
-      ;
+      for (const axis of ['AS', 'DS']) {
+        if (elementiCelesti[axis]) {
+          elementiCelesti[axis][parametroDiRender] =
+            normalizeDegree(elementiCelesti[axis][parametroDiRender] - offsDirezioniSemplificateFasullo);
+        }
+      }
     }
 
 
@@ -114,7 +111,15 @@ export class ElementiCelestiRender {
     var raggioConfineAnelloPianeti = diametroCerchioEsterno/2;
 
     var raggioEclittica = (raggioConfineAnelloPianeti - diametroCerchioInterno/2)/2 + diametroCerchioInterno/2;
-    const mostraGradi = opzioni.mostraGradiElementiCelesti !== false;
+    // The transit layer and both synastry wheels show glyphs only, leaving
+    // enough space for a stable one/two-orbit layout without degree badges.
+    const mostraGradi = opzioni.mostraGradiElementiCelesti !== false &&
+      axisPresentation !== 'transit-overlay' &&
+      axisPresentation !== 'synastry-overlay' &&
+      !(axisPresentation === 'primary-overlay' && opzioni.mostraSinastria);
+    const compositeLayout = axisPresentation === 'transit-overlay' ||
+      axisPresentation === 'synastry-overlay' ||
+      (axisPresentation === 'primary-overlay' && opzioni.mostraSinastria);
     const innerRingRadius = diametroCerchioInterno / 2;
     // Transit/synastry rings may be considerably thinner. Preserve their
     // compact tangential labels instead of squeezing symbols past the rim.
@@ -133,6 +138,7 @@ export class ElementiCelestiRender {
       hasWidePlanetBand ? raggioConfineAnelloPianeti - 0.015 * simboliScale : raggioConfineAnelloPianeti,
       simboliScale, mostraGradi, 90 - ascendente + degOffs, hasWidePlanetBand,
       mostraTrattiniCase ? innerRingRadius : undefined,
+      compositeLayout, protectedAxes,
     );
 
     //parti arabe render freccia+elemento in evidenza
@@ -322,8 +328,6 @@ export class ElementiCelestiRender {
       }
 
       group.add( el );
-      // Axis markers in an overlay are already identifiable by their glyphs;
-      // tiny degree labels beside them produced dense, repeated annotations.
       if (mostraGradi && !(axisPresentation !== 'default' && ['AS', 'DS', 'MC', 'IC'].includes(nome))) {
         const label = this.makeDegreeLabel(trueDegree, coloreSimboli,
           simboliScale * glyphScale, !hasWidePlanetBand);
@@ -427,11 +431,18 @@ export class ElementiCelestiRender {
     raggioInterno = 1.4, raggioEsterno = 1.8,
     simboliScale = 1, mostraGradi = true, chartRotation = 0, largeDegreeLabels = false,
     houseTickInnerRadius?: number,
+    compositeLayout = false, protectedAxes: number[] = [],
   ) {
     const longitudes: Record<string, number> = {};
     for (const nome in elementiCelesti) longitudes[nome] = elementiCelesti[nome][parametroDiRender];
     const glyphBaseSize = largeDegreeLabels ? 0.18 : 0.17;
-    const positions = layoutPlanetSymbols(
+    const positions = compositeLayout
+      ? layoutCompositePlanetSymbols(
+        longitudes, raggioInterno, raggioEsterno,
+        glyphBaseSize * simboliScale, glyphBaseSize * simboliScale * 605 / 875, chartRotation,
+        { protectedAxisDegrees: protectedAxes },
+      )
+      : layoutPlanetSymbols(
       longitudes, raggioInterno, raggioEsterno,
       glyphBaseSize * simboliScale, glyphBaseSize * simboliScale * 605 / 875, mostraGradi, chartRotation,
       raggioEsterno - raggioInterno > 0.06 ? {

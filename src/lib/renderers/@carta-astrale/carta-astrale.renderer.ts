@@ -240,7 +240,12 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
     //diametri.coloreCerchio = coloreCerchio;
 
     // Elementi Celesti
-    diametri.diametroInternoAnelloElementoCelesti = diametri.diametroInternoMiniArcoCase;
+    // Synastry does not need a radial row of degree badges on the outer
+    // chart. Use a narrower celestial band without altering the house wheel
+    // or the thickness of the zodiac signs.
+    diametri.diametroInternoAnelloElementoCelesti = opzioni.mostraSinastria
+        ? diametroAnelloSegni * 82 / 120
+        : diametri.diametroInternoMiniArcoCase;
     // Orario Sconosciuto togle le case ed assi
     diametri.diametroEsternoAnelloElementoCelesti = diametri.diametroAnelloElementiCelesti;
     diametri.diametroDodecatemoriAnelloElementoCelesti = diametri.diametroCerchioDodecatemori;
@@ -428,7 +433,8 @@ async function creaTransiti(stato: StatoCartaAstrale) {
         stato.diametri.diametroGrigliaTransiti,
         stato.diametri.diametroAnelloTransiti,
         stato.diametri.diametroAssiTransiti,//diametro degli assi
-        true
+        true,
+        stato.mc,
     );
     stato.gruppoTransiti = group;
     return group;

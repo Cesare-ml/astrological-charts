@@ -32,6 +32,11 @@ export interface BoundedSymbolOptions {
   houseTickOuterRadius?: number;
 }
 
+export interface CompositeSymbolOptions {
+  /** Longitudes of the primary chart's axes, whose external arrows must stay clear. */
+  protectedAxisDegrees?: number[];
+}
+
 interface Body {
   key: string;
   degree: number;
@@ -45,6 +50,97 @@ export function normalizeDegree(degree: number): number {
 /** Integer degree within the current sign (0–29), never the displaced angle. */
 export function degreeWithinSign(longitude: number): number {
   return Math.floor(normalizeDegree(longitude) % 30);
+}
+
+/**
+ * Compact composite wheels (transits and synastry) use exactly one preferred
+ * orbit, with a single second orbit for conjunctions. Their relatively thin
+ * bands must never trigger the adaptive multi-radius natal fallback.
+ *
+ * The true longitude is deliberately untouched: only the display angle may
+ * shift, and all geometry/ephemerides retain their source coordinates.
+ */
+export function layoutCompositePlanetSymbols(
+  longitudes: Record<string, number>, innerRadius: number, outerRadius: number,
+  symbolWidth: number, symbolHeight: number, chartRotation = 0,
+  options: CompositeSymbolOptions = {},
+): Record<string, SymbolPosition> {
+  const bodies = Object.entries(longitudes)
+    .filter(([, longitude]) => Number.isFinite(longitude))
+    .map(([key, longitude]) => ({key, degree: normalizeDegree(longitude)}));
+  if (!bodies.length) return {};
+
+  // A margin around the full square bounding box keeps rotated positions
+  // inside the thin ring even at 45 degrees on the screen.
+  const clearance = Math.max(symbolWidth, symbolHeight) / 2 + 0.015;
+  const mainRadius = outerRadius - clearance;
+  if (mainRadius <= innerRadius + clearance) {
+    throw new Error('Insufficient space for the composite planetary ring');
+  }
+  const secondRadius = mainRadius - Math.max(symbolWidth, symbolHeight) - 0.015;
+  const radii = secondRadius >= innerRadius + clearance
+    ? [mainRadius, secondRadius] : [mainRadius];
+  const protectedDegrees = (options.protectedAxisDegrees ?? [])
+    .filter(Number.isFinite)
+    .flatMap(degree => [normalizeDegree(degree), normalizeDegree(degree + 180)]);
+  const minAxisGap = (radius: number) =>
+    Math.asin(Math.min(1, (Math.max(symbolWidth, symbolHeight) / 2 + 0.035) / radius)) * 180 / Math.PI + 3.5;
+  const distanceDegrees = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+  const blockedByAxis = (angle: number, radius: number) =>
+    protectedDegrees.some(axis => distanceDegrees(angle, axis) < minAxisGap(radius));
+
+  function collides(a: SymbolPosition, b: SymbolPosition): boolean {
+    const ar = (chartRotation + a.displayDegree) * Math.PI / 180;
+    const br = (chartRotation + b.displayDegree) * Math.PI / 180;
+    const ax = -Math.sin(ar) * a.radius, ay = Math.cos(ar) * a.radius;
+    const bx = -Math.sin(br) * b.radius, by = Math.cos(br) * b.radius;
+    return Math.abs(ax - bx) < symbolWidth + 0.012 &&
+      Math.abs(ay - by) < symbolHeight + 0.012;
+  }
+
+  // Place tight conjunctions from their centre first, and keep the result
+  // independent of the caller's planet enumeration order. An isolated body
+  // stays on the main orbit at its true longitude whenever possible.
+  const ordered = [...bodies].sort((a, b) => {
+    const density = (body: typeof a) => Math.min(...bodies
+      .filter(other => other.key !== body.key)
+      .map(other => distanceDegrees(body.degree, other.degree)), 360);
+    return density(a) - density(b) || a.degree - b.degree || a.key.localeCompare(b.key);
+  });
+
+  const placements: Record<string, SymbolPosition> = {};
+  const occupied: SymbolPosition[] = [];
+  // The inner lane costs roughly 2 degrees of display movement: ordinary
+  // isolated symbols therefore occupy one shared radius, while conjunctions
+  // can share their real longitude on two clearly separated radial tracks.
+  const proposals: Array<{delta: number; lane: number; cost: number}> = [];
+  for (let step = 0; step <= 240; step++) {
+    const magnitude = step * 0.5;
+    for (const sign of step ? [-1, 1] : [1]) {
+      radii.forEach((_, lane) => proposals.push({
+        delta: sign * magnitude, lane, cost: magnitude + (lane ? 2 : 0),
+      }));
+    }
+  }
+  proposals.sort((a, b) => a.cost - b.cost || a.lane - b.lane ||
+    Math.abs(a.delta) - Math.abs(b.delta) || a.delta - b.delta);
+
+  for (const body of ordered) {
+    const found = proposals.find(({delta, lane}) => {
+      const displayDegree = normalizeDegree(body.degree + delta);
+      const radius = radii[lane];
+      if (blockedByAxis(displayDegree, radius)) return false;
+      return !occupied.some(other => collides({displayDegree, radius}, other));
+    });
+    if (!found) {
+      throw new Error(`Unable to place composite planet ${body.key} on two orbits`);
+    }
+    const position = {displayDegree: normalizeDegree(body.degree + found.delta),
+      radius: radii[found.lane]};
+    placements[body.key] = position;
+    occupied.push(position);
+  }
+  return placements;
 }
 
 // Least-squares projection onto ordered positions separated by minGap. The

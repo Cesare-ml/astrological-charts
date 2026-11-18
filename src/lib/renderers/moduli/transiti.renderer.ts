@@ -13,7 +13,7 @@ function isEmpty(obj) {
 
 export class TransitiRender {
 
-  public static async getAnelloTransiti(temaRender, ascendente, pianetiDaColorare, opzioni: any, diametroCerchioInterno, diametroCerchioEsterno, diametroAssi, renderDodecatemori): Promise<any> {
+  public static async getAnelloTransiti(temaRender, ascendente, pianetiDaColorare, opzioni: any, diametroCerchioInterno, diametroCerchioEsterno, diametroAssi, renderDodecatemori, mcRiferimento?: number): Promise<any> {
     var group = new THREE.Group();
 
     //var img = OggettiSempliciRender.getSfondoQuadrato('grafici/'+opzioni.settaggi.skin_id+'/cartaastrale-transiti.png',diametroCerchioEsterno);
@@ -47,10 +47,11 @@ export class TransitiRender {
       false,//lineaSuCerchioEsterno
       temaRender.australInversion,
       'longitude',
-      true,//usaAssi
+      false,//usaAssi: transit axis glyphs crowd the primary axis arrows
       false,//calcolaPartiArabe
       0, 0, 0, false, false,
-      'secondary-overlay',
+      'transit-overlay',
+      [ascendente, mcRiferimento].filter(Number.isFinite),
     );
     
     

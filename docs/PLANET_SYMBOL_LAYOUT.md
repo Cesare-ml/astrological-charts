@@ -15,7 +15,7 @@ placement modes used by the rendered celestial glyphs:
 2. allows up to **±5°** in the wide natal band and searches one main orbit first, adding **only one fixed inner orbit** when necessary;
 3. draws truly isolated natal bodies larger (`0.24 × symbolScale`) and slightly farther from the zodiac, while planets in a nearby conjunction retain their equal compact size (`0.18 × symbolScale`) and degree labels radially inward, toward the houses; narrow transit/synastry rings retain `0.17 × symbolScale`;
 4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions and each degree label against **every true-longitude house tick segment**;
-5. retains an emergency adaptive fallback for groups that are mathematically impossible in two lanes while respecting the angular bound;
+5. retains an emergency adaptive fallback **only for ordinary natal charts** whose conjunctions are mathematically impossible within the angular bound; composite wheels instead use a dedicated strict one/two-orbit solver;
 6. anchors the one retained, paler-gray outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed; a separate small tick starts **exactly on the outer house boundary**, never inside its ring.
 
 For ordinary natal conjunctions, the two-track solver tests multiple insertion
@@ -46,10 +46,12 @@ for the badge size, so the two cannot collide with another planet or badge.
 The layout also clips candidate degree-badge rectangles against all exact tick
 segments from the house ring's outer edge to `+0.06` world units. Only those
 specific segments are protected; a planet group is not squeezed away from
-the entire house circumference. The glyphs retain a margin before the sign ring. Transit and synastry rings
-also use bounded placement with their smaller pre-existing degree label when
-there is a nonzero usable radial band; degenerate near-zero-width rings retain
-the legacy layout to avoid making chart rendering fail.
+the entire house circumference. The glyphs retain a margin before the sign ring.
+Transit and synastry rings use a separate layout **without degree badges**:
+all glyphs start on one shared radius, adding at most a second fixed radius
+for conjunctions. Their display angles can spread further than natal symbols
+to avoid touching, while precise astronomical longitudes stay unchanged. No
+third-orbit/adaptive radial fallback is permitted in these composite wheels.
 
 The on-screen glyph *can* move to improve readability. The underlying `TemaRender`
 planet longitudes, cusp positions, aspect calculations and other chart math are
@@ -63,11 +65,12 @@ decimal-degree notation or seconds.
 ## Public option
 
 `OpzioniGrafico.mostraGradiElementiCelesti?: boolean` controls degree labels
-for each celestial glyph. It is `true` in `defaultOpzioniGrafico`, and
-omitting the property also enables it for older callers. Set it to `false`
-to hide the labels and permit slightly tighter angular spacing. This affects
-radix, transit and synastry symbol rings, not latitude markers or astrological
-calculations.
+on ordinary natal charts and on the **primary natal wheel alongside transits**.
+It is `true` in `defaultOpzioniGrafico`; omitting it also enables it for
+older callers. Set it to `false` to hide these labels and permit slightly
+tighter angular spacing. The transiting planets and **both synastry planet
+wheels never display degrees**, regardless of this option. Latitude markers
+and astrological calculations are unaffected.
 
 Example:
 
@@ -139,14 +142,21 @@ by the rest of the chart.
 When a transit or synastry wheel is visible, the **primary** body band no
 longer repeats AS/DS/MC/IC as four extra planetary glyphs: their true
 positions remain readable from the primary external axis arrows. The
-**secondary** celestial band keeps its independently computed AS and MC
-glyphs, without superfluous degree badges, but suppresses DS/IC because
-they are exactly opposite the former two points. Ordinary planetary glyphs
-and integer degree badges remain visible in both layers. This is purely a
-rendering/presentation rule: input `TemaRender`, houses, aspects, longitudes
-and the exact degree of every retained symbol are unchanged. Direct callers
-of the low-level body renderer retain its existing full-axis behavior unless
-they explicitly choose `primary-overlay` or `secondary-overlay`.
+**transit** body band shows planetary glyphs only, without degree badges or
+repeated secondary AS/DS/MC/IC symbols. It reserves a clear angular corridor
+around the four primary axis stems and tips. All transit glyphs prefer one
+orbit; tight conjunctions can use one additional orbit while spreading their
+display angles to prevent contact.
+
+**Synastry** retains the independently computed AS and MC of the inner partner
+chart (DS and IC are their opposites), but never shows planet degrees on
+either the outer or inner wheel. The **outer wheel's planetary annulus is
+narrower**: only its inner planet boundary moves from `75.1/120` to `82/120`
+of the outer diameter. House-circle and sign-ring dimensions remain unchanged.
+Both synastry planetary rings obey the strict two-orbit maximum. Input
+`TemaRender`, houses, aspects, original longitudes and true-degree anchors
+are unchanged. The low-level renderer retains full-axis behaviour except
+when `primary-overlay`, `transit-overlay` or `synastry-overlay` is requested.
 
 The zodiac glyph is centred radially in its own sign ring, rather than being
 biased toward the celestial bodies. The Angular demo exposes **Show celestial
@@ -172,6 +182,9 @@ date/place must stay in the local host and not in this public source tree.
   Additional headless tests verify the wide band, axis geometry, independent
   toggles, degree/minute/second boundaries, real interval selection for planetary
   hours and signed MC motion.
+  Composite tests verify absent transit/synastry degree badges, correct axis
+  suppression, no glyph collisions, at most two radii across multiple chart
+  rotations, protected ASC/MC corridors and unchanged source longitudes.
   Collision checks include 25 chart rotations at two glyph scales, 30 mixed
   synthetic 18-body configurations, strict ±3° testing of the adaptive mode,
   and the normal **five-body ±5° / two-radii / equal-glyph-size** case at nine
