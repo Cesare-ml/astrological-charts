@@ -16,7 +16,7 @@ longitudes, speeds and house cusps in `TemaRender`.
 | Pastel red/green/ochre/lavender backgrounds alternating by sign element | Zodiac width, position, sign glyph center and optional transit degree ruler |
 | Warm ivory wheel and highly translucent solar resonator tint | Zodiac outer ruler **only when `mostraTransiti` is true**: every degree, longer marks at 5° and 10° |
 | Color palette of the zodiac, houses and ASC/DSC/MC/IC | True-longitude ticks on house boundary for every rendered celestial body |
-| Serif axis-heading typography, gentle line contrast | Open ASC/MC arrowheads, circular DSC/IC tails, labels and positions |
+| Gentle line contrast and skin-specific axis text colors | Broad open ASC/MC arrowheads, circular DSC/IC tails, larger canvas-serif labels and positions |
 | Color styling of celestial signs/planet glyphs | Collision-aware stellium placement, with two fixed radial tracks when possible |
 
 When transit mode is off, the external 360-degree scale is **not rendered**, so
@@ -25,8 +25,8 @@ synastry charts. The transit-only ruler, body boundary ticks and aspect markers 
 (`longitude`), **never** a symbol's display-only offset. Glyph displacements are
 bounded by the existing symbol-layout solver; retrograde is encoded alongside
 its glyph, rather than attached to a degree caption. For each body the renderer
-draws a small tick crossing the **inner** circumference of the planetary band,
-visually coinciding with the outer house boundary. It does **not** connect a
+draws a small tick entirely **outside** the inner circumference of the planetary band,
+immediately adjacent to the house boundary without crossing into the houses. It does **not** connect a
 planetary glyph to a house. An independent outward connector ends at the true
 degree near the sign. Short aspect endpoint discs make their exact longitude
 easier to identify, including when a stellium is displayed on two tracks.
@@ -42,10 +42,13 @@ the host's asset resolver.
 ## User-visible controls and compatibility
 
 - `mostraNomiAssi?: boolean` — defaults to on, shows ASC, DSC, MC and IC
-  headings near their respective terminal markers. Individual arrow/tail
+  headings in a Georgia/Times-like serif rendered onto a canvas (not image assets)
+  near their respective terminal markers. Individual arrow/tail
   toggles also hide the corresponding heading.
 - `mostraGradiAssi?: boolean` — degrees and whole arcminutes at ASC and MC
-  only. No repeated degrees at DSC/IC.
+  only. ASC degree is directly beneath the ASC heading, both beyond the short
+  left arrow; MC degree sits centered immediately above its short upward arrow,
+  with the MC heading above the degree. No repeated degrees at DSC/IC.
 - `mostraOraPlanetariaAscendente?: boolean` — uses the supplied planetary-hour
   backend interval, never a guessed ruler.
 - `mostraGradiElementiCelesti?: boolean` — original integer degree beside

@@ -151,11 +151,14 @@ test('Three.js scene keeps every glyph connector anchored at the true degree', a
     assert.ok(tick, `${name}: missing house boundary reference`);
     assert.equal(tick.userData.trueLongitude, longitude);
     const coords = tick.geometry.attributes.position.array;
-    const start = polar(90 + longitude, innerRadius - 0.043);
-    const end = polar(90 + longitude, innerRadius + 0.014);
+    const start = polar(90 + longitude, innerRadius + 0.007);
+    const end = polar(90 + longitude, innerRadius + 0.060);
     assert.ok(distance({ x: coords[0], y: coords[1] }, start) < 1e-6,
-      `${name}: inner tick must start at the real, not displaced, longitude`);
+      `${name}: outer house tick must start at the real, not displaced, longitude`);
     assert.ok(distance({ x: coords[3], y: coords[4] }, end) < 1e-6);
+    assert.ok(Math.hypot(coords[0], coords[1]) > innerRadius &&
+      Math.hypot(coords[3], coords[4]) > innerRadius,
+    `${name}: the house tick must not intrude into the house ring`);
     const glyphRadius = Math.hypot(glyph.position.x, glyph.position.y);
     assert.ok(glyphRadius > innerRadius && glyphRadius < outerRadius, `${name} outside ring`);
     const drawnAngle = (Math.atan2(-glyph.position.x, glyph.position.y) * 180 / Math.PI - 90 + 720) % 360;

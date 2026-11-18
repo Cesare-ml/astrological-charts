@@ -60,11 +60,11 @@ function axisLine(a: THREE.Vector2, b: THREE.Vector2, color: string, z = 0.015):
   return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 }));
 }
 
-/** Two fine strokes form a traditional, unfilled arrowhead. */
+/** Two clean, straight strokes form the broad, unfilled reference arrowhead. */
 function openArrowhead(angle: number, radius: number, color: string): THREE.LineSegments {
   const tip = pointOnRing(angle, radius);
-  const base = pointOnRing(angle, radius - 0.095);
-  const tangent = pointOnRing(angle + 90, 0.045);
+  const base = pointOnRing(angle, radius - 0.085);
+  const tangent = pointOnRing(angle + 90, 0.060);
   const sides = [base.clone().add(tangent), tip, base.clone().sub(tangent), tip];
   const geometry = new THREE.BufferGeometry().setFromPoints(
     sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
@@ -126,8 +126,8 @@ export class MarcatoriAssiRender {
     // Like the traditional hand-drawn natal chart: an open V at the end of a
     // thin axis line, not a triangle with a wide base.
     const makeAscPointer = () => {
-      addStem('ASC', ascAngle, zodiacRadius + 0.47, colors.asc);
-      const pointer = openArrowhead(ascAngle, zodiacRadius + 0.47, colors.asc);
+      addStem('ASC', ascAngle, zodiacRadius + 0.28, colors.asc);
+      const pointer = openArrowhead(ascAngle, zodiacRadius + 0.28, colors.asc);
       pointer.userData.axisMarker = 'ASC';
       group.add(pointer);
     };
@@ -143,8 +143,8 @@ export class MarcatoriAssiRender {
     // MC repeats the same simple arrow vocabulary as ASC.
     const makeMcPointer = () => {
       const angle = mcAngle;
-      addStem('MC', angle, zodiacRadius + 0.48, colors.mc);
-      const pointer = openArrowhead(angle, zodiacRadius + 0.48, colors.mc);
+      addStem('MC', angle, zodiacRadius + 0.31, colors.mc);
+      const pointer = openArrowhead(angle, zodiacRadius + 0.31, colors.mc);
       pointer.userData.axisMarker = 'MC';
       group.add(pointer);
     };
@@ -163,17 +163,20 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraRetroFrecciaIC !== false) makeIcLine();
 
     if (opzioni.mostraNomiAssi !== false) {
-      const serif = opzioni?.settaggi?.skin_id === 'virgostars';
-      for (const [key, title, angle, shift, visible] of [
-        ['ASC', 'ASC', ascAngle, 0.585, opzioni.mostraFrecciaAscendente !== false],
-        ['DS', 'DSC', dsAngle, 0.57, opzioni.mostraRetroFrecciaDiscendente !== false],
-        ['MC', 'MC', mcAngle, 0.59, opzioni.mostraFrecciaMC !== false],
-        ['IC', 'IC', icAngle, 0.56, opzioni.mostraRetroFrecciaIC !== false],
+      // These four headings are drawn from a real serif font on canvas,
+      // never loaded as glyphs from astrological-assets. Their layout is
+      // universal; only the text color remains skin-specific.
+      for (const [key, title, angle, shift, tangentShift, visible] of [
+        ['ASC', 'ASC', ascAngle, 0.53, -0.05, opzioni.mostraFrecciaAscendente !== false],
+        ['DS', 'DSC', dsAngle, 0.52, 0, opzioni.mostraRetroFrecciaDiscendente !== false],
+        ['MC', 'MC', mcAngle, 0.64, 0, opzioni.mostraFrecciaMC !== false],
+        ['IC', 'IC', icAngle, 0.50, 0, opzioni.mostraRetroFrecciaIC !== false],
       ] as const) {
         if (!visible) continue;
-        const label = textLabel(title, colors.testo, 0.32, 0.16,
-          serif ? 'bold 104px Georgia, serif' : 'bold 94px Arial, sans-serif');
-        const position = pointOnRing(angle, zodiacRadius + shift);
+        const label = textLabel(title, colors.testo, 0.43, 0.24,
+          'normal 114px Georgia, "Times New Roman", serif');
+        const position = pointOnRing(angle, zodiacRadius + shift)
+          .add(pointOnRing(angle + 90, tangentShift));
         label.position.x = position.x;
         label.position.y = position.y;
         label.userData.axisName = key;
@@ -183,14 +186,13 @@ export class MarcatoriAssiRender {
 
     if (opzioni.mostraGradiAssi !== false) {
       for (const [key, longitude, angle, color, radialOffset, tangentOffset] of [
-        // Centre the degree between the zodiac's outer edge and the base of
-        // the arrowhead, slightly above the shaft (clear of the line).
-        ['ASC', asc, ascAngle, colors.asc, 0.1875, -0.035],
-        // MC: the degree is beside the *left* of the rising MC arrow.
-        ['MC', mc, mcAngle, colors.mc, 0.36, 0.315],
+        // ASC: beyond the arrowhead, directly UNDER the ASC heading.
+        ['ASC', asc, ascAngle, colors.asc, 0.53, 0.145],
+        // MC: centered on the axis, between the shortened arrow and MC title.
+        ['MC', mc, mcAngle, colors.mc, 0.47, 0],
       ] as const) {
         const label = textLabel(formatAxisDegreeMinutes(longitude),
-          color, key === 'ASC' ? 0.32 : 0.47, key === 'ASC' ? 0.10 : 0.12);
+          color, 0.46, 0.18, 'normal 102px Georgia, "Times New Roman", serif');
         const position = pointOnRing(angle, zodiacRadius + radialOffset)
           .add(pointOnRing(angle + 90, tangentOffset));
         label.position.x = position.x;
@@ -203,10 +205,10 @@ export class MarcatoriAssiRender {
     if (opzioni.mostraOraPlanetariaAscendente !== false) {
       const name = planetaryHourAt(temaRender?.orePlanetarie);
       if (name) {
-        // Share the degree's radial midpoint so both are centred over the
-        // arrow shaft. Stack the planetary ruler *above* the ASC degree.
-        const position = pointOnRing(ascAngle, zodiacRadius + 0.1875)
-          .add(pointOnRing(ascAngle + 90, -0.18));
+        // Keep the real planetary-hour glyph above the shortened ASC arrow,
+        // with the heading and its degree in the separate two-line caption.
+        const position = pointOnRing(ascAngle, zodiacRadius + 0.28)
+          .add(pointOnRing(ascAngle + 90, -0.24));
         // Use the owner's real, skin-tinted chart asset. Unicode planet
         // characters vary by font and don't match the chart's glyph family.
         const glyph = await OggettiSempliciRender.getImg(
@@ -230,7 +232,7 @@ export class MarcatoriAssiRender {
       if (Number.isFinite(speed) && speed !== 0) {
         // A filled directional triangle sits with its base exactly on the
         // shaft, approximately halfway along the external MC arrow.
-        const radius = zodiacRadius + 0.23;
+        const radius = zodiacRadius + 0.12;
         const baseA = pointOnRing(mcAngle, radius - 0.038);
         const baseB = pointOnRing(mcAngle, radius + 0.038);
         const tip = pointOnRing(mcAngle, radius)

@@ -16,7 +16,7 @@ placement modes used by the rendered celestial glyphs:
 3. draws truly isolated bodies larger (`0.22 × symbolScale`), while planets in a nearby conjunction retain their equal compact size (`0.17 × symbolScale`) and degree labels radially inward, toward the houses;
 4. tests the real two-dimensional glyph **and nearby degree-label** rectangles after chart rotation, including glyph/badge cross-collisions;
 5. retains an emergency adaptive fallback for groups that are mathematically impossible in two lanes while respecting the angular bound;
-6. anchors the one retained outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed.
+6. anchors the one retained outward connector to the **original longitude** at the zodiac boundary. The old inward connector to the houses is removed; a separate small tick starts **outside** the house boundary, never inside its ring.
 
 For ordinary natal conjunctions, the two-track solver tests multiple insertion
 orders and half-degree steps within ±5°. The default five-body Aries-point
@@ -79,12 +79,12 @@ legacy callers omitting them also see the requested markers:
 
 | Option | Effect |
 | --- | --- |
-| `mostraFrecciaAscendente` | Thin orange axis ending in a small two-stroke open arrow |
+| `mostraFrecciaAscendente` | Short orange axis ending in a visibly broad, two-stroke open V arrowhead |
 | `mostraRetroFrecciaDiscendente` | Plain green descending line with a smooth circular terminal disc, without the former gate |
-| `mostraFrecciaMC` | Thin violet axis ending in a small two-stroke open arrow |
+| `mostraFrecciaMC` | Short violet axis ending in the same broad, two-stroke open V arrowhead |
 | `mostraRetroFrecciaIC` | Plain lavender line with a smooth circular terminal disc of the same enlarged size as DS |
-| `mostraGradiAssi` | ASC and MC: degree + whole arcminutes (e.g. `20° 0′`), both upright sans-serif; ASC is centred above its free shaft and MC remains left of its arrow |
-| `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour directly **above the ASC degree**, centred on the same shaft, if source data exists (no “Ora” caption) |
+| `mostraGradiAssi` | ASC and MC: degree + whole arcminutes (e.g. `20° 0′`), rendered in upright serif; ASC degree **below** its name after the arrowhead, MC degree **above** its arrowhead but **below** the name, both centered to their axis |
+| `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour **above the shortened ASC arrow**, if source data exists (no “Ora” caption) |
 | `mostraDirezioneMotoMC` | Filled lilac triangle with its base on the MC shaft halfway along the external arrow; points left or right according to signed `mcSpeed` |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
@@ -94,7 +94,8 @@ degree and whole arcminutes within the sign, rounded to the nearest minute;
 the original seconds and fractions are retained in the input data. DS and IC
 now use small `THREE.CircleGeometry` discs rather than square `THREE.Points`,
 with slightly enlarged radius and stable shape at any display resolution.
-The external ASC/DS/MC/IC strokes now terminate at their **true zodiacal
+The headings ASC/DSC/MC/IC are drawn using the same Georgia/Times-like canvas
+font in every skin; they do not load font glyphs from astrological-assets. The external ASC/DS/MC/IC strokes now terminate at their **true zodiacal
 degree tick**, i.e. the inner radius of the sign ring passed to the marker
 renderer. They never cross the celestial-body band to reach the house circle;
 house cusp dividers inside the house wheel are preserved independently.
@@ -108,7 +109,7 @@ host-asset resolver and tints it to match ASC; it does not use a Unicode planet
 character or bundle an additional image.
 
 The filled MC movement triangle has its base directly on the arrow shaft,
-near the midpoint of the external part of the axis. It points toward increasing ecliptic longitude for an
+near the midpoint of the **shortened** external part of the axis. It points toward increasing ecliptic longitude for an
 ordinary instant in the sky. To override it for a chart calculated through
 directions/progressions, supply a signed `mcSpeed` under
 `TemaRender.houses[selectedHouseSystem]` (or `TemaRender.mcSpeed`). A negative

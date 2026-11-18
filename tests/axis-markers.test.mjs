@@ -106,9 +106,11 @@ test('ASC, DS, MC and IC each have separate visible toggles and use source longi
   assert.ok(markers['MC-motion'].isMesh, 'MC direction is a filled triangle');
   assert.equal(markers['MC-motion'].material.color.getHexString(), 'b58bd8');
   for (const label of group.children.filter(child => ['ASC','MC'].includes(child.userData.axis))) {
-    assert.equal(label.geometry.parameters.width, label.userData.axis === 'ASC' ? 0.32 : 0.47);
-    assert.equal(label.geometry.parameters.height, label.userData.axis === 'ASC' ? 0.10 : 0.12);
+    assert.equal(label.geometry.parameters.width, 0.46);
+    assert.equal(label.geometry.parameters.height, 0.18);
   }
+  assert.ok(fonts.every(font => font.includes('Georgia') && !font.includes('italic')),
+    'axis headings and degrees must use a clear non-italic serif canvas font');
 
   const hidden = await makeMarkers({
     mostraFrecciaAscendente: false, mostraRetroFrecciaDiscendente: false,
@@ -132,22 +134,26 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
     const toRadius = Math.hypot(vertex[3], vertex[4]);
     assert.ok(Math.abs(fromRadius - tickRadius) < 1e-6,
       `${stem.userData.axisStem}: line must end at zodiac degree tick, not a house cusp`);
-    assert.ok(toRadius > radius + 0.35 && toRadius < radius + 0.5,
-      `${stem.userData.axisStem}: line must finish just beyond the chart`);
+    const extensions = { ASC: 0.28, DS: 0.38, MC: 0.31, IC: 0.39 };
+    assert.ok(Math.abs(toRadius - radius - extensions[stem.userData.axisStem]) < 1e-6,
+      `${stem.userData.axisStem}: marker stem extension differs from the approved layout`);
   }
+  const ascName = group.children.find(child => child.userData.axisName === 'ASC');
+  const mcName = group.children.find(child => child.userData.axisName === 'MC');
   const ascDegree = group.children.find(child => child.userData.axis === 'ASC');
   const planetaryHour = group.children.find(child => child.userData.axis === 'planetary-hour-glyph');
   const mcDegree = group.children.find(child => child.userData.axis === 'MC');
-  assert.ok(ascDegree && mcDegree && planetaryHour);
-  const expectedAscMidpoint = -(radius + (0.47 - 0.095) / 2);
-  assert.ok(Math.abs(ascDegree.position.x - expectedAscMidpoint) < 1e-6,
-    'ASC degree must be midway between the zodiac and the beginning of the arrowhead');
-  assert.ok(Math.abs(planetaryHour.position.x - ascDegree.position.x) < 1e-6,
-    'planetary-hour glyph must be centred on the same ASC arrow segment');
-  assert.ok(planetaryHour.position.y > ascDegree.position.y + 0.12,
-    'planetary hour must sit above the degree, without overlapping it');
-  assert.ok(ascDegree.position.y > 0.02 && ascDegree.position.y < 0.05,
-    'ASC degree must sit close above its shaft');
+  assert.ok(ascName && mcName && ascDegree && mcDegree && planetaryHour);
+  assert.ok(Math.abs(ascDegree.position.x - ascName.position.x) < 1e-6,
+    'the ASC degree must be directly below the ASC heading');
+  assert.ok(ascDegree.position.y < ascName.position.y - 0.18,
+    'ASC degree must be below the label, not along the arrow shaft');
+  assert.ok(ascName.position.x < -(radius + 0.28),
+    'ASC heading must sit beyond the shortened arrowhead');
+  assert.ok(planetaryHour.position.x > ascDegree.position.x + 0.18,
+    'planetary-hour glyph belongs above the arrow, not in the two-line ASC caption');
+  assert.ok(planetaryHour.position.y > ascName.position.y + 0.18,
+    'planetary hour must remain above the shaft');
   for (const axis of ['DS', 'IC']) {
     const terminal = group.children.find(child => child.userData.axisMarker === axis);
     assert.equal(terminal.geometry.parameters.radius, 0.033,
@@ -160,9 +166,24 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
       `${axis} disc must be centred exactly on its line endpoint`);
   }
   const mcAngle = (90 - 20.7 + 298.94) * Math.PI / 180;
-  const mcStemX = -Math.sin(mcAngle) * (radius + 0.36);
-  assert.ok(mcDegree.position.x < mcStemX - 0.25,
-    'MC degree must sit to the left of the upward arrow');
+  const mcRadial = {x: -Math.sin(mcAngle), y: Math.cos(mcAngle)};
+  const projection = point => point.x * mcRadial.x + point.y * mcRadial.y;
+  assert.ok(projection(mcName.position) > projection(mcDegree.position) &&
+    projection(mcDegree.position) > radius + 0.31,
+    'the MC heading must be above its degree, which is above the arrowhead');
+  assert.ok(Math.abs(mcDegree.position.x * mcRadial.y - mcDegree.position.y * mcRadial.x) < 1e-6,
+    'MC degree must be centered on the axis, never displaced to its left');
+  for (const axis of ['ASC', 'MC']) {
+    const arrow = group.children.find(child => child.userData.axisMarker === axis);
+    const vertices = arrow.geometry.attributes.position;
+    assert.equal(vertices.count, 4, `${axis}: an open V uses exactly two strokes`);
+    const left = new THREE.Vector3().fromBufferAttribute(vertices, 0);
+    const tip = new THREE.Vector3().fromBufferAttribute(vertices, 1);
+    const right = new THREE.Vector3().fromBufferAttribute(vertices, 2);
+    assert.ok(left.distanceTo(right) > 0.115 && left.distanceTo(right) < 0.125,
+      `${axis}: reference arrowhead must be wider than the old narrow V`);
+    assert.ok(tip.distanceTo(left) > 0.10 && tip.distanceTo(right) > 0.10);
+  }
 });
 
 test('individual annotations and signed MC motion can be hidden independently', async () => {

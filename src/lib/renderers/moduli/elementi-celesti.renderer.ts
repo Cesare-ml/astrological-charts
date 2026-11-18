@@ -276,16 +276,16 @@ export class ElementiCelestiRender {
         group.add(lineaB);
       }
 
-      // A tiny tick precisely on the boundary of the house wheel makes the
-      // planet's actual house unambiguous, even if its displayed glyph had
-      // to move a few degrees or into a second radial lane. This is NOT a
+      // A tiny tick just OUTSIDE the house wheel makes the planet's actual
+      // house unambiguous, even if its glyph moved into a second radial lane.
+      // Neither endpoint may cross into the house-number/aspect ring. It is NOT a
       // connector from the glyph to the house and never follows the glyph's
       // displaced visual angle. Cardinal axes have their own markers.
       if (lineaSuCerchioEsterno && !isElementiSinastria &&
           parametroDiRender === 'longitude' && !['AS', 'DS', 'MC', 'IC'].includes(nome)) {
         const houseTickRadius = innerRingRadius;
-        const start = this.pointOnRing(elDegDiRender, houseTickRadius - 0.043);
-        const end = this.pointOnRing(elDegDiRender, houseTickRadius + 0.014);
+        const start = this.pointOnRing(elDegDiRender, houseTickRadius + 0.007);
+        const end = this.pointOnRing(elDegDiRender, houseTickRadius + 0.060);
         const houseTick = new THREE.Line(
           new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(start.x, start.y, 0.019),
