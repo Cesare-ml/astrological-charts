@@ -4,6 +4,7 @@ import { SkinManager } from '../@skin-manager';
 import { Colori } from '../_colori.config';
 
 import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer'
+import {disposeSceneResources} from '../scene-resources';
 
 export class SegniRender {
 
@@ -18,11 +19,20 @@ export class SegniRender {
         points.push(new THREE.Vector3(-Math.sin(angle) * radius, Math.cos(angle) * radius, 0.009));
       }
     }
-    const ticks = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points),
-      new THREE.LineBasicMaterial({ color: colore, transparent: true, opacity: 0.88 }));
-    ticks.name = 'zodiac-degree-scale';
-    ticks.userData.tickCount = 360;
-    return ticks;
+    const geometry = new THREE.BufferGeometry();
+    let material: THREE.LineBasicMaterial | undefined;
+    try {
+      geometry.setFromPoints(points);
+      material = new THREE.LineBasicMaterial({ color: colore, transparent: true, opacity: 0.88 });
+      const ticks = new THREE.LineSegments(geometry, material);
+      ticks.name = 'zodiac-degree-scale';
+      ticks.userData.tickCount = 360;
+      return ticks;
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
   public static sequenzaDecani = [
@@ -38,6 +48,7 @@ export class SegniRender {
     // -------------------------
     public static async getDecadi(degOffsAscendente,simboliScale,diametroCerchioInterno,diametroCerchioEsterno,australInversion,opzioni): Promise<any> {
         var group = new THREE.Group();
+        try {
         
         const coloreSimboli = SkinManager.skins[opzioni.settaggi.skin_id].anelloSegni.coloreSimboli;
 
@@ -52,6 +63,7 @@ export class SegniRender {
                 `simboli-bianchi/segni/${String(i + 1).padStart(2, '0')}.png`,
                 100, 69, 1 / 69, australInversion, colore
             );
+            group.add(segno);
     
             segno.scale.set(0.14*simboliScale,0.14*simboliScale,1);
             segno.rotateZ(THREE.MathUtils.degToRad(i*30+j*10+5 + degOffsAscendente));
@@ -61,11 +73,14 @@ export class SegniRender {
             );
             segno.rotation.z = 0;
     
-            group.add(segno);
           }
         }
     
         return group;
+        } catch (error) {
+            disposeSceneResources(group);
+            throw error;
+        }
       }
 
     // -------------------------
@@ -73,6 +88,7 @@ export class SegniRender {
     // -------------------------
     public static async getDecani(degOffsAscendente,simboliScale,diametroCerchioInterno,diametroCerchioEsterno,australInversion,opzioni): Promise<any> {
         var group = new THREE.Group();
+        try {
 
         for(var i=0; i<36; i++) {
             var semiArco = OggettiSempliciRender.getSemiArcoGrosso(
@@ -97,6 +113,7 @@ export class SegniRender {
                     875,605,1/875,
                     australInversion, 'black'
                 );
+                group.add(pianeta);
 
                 pianeta.scale.set(0.14*simboliScale,0.14*simboliScale,1);
                 pianeta.rotateZ(THREE.MathUtils.degToRad(i*30+j*10+5 + degOffsAscendente));
@@ -106,12 +123,15 @@ export class SegniRender {
                 );
                 pianeta.rotation.z = 0;
 
-                group.add(pianeta);
             }
         }
 
 
         return group;
+        } catch (error) {
+            disposeSceneResources(group);
+            throw error;
+        }
     }
 
 
@@ -121,6 +141,7 @@ export class SegniRender {
   // -------------------------
     public static async getAnelloSegni(asc: number, simboliScale, diametroCerchioInterno, diametroCerchioEsterno, australInversion, mostraDecani, mostraDecadi, opzioni): Promise<THREE.Group> {
         const group = new THREE.Group();
+        try {
         
 
         const degOffsAscendente = 75 - asc + 15;
@@ -214,13 +235,13 @@ export class SegniRender {
                 `simboli-bianchi/segni/${String(i + 1).padStart(2, '0')}.png`,
                 100, 69, 1 / 69, australInversion, colore
             );
+            group.add(segno);
             segno.scale.set(0.16, 0.16, 1);
             segno.rotateZ(THREE.MathUtils.degToRad(i * 30 + 15 + degOffsAscendente));
             // Centre the glyph within the actual zodiac band. Previously a
             // fixed fraction of the outer diameter pulled it toward planets.
             segno.translateY((diametroCerchioInterno + diametroCerchioEsterno) / 4);
             segno.rotation.z = 0;
-            group.add(segno);
         }
 
         if (opzioni.mostraDecani) {
@@ -249,6 +270,10 @@ export class SegniRender {
         }
 
         return group;
+        } catch (error) {
+            disposeSceneResources(group);
+            throw error;
+        }
     }
 
     // -------------------------
@@ -256,6 +281,7 @@ export class SegniRender {
     // -------------------------
     public static async getAnelloSegniSinastria(ascendente: number, diametroCerchioInterno, diametroCerchioEsterno, australInversion, stato:StatoCartaAstrale): Promise<THREE.Group> {
         const group = new THREE.Group();
+        try {
 
         const degOffsAscendente = 75 - ascendente + 15;
 
@@ -281,7 +307,6 @@ export class SegniRender {
             segno.translateY(diametroCerchioEsterno / 2 - diametroCerchioEsterno / 16);
             segno.rotation.z = 0;
 
-            group.add(segno);
         }*/
 
         
@@ -363,14 +388,18 @@ export class SegniRender {
                 `simboli-bianchi/segni/${String(i + 1).padStart(2, '0')}.png`,
                 100, 69, 1 / 69, false, colore
             );
+            group.add(segno);
             segno.scale.set(0.08, 0.08, 1);
             segno.rotateZ(THREE.MathUtils.degToRad(i * 30 + 15 + degOffsAscendente));
             segno.translateY(diametroCerchioEsterno / 2 - diametroCerchioEsterno / 21);
             segno.rotation.z = 0;
-            group.add(segno);
         }
 
         return group;
+        } catch (error) {
+            disposeSceneResources(group);
+            throw error;
+        }
     }
 
 }

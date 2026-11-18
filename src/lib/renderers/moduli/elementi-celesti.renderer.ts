@@ -4,8 +4,24 @@ import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 
 import {Colori} from '../_colori.config';
 import { SkinManager } from '../@skin-manager';
-import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
+import { registerSceneAnimation } from '../scene-animations';
+import { disposeSceneResources } from '../scene-resources';
 import { normalizeDegree, layoutPlanetSymbols, layoutCompositePlanetSymbols } from './planet-symbol-layout';
+
+/** Ownership of an unfinished thin line remains here until its scene receives it. */
+function createThinLine(points: THREE.Vector3[], options: THREE.LineBasicMaterialParameters): THREE.Line {
+  const geometry = new THREE.BufferGeometry();
+  let material: THREE.LineBasicMaterial | undefined;
+  try {
+    geometry.setFromPoints(points);
+    material = new THREE.LineBasicMaterial(options);
+    return new THREE.Line(geometry, material);
+  } catch (error) {
+    material?.dispose();
+    geometry.dispose();
+    throw error;
+  }
+}
 
 
 export class ElementiCelestiRender {
@@ -31,11 +47,21 @@ export class ElementiCelestiRender {
     context.textBaseline = 'middle';
     context.fillText(`${degree}°`, canvas.width / 2, canvas.height / 2);
     const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
-    return new THREE.Mesh(new THREE.PlaneGeometry(
-      (compact ? 0.12 : 0.13) * size, (compact ? 0.06 : 0.075) * size,
-    ), material);
+    let material: THREE.MeshBasicMaterial | undefined;
+    let geometry: THREE.PlaneGeometry | undefined;
+    try {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
+      geometry = new THREE.PlaneGeometry(
+        (compact ? 0.12 : 0.13) * size, (compact ? 0.06 : 0.075) * size,
+      );
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry?.dispose();
+      material?.dispose();
+      texture.dispose();
+      throw error;
+    }
   }
 
   public static async getAnelloElementiCelesti(
@@ -64,6 +90,7 @@ export class ElementiCelestiRender {
     houseBoundaryRadius?: number,
   ): Promise<any> {
     var group = new THREE.Group();
+    let pendingGlyph: THREE.Object3D | null = null;
     try {
     var elementiCelesti = ElementiCelestiRender.getElementiCelesti(temaRender,opzioni,usaAssi,parametroDiRender,calcolaPartiArabe,offsDirezioniSemplificate);
 
@@ -242,6 +269,9 @@ export class ElementiCelestiRender {
         elRef = 'simboli-bianchi/elementi-celesti/'+nome+'.png';
       }
       var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
+      // Keep the established paint order (connectors before glyphs), while
+      // retaining ownership if an intermediate connector/label throws.
+      pendingGlyph = el;
       const glyphScale = elementiCelestiRenderPos[nome].scale ?? 1;
       el.scale.set(glyphBaseSize * simboliScale * glyphScale, glyphBaseSize * simboliScale * glyphScale, 1);
       const trueDegree = elementiCelesti[nome][parametroDiRender];
@@ -321,14 +351,11 @@ export class ElementiCelestiRender {
         // regardless of any tangential displacement used to separate glyphs.
         const gridAnchor = this.pointOnRing(elDegDiRender, innerRingRadius + 0.012);
         const symbolEnd = this.pointOnRing(glyphDegree, glyphRadius - glyphHalfHeight - 0.012);
-        const transitConnector = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([
+        const transitConnector = createThinLine([
             new THREE.Vector3(symbolEnd.x, symbolEnd.y, 0.012),
             new THREE.Vector3(gridAnchor.x, gridAnchor.y, 0.012),
-          ]),
-          new THREE.LineBasicMaterial({color: coloreLineeSegni, transparent: true,
-            opacity: 0.45, depthWrite: false}),
-        );
+          ], {color: coloreLineeSegni, transparent: true,
+            opacity: 0.45, depthWrite: false});
         transitConnector.userData.transitConnector = nome;
         transitConnector.userData.trueLongitude = trueDegree;
         group.add(transitConnector);
@@ -343,19 +370,17 @@ export class ElementiCelestiRender {
         const houseTickRadius = raggioBordoCase;
         const start = this.pointOnRing(elDegDiRender, houseTickRadius);
         const end = this.pointOnRing(elDegDiRender, houseTickRadius + 0.060);
-        const houseTick = new THREE.Line(
-          new THREE.BufferGeometry().setFromPoints([
+        const houseTick = createThinLine([
             new THREE.Vector3(start.x, start.y, 0.019),
             new THREE.Vector3(end.x, end.y, 0.019),
-          ]),
-          new THREE.LineBasicMaterial({ color: coloreLinea }),
-        );
+          ], { color: coloreLinea });
         houseTick.userData.planetHouseTick = nome;
         houseTick.userData.trueLongitude = trueDegree;
         group.add(houseTick);
       }
 
       group.add( el );
+      pendingGlyph = null;
       if (mostraGradi && !(axisPresentation !== 'default' && ['AS', 'DS', 'MC', 'IC'].includes(nome))) {
         const label = this.makeDegreeLabel(trueDegree, coloreSimboli,
           simboliScale * glyphScale, !hasWidePlanetBand);
@@ -385,13 +410,13 @@ export class ElementiCelestiRender {
           (diametroCerchioEsterno/2 - diametroCerchioDodecatemori/2)/2 + diametroCerchioDodecatemori/2;
 
         var eld = await OggettiSempliciRender.getImg('simboli/elementi-celesti/'+opzioni.settaggi.skin_id+'/cerchio/'+nome+'.png',1,1,0.6);
+        group.add(eld);
         eld.scale.set(0.1,0.1,1);
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'] + degOffs;
         eld.rotateZ(THREE.MathUtils.degToRad(dodecatemoreDegDiRender));
         eld.translateY(raggioEclitticaDodecatemore);
         eld.rotation.z = 0;
 
-        group.add(eld);
 /*
         if(eventiMouseDodecatemori) {
           GestoreEventiMouse.gem.aggiungiOggetto(
@@ -405,6 +430,7 @@ export class ElementiCelestiRender {
       // Dodecatemoria singola
       else if(elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == nome && !calcolaPartiArabe) {
         var eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion);
+        group.add(eld);
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'];
 
         eld.scale.set(0.23*simboliScale,0.23*simboliScale,1);
@@ -414,7 +440,6 @@ export class ElementiCelestiRender {
         eld.translateY(raggioEclittica);
         eld.rotation.z = 0;
 
-        group.add(eld);
 /*
         if(eventiMouseDodecatemori) {
           GestoreEventiMouse.gem.aggiungiOggetto(
@@ -447,9 +472,10 @@ export class ElementiCelestiRender {
 
     return group;
     } catch (error) {
-      // The group is not returned to the service when construction fails, so
-      // its animations must be stopped here rather than during scene disposal.
-      stopSceneAnimations(group);
+      // The group is never returned on failure. Stop its animations AND free
+      // its meshes, including the current glyph if it was not yet attached.
+      if (pendingGlyph && !pendingGlyph.parent) group.add(pendingGlyph);
+      disposeSceneResources(group);
       throw error;
     }
   }

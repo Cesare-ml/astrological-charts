@@ -7,7 +7,7 @@ import { TransitiRender } from '../moduli/transiti.renderer';
 import { SkinManager } from '../@skin-manager';
 import { SinastriaRender } from '../moduli/sinastria.renderer';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
-import { stopSceneAnimations } from '../scene-animations';
+import { disposeSceneResources } from '../scene-resources';
 import { MarcatoriAssiRender } from '../moduli/marcatori-assi.renderer';
 
 // ---------------------------
@@ -531,7 +531,9 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
         return disegno;
     } catch (error) {
         // A partial drawing is never returned to the service on failure.
-        disegno.traverse(stopSceneAnimations);
+        // Free its meshes and textures as well as its animation timelines;
+        // the caller cannot dispose a scene that was never returned.
+        disposeSceneResources(disegno);
         throw error;
     }
 }

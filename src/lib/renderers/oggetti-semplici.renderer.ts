@@ -3,6 +3,7 @@ import {GestoreImmagini} from './gestore-immagini';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { disposeSceneResources } from './scene-resources';
 
 export class OggettiSempliciRender {
   public static dimensioniCanvas:{x:number, y:number} = null;
@@ -31,12 +32,18 @@ export class OggettiSempliciRender {
     shape.absarc(0, 0, raggio, 0, Math.PI * 2, false);
 
     const geometry = new THREE.RingGeometry(raggio - spessore, raggio, 128);
-    const material = new THREE.MeshBasicMaterial({ 
-      color: colore,
-      side: THREE.DoubleSide 
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    return mesh;
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      material = new THREE.MeshBasicMaterial({
+        color: colore,
+        side: THREE.DoubleSide
+      });
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
 
@@ -52,12 +59,16 @@ export class OggettiSempliciRender {
       map: opzioni?.texture ?? null
     };
 
-    const material = new THREE.MeshBasicMaterial(materialOptions);
-
-    const mesh = new THREE.Mesh(geometry, material);
-    //mesh.rotation.x = Math.PI / 2; // opzionale: orienta l’anello sul piano XY
-
-    return mesh;
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      material = new THREE.MeshBasicMaterial(materialOptions);
+      // The optional map was supplied by the caller, not created here.
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
   public static getSemiArcoGrosso(a, b, yInterno, yEsterno, colore, textureUrl = null) {
@@ -77,6 +88,9 @@ export class OggettiSempliciRender {
     const punti = puntiArcoInterno.concat(puntiArcoEsterno);
     const shape = new THREE.Shape(punti);
     const geometry = new THREE.ShapeGeometry(shape);
+    let texture: THREE.Texture | undefined;
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
 
     // 🔹 Ricalcolo manuale delle coordinate UV per coprire tutto il semiarco
     geometry.computeBoundingBox();
@@ -98,9 +112,8 @@ export class OggettiSempliciRender {
 
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
 
-    let material;
     if (textureUrl) {
-      const texture = GestoreImmagini.getImg(textureUrl);
+      texture = GestoreImmagini.getImg(textureUrl);
       texture.wrapS = THREE.ClampToEdgeWrapping;
       texture.wrapT = THREE.ClampToEdgeWrapping;
       texture.repeat.set(1, 1);
@@ -123,6 +136,12 @@ export class OggettiSempliciRender {
     }
 
     return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry.dispose();
+      material?.dispose();
+      texture?.dispose();
+      throw error;
+    }
   }
 
 
@@ -132,6 +151,7 @@ export class OggettiSempliciRender {
   //funzione su xy
   public static getLineaGrossaTratteggiata(da,a,colore,spessore,passo) {
     var group = new THREE.Group();
+    try {
 
     var distanza = da.distanceTo(a);
     var segmenti = Math.trunc(distanza/passo);
@@ -159,6 +179,10 @@ export class OggettiSempliciRender {
     }
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
   /*
@@ -172,6 +196,7 @@ export class OggettiSempliciRender {
   */
   public static getLineaGrossaPuntoLinea(da,a,colore,spessore,trattoLinea) {
     var group = new THREE.Group();
+    try {
 
     var distanza = da.distanceTo(a);
     var segmenti = Math.trunc(distanza/trattoLinea.passo);
@@ -242,6 +267,10 @@ export class OggettiSempliciRender {
     }
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
   public static getLineaGrossa(da,a,colore,spessore) {
     //console.log(da,a,colore,spessore);
@@ -275,27 +304,36 @@ export class OggettiSempliciRender {
       i += 1;
     }
 
-    // return geo
+    // The geometry is not yet owned by a scene while its attributes are built.
     geo = new LineGeometry();
-    geo.setPositions(positions);
-    geo.setColors(colors);
-    return geo;
+    try {
+      geo.setPositions(positions);
+      geo.setColors(colors);
+      return geo;
+    } catch (error) {
+      geo.dispose();
+      throw error;
+    }
   }
 
   public static createFatLine(geometry,width) {
+    let matLine: LineMaterial | undefined;
+    try {
+      // Ownership transfers to the returned line only after construction.
+      matLine = new LineMaterial({
+        linewidth: width * OggettiSempliciRender.getLineScaleFactor(), // in pixels
+        vertexColors: true
+      });
 
-    // LINE MATERIAL
-    var matLine = new LineMaterial({
-      linewidth: width * OggettiSempliciRender.getLineScaleFactor(), // in pixels
-      vertexColors: true
-    });
-    
-    const sizes = OggettiSempliciRender.getMatLineResolutionSizes();
-    matLine.resolution.set(sizes.x, sizes.y);
+      const sizes = OggettiSempliciRender.getMatLineResolutionSizes();
+      matLine.resolution.set(sizes.x, sizes.y);
 
-    var line = new Line2(geometry, matLine);
-
-    return line;
+      return new Line2(geometry, matLine);
+    } catch (error) {
+      matLine?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
   /*
@@ -349,17 +387,19 @@ export class OggettiSempliciRender {
     g.fillText(testo, 0, 20);
 
     // canvas contents will be used for a texture
-    var texture = new THREE.Texture(bitmap)
-    //texture.needsUpdate = true;
-
-    var img = new THREE.MeshBasicMaterial({ //CHANGED to MeshBasicMaterial
-        map:texture,
-        transparent: true
-    });
-
-    // plane
-    var plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),img);
-    return plane;
+    const texture = new THREE.Texture(bitmap);
+    let material: THREE.MeshBasicMaterial | undefined;
+    let geometry: THREE.PlaneGeometry | undefined;
+    try {
+      material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+      geometry = new THREE.PlaneGeometry(1, 1);
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry?.dispose();
+      material?.dispose();
+      texture.dispose();
+      throw error;
+    }
   }
 /*
   public static addTesto(pos: any,zRotation: number,testo: any,fontFilename: string,colore: string,addTo: any): void {
@@ -386,9 +426,15 @@ export class OggettiSempliciRender {
 */
   public static getQuadrilatero(w,h,colore) {
     const geometry = new THREE.PlaneGeometry( w, h );
-    const material = new THREE.MeshBasicMaterial( {color: colore, side: THREE.DoubleSide} );
-    const plane = new THREE.Mesh( geometry, material );
-    return plane;
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      material = new THREE.MeshBasicMaterial({color: colore, side: THREE.DoubleSide});
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
   public static getTriangolo(colore: string) {
     // Definisci i vertici del triangolo
@@ -400,18 +446,17 @@ export class OggettiSempliciRender {
 
     // Crea la BufferGeometry e imposta i vertici
     const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-    // Opzionale: calcola la normale automaticamente
-    geom.computeVertexNormals();
-
-    // Crea il materiale
-    const mat = new THREE.MeshBasicMaterial({ color: colore, side: THREE.DoubleSide });
-
-    // Crea la mesh
-    const mesh = new THREE.Mesh(geom, mat);
-
-    return mesh;
+    let mat: THREE.MeshBasicMaterial | undefined;
+    try {
+      geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      geom.computeVertexNormals();
+      mat = new THREE.MeshBasicMaterial({color: colore, side: THREE.DoubleSide});
+      return new THREE.Mesh(geom, mat);
+    } catch (error) {
+      mat?.dispose();
+      geom.dispose();
+      throw error;
+    }
   }
 
 
@@ -425,27 +470,45 @@ export class OggettiSempliciRender {
     );
 
     const points = curve.getPoints( 50 );
-    const geometry = new THREE.BufferGeometry().setFromPoints( points );
-
-    const material = new THREE.LineBasicMaterial( { color : colore } );
-
-    // Create the final object to add to the scene
-    const ellipse = new THREE.Line( geometry, material );
-
-    return ellipse;
+    const geometry = new THREE.BufferGeometry();
+    let material: THREE.LineBasicMaterial | undefined;
+    try {
+      geometry.setFromPoints(points);
+      material = new THREE.LineBasicMaterial({color: colore});
+      return new THREE.Line(geometry, material);
+    } catch (error) {
+      material?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
   public static async getSfondoQuadrato(assetsImgRef,dim,flipY=false, color?:string) {
-    var img = await OggettiSempliciRender.getMaterial(assetsImgRef,flipY, color);
-
-    var plane = new THREE.Mesh(new THREE.PlaneGeometry(dim, dim),img);
-    return plane;
+    const material = await OggettiSempliciRender.getMaterial(assetsImgRef,flipY, color);
+    let geometry: THREE.PlaneGeometry | undefined;
+    try {
+      geometry = new THREE.PlaneGeometry(dim, dim);
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry?.dispose();
+      material.map?.dispose();
+      material.dispose();
+      throw error;
+    }
   }
 
   public static async getImg(assetsImgRef: string, w: number, h: number, scale: number, flipY = false, color?:string) {
     const material = await OggettiSempliciRender.getMaterial(assetsImgRef, flipY, color);
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w * scale, h * scale), material);
-    return plane;
+    let geometry: THREE.PlaneGeometry | undefined;
+    try {
+      geometry = new THREE.PlaneGeometry(w * scale, h * scale);
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry?.dispose();
+      material.map?.dispose();
+      material.dispose();
+      throw error;
+    }
   }
 /*
   public static loadTexture(path: string): Promise<THREE.Texture> {
@@ -462,29 +525,34 @@ export class OggettiSempliciRender {
 
   public static async getMaterial(assetsImgRef: string, flipY: boolean, color?: string) {
     const texture = await GestoreImmagini.loadAsync('../../../assets/img/' + assetsImgRef);
+    try {
+      if(flipY) {
+        texture.center.set(0.5, 0.5);
+        texture.rotation = Math.PI;
+        texture.flipY = false;
+      } else {
+        texture.rotation = 0;
+        texture.flipY = true;
+      }
 
-    if(flipY) {
-      texture.center.set(0.5, 0.5);
-      texture.rotation = Math.PI;
-      texture.flipY = false;
-    } else {
-      texture.rotation = 0;
-      texture.flipY = true;
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        color: color ?? 'white',
+        side: THREE.DoubleSide,
+      });
+
+      return material;
+    } catch (error) {
+      texture.dispose();
+      throw error;
     }
-
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      color: color ?? 'white',
-      side: THREE.DoubleSide,
-    });
-
-    return material;
   }
 
 
   public static lanciaFrecciaAdArco(daDeg,aDeg,colore,coloreLinea,diametroCerchioInterno,diametroCerchioEsterno) {
     var group = new THREE.Group();
+    try {
 
     var arcoEndDeg = daDeg>aDeg ? aDeg+360 : aDeg;
     if(arcoEndDeg-daDeg >= 5) {
@@ -501,9 +569,11 @@ export class OggettiSempliciRender {
       arcoEndDeg,
       colore
     );
+    group.add(arco);
     arco.translateZ(0.01);
 
     var triangolo = OggettiSempliciRender.getTriangolo(colore);
+    group.add(triangolo);
     triangolo.scale.set(0.06,0.06,1);
     triangolo.rotateZ(THREE.MathUtils.degToRad(arcoEndDeg));
     triangolo.translateY(raggioMediano - 0.03);
@@ -513,10 +583,10 @@ export class OggettiSempliciRender {
     linea.rotateZ(THREE.MathUtils.degToRad(aDeg));
     group.add(linea);
 
-    group.add( arco );
-    group.add( triangolo );
-    group.add( linea );
-
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }

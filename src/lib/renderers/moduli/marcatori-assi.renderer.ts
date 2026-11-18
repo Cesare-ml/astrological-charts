@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OggettiSempliciRender } from '../oggetti-semplici.renderer';
 import { SkinManager } from '../@skin-manager';
+import { disposeSceneResources } from '../scene-resources';
 
 const HOUR_PLANETS = new Set(['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']);
 
@@ -54,10 +55,19 @@ export function planetaryHourAt(orePlanetarie: any): string | null {
 }
 
 function axisLine(a: THREE.Vector2, b: THREE.Vector2, color: string, z = 0.015): THREE.Line {
-  const geometry = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(a.x, a.y, z), new THREE.Vector3(b.x, b.y, z),
-  ]);
-  return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 }));
+  const geometry = new THREE.BufferGeometry();
+  let material: THREE.LineBasicMaterial | undefined;
+  try {
+    geometry.setFromPoints([
+      new THREE.Vector3(a.x, a.y, z), new THREE.Vector3(b.x, b.y, z),
+    ]);
+    material = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 });
+    return new THREE.Line(geometry, material);
+  } catch (error) {
+    material?.dispose();
+    geometry.dispose();
+    throw error;
+  }
 }
 
 /** Two straight strokes with the measured reference V proportions. */
@@ -66,18 +76,34 @@ function openArrowhead(angle: number, radius: number, color: string): THREE.Line
   const base = pointOnRing(angle, radius - 0.075);
   const tangent = pointOnRing(angle + 90, 0.043);
   const sides = [base.clone().add(tangent), tip, base.clone().sub(tangent), tip];
-  const geometry = new THREE.BufferGeometry().setFromPoints(
-    sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
-  return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color }));
+  const geometry = new THREE.BufferGeometry();
+  let material: THREE.LineBasicMaterial | undefined;
+  try {
+    geometry.setFromPoints(sides.map(point => new THREE.Vector3(point.x, point.y, 0.022)));
+    material = new THREE.LineBasicMaterial({ color });
+    return new THREE.LineSegments(geometry, material);
+  } catch (error) {
+    material?.dispose();
+    geometry.dispose();
+    throw error;
+  }
 }
 
 /** Three.js points render as squares without a texture; a real disc stays round. */
 function circularTerminal(angle: number, radius: number, color: string): THREE.Mesh {
   const position = pointOnRing(angle, radius);
-  const marker = new THREE.Mesh(new THREE.CircleGeometry(0.033, 32),
-    new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
-  marker.position.set(position.x, position.y, 0.024);
-  return marker;
+  const geometry = new THREE.CircleGeometry(0.033, 32);
+  let material: THREE.MeshBasicMaterial | undefined;
+  try {
+    material = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+    const marker = new THREE.Mesh(geometry, material);
+    marker.position.set(position.x, position.y, 0.024);
+    return marker;
+  } catch (error) {
+    material?.dispose();
+    geometry.dispose();
+    throw error;
+  }
 }
 
 function textLabel(value: string, color: string, width: number, height: number,
@@ -94,12 +120,22 @@ function textLabel(value: string, color: string, width: number, height: number,
   context.fillStyle = color;
   context.fillText(value, canvas.width / 2, canvas.height / 2, canvas.width - 28);
   const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height),
-    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
-  mesh.position.z = 0.03;
-  mesh.userData.axisLabel = value;
-  return mesh;
+  let geometry: THREE.PlaneGeometry | undefined;
+  let material: THREE.MeshBasicMaterial | undefined;
+  try {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    geometry = new THREE.PlaneGeometry(width, height);
+    material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.z = 0.03;
+    mesh.userData.axisLabel = value;
+    return mesh;
+  } catch (error) {
+    geometry?.dispose();
+    material?.dispose();
+    texture.dispose();
+    throw error;
+  }
 }
 
 /** Restrained hand-drawn-style axis markers, independently switchable. */
@@ -118,6 +154,7 @@ export class MarcatoriAssiRender {
   public static async creaMarcatori(asc: number, mc: number, zodiacRadius: number,
     opzioni: any, temaRender: any, degreeTickRadius = zodiacRadius * 103 / 120): Promise<THREE.Group> {
     const group = new THREE.Group();
+    try {
     const colors = SkinManager.getAxisColors(opzioni?.settaggi?.skin_id);
     const ascAngle = 90;
     const dsAngle = 270;
@@ -228,11 +265,11 @@ export class MarcatoriAssiRender {
           `simboli-bianchi/elementi-celesti/${name}.png`, 875, 605, 1 / 875,
           false, colors.asc,
         );
+        group.add(glyph);
         glyph.scale.set(0.21, 0.21, 1);
         glyph.position.set(position.x, position.y, 0.031);
         glyph.userData.axis = 'planetary-hour-glyph';
         glyph.userData.planetaryHour = name;
-        group.add(glyph);
       }
     }
 
@@ -255,11 +292,19 @@ export class MarcatoriAssiRender {
         shape.lineTo(baseB.x, baseB.y);
         shape.lineTo(tip.x, tip.y);
         shape.closePath();
-        const marker = new THREE.Mesh(new THREE.ShapeGeometry(shape),
-          new THREE.MeshBasicMaterial({ color: colors.motoMC, side: THREE.DoubleSide }));
-        marker.position.z = 0.024;
-        marker.userData.axisMarker = 'MC-motion';
-        group.add(marker);
+        const geometry = new THREE.ShapeGeometry(shape);
+        let material: THREE.MeshBasicMaterial | undefined;
+        try {
+          material = new THREE.MeshBasicMaterial({ color: colors.motoMC, side: THREE.DoubleSide });
+          const marker = new THREE.Mesh(geometry, material);
+          marker.position.z = 0.024;
+          marker.userData.axisMarker = 'MC-motion';
+          group.add(marker);
+        } catch (error) {
+          material?.dispose();
+          geometry.dispose();
+          throw error;
+        }
       }
     }
 
@@ -275,5 +320,9 @@ export class MarcatoriAssiRender {
     }
     group.userData.chartInteractionRole = 'natal-axes';
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }

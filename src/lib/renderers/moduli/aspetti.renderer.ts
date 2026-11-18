@@ -8,8 +8,29 @@ import {Settaggi} from '../../models/settaggi.model';
 import {Colori} from '../_colori.config';
 
 import {SkinManager} from '../@skin-manager';
+import {disposeSceneResources} from '../scene-resources';
 
 export class AspettiRender {
+
+  private static creaPuntoEstremoAspetto(
+    geometry: THREE.CircleGeometry, colore: THREE.ColorRepresentation,
+    point: THREE.Vector2, node: any, parametroDiRender: string
+  ): THREE.Mesh {
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      // The shared geometry is owned by renderArchi; this marker owns only
+      // its material until it has been returned and attached to the group.
+      material = new THREE.MeshBasicMaterial({ color: colore, side: THREE.DoubleSide });
+      const dot = new THREE.Mesh(geometry, material);
+      dot.position.set(point.x, point.y, 0.025);
+      dot.userData.aspectEndpoint = node.name;
+      dot.userData.trueLongitude = node[parametroDiRender];
+      return dot;
+    } catch (error) {
+      material?.dispose();
+      throw error;
+    }
+  }
 
   public static tipoLinea = {
     congiunzione:             { tipo: 'linea' },
@@ -80,6 +101,7 @@ export class AspettiRender {
     var spetti_orbite = opzioni.settaggi.aspetti_orbite;
 
     var retGroup = new THREE.Group();
+    try {
     var retNodi = {};
 
     var nodi2 = {};
@@ -133,6 +155,10 @@ export class AspettiRender {
       'group': retGroup,
       'nodiNomiPerAnello': retNodi
     };
+    } catch (error) {
+      disposeSceneResources(retGroup);
+      throw error;
+    }
   }
 
   public static async getCerchioAspetti(as,temaRender,opzioni,diametroCerchio,monocolore,calcolaPartiArabe=false,nomeElementoCelesteInEvidenza:any=false,australInversion=false): Promise<any> {
@@ -170,13 +196,19 @@ export class AspettiRender {
     lines.userData.chartInteractionRole = 'natal-aspect-lines';
     const group = new THREE.Group();
     group.add(lines);
-    group.add(await this.getBackgroundAspetti(diametroCerchio,opzioni,australInversion));
+    try {
+      group.add(await this.getBackgroundAspetti(diametroCerchio,opzioni,australInversion));
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
 
     return group;
   }
 
   public static async getBackgroundAspetti(diametroCerchio,opzioni,australInversion) {
     var group = new THREE.Group();
+    try {
   //risuonatore solare di sfondo
     
     const arco = OggettiSempliciRender.getSemiArcoGrosso(
@@ -201,6 +233,7 @@ export class AspettiRender {
       false,
       SkinManager.skins[opzioni.settaggi.skin_id].cerchioAspetti.imgRisuonatoreColore,
     );
+    group.add(risuonatoreSolare);
     risuonatoreSolare.scale.set(1*imgScale,1*imgScale,1);
     risuonatoreSolare.rotateZ(THREE.MathUtils.degToRad(90));
     risuonatoreSolare.translateY(0);
@@ -208,9 +241,12 @@ export class AspettiRender {
         
     risuonatoreSolare.material.transparent = true; // abilita trasparenza
     risuonatoreSolare.material.opacity = SkinManager.skins[opzioni.settaggi.skin_id].cerchioAspetti.imgRisuonatoreSolareOpacity;      // valore tra 0 (invisibile) e 1 (opaco)
-    group.add(risuonatoreSolare);
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
   public static getAspettiVerso(opzioni) {
@@ -431,6 +467,7 @@ export class AspettiRender {
   public static renderArchi(as,nodi,archi,aspetti,opzioni,diametroCerchio,monocolore,parametroDiRender="longitude",nomeElementoCelesteInEvidenza=false) {
     var group = new THREE.Group();
     let endpointGeometry: THREE.CircleGeometry | undefined;
+    try {
 
     if(Object.keys(archi).length > 0) {
       for(let k=0; k<aspetti.length; k++) {
@@ -539,12 +576,8 @@ export class AspettiRender {
               [a, nodi[archi[tipoAspetto][i][0]]],
               [b, nodi[archi[tipoAspetto][i][1]]],
             ] as const) {
-              const dot = new THREE.Mesh(endpointGeometry,
-                new THREE.MeshBasicMaterial({ color: colore, side: THREE.DoubleSide }));
-              dot.position.set(point.x, point.y, 0.025);
-              dot.userData.aspectEndpoint = node.name;
-              dot.userData.trueLongitude = node[parametroDiRender];
-              group.add(dot);
+              group.add(AspettiRender.creaPuntoEstremoAspetto(
+                endpointGeometry, colore, point, node, parametroDiRender));
             }
 
             if(nodi[archi[tipoAspetto][i][0]].y != diametroCerchio/2) {
@@ -560,5 +593,17 @@ export class AspettiRender {
       }
     }
     return group;
+    } catch (error) {
+      // Endpoint geometry can exist before its first dot is attached.
+      if (endpointGeometry) {
+        let ownedByGroup = false;
+        group.traverse((child: any) => {
+          if (child.geometry === endpointGeometry) ownedByGroup = true;
+        });
+        if (!ownedByGroup) endpointGeometry.dispose();
+      }
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }

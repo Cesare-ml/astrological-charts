@@ -26,4 +26,3 @@ device visual acceptance, and shipped consumer integration remain separate.
 # Transit interactions
 
 The optional two-ring hover listener distinguishes the natal ring and its axis markers from transit glyphs, including when the two bodies share a name. `setNatalAspectsDimmed` saves and restores existing material properties; `setTransitAspectLines` draws caller-supplied, already-calculated directional aspects with the wheel geometry and existing aspect styles. Replacing a scene or destroying the renderer disposes scene-owned resources. Neither method computes astrological aspects. These methods affect the interactive scene only, not offscreen exports.
-
