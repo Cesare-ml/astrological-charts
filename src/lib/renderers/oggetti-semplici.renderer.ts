@@ -387,17 +387,19 @@ export class OggettiSempliciRender {
     g.fillText(testo, 0, 20);
 
     // canvas contents will be used for a texture
-    var texture = new THREE.Texture(bitmap)
-    //texture.needsUpdate = true;
-
-    var img = new THREE.MeshBasicMaterial({ //CHANGED to MeshBasicMaterial
-        map:texture,
-        transparent: true
-    });
-
-    // plane
-    var plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),img);
-    return plane;
+    const texture = new THREE.Texture(bitmap);
+    let material: THREE.MeshBasicMaterial | undefined;
+    let geometry: THREE.PlaneGeometry | undefined;
+    try {
+      material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+      geometry = new THREE.PlaneGeometry(1, 1);
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry?.dispose();
+      material?.dispose();
+      texture.dispose();
+      throw error;
+    }
   }
 /*
   public static addTesto(pos: any,zRotation: number,testo: any,fontFilename: string,colore: string,addTo: any): void {

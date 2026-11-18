@@ -621,6 +621,63 @@ test('successful canvas degree and axis labels retain their resources until disp
   });
 });
 
+test('legacy canvas text releases its map when material setup fails', async () => {
+  await withCanvasAndTextureCounters(async textureCounts => {
+    await withDisposeCounters(async counts => {
+      const setValues = THREE.Material.prototype.setValues;
+      await withOverrides([
+        [THREE.Material.prototype, 'setValues', function (values) {
+          if (values?.map?.isTexture && values?.transparent === true) {
+            throw new Error('legacy text material failed');
+          }
+          return setValues.call(this, values);
+        }],
+      ], async () => {
+        assert.throws(() => OggettiSempliciRender.getTesto('ASC', 'serif', '#fff'),
+          /legacy text material failed/);
+        assert.equal(textureCounts.texture, 1);
+        assert.equal(counts.geometry, 0);
+        assert.equal(counts.material, 0);
+      });
+    });
+  });
+});
+
+test('legacy canvas text releases its map and material if plane construction fails', async () => {
+  await withCanvasAndTextureCounters(async textureCounts => {
+    await withDisposeCounters(async counts => {
+      await withOverrides([
+        [THREE.BufferGeometry.prototype, 'setIndex', () => {
+          throw new Error('legacy text plane failed');
+        }],
+      ], async () => {
+        assert.throws(() => OggettiSempliciRender.getTesto('ASC', 'serif', '#fff'),
+          /legacy text plane failed/);
+        assert.equal(textureCounts.texture, 1);
+        assert.equal(counts.material, 1);
+      });
+    });
+  });
+});
+
+test('successful legacy canvas text remains owned by the returned mesh', async () => {
+  await withCanvasAndTextureCounters(async textureCounts => {
+    await withDisposeCounters(async counts => {
+      const label = OggettiSempliciRender.getTesto('ASC', 'serif', '#fff');
+      assert.equal(label.geometry.parameters.width, 1);
+      assert.equal(label.geometry.parameters.height, 1);
+      assert.equal(label.material.map.image.width, 100);
+      assert.equal(textureCounts.texture, 0);
+      assert.equal(counts.geometry, 0);
+      assert.equal(counts.material, 0);
+      disposeSceneResources(label);
+      assert.equal(textureCounts.texture, 1);
+      assert.equal(counts.geometry, 1);
+      assert.equal(counts.material, 1);
+    });
+  });
+});
+
 test('fat-line geometry releases its buffer if color attributes fail', async () => {
   await withDisposeCounters(async counts => {
     await withOverrides([
@@ -1066,6 +1123,57 @@ test('aspect arc failure disposes earlier lines and shared endpoint geometry', a
       assert.throws(() => AspettiRender.renderArchi(0, nodes,
         {60: [[0, 1], [0, 1]]}, ['sestile'], {}, 2.4, false), /fat line 2 failed/);
       assert.ok(counts.geometry >= 1, 'endpoint discs must release their shared geometry');
+      assertDisposed(resources);
+    });
+  });
+});
+
+for (const failureOn of [1, 2]) {
+  test(`aspect endpoint ${failureOn} releases its unattached material if placement fails`, async () => {
+    await withDisposeCounters(async counts => {
+      await withMeshes({mockFatLines: true}, async ({resources}) => {
+        const set = THREE.Vector3.prototype.set;
+        let markerPlacements = 0;
+        await withOverrides([
+          [THREE.Vector3.prototype, 'set', function (x, y, z) {
+            if (z === 0.025 && ++markerPlacements === failureOn) {
+              throw new Error('aspect endpoint placement failed');
+            }
+            return set.call(this, x, y, z);
+          }],
+        ], async () => {
+          const nodes = [{name: 'Sun', longitude: 0, y: 1.2},
+            {name: 'Moon', longitude: 60, y: 1.2}];
+          assert.throws(() => AspettiRender.renderArchi(0, nodes,
+            {60: [[0, 1]]}, ['sestile'], {}, 2.4, false),
+          /aspect endpoint placement failed/);
+          assert.equal(markerPlacements, failureOn);
+          assert.equal(counts.geometry, 2, 'line geometry and shared endpoint geometry');
+          assert.equal(counts.material, failureOn + 1,
+            'line material plus each created endpoint material');
+          assertDisposed(resources);
+        });
+      });
+    });
+  });
+}
+
+test('aspect endpoint dots retain shared geometry and individual materials until disposal', async () => {
+  await withDisposeCounters(async counts => {
+    await withMeshes({mockFatLines: true}, async ({resources}) => {
+      const nodes = [{name: 'Sun', longitude: 0, y: 1.2},
+        {name: 'Moon', longitude: 60, y: 1.2}];
+      const group = AspettiRender.renderArchi(0, nodes,
+        {60: [[0, 1]]}, ['sestile'], {}, 2.4, false);
+      const endpoints = group.children.filter(child => child.userData.aspectEndpoint);
+      assert.deepEqual(endpoints.map(dot => dot.userData.aspectEndpoint), ['Sun', 'Moon']);
+      assert.deepEqual(endpoints.map(dot => dot.userData.trueLongitude), [0, 60]);
+      assert.equal(endpoints[0].geometry, endpoints[1].geometry);
+      assert.equal(counts.geometry, 0);
+      assert.equal(counts.material, 0);
+      disposeSceneResources(group);
+      assert.equal(counts.geometry, 2);
+      assert.equal(counts.material, 3);
       assertDisposed(resources);
     });
   });

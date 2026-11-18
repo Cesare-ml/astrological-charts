@@ -12,6 +12,26 @@ import {disposeSceneResources} from '../scene-resources';
 
 export class AspettiRender {
 
+  private static creaPuntoEstremoAspetto(
+    geometry: THREE.CircleGeometry, colore: THREE.ColorRepresentation,
+    point: THREE.Vector2, node: any, parametroDiRender: string
+  ): THREE.Mesh {
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
+      // The shared geometry is owned by renderArchi; this marker owns only
+      // its material until it has been returned and attached to the group.
+      material = new THREE.MeshBasicMaterial({ color: colore, side: THREE.DoubleSide });
+      const dot = new THREE.Mesh(geometry, material);
+      dot.position.set(point.x, point.y, 0.025);
+      dot.userData.aspectEndpoint = node.name;
+      dot.userData.trueLongitude = node[parametroDiRender];
+      return dot;
+    } catch (error) {
+      material?.dispose();
+      throw error;
+    }
+  }
+
   public static tipoLinea = {
     congiunzione:             { tipo: 'linea' },
     semisestile:              { tipo: 'linea' },
@@ -556,12 +576,8 @@ export class AspettiRender {
               [a, nodi[archi[tipoAspetto][i][0]]],
               [b, nodi[archi[tipoAspetto][i][1]]],
             ] as const) {
-              const dot = new THREE.Mesh(endpointGeometry,
-                new THREE.MeshBasicMaterial({ color: colore, side: THREE.DoubleSide }));
-              dot.position.set(point.x, point.y, 0.025);
-              dot.userData.aspectEndpoint = node.name;
-              dot.userData.trueLongitude = node[parametroDiRender];
-              group.add(dot);
+              group.add(AspettiRender.creaPuntoEstremoAspetto(
+                endpointGeometry, colore, point, node, parametroDiRender));
             }
 
             if(nodi[archi[tipoAspetto][i][0]].y != diametroCerchio/2) {

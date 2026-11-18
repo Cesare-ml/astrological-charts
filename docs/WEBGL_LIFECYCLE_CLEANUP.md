@@ -40,6 +40,10 @@ animations. Several gaps remained:
 12. Thin true-longitude connectors in transit overlays, house-boundary ticks
     and the outer 360-degree scale could likewise lose a geometry when point
     attributes or line materials failed before their scene received the line.
+13. Aspect endpoint dots shared a disc geometry but allocated each material
+    before placing the dot; a placement or mesh-construction exception could
+    leave the new material unreachable. The legacy canvas text helper could
+    similarly lose its texture and material during plane construction.
 
 ## Implementation
 
@@ -105,6 +109,12 @@ animations. Several gaps remained:
   connectors and house-boundary ticks until each line is returned; the zodiac
   degree scale likewise cleans up its geometry/material if construction fails.
   Successful paths keep the same two endpoints, colors and draw order.
+- Aspect endpoint dots now retain and release their individual materials until
+  fully built; the parent aspect renderer still owns their shared geometry and
+  releases it once if an early or later endpoint fails. The legacy canvas text
+  helper releases its own texture/material/plane if setup fails. Successfully
+  constructed endpoint dots and text meshes are still owned by their scene,
+  with their existing coordinates, text dimensions and appearance unchanged.
 
 ## Reproducible regression tests
 
@@ -126,7 +136,7 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Sixty additional tests cover failures of zodiac glyphs, decan and decade
+- Sixty-six additional tests cover failures of zodiac glyphs, decan and decade
   glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
   house glyphs, synastry house dividers, term glyphs, the enclosing house
   module, main planetary glyphs/connectors, solar-resonator artwork and the
@@ -141,7 +151,10 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
   plus unfinished axis stems, V heads, circular terminals and MC direction
   triangles, including successful ownership of all nine axis elements, plus
   transit connector and house-tick setup failures, outer 360-degree scale
-  failures and successful resource ownership for all three paths.
+  failures and successful resource ownership for all three paths, plus early
+  and later aspect endpoint placement failures, successful shared endpoint
+  geometry ownership, legacy canvas text material/plane failures and
+  successful legacy text ownership.
   Successful nested module construction retains
   resources until the owner explicitly disposes them.
 
