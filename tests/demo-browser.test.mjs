@@ -177,7 +177,7 @@ test('render waits for a slow skin texture and reports its failure', {timeout: 6
   } finally { release(); await browser.close(); }
 });
 
-test('latitude charts with transits use the circular and ring assets for every skin', {timeout:90000}, async () => {
+test('latitude charts with transits use the circular and ring assets for every skin', {timeout:180000}, async () => {
   const bundle = await build({entryPoints:['tests/fixtures/latitude-transits-harness.ts'], bundle:true,
     write:false, platform:'browser', format:'iife', target:'es2022', tsconfig:'tsconfig.json'});
   const browser = await launchBrowser();
@@ -194,6 +194,23 @@ test('latitude charts with transits use the circular and ring assets for every s
       assert.match(png, /^data:image\/png;base64,/, skin);
       const image = Buffer.from(png.split(',')[1], 'base64');
       assert.ok((await sharp(image).stats()).channels.some(channel => channel.stdev > 5), `${skin}: blank export`);
+      // Requested Egyptian houses are absent, but Placidus houses exist.
+      // A latitude PNG must remain nonblank. Pixel differences can reflect
+      // both removal of the house ring and the zero-reference rotation fallback.
+      const missingPng = await page.evaluate(
+        value => globalThis.renderLatitudeTransits(value, true), skin,
+      );
+      assert.match(missingPng, /^data:image\/png;base64,/, `${skin}: missing houses`);
+      const missingImage = Buffer.from(missingPng.split(',')[1], 'base64');
+      assert.ok(
+        (await sharp(missingImage).stats()).channels.some(channel => channel.stdev > 5),
+        `${skin}: blank missing-houses export`,
+      );
+      assert.notDeepEqual(
+        await sharp(image).ensureAlpha().raw().toBuffer(),
+        await sharp(missingImage).ensureAlpha().raw().toBuffer(),
+        `${skin}: selected-house availability should change chart pixels`,
+      );
     }
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }

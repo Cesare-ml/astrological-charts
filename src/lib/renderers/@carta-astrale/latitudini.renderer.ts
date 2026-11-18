@@ -44,22 +44,31 @@ export class LatitudiniRender {
     //var diametroCerchioCase         = diametroAnelloSegni*9.42/120; //28.26
     var diametroRisuonatoreSolare     = diametroAnelloSegni*9.42/120; //28.26
 
-    var as = 0;
-    var mc = 0;
-    if(
-      !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
-      && temaRender.houses && Object.keys(temaRender.houses).length
-    ) {
-      as = temaRender.houses[opzioni.settaggi.domificazione_selezionata].ascendant;
-      mc = temaRender.houses[opzioni.settaggi.domificazione_selezionata].mc;
-    }
+    // A nonempty houses collection does not guarantee the requested system
+    // exists. Only explicitly supplied systems count: inherited house data
+    // must not create an accidental ring or rotate the chart.
+    const candidateHouses = !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
+      && temaRender.houses != null
+      && Object.prototype.hasOwnProperty.call(temaRender.houses, opzioni.settaggi.domificazione_selezionata)
+      ? temaRender.houses[opzioni.settaggi.domificazione_selezionata]
+      : undefined;
+    // Only a complete numeric house ring can safely drive rotation and
+    // geometry. Check own indices: inherited numeric values cannot fill holes.
+    const selectedHouses = candidateHouses
+      && Number.isFinite(candidateHouses.ascendant)
+      && Array.isArray(candidateHouses.house)
+      && candidateHouses.house.length === 12
+      && Array.from({length: 12}, (_, i) =>
+        Object.prototype.hasOwnProperty.call(candidateHouses.house, i)
+        && Number.isFinite(candidateHouses.house[i])
+      ).every(Boolean)
+      ? candidateHouses
+      : undefined;
+    const as = selectedHouses?.ascendant ?? 0;
 
     var disegno = new THREE.Group();
 
-    if(
-      !(opzioni.mostraEffemeridi && opzioni.effemeridiGrafiche)
-      && temaRender.houses && Object.keys(temaRender.houses).length
-    ) {
+    if (selectedHouses) {
       //var assi = await AssiRender.getAssi(as,mc,diametroAssi,opzioni);
 
       var anelloCase = await CaseRender.getAnelloCaseLatitudini(
@@ -132,7 +141,9 @@ export class LatitudiniRender {
 
       if(
         temaRender.planets[nome]
-        && temaRender.planets[nome].latitude
+        // Latitude 0° is a valid position on the ecliptic (normally the Sun).
+        // Exclude missing/invalid coordinates, not legitimate zero values.
+        && Number.isFinite(temaRender.planets[nome].latitude)
         && elOpt.att
       ) {
         elementiCelesti[nome]=temaRender.planets[nome];
