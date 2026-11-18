@@ -126,16 +126,25 @@ export class LatitudiniRender {
 
   public async getElementiCelesti(temaRender, opzioni) {
     var elementiCelesti = {};
+    // Missing precomputed planet data must not crash the latitude selection.
+    const planets = temaRender?.planets;
+    if (!planets || typeof planets !== 'object') return elementiCelesti;
 
-    for(let nome in opzioni.settaggi.elementi_celesti) {
+    for(const nome of Object.keys(opzioni?.settaggi?.elementi_celesti ?? {})) {
       var elOpt = opzioni.settaggi.elementi_celesti[nome];
 
       if(
-        temaRender.planets[nome]
-        && temaRender.planets[nome].latitude
+        Object.prototype.hasOwnProperty.call(planets, nome)
+        && planets[nome]
+        && Number.isFinite(planets[nome].latitude)
+        && elOpt != null
+        && Object.prototype.hasOwnProperty.call(elOpt, 'att')
         && elOpt.att
       ) {
-        elementiCelesti[nome]=temaRender.planets[nome];
+        // Define an own data property: a planet named '__proto__' must not alter the result prototype.
+        Object.defineProperty(elementiCelesti, nome, {
+          value: planets[nome], enumerable: true, writable: true, configurable: true
+        });
       }
     }
 
