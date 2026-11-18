@@ -19,10 +19,6 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
           <option value="natal">Natal chart</option><option value="transits">Transits</option>
           <option value="synastry">Synastry</option><option value="latitude">Latitudes</option>
         </select>
-        <label for="skin">Skin</label>
-        <select id="skin" [value]="skin" [disabled]="busy" (change)="changeSkin($event)">
-          <option *ngFor="let item of skins" [value]="item" [selected]="item === skin">{{item}}</option>
-        </select>
         <label class="check-setting" for="show-degrees"><input id="show-degrees" type="checkbox" [checked]="showDegrees" [disabled]="busy" (change)="changeDegrees($event)"> Show celestial degrees</label>
         <h2>Axis annotations</h2>
         <label class="check-setting" *ngFor="let item of axisSettings" [for]="item.key">
@@ -47,7 +43,32 @@ type Mode = 'natal' | 'transits' | 'synastry' | 'latitude';
         <p class="muted">Manifest: {{manifestLabel}}</p>
         <p class="status" [class.error]="error" role="status" data-testid="status">{{error || status}}</p>
       </aside>
-      <section class="stage" aria-label="Chart canvas"><canvas #canvas data-testid="chart"></canvas></section>
+      <section class="stage" aria-label="Chart canvas">
+        <div class="skin-picker" aria-label="Selettore skin del grafico">
+          <div class="skin-picker-heading">
+            <div><p class="skin-picker-kicker">CONFRONTO VISIVO</p><h2>Scegli la skin</h2></div>
+            <div class="skin-select-field">
+              <label for="skin">Stile attivo</label>
+              <select id="skin" [value]="skin" [disabled]="busy" (change)="changeSkin($event)" aria-label="Skin del grafico">
+                <option *ngFor="let item of skinChoices" [value]="item.id">{{item.label}}</option>
+              </select>
+            </div>
+          </div>
+          <div class="skin-choices" role="group" aria-label="Selezione rapida della skin">
+            <button *ngFor="let item of skinChoices" type="button" class="skin-choice"
+              [class.selected]="skin === item.id" [attr.aria-pressed]="skin === item.id"
+              [disabled]="busy" [attr.data-skin]="item.id" data-testid="skin-option"
+              (click)="chooseSkin(item.id)">
+              <span class="skin-swatch" [style.background-color]="item.background" aria-hidden="true">
+                <span [style.background-color]="item.accent"></span>
+              </span>
+              <span>{{item.label}}</span>
+            </button>
+          </div>
+          <p class="skin-picker-hint">Stesse posizioni e aspetti, cambia solo l'aspetto grafico.</p>
+        </div>
+        <canvas #canvas data-testid="chart"></canvas>
+      </section>
     </section>
     <footer>Fixture positions are illustrative; they are not astronomical calculations. Synthetic assets do not establish visual fidelity.</footer>
   </main>`
@@ -56,7 +77,16 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   @ViewChild('canvas', { static: true }) canvas!: ElementRef<HTMLCanvasElement>;
   private readonly renderer = new GraficoRenderService();
   private readonly changes = inject(ChangeDetectorRef);
-  readonly skins = Object.keys(SkinManager.skins);
+  readonly skinChoices = Object.entries(SkinManager.skins).map(([id, config]) => ({
+    id,
+    label: ({
+      virgostars: 'VirgoStars', dark: 'Scura', 'dark-bn': 'Scura B/N',
+      light: 'Chiara', 'light-bn': 'Chiara B/N', sun: 'Sole',
+      astrolabio: 'Astrolabio', 'astrolabio-girasole': 'Girasole',
+    } as Record<string, string>)[id] ?? id,
+    background: config.bgColor,
+    accent: config.elementi[3],
+  }));
   mode: Mode = 'natal';
   skin = 'virgostars';
   showDegrees = true;
@@ -66,7 +96,7 @@ class DemoComponent implements AfterViewInit, OnDestroy {
     {key: 'mostraFrecciaMC', label: 'MC · violet arrow'},
     {key: 'mostraRetroFrecciaIC', label: 'IC · lavender tail'},
     {key: 'mostraGradiAssi', label: 'ASC & MC · degrees / minutes'},
-    {key: 'mostraNomiAssi', label: 'ASC / DSC / MC / IC names'},
+    {key: 'mostraNomiAssi', label: 'ASC / DS / MC / IC names'},
     {key: 'mostraOraPlanetariaAscendente', label: 'Planetary hour by ASC'},
     {key: 'mostraDirezioneMotoMC', label: 'MC movement indicator'},
   ];
@@ -95,7 +125,12 @@ class DemoComponent implements AfterViewInit, OnDestroy {
   }
   ngOnDestroy(): void { this.renderer.ngOnDestroy(); }
   changeMode(event: Event): void { this.mode = (event.target as HTMLSelectElement).value as Mode; void this.draw(); }
-  changeSkin(event: Event): void { this.skin = (event.target as HTMLSelectElement).value; void this.draw(); }
+  changeSkin(event: Event): void { this.chooseSkin((event.target as HTMLSelectElement).value); }
+  chooseSkin(id: string): void {
+    if (this.busy || !this.skinChoices.some(item => item.id === id) || this.skin === id) return;
+    this.skin = id;
+    void this.draw();
+  }
   changeDegrees(event: Event): void { this.showDegrees = (event.target as HTMLInputElement).checked; void this.draw(); }
   changeAxisOption(key: string, event: Event): void { this.axisOptions[key] = (event.target as HTMLInputElement).checked; void this.draw(); }
   changeHouseSize(event: Event): void { this.houseSize = Number((event.target as HTMLInputElement).value); void this.draw(); }

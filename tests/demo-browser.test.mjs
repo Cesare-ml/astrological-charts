@@ -57,6 +57,16 @@ test('Angular demo renders every chart and skin, exports PNG and reports missing
   try {
     await page.goto('http://127.0.0.1:4200/', {waitUntil: 'domcontentloaded'});
     await ready();
+    assert.equal(await page.locator('[data-testid="skin-option"]').count(), skins.length,
+      'the chart stage must expose a quick selection for every supported skin');
+    await page.locator('[data-skin="dark"]').click(); await ready();
+    assert.equal(await page.locator('#skin').inputValue(), 'dark',
+      'quick selection must synchronize the native skin selector');
+    assert.equal(await page.locator('[data-skin="dark"]').getAttribute('aria-pressed'), 'true',
+      'the active skin must be visible to screen readers');
+    await page.selectOption('#skin', 'virgostars'); await ready();
+    assert.equal(await page.locator('[data-skin="virgostars"]').getAttribute('aria-pressed'), 'true',
+      'changing the dropdown must update the quick-selection state');
     for (const mode of modes) {
       await page.selectOption('#mode', mode); await ready();
       for (const skin of skins) {
