@@ -294,27 +294,36 @@ export class OggettiSempliciRender {
       i += 1;
     }
 
-    // return geo
+    // The geometry is not yet owned by a scene while its attributes are built.
     geo = new LineGeometry();
-    geo.setPositions(positions);
-    geo.setColors(colors);
-    return geo;
+    try {
+      geo.setPositions(positions);
+      geo.setColors(colors);
+      return geo;
+    } catch (error) {
+      geo.dispose();
+      throw error;
+    }
   }
 
   public static createFatLine(geometry,width) {
+    let matLine: LineMaterial | undefined;
+    try {
+      // Ownership transfers to the returned line only after construction.
+      matLine = new LineMaterial({
+        linewidth: width * OggettiSempliciRender.getLineScaleFactor(), // in pixels
+        vertexColors: true
+      });
 
-    // LINE MATERIAL
-    var matLine = new LineMaterial({
-      linewidth: width * OggettiSempliciRender.getLineScaleFactor(), // in pixels
-      vertexColors: true
-    });
-    
-    const sizes = OggettiSempliciRender.getMatLineResolutionSizes();
-    matLine.resolution.set(sizes.x, sizes.y);
+      const sizes = OggettiSempliciRender.getMatLineResolutionSizes();
+      matLine.resolution.set(sizes.x, sizes.y);
 
-    var line = new Line2(geometry, matLine);
-
-    return line;
+      return new Line2(geometry, matLine);
+    } catch (error) {
+      matLine?.dispose();
+      geometry.dispose();
+      throw error;
+    }
   }
 
   /*

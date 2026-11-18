@@ -25,6 +25,9 @@ animations. Several gaps remained:
 7. Some lower-level composite shapes (textured arcs, dashed/dotted fat lines,
    arrow arcs) and multi-theme aspect groups could throw after generating
    shapes without returning their unfinished groups to the owner.
+8. The shared thick-line geometry/material constructors could throw between
+   allocation and returning a line, leaving objects unreachable even when the
+   calling composite disposed its previously attached segments.
 
 ## Implementation
 
@@ -71,6 +74,10 @@ animations. Several gaps remained:
 - Aspect line groups and the multi-theme wrapper clean already returned child
   groups after an exception. Shared endpoint-disc geometry is disposed once,
   including when an error occurs before the first disc is attached.
+- The shared thick-line geometry builder now releases its allocated buffer if
+  position/color attribute setup fails; the line factory releases its input
+  geometry and any constructed material if scale, resolution or mesh creation
+  fails. On success ownership transfers unchanged to the returned Three.js line.
 
 ## Reproducible regression tests
 
@@ -92,14 +99,15 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Thirty-eight additional tests cover failures of zodiac glyphs, decan and decade
+- Forty-two additional tests cover failures of zodiac glyphs, decan and decade
   glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
   house glyphs, synastry house dividers, term glyphs, the enclosing house
   module, main planetary glyphs/connectors, solar-resonator artwork and the
   enclosing aspect-circle group, detached synastry houses, transit and
   antiscia overlays, ASC/MC planetary-hour glyphs, asynchronous loader errors
   and texture setup failures, textured arc setup, dashed/dotted segments,
-  arrow arcs, shared aspect endpoint geometry and multi-theme wrappers.
+  arrow arcs, shared aspect endpoint geometry and multi-theme wrappers, plus
+  thick-line geometry/material construction failures and successful ownership.
   Successful nested module construction retains
   resources until the owner explicitly disposes them.
 

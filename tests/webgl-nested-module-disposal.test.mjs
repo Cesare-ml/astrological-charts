@@ -17,6 +17,7 @@ const bundle = await build({
       "export {OggettiSempliciRender} from './src/lib/renderers/oggetti-semplici.renderer';",
       "export {GestoreImmagini} from './src/lib/renderers/gestore-immagini';",
       "export {disposeSceneResources} from './src/lib/renderers/scene-resources';",
+      "export {LineGeometry} from 'three/examples/jsm/lines/LineGeometry.js';",
       "export * as THREE from 'three';",
     ].join('\n'),
     resolveDir: process.cwd(),
@@ -27,7 +28,7 @@ const bundle = await build({
 });
 const {CaseRender, SegniRender, AspettiRender, ElementiCelestiRender, MarcatoriAssiRender,
   SinastriaRender, TransitiRender, OggettiSempliciRender, GestoreImmagini,
-  disposeSceneResources, THREE} = await import(
+  disposeSceneResources, LineGeometry, THREE} = await import(
   `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
 const houses = {ascendant: 42, house: Array.from({length: 12}, (_, i) => (42 + i * 30) % 360)};
@@ -407,6 +408,72 @@ async function withDisposeCounters(run) {
     THREE.Material.prototype.dispose = oldMaterialDispose;
   }
 }
+
+test('fat-line geometry releases its buffer if color attributes fail', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [LineGeometry.prototype, 'setColors', () => {
+        throw new Error('line color attributes failed');
+      }],
+    ], async () => {
+      assert.throws(() => OggettiSempliciRender.createFatLineGeometry(
+        [new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0, 0)],
+        true, new THREE.Color('#ffffff')), /line color attributes failed/);
+      assert.equal(counts.geometry, 1);
+    });
+  });
+});
+
+test('fat-line builder releases its input geometry if scale calculation fails', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [OggettiSempliciRender, 'getLineScaleFactor', () => {
+        throw new Error('line scaling failed');
+      }],
+    ], async () => {
+      assert.throws(() => OggettiSempliciRender.createFatLine(
+        new LineGeometry(), 1), /line scaling failed/);
+      assert.equal(counts.geometry, 1);
+      assert.equal(counts.material, 0);
+    });
+  });
+});
+
+test('fat-line builder releases geometry and material if resolution setup fails', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [OggettiSempliciRender, 'getLineScaleFactor', () => 1],
+      [OggettiSempliciRender, 'getMatLineResolutionSizes', () => {
+        throw new Error('line resolution failed');
+      }],
+    ], async () => {
+      assert.throws(() => OggettiSempliciRender.createFatLine(
+        new LineGeometry(), 1), /line resolution failed/);
+      assert.equal(counts.geometry, 1);
+      assert.equal(counts.material, 1);
+    });
+  });
+});
+
+test('successful fat-line construction keeps both resources until owner disposal', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [OggettiSempliciRender, 'getLineScaleFactor', () => 1],
+      [OggettiSempliciRender, 'getMatLineResolutionSizes', () => ({x: 1300, y: 1300})],
+    ], async () => {
+      const geometry = OggettiSempliciRender.createFatLineGeometry(
+        [new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0, 0)],
+        true, new THREE.Color('#ffffff'));
+      const line = OggettiSempliciRender.createFatLine(geometry, 1);
+      assert.equal(line.geometry, geometry);
+      assert.equal(counts.geometry, 0);
+      assert.equal(counts.material, 0);
+      disposeSceneResources(line);
+      assert.equal(counts.geometry, 1);
+      assert.equal(counts.material, 1);
+    });
+  });
+});
 
 test('axis marker builder frees prior stems and dots when planetary-hour image fails', async () => {
   await withDisposeCounters(async counts => {
