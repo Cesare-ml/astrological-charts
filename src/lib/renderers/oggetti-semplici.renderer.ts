@@ -3,6 +3,7 @@ import {GestoreImmagini} from './gestore-immagini';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { disposeSceneResources } from './scene-resources';
 
 export class OggettiSempliciRender {
   public static dimensioniCanvas:{x:number, y:number} = null;
@@ -77,6 +78,9 @@ export class OggettiSempliciRender {
     const punti = puntiArcoInterno.concat(puntiArcoEsterno);
     const shape = new THREE.Shape(punti);
     const geometry = new THREE.ShapeGeometry(shape);
+    let texture: THREE.Texture | undefined;
+    let material: THREE.MeshBasicMaterial | undefined;
+    try {
 
     // 🔹 Ricalcolo manuale delle coordinate UV per coprire tutto il semiarco
     geometry.computeBoundingBox();
@@ -98,9 +102,8 @@ export class OggettiSempliciRender {
 
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvAttr, 2));
 
-    let material;
     if (textureUrl) {
-      const texture = GestoreImmagini.getImg(textureUrl);
+      texture = GestoreImmagini.getImg(textureUrl);
       texture.wrapS = THREE.ClampToEdgeWrapping;
       texture.wrapT = THREE.ClampToEdgeWrapping;
       texture.repeat.set(1, 1);
@@ -123,6 +126,12 @@ export class OggettiSempliciRender {
     }
 
     return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry.dispose();
+      material?.dispose();
+      texture?.dispose();
+      throw error;
+    }
   }
 
 
@@ -132,6 +141,7 @@ export class OggettiSempliciRender {
   //funzione su xy
   public static getLineaGrossaTratteggiata(da,a,colore,spessore,passo) {
     var group = new THREE.Group();
+    try {
 
     var distanza = da.distanceTo(a);
     var segmenti = Math.trunc(distanza/passo);
@@ -159,6 +169,10 @@ export class OggettiSempliciRender {
     }
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
   /*
@@ -172,6 +186,7 @@ export class OggettiSempliciRender {
   */
   public static getLineaGrossaPuntoLinea(da,a,colore,spessore,trattoLinea) {
     var group = new THREE.Group();
+    try {
 
     var distanza = da.distanceTo(a);
     var segmenti = Math.trunc(distanza/trattoLinea.passo);
@@ -242,6 +257,10 @@ export class OggettiSempliciRender {
     }
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
   public static getLineaGrossa(da,a,colore,spessore) {
     //console.log(da,a,colore,spessore);
@@ -504,6 +523,7 @@ export class OggettiSempliciRender {
 
   public static lanciaFrecciaAdArco(daDeg,aDeg,colore,coloreLinea,diametroCerchioInterno,diametroCerchioEsterno) {
     var group = new THREE.Group();
+    try {
 
     var arcoEndDeg = daDeg>aDeg ? aDeg+360 : aDeg;
     if(arcoEndDeg-daDeg >= 5) {
@@ -520,9 +540,11 @@ export class OggettiSempliciRender {
       arcoEndDeg,
       colore
     );
+    group.add(arco);
     arco.translateZ(0.01);
 
     var triangolo = OggettiSempliciRender.getTriangolo(colore);
+    group.add(triangolo);
     triangolo.scale.set(0.06,0.06,1);
     triangolo.rotateZ(THREE.MathUtils.degToRad(arcoEndDeg));
     triangolo.translateY(raggioMediano - 0.03);
@@ -532,10 +554,10 @@ export class OggettiSempliciRender {
     linea.rotateZ(THREE.MathUtils.degToRad(aDeg));
     group.add(linea);
 
-    group.add( arco );
-    group.add( triangolo );
-    group.add( linea );
-
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }

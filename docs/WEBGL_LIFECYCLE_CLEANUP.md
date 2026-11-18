@@ -22,6 +22,9 @@ animations. Several gaps remained:
    abandon already constructed meshes after a later module or glyph failed.
 6. The lower-level asynchronous texture loader could reject while retaining an
    unreturned Three.js texture; setup exceptions could orphan the loaded map.
+7. Some lower-level composite shapes (textured arcs, dashed/dotted fat lines,
+   arrow arcs) and multi-theme aspect groups could throw after generating
+   shapes without returning their unfinished groups to the owner.
 
 ## Implementation
 
@@ -62,6 +65,12 @@ animations. Several gaps remained:
 - The async texture loader disposes textures on failure, including callbacks
   triggered before the loader returns. Material setup and image mesh creation
   also release their already acquired texture/material on synchronous failure.
+- Textured arcs now clean their geometry and texture if setup aborts. Dashed,
+  dotted and arrow-arc composites clean already assembled children when a later
+  segment fails; the arrow's existing final layer order is preserved.
+- Aspect line groups and the multi-theme wrapper clean already returned child
+  groups after an exception. Shared endpoint-disc geometry is disposed once,
+  including when an error occurs before the first disc is attached.
 
 ## Reproducible regression tests
 
@@ -83,13 +92,15 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Twenty-nine additional tests cover failures of zodiac glyphs, decan and decade
+- Thirty-eight additional tests cover failures of zodiac glyphs, decan and decade
   glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
   house glyphs, synastry house dividers, term glyphs, the enclosing house
   module, main planetary glyphs/connectors, solar-resonator artwork and the
   enclosing aspect-circle group, detached synastry houses, transit and
   antiscia overlays, ASC/MC planetary-hour glyphs, asynchronous loader errors
-  and texture setup failures. Successful nested module construction retains
+  and texture setup failures, textured arc setup, dashed/dotted segments,
+  arrow arcs, shared aspect endpoint geometry and multi-theme wrappers.
+  Successful nested module construction retains
   resources until the owner explicitly disposes them.
 
 These are lifetime *contracts*, not GPU-memory measurements. The actual
@@ -103,7 +114,7 @@ not establish parity with the VirgoStars original assets.
 
 Other modules which throw **during their own asynchronous group assembly**
 may still create individual textures/meshes never attached to a parent.
-Uncovered primitive constructors, less-common advanced paths and browser
+Other primitive constructors, less-common advanced paths and browser
 image-loading races still require dedicated auditing: the synthetic loader
 tests do not establish real browser parity. The covered module paths do not
 prove full lifecycle parity in all chart modes. Comprehensive memory/GPU

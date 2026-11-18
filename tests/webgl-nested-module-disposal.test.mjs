@@ -501,6 +501,153 @@ test('material setup failure disposes the texture already loaded', async () => {
   });
 });
 
+test('textured arc releases its geometry if the texture factory rejects', async () => {
+  await withDisposeCounters(async counts => {
+    await withOverrides([
+      [GestoreImmagini, 'getImg', () => { throw new Error('arc texture failed'); }],
+    ], async () => {
+      assert.throws(() => OggettiSempliciRender.getSemiArcoGrosso(0, 90,
+        1, 2, '#ffffff', 'synthetic/arc.png'), /arc texture failed/);
+      assert.equal(counts.geometry, 1);
+    });
+  });
+});
+
+test('successful textured arc keeps its map until caller disposal', async () => {
+  const texture = new THREE.Texture();
+  let disposed = 0;
+  const original = texture.dispose.bind(texture);
+  texture.dispose = () => { disposed++; original(); };
+  await withOverrides([
+    [GestoreImmagini, 'getImg', () => texture],
+  ], async () => {
+    const arc = OggettiSempliciRender.getSemiArcoGrosso(0, 90,
+      1, 2, '#ffffff', 'synthetic/arc.png');
+    assert.equal(arc.material.map, texture);
+    assert.equal(disposed, 0);
+    disposeSceneResources(arc);
+    assert.equal(disposed, 1);
+  });
+});
+
+async function withSyntheticFatSegments(failAt, run) {
+  let count = 0;
+  await withOverrides([
+    [OggettiSempliciRender, 'createFatLineGeometry', () => {
+      count++;
+      if (count === failAt) throw new Error(`segment ${count} failed`);
+      return {};
+    }],
+    [OggettiSempliciRender, 'createFatLine', () => OggettiSempliciRender.getCerchio()],
+  ], run);
+}
+
+const pointA = new THREE.Vector3(0, 0, 0);
+const pointB = new THREE.Vector3(1, 0, 0);
+
+test('dashed fat-line group disposes earlier segments when a later one fails', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withSyntheticFatSegments(3, async () => {
+      assert.throws(() => OggettiSempliciRender.getLineaGrossaTratteggiata(
+        pointA, pointB, '#ffffff', 0.3, 0.1), /segment 3 failed/);
+      assert.equal(resources.filter(item => item.label === 'geometry:circle').length, 2);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('dot-and-dash fat-line group also cleans completed segments on failure', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withSyntheticFatSegments(3, async () => {
+      assert.throws(() => OggettiSempliciRender.getLineaGrossaPuntoLinea(
+        pointA, pointB, '#ffffff', 0.3,
+        {passo: 0.1, nLinee: 1, nPunti: 2, rateoLineaSpazio: 0.5}), /segment 3 failed/);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('successful dashed and dotted line groups keep segments until disposal', async () => {
+  await withMeshes({}, async ({resources}) => {
+    await withSyntheticFatSegments(0, async () => {
+      const dashed = OggettiSempliciRender.getLineaGrossaTratteggiata(
+        pointA, pointB, '#ffffff', 0.3, 0.1);
+      const dotted = OggettiSempliciRender.getLineaGrossaPuntoLinea(
+        pointA, pointB, '#ffffff', 0.3,
+        {passo: 0.1, nLinee: 1, nPunti: 2, rateoLineaSpazio: 0.5});
+      assert.ok(dashed.children.length > 1 && dotted.children.length > 1);
+      assert.ok(resources.every(resource => resource.disposed === 0));
+      disposeSceneResources(dashed);
+      disposeSceneResources(dotted);
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('arrow-arc builder releases earlier arc and triangle when final line rejects', async () => {
+  await withDisposeCounters(async counts => {
+    await withMeshes({failLineAt: 1}, async () => {
+      assert.throws(() => OggettiSempliciRender.lanciaFrecciaAdArco(
+        0, 120, '#ffffff', '#777777', 2, 4), /line 1 failed/);
+      assert.ok(counts.geometry >= 2);
+      assert.ok(counts.material >= 2);
+    });
+  });
+});
+
+test('successful arrow-arc has original arc, triangle, line paint order', async () => {
+  await withMeshes({}, async ({resources}) => {
+    const group = OggettiSempliciRender.lanciaFrecciaAdArco(
+      0, 120, '#ffffff', '#777777', 2, 4);
+    assert.equal(group.children.length, 3);
+    assert.ok(group.children[0] instanceof THREE.Line);
+    assert.ok(group.children[1] instanceof THREE.Mesh);
+    assert.ok(resources.every(resource => resource.disposed === 0));
+    disposeSceneResources(group);
+    assertDisposed(resources);
+  });
+});
+
+test('aspect arc failure disposes earlier lines and shared endpoint geometry', async () => {
+  await withDisposeCounters(async counts => {
+    await withMeshes({mockFatLines: true, failFatLineAt: 2}, async ({resources}) => {
+      const nodes = [{name: 'Sun', longitude: 0, y: 1.2},
+        {name: 'Moon', longitude: 60, y: 1.2}];
+      assert.throws(() => AspettiRender.renderArchi(0, nodes,
+        {60: [[0, 1], [0, 1]]}, ['sestile'], {}, 2.4, false), /fat line 2 failed/);
+      assert.ok(counts.geometry >= 1, 'endpoint discs must release their shared geometry');
+      assertDisposed(resources);
+    });
+  });
+});
+
+test('multi-theme aspect wrapper disposes completed earlier theme on later failure', async () => {
+  await withMeshes({}, async ({resources}) => {
+    let themeCount = 0;
+    const nodes = [{name: 'Sun', longitude: 0, y: 1.2},
+      {name: 'Moon', longitude: 60, y: 1.2}];
+    await withOverrides([
+      [AspettiRender, 'getAspettiVerso', () => []],
+      [AspettiRender, 'getTipiAspetti', () => ['sestile']],
+      [AspettiRender, 'getNodi', () => nodes],
+      [AspettiRender, 'getArchiDoppioTema', () => ({})],
+      [AspettiRender, 'renderArchi', () => {
+        if (++themeCount === 2) throw new Error('second theme failed');
+        return syntheticSubgroup();
+      }],
+      [ElementiCelestiRender, 'getElementiCelesti', () => ({})],
+    ], async () => {
+      assert.throws(() => AspettiRender.getCerchioAspettiMultiTema(0,
+        [{anello: 'natal', temaRender: {}}, {anello: 'transit', temaRender: {}}],
+        {nome: 'Sun', el: {longitude: 0}, rotateOffs: 0, y: 1.2},
+        {...options, settaggi: {...options.settaggi, aspetti_orbite: {}}}, 2.4, 3.4, false),
+      /second theme failed/);
+      assert.equal(themeCount, 2);
+      assertDisposed(resources);
+    });
+  });
+});
+
 test('aspect background frees its arc if the solar resonator image fails', async () => {
   await withMeshes({failImageAt: 1}, async ({resources}) => {
     await assert.rejects(

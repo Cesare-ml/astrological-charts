@@ -81,6 +81,7 @@ export class AspettiRender {
     var spetti_orbite = opzioni.settaggi.aspetti_orbite;
 
     var retGroup = new THREE.Group();
+    try {
     var retNodi = {};
 
     var nodi2 = {};
@@ -134,6 +135,10 @@ export class AspettiRender {
       'group': retGroup,
       'nodiNomiPerAnello': retNodi
     };
+    } catch (error) {
+      disposeSceneResources(retGroup);
+      throw error;
+    }
   }
 
   public static async getCerchioAspetti(as,temaRender,opzioni,diametroCerchio,monocolore,calcolaPartiArabe=false,nomeElementoCelesteInEvidenza:any=false,australInversion=false): Promise<any> {
@@ -439,6 +444,7 @@ export class AspettiRender {
   public static renderArchi(as,nodi,archi,aspetti,opzioni,diametroCerchio,monocolore,parametroDiRender="longitude",nomeElementoCelesteInEvidenza=false) {
     var group = new THREE.Group();
     let endpointGeometry: THREE.CircleGeometry | undefined;
+    try {
 
     if(Object.keys(archi).length > 0) {
       for(let k=0; k<aspetti.length; k++) {
@@ -568,5 +574,17 @@ export class AspettiRender {
       }
     }
     return group;
+    } catch (error) {
+      // Endpoint geometry can exist before its first dot is attached.
+      if (endpointGeometry) {
+        let ownedByGroup = false;
+        group.traverse((child: any) => {
+          if (child.geometry === endpointGeometry) ownedByGroup = true;
+        });
+        if (!ownedByGroup) endpointGeometry.dispose();
+      }
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }
