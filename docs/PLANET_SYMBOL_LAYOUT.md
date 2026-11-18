@@ -90,7 +90,7 @@ settings (legacy callers omitting that property retain the old behavior):
 | `mostraRetroFrecciaIC` | Plain lavender line with a smooth circular terminal disc of the same enlarged size as DS |
 | `mostraGradiAssi` | ASC and MC: degree + whole arcminutes (e.g. `20° 0′`), rendered in upright serif; ASC degree **below** its name after the arrowhead, MC degree **above** its arrowhead but **below** the name, both centered to their axis |
 | `mostraOraPlanetariaAscendente` | Glyph-only ruler of the planetary hour **centred above the ASC heading**, if source data exists (no “Ora” caption) |
-| `mostraDirezioneMotoMC` | Optional filled lilac movement triangle, **off by default** in new settings to match the reference's clean MC arrow; when explicitly enabled, it sits halfway between the zodiac edge and the arrowhead base and points left/right according to signed `mcSpeed` |
+| `mostraDirezioneMotoMC` | Optional filled lilac movement triangle, **off by default** in new settings to match the reference's clean MC arrow; when explicitly enabled, it sits halfway between the zodiac edge and the arrowhead base, at half the former height/width, and points left/right according to signed `mcSpeed` |
 | `dimensioneNumeriCase` | Size multiplier for house numerals (default `1.25`) |
 
 Axis positions always use the house system selected in `settaggi.domificazione_selezionata`;
@@ -102,7 +102,9 @@ with slightly enlarged radius and stable shape at any display resolution.
 The external axis stems have been further shortened: ASC +0.17, DS +0.22,
 MC +0.18 and IC +0.22 world units outside the zodiac, leaving more air
 around the small terminal dots; the **DS and IC headings are now closer** to
-their respective dots, without touching them. The headings
+their respective dots, without touching them. The MC degree and heading
+are centered on its radial axis at +0.30 and +0.45 units respectively,
+closer to the open arrowhead while keeping their two-line spacing. The headings
 ASC/DS/MC/IC are drawn using the same **bold Times New Roman-like**
 canvas font in every skin, not images from astrological-assets. Their geometry
 preserves the source canvas aspect ratio (512×160) so the text is not squashed

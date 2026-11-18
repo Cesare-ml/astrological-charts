@@ -169,7 +169,7 @@ export class MarcatoriAssiRender {
       for (const [key, title, angle, shift, tangentShift, visible] of [
         ['ASC', 'ASC', ascAngle, 0.41, -0.063, opzioni.mostraFrecciaAscendente !== false],
         ['DS', 'DS', dsAngle, 0.41, 0, opzioni.mostraRetroFrecciaDiscendente !== false],
-        ['MC', 'MC', mcAngle, 0.53, 0, opzioni.mostraFrecciaMC !== false],
+        ['MC', 'MC', mcAngle, 0.45, 0, opzioni.mostraFrecciaMC !== false],
         ['IC', 'IC', icAngle, 0.43, 0, opzioni.mostraRetroFrecciaIC !== false],
       ] as const) {
         if (!visible) continue;
@@ -191,7 +191,7 @@ export class MarcatoriAssiRender {
         // ASC: beyond the arrowhead, directly UNDER the ASC heading.
         ['ASC', asc, ascAngle, colors.asc, 0.41, 0.12],
         // MC: centered on the axis, between the shortened arrow and MC title.
-        ['MC', mc, mcAngle, colors.mc, 0.38, 0],
+        ['MC', mc, mcAngle, colors.mc, 0.30, 0],
       ] as const) {
         const label = textLabel(formatAxisDegreeMinutes(longitude),
           color, 0.64, 0.18, 'normal 102px "Times New Roman", Georgia, serif');
@@ -235,10 +235,10 @@ export class MarcatoriAssiRender {
         // Centre the directional triangle halfway between the zodiac edge
         // and the beginning of the MC arrowhead, well below the open V.
         const radius = zodiacRadius + (0.18 - 0.075) / 2;
-        const baseA = pointOnRing(mcAngle, radius - 0.038);
-        const baseB = pointOnRing(mcAngle, radius + 0.038);
+        const baseA = pointOnRing(mcAngle, radius - 0.019);
+        const baseB = pointOnRing(mcAngle, radius + 0.019);
         const tip = pointOnRing(mcAngle, radius)
-          .add(pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.095));
+          .add(pointOnRing(mcAngle + (speed > 0 ? 90 : -90), 0.047));
         const shape = new THREE.Shape();
         shape.moveTo(baseA.x, baseA.y);
         shape.lineTo(baseB.x, baseB.y);

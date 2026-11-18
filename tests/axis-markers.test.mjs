@@ -178,6 +178,10 @@ test('axis strokes stop at the zodiac degree ticks and degree captions follow th
   assert.ok(projection(mcName.position) > projection(mcDegree.position) &&
     projection(mcDegree.position) > radius + 0.18,
     'the MC heading must be above its degree, which is above the arrowhead');
+  assert.ok(Math.abs(projection(mcName.position) - (radius + 0.45)) < 1e-6,
+    'the MC heading must sit close to the shortened arrowhead');
+  assert.ok(Math.abs(projection(mcDegree.position) - (radius + 0.30)) < 1e-6,
+    'the MC degree must move down with its heading, without touching the arrow tip');
   for (const axis of ['DS', 'IC']) {
     const terminal = group.children.find(child => child.userData.axisMarker === axis);
     const heading = group.children.find(child => child.userData.axisName === axis);
@@ -226,6 +230,15 @@ test('individual annotations and signed MC motion can be hidden independently', 
   const triangleMidpoint = (Math.min(...radii) + Math.max(...radii)) / 2;
   assert.ok(Math.abs(triangleMidpoint - (2.286 + (0.18 - 0.075) / 2)) < 0.01,
     'MC movement triangle belongs halfway between the signs and the arrowhead base');
+  assert.ok(Math.abs(Math.max(...radii) - Math.min(...radii) - 0.038) < 1e-5,
+    'MC direction triangle radial height must be at most half its former size');
+  const vertices = forwards.geometry.attributes.position.array;
+  const tangents = [];
+  for (let index = 0; index < vertices.length; index += 3) {
+    tangents.push(vertices[index] * -radial.y + vertices[index + 1] * radial.x);
+  }
+  assert.ok(Math.abs(Math.max(...tangents) - Math.min(...tangents) - 0.047) < 1e-5,
+    'MC direction triangle must also be at most half as wide as before');
 });
 
 test('axis names are geometry-shared between skins, but the official palette is skin-scoped', async () => {
