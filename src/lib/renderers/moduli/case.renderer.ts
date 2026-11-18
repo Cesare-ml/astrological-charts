@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import { SkinManager } from '../@skin-manager';
+import {disposeSceneResources} from '../scene-resources';
 
 import { StatoCartaAstrale } from '../@carta-astrale/carta-astrale.renderer';
 
@@ -400,6 +401,8 @@ export class CaseRender {
   ) {
     const degOffs = 0;
     var group = new THREE.Group();
+    let pendingLine: THREE.Object3D | null = null;
+    try {
     
     var coloreLinea = SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.coloreLinea;
     var coloreCase = SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.coloreSimboli;
@@ -429,6 +432,7 @@ export class CaseRender {
         {x:0,y:diametroEsterno/2},
         coloreLinea
       );
+      pendingLine = linea;
       linea.rotateZ(THREE.MathUtils.degToRad(casePos[i] + offsetDegRotazione));
 
       if ( SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
@@ -459,6 +463,7 @@ export class CaseRender {
         725,460,1/725,australInversion,
         colore
       );
+      group.add(casa);
       casa.scale.set(simboliScale,simboliScale,1);
 
       var casaImgPos;
@@ -471,12 +476,18 @@ export class CaseRender {
       //casa.translateY( ySimboli );
       casa.translateY( diametroEsterno/2 - 0.13 );
       casa.rotation.z = 0;
-
-      group.add(casa);
+      // Keep the original ordering: glyph before its house divider.
       group.add(linea);
+      pendingLine = null;
+
 
     }
 
     return group;
+    } catch (error) {
+      if (pendingLine) group.add(pendingLine);
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 }

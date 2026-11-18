@@ -8,6 +8,7 @@ import {Settaggi} from '../../models/settaggi.model';
 import {Colori} from '../_colori.config';
 
 import {SkinManager} from '../@skin-manager';
+import {disposeSceneResources} from '../scene-resources';
 
 export class AspettiRender {
 
@@ -167,13 +168,19 @@ export class AspettiRender {
       diametroCerchio,monocolore,"longitude",
       nomeElementoCelesteInEvidenza
     );
-    group.add(await this.getBackgroundAspetti(diametroCerchio,opzioni,australInversion));
+    try {
+      group.add(await this.getBackgroundAspetti(diametroCerchio,opzioni,australInversion));
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
 
     return group;
   }
 
   public static async getBackgroundAspetti(diametroCerchio,opzioni,australInversion) {
     var group = new THREE.Group();
+    try {
   //risuonatore solare di sfondo
     
     const arco = OggettiSempliciRender.getSemiArcoGrosso(
@@ -198,6 +205,7 @@ export class AspettiRender {
       false,
       SkinManager.skins[opzioni.settaggi.skin_id].cerchioAspetti.imgRisuonatoreColore,
     );
+    group.add(risuonatoreSolare);
     risuonatoreSolare.scale.set(1*imgScale,1*imgScale,1);
     risuonatoreSolare.rotateZ(THREE.MathUtils.degToRad(90));
     risuonatoreSolare.translateY(0);
@@ -205,9 +213,12 @@ export class AspettiRender {
         
     risuonatoreSolare.material.transparent = true; // abilita trasparenza
     risuonatoreSolare.material.opacity = SkinManager.skins[opzioni.settaggi.skin_id].cerchioAspetti.imgRisuonatoreSolareOpacity;      // valore tra 0 (invisibile) e 1 (opaco)
-    group.add(risuonatoreSolare);
 
     return group;
+    } catch (error) {
+      disposeSceneResources(group);
+      throw error;
+    }
   }
 
   public static getAspettiVerso(opzioni) {

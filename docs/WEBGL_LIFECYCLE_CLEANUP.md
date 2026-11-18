@@ -15,6 +15,9 @@ animations. Two gaps remained:
 3. The latitude builder could leave its detached sign and natal groups behind
    when a later async module failed; its latitude-grid group could also be
    abandoned during glyph loading or indicator creation.
+4. Nested zodiac, decan, decade, latitude-house and aspect-background modules
+   could fail during asynchronous artwork loading, losing access to their
+   already constructed groups before the parent scene received them.
 
 ## Implementation
 
@@ -34,6 +37,13 @@ animations. Two gaps remained:
 - The latitude planet/grid builder cleans up its own partially assembled group
   on failure. Each loaded glyph and indicator is attached immediately after
   creation so subsequent placement errors cannot orphan them.
+- The principal zodiac, decan and decade rings (including the synastry ring),
+  latitude-house module and aspect-background module dispose their own partial
+  groups if their asynchronous construction fails. Loaded images are attached
+  as soon as they are created; latitude house divider lines are tracked until
+  their matching glyphs are ready, retaining the original draw order.
+- A failed aspect-background child also causes the unfinished enclosing
+  aspect-circle group to release its own resources.
 
 ## Reproducible regression tests
 
@@ -55,6 +65,11 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
+- Nine additional tests cover failures of zodiac glyphs, decan and decade
+  glyphs, nested decan/decade assembly, synastry zodiac, latitude house glyphs,
+  solar-resonator artwork and the enclosing aspect-circle group. Successful
+  nested module construction retains resources until the owner explicitly
+  disposes them.
 
 These are lifetime *contracts*, not GPU-memory measurements. The actual
 `WEBGL_lose_context` extension is optional in browsers; `forceContextLoss()`
@@ -66,9 +81,10 @@ not establish parity with the VirgoStars original assets.
 ## Remaining limits
 
 Other modules which throw **during their own asynchronous group assembly**
-may create individual textures/meshes never attached to a parent. Those must
-be addressed within the modules themselves. The latitude glyph/grid module's
-partial failure path is covered, but failures inside other nested modules
-(such as house and zodiac ring construction) and comprehensive memory/GPU
-profiling remain separate work.
+may still create individual textures/meshes never attached to a parent. For
+example, non-latitude house rings, parts of the main planetary ring, and
+lower-level image loader failures still require dedicated auditing. The
+covered zodiac and latitude paths do not establish full lifecycle parity
+for all advanced chart modes. Comprehensive memory/GPU profiling remains
+separate work.
 No production sites, device firmware, asset locations or public APIs change.
