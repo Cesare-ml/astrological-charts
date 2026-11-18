@@ -16,7 +16,7 @@ function angularDistance(a, b) {
 }
 
 test('composite layout is deterministic and never introduces a third orbit', () => {
-  const transitInner = 3.7355 / 2, transitOuter = 3.7355 * 146.64 / 120 / 2;
+  const transitInner = 4.5723 / 2, transitOuter = 4.5723 * 146.64 / 120 / 2;
   const compositeWidth = 0.17, compositeHeight = 0.17 * 605 / 875;
   for (let seed = 1; seed <= 60; seed++) {
     const bodies = Object.fromEntries(Array.from({length: 16}, (_, i) => [
@@ -43,7 +43,7 @@ test('composite layout is deterministic and never introduces a third orbit', () 
 });
 
 test('isolated transiting planets sit on the orbit closest to the external degree ruler', () => {
-  const gridRadius = 3.7355 / 2;
+  const gridRadius = 4.5723 / 2;
   const positions = layoutCompositePlanetSymbols({Sun: 80, Saturn: 210},
     gridRadius, gridRadius * 146.64 / 120, 0.17, 0.17 * 605 / 875,
     90, {preferInnerOrbit: true});

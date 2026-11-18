@@ -181,7 +181,7 @@ La carta non usa pixel assoluti per gli anelli: usa diametri Three.js derivati d
 
 ```text
 senza transiti: 4.5723
-con transiti:    3.7355
+con transiti:    4.5723
 ```
 
 Modalità transiti sinodici, quando il payload contiene `transitiSinodici`:

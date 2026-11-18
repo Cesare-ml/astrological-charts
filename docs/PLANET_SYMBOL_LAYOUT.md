@@ -172,11 +172,15 @@ when `primary-overlay`, `transit-overlay` or `synastry-overlay` is requested.
 - The **primary natal chart under transits** regains the same house/planet
   proportions (`67.1/120`, `66.16/120` etc.) as a standalone natal chart;
   previously its compact `75.1/120` inner planet boundary silently switched
-  the solver to its small-glyph, multi-radius fallback. The reduced overall
-  transit wheel can spread a conjunction up to 16° visually to preserve full
-  natal glyph and degree-badge sizes on one or two fixed orbits, while tick
-  segments and computations remain at their true longitudes. Synastry keeps
-  the nested house geometry for its second chart.
+  the solver to its small-glyph, multi-radius fallback. Regular transit mode
+  now retains the natal chart's full `4.5723` zodiac diameter, with the transit
+  degree-grid and glyph orbit placed proportionally outside it: switching
+  overlays no longer shrinks the entire chart. The transit wheel can still
+  spread a conjunction up to 16° visually to preserve full natal glyph and
+  degree-badge sizes on one or two fixed orbits, while tick segments and
+  computations remain at their true longitudes. Synastry keeps the nested
+  house geometry for its second chart. The separate synodic-transit sizing
+  override is unaffected.
 - The short true-longitude **house ticks** now receive the *actual rendered
   house ring's outer radius*, rather than assuming the inner planet-band
   radius is also the house boundary. This fixes floating ticks especially in

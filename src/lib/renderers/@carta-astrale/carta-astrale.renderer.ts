@@ -123,7 +123,7 @@ function creaStatoCartaAstrale(opzioni, temaRender, temaRenderTransiti, temaRend
 }
 
 // 2. Calcolo diametri
-function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSinastria) {
+export function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSinastria) {
 
     const diametri: any = {};
 
@@ -135,7 +135,9 @@ function calcolaDiametri(opzioni, temaRender, temaRenderTransiti, temaRenderSina
     let simboliScaleCase = 0.9;
 
     // Diametro base anello segni
-    let diametroAnelloSegni = opzioni.mostraTransiti ? 3.7355 : 4.5723;
+    // Keep the zodiac wheel at the same scale when the transit overlay is
+    // toggled. The external transit grid has its own proportional annulus.
+    let diametroAnelloSegni = 4.5723;
 
     // Transiti sinodici
     if (opzioni.mostraTransitiSinodici && temaRender?.transitiSinodici) {

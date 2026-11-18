@@ -7,6 +7,7 @@ const bundle = await build({
     contents: [
       "export { ElementiCelestiRender } from './src/lib/renderers/moduli/elementi-celesti.renderer';",
       "export { OggettiSempliciRender } from './src/lib/renderers/oggetti-semplici.renderer';",
+      "export { calcolaDiametri } from './src/lib/renderers/@carta-astrale/carta-astrale.renderer';",
       "export { defaultOpzioniGrafico } from './src/lib/models/opzioni-grafico.model';",
       "export * as THREE from 'three';",
     ].join('\n'),
@@ -16,8 +17,23 @@ const bundle = await build({
   },
   bundle: true, write: false, platform: 'node', format: 'esm', target: 'es2022',
 });
-const { ElementiCelestiRender, OggettiSempliciRender, defaultOpzioniGrafico, THREE } =
+const { ElementiCelestiRender, OggettiSempliciRender, calcolaDiametri, defaultOpzioniGrafico, THREE } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+
+test('ordinary transits retain the natal zodiac diameter and proportional outer grid', () => {
+  const options = structuredClone(defaultOpzioniGrafico);
+  const theme = { houses: { [options.settaggi.domificazione_selezionata]: { ascendant: 20, mc: 290 } } };
+  const natal = calcolaDiametri(options, theme, null, null).diametri;
+  options.mostraTransiti = true;
+  const transits = calcolaDiametri(options, theme, theme, null).diametri;
+  assert.equal(natal.diametroAnelloSegni, 4.5723);
+  assert.equal(transits.diametroAnelloSegni, natal.diametroAnelloSegni);
+  assert.equal(transits.diametroAnelloTransiti, natal.diametroAnelloTransiti);
+  assert.equal(transits.diametroAnelloElementiCelesti, natal.diametroAnelloElementiCelesti);
+  options.mostraTransitiSinodici = true;
+  assert.equal(calcolaDiametri(options, { ...theme, transitiSinodici: {} }, theme, null)
+    .diametri.diametroAnelloSegni, 1.4, 'synodic overlays keep their special scale');
+});
 
 const planetLongitudes = {
   Sun: 358.51234, Moon: 359.2, Mercury: 0.1, Venus: 1.4,
@@ -189,7 +205,7 @@ test('composite planets stay on at most two radii without intersecting primary a
       [name, (value + offset) % 360]));
     const protectedAxes = [(natalAsc + offset) % 360, (natalMc + offset) % 360];
     const { group, labels } = await makeScene(true, 0, 1,
-      3.7355 * 146.64 / 120 / 2, 3.7355 / 2,
+      4.5723 * 146.64 / 120 / 2, 4.5723 / 2,
       shifted, 'transit-overlay', protectedAxes, false, false, false);
     assert.deepEqual(labels, [], 'transits need no additional degree labels');
     const glyphs = group.children.filter(child => child.userData.planet);
@@ -201,7 +217,7 @@ test('composite planets stay on at most two radii without intersecting primary a
       assert.equal(connector.material.transparent, true);
       assert.equal(connector.material.opacity, 0.45);
       const p = connector.geometry.attributes.position.array;
-      const anchor = polar(90 + shifted[connector.userData.transitConnector], 3.7355 / 2 + 0.012);
+      const anchor = polar(90 + shifted[connector.userData.transitConnector], 4.5723 / 2 + 0.012);
       assert.ok(distance({x: p[3], y: p[4]}, anchor) < 1e-6,
         `${connector.userData.transitConnector} leader must hit its true astronomical longitude`);
     }
@@ -224,9 +240,9 @@ test('composite planets stay on at most two radii without intersecting primary a
 });
 
 test('transits preserve a roomy natal planet band with integer degrees and a true house boundary tick', async () => {
-  const outer = 3.7355 * 103 / 120 / 2;
-  const inner = 3.7355 * 67.1 / 120 / 2;
-  const houseBoundary = 3.7355 * 66.16 / 120 / 2;
+  const outer = 4.5723 * 103 / 120 / 2;
+  const inner = 4.5723 * 67.1 / 120 / 2;
+  const houseBoundary = 4.5723 * 66.16 / 120 / 2;
   const source = {Sun: 358.4, Moon: 359.1, Mercury: 0.3, Venus: 1.2, Mars: 2.4};
   const {group, labels} = await makeScene(true, 0, 1, outer, inner, source,
     'primary-overlay', [], false, true, true, houseBoundary);
