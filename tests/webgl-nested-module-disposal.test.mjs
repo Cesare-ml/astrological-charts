@@ -409,6 +409,103 @@ async function withDisposeCounters(run) {
   }
 }
 
+async function withCanvasAndTextureCounters(run) {
+  const priorDocument = globalThis.document;
+  const priorDispose = THREE.Texture.prototype.dispose;
+  const counts = {texture: 0};
+  globalThis.document = {
+    createElement(name) {
+      assert.equal(name, 'canvas');
+      return {
+        width: 0, height: 0,
+        getContext(kind) {
+          assert.equal(kind, '2d');
+          return {clearRect() {}, fillText() {}};
+        },
+      };
+    },
+  };
+  THREE.Texture.prototype.dispose = function () {
+    counts.texture++;
+    return priorDispose.call(this);
+  };
+  try {
+    await run(counts);
+  } finally {
+    THREE.Texture.prototype.dispose = priorDispose;
+    globalThis.document = priorDocument;
+  }
+}
+
+test('degree-label builder releases its canvas map and material on plane failure', async () => {
+  await withCanvasAndTextureCounters(async textureCounts => {
+    await withDisposeCounters(async counts => {
+      await withOverrides([
+        [THREE.BufferGeometry.prototype, 'setIndex', () => {
+          throw new Error('degree plane failed');
+        }],
+      ], async () => {
+        assert.throws(() => ElementiCelestiRender.makeDegreeLabel(42, '#fff', 1, false),
+          /degree plane failed/);
+        assert.equal(textureCounts.texture, 1);
+        assert.equal(counts.material, 1);
+      });
+    });
+  });
+});
+
+const canvasAxisOptions = {
+  ...options,
+  mostraFrecciaAscendente: true,
+  mostraRetroFrecciaDiscendente: false,
+  mostraFrecciaMC: false,
+  mostraRetroFrecciaIC: false,
+  mostraNomiAssi: true,
+  mostraGradiAssi: false,
+  mostraOraPlanetariaAscendente: false,
+  mostraDirezioneMotoMC: false,
+};
+
+test('axis-label builder releases its canvas map and plane if material setup fails', async () => {
+  await withCanvasAndTextureCounters(async textureCounts => {
+    await withDisposeCounters(async counts => {
+      const priorSetValues = THREE.Material.prototype.setValues;
+      await withOverrides([
+        [THREE.Material.prototype, 'setValues', function (values) {
+          if (values?.map?.isCanvasTexture) throw new Error('axis material failed');
+          return priorSetValues.call(this, values);
+        }],
+      ], async () => {
+        await assert.rejects(MarcatoriAssiRender.creaMarcatori(
+          42, 80, 2, canvasAxisOptions, {}), /axis material failed/);
+        assert.equal(textureCounts.texture, 1);
+        assert.equal(counts.geometry, 3, 'axis lines and completed label plane are released');
+        assert.equal(counts.material, 2);
+      });
+    });
+  });
+});
+
+test('successful canvas degree and axis labels retain their resources until disposal', async () => {
+  await withCanvasAndTextureCounters(async textureCounts => {
+    await withDisposeCounters(async counts => {
+      const degree = ElementiCelestiRender.makeDegreeLabel(42, '#fff', 1, false);
+      const axis = await MarcatoriAssiRender.creaMarcatori(42, 80, 2,
+        canvasAxisOptions, {});
+      assert.equal(degree.geometry.parameters.width, 0.13);
+      assert.ok(axis.children.some(child => child.userData.axisLabel === 'ASC'));
+      assert.equal(textureCounts.texture, 0);
+      assert.equal(counts.geometry, 0);
+      assert.equal(counts.material, 0);
+      disposeSceneResources(degree);
+      disposeSceneResources(axis);
+      assert.equal(textureCounts.texture, 2);
+      assert.equal(counts.geometry, 4);
+      assert.equal(counts.material, 4);
+    });
+  });
+});
+
 test('fat-line geometry releases its buffer if color attributes fail', async () => {
   await withDisposeCounters(async counts => {
     await withOverrides([

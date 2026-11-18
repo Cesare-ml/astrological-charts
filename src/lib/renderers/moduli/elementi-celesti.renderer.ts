@@ -32,11 +32,21 @@ export class ElementiCelestiRender {
     context.textBaseline = 'middle';
     context.fillText(`${degree}°`, canvas.width / 2, canvas.height / 2);
     const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
-    return new THREE.Mesh(new THREE.PlaneGeometry(
-      (compact ? 0.12 : 0.13) * size, (compact ? 0.06 : 0.075) * size,
-    ), material);
+    let material: THREE.MeshBasicMaterial | undefined;
+    let geometry: THREE.PlaneGeometry | undefined;
+    try {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
+      geometry = new THREE.PlaneGeometry(
+        (compact ? 0.12 : 0.13) * size, (compact ? 0.06 : 0.075) * size,
+      );
+      return new THREE.Mesh(geometry, material);
+    } catch (error) {
+      geometry?.dispose();
+      material?.dispose();
+      texture.dispose();
+      throw error;
+    }
   }
 
   public static async getAnelloElementiCelesti(

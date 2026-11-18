@@ -95,12 +95,22 @@ function textLabel(value: string, color: string, width: number, height: number,
   context.fillStyle = color;
   context.fillText(value, canvas.width / 2, canvas.height / 2, canvas.width - 28);
   const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height),
-    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
-  mesh.position.z = 0.03;
-  mesh.userData.axisLabel = value;
-  return mesh;
+  let geometry: THREE.PlaneGeometry | undefined;
+  let material: THREE.MeshBasicMaterial | undefined;
+  try {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    geometry = new THREE.PlaneGeometry(width, height);
+    material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.z = 0.03;
+    mesh.userData.axisLabel = value;
+    return mesh;
+  } catch (error) {
+    geometry?.dispose();
+    material?.dispose();
+    texture.dispose();
+    throw error;
+  }
 }
 
 /** Restrained hand-drawn-style axis markers, independently switchable. */

@@ -31,6 +31,9 @@ animations. Several gaps remained:
 9. Basic circle, ring, quadrilateral, triangle and arc factories could also
    abort after allocating a geometry but before handing the primitive to its
    parent scene.
+10. Canvas-backed degree and axis labels could allocate a texture, then fail
+    while constructing the matching plane/material before the chart group
+    received the label.
 
 ## Implementation
 
@@ -85,6 +88,9 @@ animations. Several gaps remained:
   geometry and any completed material when an intermediate step fails. The
   optional map passed to an unfinished ring remains owned by its caller; in
   the successful path the scene disposer handles its map normally.
+- Canvas-backed planet-degree and ASC/MC label builders now release their
+  generated canvas texture and any completed material/plane on setup failure.
+  Successful labels retain their original dimensions and scene ownership.
 
 ## Reproducible regression tests
 
@@ -106,7 +112,7 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
 - Five further tests cover failing first/second latitude glyphs, indicator
   creation, transit glyphs after a successful natal ring, and successful
   rendering order with disposal deferred until the caller finishes.
-- Forty-six additional tests cover failures of zodiac glyphs, decan and decade
+- Forty-nine additional tests cover failures of zodiac glyphs, decan and decade
   glyphs, nested decan/decade assembly, synastry zodiac, latitude and natal
   house glyphs, synastry house dividers, term glyphs, the enclosing house
   module, main planetary glyphs/connectors, solar-resonator artwork and the
@@ -116,7 +122,8 @@ disposal helper with deterministic Three.js meshes and fake WebGL methods:
   arrow arcs, shared aspect endpoint geometry and multi-theme wrappers, plus
   thick-line geometry/material construction failures and successful ownership,
   plus basic primitive construction failures and unchanged successful shape
-  ownership, including an externally supplied ring texture.
+  ownership, including an externally supplied ring texture, plus canvas-backed
+  degree/axis label failures and successful cleanup after caller ownership.
   Successful nested module construction retains
   resources until the owner explicitly disposes them.
 
