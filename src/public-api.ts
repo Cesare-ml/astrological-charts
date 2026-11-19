@@ -24,4 +24,5 @@ export * from './lib/renderers/gestore-immagini';
 export * from './lib/renderers/chart-asset-urls';
 export { SYNASTRY_DEFLECTION_VERSION } from './lib/renderers/moduli/synastry-deflection';
 export { REGOLO_DIRECTIONS_RENDER_VERSION } from './lib/renderers/moduli/direction-overlay';
+export * from './lib/components/solar-return-strip.component';
 export * from './lib/renderers/_colori.config';
