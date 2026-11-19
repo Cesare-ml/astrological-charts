@@ -363,7 +363,10 @@ export class ElementiCelestiRender {
           simboliScale * glyphScale, !hasWidePlanetBand);
         const tangentAngle = THREE.MathUtils.degToRad(glyphDegree);
         const labelOffset = (hasWidePlanetBand ? 0 : 0.17) * simboliScale * glyphScale;
-        const labelRadialOffset = (hasWidePlanetBand ? 0.152 : 0) * simboliScale * glyphScale;
+        // Compact conjunction glyphs have a closer badge; enlarged isolated
+        // glyphs keep their original, roomier degree spacing.
+        const labelRadialOffset = (hasWidePlanetBand ? (glyphScale > 1 + 1e-8 ? 0.152 : 0.132) : 0)
+          * simboliScale * glyphScale;
         label.position.set(
           glyphPosition.x + Math.sin(tangentAngle) * labelRadialOffset - Math.cos(tangentAngle) * labelOffset,
           glyphPosition.y - Math.cos(tangentAngle) * labelRadialOffset - Math.sin(tangentAngle) * labelOffset, 0.002,
@@ -492,6 +495,7 @@ export class ElementiCelestiRender {
         labelHeight: (largeDegreeLabels ? 0.075 : 0.06) * simboliScale,
         labelTangentOffset: (largeDegreeLabels ? 0 : 0.17) * simboliScale,
         labelRadialOffset: (largeDegreeLabels ? 0.152 : 0) * simboliScale,
+        compactLabelRadialOffset: (largeDegreeLabels ? 0.132 : 0) * simboliScale,
         houseTickInnerRadius,
         houseTickOuterRadius: houseTickInnerRadius === undefined ? undefined : houseTickInnerRadius + 0.06,
       } : undefined,

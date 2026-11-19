@@ -28,12 +28,16 @@ because their longitudes fall within a fixed 16° grouping interval: actual
 full-size glyph/badge rectangles are checked after wheel rotation, and pairs
 try both large-size tracks before shrinking. In a close three-body knot the
 solver prefers two placements on the zodiac side and one toward the houses
-when possible; it tests the last body in longitude order as the inward body
-first, then other assignments if necessary. The existing ±5° bound and
-collision rules still apply, and crowded five-body groups remain compact.
-The labels sit
-`0.152 × glyph scale` world units inward from their glyphs, on the same radial bearing. A pathologically
-dense arrangement (e.g. eight exactly coincident planets) may be impossible
+when possible. It keeps the first body sign-side and tries the later member
+of the closest adjacent pair on the inward track. For example, with bodies
+at 25°, 26° and 27°, the 26° body moves inward instead of pushing the 27°
+body across its neighbour's guide. If that geometry cannot fit, the remaining
+assignments are tested. The existing ±5° bound and collision rules still
+apply, and crowded five-body groups remain compact. Degree badges sit
+`0.132 × glyph scale` world units inward for compact natal
+glyphs, and retain `0.152 × glyph scale` for enlarged isolated or roomy pair
+glyphs, on the same radial bearing. A pathologically dense arrangement
+(e.g. eight exactly coincident planets) may be impossible
 with full-size symbols, just two tracks and the ±5° limit simultaneously.
 The renderer currently uses the previous collision-safe adaptive scaling
 fallback **only in that exceptional case**; it must not silently overlap

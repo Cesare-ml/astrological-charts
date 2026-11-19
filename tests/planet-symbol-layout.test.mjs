@@ -218,6 +218,30 @@ test('three nearly coincident glyphs prefer two sign-side positions and one hous
   }
 });
 
+test('a 25°/26°/27° triple moves the middle body inward, leaving later Mars sign-side', () => {
+  const options = {maxAngularDisplacement: 5, fixedTwoLanes: true,
+    isolatedScale: 0.24 / 0.18, isolatedRadialInset: 0.05,
+    labelWidth: 0.13, labelHeight: 0.075, labelRadialOffset: 0.152,
+    compactLabelRadialOffset: 0.132,
+    houseTickInnerRadius: 1.278, houseTickOuterRadius: 1.338};
+  // Synthetic longitudes in Leo, matching the relative degree order of the
+  // reported screenshot without storing a personal natal chart.
+  const source = {SouthNode: 145.2, Jupiter: 146.1, Mars: 147.3};
+  for (const rotation of [0, 30, 45, 60, 90, 135, 180, 270, 315]) {
+    const result = layoutPlanetSymbols(source, 1.293, 1.947,
+      0.18, 0.18 * 605 / 875, true, rotation, options);
+    assert.equal(result.SouthNode.radius, result.Mars.radius,
+      `rotation ${rotation}: South Node and Mars stay nearer the zodiac`);
+    assert.ok(result.Jupiter.radius < result.Mars.radius,
+      `rotation ${rotation}: Jupiter at 26° uses the shorter radial lane`);
+    assert.ok(Object.values(result).every(position => position.scale === 1));
+    for (const [name, degree] of Object.entries(source)) {
+      assert.ok(angularDistance(result[name].displayDegree, degree) <= 5,
+        `rotation ${rotation}: ${name} exceeds ±5°`);
+    }
+  }
+});
+
 test('two distinct bodies retain full isolated size whenever their actual glyphs fit', () => {
   const options = {maxAngularDisplacement: 5, fixedTwoLanes: true,
     isolatedScale: 0.24 / 0.18, isolatedRadialInset: 0.05,
