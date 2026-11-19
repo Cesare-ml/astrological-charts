@@ -23,6 +23,8 @@ export class Colori {
     "mean Node Sud":  '#B2B3B3',
     "true Node Sud":  '#B2B3B3',
 
+    // The renderer/settings use lowercase "vertex"; retain the historical key.
+    "vertex":         '#FEFEFE',
     "Vertex":         '#FEFEFE',
 
     'Tyche':  '#9324e8',
