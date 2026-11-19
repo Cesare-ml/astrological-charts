@@ -406,10 +406,39 @@ test('five close planets keep full identical glyph sizes on at most two radii wi
       assert.ok(drift <= 5 + 1e-8, `${i}: exceeds the five-degree tolerance (${drift})`);
       const glyphRadius = Math.hypot(glyph.position.x, glyph.position.y);
       const labelRadius = Math.hypot(label.position.x, label.position.y);
-      assert.ok(Math.abs(glyphRadius - labelRadius - 0.152) < 1e-5,
-        'degree label must be inward toward the houses, close to its planet');
+      assert.ok(Math.abs(glyphRadius - labelRadius - 0.132) < 1e-5,
+        'compact degrees should sit closer to their glyphs, inward toward the houses');
     }
   }
+});
+
+test('compact natal degrees move closer without shifting isolated degrees or crossing Mars', async () => {
+  const natalInner = 4.5723 * 67.1 / 120 / 2;
+  const natalOuter = 4.5723 * 103 / 120 / 2;
+  const source = {SouthNode: 145.2, Jupiter: 146.1, Mars: 147.3, Saturn: 265};
+  const {group} = await makeScene(true, 0, 1, natalOuter, natalInner, source);
+  const glyphs = group.children.filter(child => child.userData.planet);
+  const labels = group.children.filter(child => child.material?.map?.isCanvasTexture);
+  assert.equal(labels.length, glyphs.length);
+  for (let index = 0; index < glyphs.length; index++) {
+    const glyph = glyphs[index];
+    const scale = glyph.scale.x / 0.18;
+    const expected = (scale > 1 + 1e-8 ? 0.152 : 0.132) * scale;
+    const gap = Math.hypot(glyph.position.x, glyph.position.y) -
+      Math.hypot(labels[index].position.x, labels[index].position.y);
+    assert.ok(Math.abs(gap - expected) < 1e-5,
+      `${glyph.userData.planet}: degree badge should follow the rendered glyph scale`);
+  }
+  const byName = Object.fromEntries(glyphs.map(glyph => [glyph.userData.planet, glyph]));
+  assert.ok(Math.hypot(byName.Jupiter.position.x, byName.Jupiter.position.y) <
+    Math.hypot(byName.Mars.position.x, byName.Mars.position.y),
+  'Jupiter must occupy the house-side lane of the reported three-body group');
+  const guide = group.children.find(child => child.userData.planetConnector === 'Jupiter');
+  assert.ok(guide?.userData.connector, 'Jupiter keeps its true-longitude guide');
+  const {from, to} = guide.userData.connector;
+  assert.equal(segmentCrossesRectangle([from.x, from.y, 0, to.x, to.y, 0],
+    visibleRectangle(byName.Mars)), false,
+  'Jupiter guide must not cut through the Mars glyph');
 });
 
 test('isolated planets are enlarged while a five-body conjunction keeps uniform smaller glyphs', async () => {

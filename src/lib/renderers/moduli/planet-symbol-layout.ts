@@ -23,6 +23,8 @@ export interface BoundedSymbolOptions {
   fixedTwoLanes?: boolean;
   /** Inward radial offset of the degree annotation from its planet. */
   labelRadialOffset?: number;
+  /** Closer inward degree annotation for compact (non-enlarged) natal glyphs. */
+  compactLabelRadialOffset?: number;
   /** Enlargement reserved for genuinely isolated bodies, not conjunctions. */
   isolatedScale?: number;
   /** Extra inward gap between an isolated glyph and the zodiac ring. */
@@ -243,8 +245,10 @@ function layoutTwoFixedLanes(
   const labelWidth = options.labelWidth ?? 0.13;
   const labelHeight = options.labelHeight ?? 0.075;
   const radialOffset = options.labelRadialOffset ?? 0.15;
+  const compactRadialOffset = options.compactLabelRadialOffset ?? radialOffset;
   const tangentOffset = options.labelTangentOffset ?? 0;
   const isolatedScale = Math.max(1, options.isolatedScale ?? 1);
+  const offsetForScale = (scale: number) => scale > 1 + 1e-8 ? radialOffset : compactRadialOffset;
   // Reserve enough room for the isolated large glyph independently: making
   // its inward inset should not unnecessarily compress the conjunction lanes.
   const compactPrimaryTransit = options.compactPrimaryTransit === true;
@@ -252,9 +256,9 @@ function layoutTwoFixedLanes(
   const isolatedLane = Math.min(outerLane,
     outerRadius - symbolWidth * isolatedScale / 2 - 0.01 - Math.max(0, options.isolatedRadialInset ?? 0));
   const innerLane = Math.max(
-    innerRadius + (showDegrees ? radialOffset + labelWidth / 2 : symbolWidth / 2) + 0.01,
+    innerRadius + (showDegrees ? compactRadialOffset + labelWidth / 2 : symbolWidth / 2) + 0.01,
     compactPrimaryTransit && showDegrees && options.houseTickOuterRadius !== undefined
-      ? options.houseTickOuterRadius + radialOffset + labelHeight / 2 + 0.006
+      ? options.houseTickOuterRadius + compactRadialOffset + labelHeight / 2 + 0.006
       : 0,
   );
   if (innerLane >= outerLane - symbolWidth - 0.015) return undefined;
@@ -268,13 +272,14 @@ function layoutTwoFixedLanes(
 
   function boxes(position: SymbolPosition) {
     const scale = position.scale ?? 1;
+    const labelInset = offsetForScale(scale);
     const theta = (chartRotation + position.displayDegree) * Math.PI / 180;
     const x = -Math.sin(theta) * position.radius;
     const y = Math.cos(theta) * position.radius;
     const objects = [{x, y, w: symbolWidth * scale, h: symbolHeight * scale}];
     if (showDegrees) objects.push({
-      x: x + Math.sin(theta) * radialOffset * scale - Math.cos(theta) * tangentOffset * scale,
-      y: y - Math.cos(theta) * radialOffset * scale - Math.sin(theta) * tangentOffset * scale,
+      x: x + Math.sin(theta) * labelInset * scale - Math.cos(theta) * tangentOffset * scale,
+      y: y - Math.cos(theta) * labelInset * scale - Math.sin(theta) * tangentOffset * scale,
       w: labelWidth * scale, h: labelHeight * scale,
     });
     return objects;
@@ -352,7 +357,7 @@ function layoutTwoFixedLanes(
             if (soleInnerKey && ((lane === 1) !== (body.key === soleInnerKey))) continue;
             if (lane === 1 && Object.values(chosen).filter(position => position.radius === radii[1]).length >= maxInner) continue;
             const candidate = {displayDegree: normalizeDegree(body.degree + delta), radius, scale};
-            if (!badgeClearsTicks(candidate, chartRotation, radialOffset, tangentOffset,
+            if (!badgeClearsTicks(candidate, chartRotation, offsetForScale(scale), tangentOffset,
               labelWidth, labelHeight, ticks)) continue;
             if (fixed.some(other => collides(candidate, other)) ||
                 Object.values(chosen).some(other => collides(candidate, other))) continue;
@@ -383,12 +388,18 @@ function layoutTwoFixedLanes(
       if (group.length > 3) return tryGroup(lanes, scale);
       for (let innerCount = 1; innerCount <= group.length; innerCount++) {
         if (innerCount === 1 && group.length === 3) {
-          // In a three-body knot, first see whether the outermost-longitude
-          // body can take the house-side track, leaving the two preceding
-          // glyphs beside the signs. This avoids an order-of-search artifact
-          // where the middle planet is tucked inward unnecessarily.
-          const lastInside = tryGroup(lanes, scale, 1, group[group.length - 1].key);
-          if (lastInside) return lastInside;
+          // Reserve the zodiac-side track for the earliest body, then tuck
+          // the *later* member of the closest adjacent pair toward the houses.
+          // For 25°/26°/27° this puts 26° inward instead of 27° and avoids
+          // the crossed guide in the screenshot; 25°/25.8°/26.4° still puts
+          // 26.4° inward. Fall back to the other choices if geometry requires.
+          const firstGap = group[1].unwrapped - group[0].unwrapped;
+          const secondGap = group[2].unwrapped - group[1].unwrapped;
+          const preferredIndex = firstGap <= secondGap ? 1 : 2;
+          for (const index of [preferredIndex, preferredIndex === 1 ? 2 : 1, 0]) {
+            const match = tryGroup(lanes, scale, 1, group[index].key);
+            if (match) return match;
+          }
         }
         const match = tryGroup(lanes, scale, innerCount);
         if (match) return match;
@@ -421,6 +432,8 @@ function layoutBoundedSymbols(
   const labelHeight = options.labelHeight ?? symbolHeight * (0.06 / (0.22 * 605 / 875));
   const tangentOffset = options.labelTangentOffset ?? symbolWidth * (0.17 / 0.22);
   const radialOffset = options.labelRadialOffset ?? 0;
+  const compactRadialOffset = options.compactLabelRadialOffset ?? radialOffset;
+  const offsetForScale = (scale: number) => scale > 1 + 1e-8 ? radialOffset : compactRadialOffset;
   const radiusMid = (innerRadius + outerRadius) / 2;
   const isolatedScale = Math.max(1, options.isolatedScale ?? 1);
   const ticks = showDegrees ? houseTickSegments(bodies, chartRotation, options) : [];
@@ -428,12 +441,13 @@ function layoutBoundedSymbols(
   function rectangles(placement: SymbolPosition) {
     const angle = (chartRotation + placement.displayDegree) * Math.PI / 180;
     const scale = placement.scale ?? 1;
+    const labelInset = offsetForScale(scale);
     const x = -Math.sin(angle) * placement.radius;
     const y = Math.cos(angle) * placement.radius;
     const boxes = [{ x, y, width: symbolWidth * scale, height: symbolHeight * scale }];
     if (showDegrees) boxes.push({
-      x: x + Math.sin(angle) * radialOffset * scale - Math.cos(angle) * tangentOffset * scale,
-      y: y - Math.cos(angle) * radialOffset * scale - Math.sin(angle) * tangentOffset * scale,
+      x: x + Math.sin(angle) * labelInset * scale - Math.cos(angle) * tangentOffset * scale,
+      y: y - Math.cos(angle) * labelInset * scale - Math.sin(angle) * tangentOffset * scale,
       width: labelWidth * scale,
       height: labelHeight * scale,
     });
@@ -516,7 +530,7 @@ function layoutBoundedSymbols(
         let possible = true;
         for (const body of order) {
           const location = candidates(body).find(candidate =>
-          badgeClearsTicks(candidate, chartRotation, radialOffset, tangentOffset,
+          badgeClearsTicks(candidate, chartRotation, offsetForScale(scale), tangentOffset,
             labelWidth, labelHeight, ticks) && !fixed.some(other => collides(candidate, other)) &&
             !Object.values(selected).some(other => collides(candidate, other)));
           if (!location) { possible = false; break; }
