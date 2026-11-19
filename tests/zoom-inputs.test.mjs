@@ -13,7 +13,7 @@ const klass = ast.statements.find(node =>
   ts.isClassDeclaration(node) && node.name?.text === 'GraficoRenderService');
 assert.ok(klass, 'GraficoRenderService class must exist');
 
-const names = ['setZoom', 'zoomIn', 'zoomOut'];
+const names = ['setZoom', 'zoomIn', 'zoomOut', 'chartCameraDistance'];
 const methods = names.map(name => {
   const method = klass.members.find(member =>
     ts.isMethodDeclaration(member) && member.name.getText(ast) === name);
@@ -99,4 +99,13 @@ test('zoom input validation also preserves finite state before camera initializa
   service.setZoom(0.25);
   assert.equal(service.zoomValue, 0.25);
   assert.equal(service.renderCalls, 0);
+});
+
+test('latitude framing can be reduced by the host without changing other consumers', () => {
+  const service = new ZoomProbe();
+  assert.equal(service.chartCameraDistance('latitudini', {}, {}), 2.98);
+  assert.equal(service.chartCameraDistance('latitudini', {}, {latitudiniDistanzaCamera:3.25}), 3.25);
+  for (const invalid of [NaN, Infinity, 1, 10, '3.25']) {
+    assert.equal(service.chartCameraDistance('latitudini', {}, {latitudiniDistanzaCamera:invalid}), 2.98);
+  }
 });

@@ -56,6 +56,8 @@ export interface OpzioniGrafico {
   disegnaAsseNomePianeta?: boolean;
 
   latitudiniPianetaSelezionato?: string;
+  /** Optional host framing for latitude charts; normal wheel framing is unchanged. */
+  latitudiniDistanzaCamera?: number;
 
   dodecatemoriAttivi: boolean;
   dodecatemore?: any;

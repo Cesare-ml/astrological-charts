@@ -106,7 +106,11 @@ export class GraficoRenderService implements OnDestroy {
   public constructor() {}
 
   private chartCameraDistance(grafico: string, temaRender: TemaRender, opzioni: any): number {
-    if (grafico === 'latitudini' || !temaRender?.houses ||
+    if (grafico === 'latitudini') {
+      const distance = opzioni?.latitudiniDistanzaCamera;
+      return Number.isFinite(distance) && distance >= 2.98 && distance <= 6 ? distance : 2.98;
+    }
+    if (!temaRender?.houses ||
       !Object.keys(temaRender.houses).length || opzioni?.mostraEffemeridi) return 2.98;
     const markers = [
       'mostraFrecciaAscendente', 'mostraRetroFrecciaDiscendente',
