@@ -81,6 +81,8 @@ export interface OpzioniGrafico {
   mostraTransiti: boolean;
   /** Draw the transit chart's ASC/DS/MC/IC as dashed external markers. Opt-in. */
   mostraAssiTransiti?: boolean;
+  /** Draw the partner axes separately with dotted stems. */
+  mostraAssiSinastria?: boolean;
   mostraTransitiSinodici: boolean;
   transitoSinodicoNomePianeta?: string;
   transitoSinodicoFase: string;

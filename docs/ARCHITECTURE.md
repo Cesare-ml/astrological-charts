@@ -1,5 +1,9 @@
 # Rendering architecture
 
+The desktop can opt into dotted partner axes and independent synastry pointer
+picking. Supplied cross-aspects remain calculated by the host. The default
+presentation for other consumers remains unchanged.
+
 Source: `Cesare-ml/virgo-stars/docs/graphics/` (reference documentation, Aug 2026). The original repo remains authoritative for production.
 
 ```text

@@ -81,6 +81,19 @@ test('synthetic chart hover hides and restores aspects through redraw', {timeout
     assert.equal(await page.evaluate(() => globalThis.hoverHarness.transitAxesCount(true,true)),4);
     assert.equal(await page.evaluate(() => globalThis.hoverHarness.transitAxesCount(false,true)),0);
     assert.equal(await page.evaluate(() => globalThis.hoverHarness.transitAxesCount(true,false)),0);
+    await page.evaluate(() => globalThis.hoverHarness.initSynastry());
+    const axes = await page.evaluate(() => globalThis.hoverHarness.synastryAxes());
+    assert.ok(['ASC','DS','MC','IC'].every(axis => axes.dots.includes(axis)));
+    assert.deepEqual(axes.glyphs, []);
+    for (const ring of ['synastry','natal']) {
+      const point = await page.evaluate(r => globalThis.hoverHarness.transitPoint('Jupiter',r), ring);
+      await page.mouse.move(point.x,point.y);
+      state = await page.evaluate(() => globalThis.hoverHarness.transitState());
+      assert.equal(state.last?.ring,ring);
+      assert.equal(state.last?.name,'Jupiter');
+      assert.ok(state.lines > 0);
+    }
+    await page.evaluate(() => globalThis.hoverHarness.restoreTransit());
     let projected = await page.evaluate(() => globalThis.hoverHarness.projectionState('dodecatemoria','tutti'));
     assert.equal(projected.length,7);
     assert.ok(projected.every(item => item.geometry === 'CircleGeometry'), 'all dodecatemoria are colored dots');

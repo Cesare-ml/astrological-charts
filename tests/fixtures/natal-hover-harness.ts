@@ -48,6 +48,33 @@ for (const [index, name] of demoBodies.slice(0,7).entries()) {
     await service.disegnaScena(fixture, transit, null, 'carta-astrale', options);
     service.setNatalAspectsDimmed(true);
   },
+  async initSynastry() {
+    options.mostraTransiti = false;
+    options.mostraSinastria = true;
+    options.mostraAssiSinastria = true;
+    service.setTransitPointHoverListener(value => {
+      transitEvents.push(value);
+      service.setTransitAspectLines(value ? [{aspect:'trigono', transitName:'Jupiter', transitLongitude:120,
+        natalName:'Sun', natalLongitude:0}] : []);
+    });
+    const partner = makeDemoTheme(52);
+    partner.planets.Jupiter.longitude = 120;
+    await service.disegnaScena(fixture, null, partner, 'carta-astrale', options);
+    service.setNatalAspectsDimmed(true);
+  },
+  synastryAxes() {
+    const scene = (service as any).scene as THREE.Scene;
+    const dots:string[] = [], glyphs:string[] = [];
+    scene.traverse(group => {
+      if (group.userData.chartInteractionRole === 'synastry-axes') group.children.forEach(object => {
+        if (object.userData.axisStem && (object as THREE.Mesh).geometry?.type === 'CircleGeometry') dots.push(object.userData.axisStem);
+      });
+      if (group.userData.chartInteractionRole === 'synastry-planets') group.traverse(object => {
+        if (['AS','DS','MC','IC'].includes(object.userData.planet)) glyphs.push(object.userData.planet);
+      });
+    });
+    return {dots, glyphs};
+  },
   transitAxisPoint(name: string) {
     const scene = (service as any).scene as THREE.Scene;
     let marker: THREE.Object3D | undefined;
@@ -78,6 +105,7 @@ for (const [index, name] of demoBodies.slice(0,7).entries()) {
   },
   async projectionState(mode:string, selected:string) {
     options.mostraTransiti = false;
+    options.mostraSinastria = false;
     options.dodecatemoriAttivi = mode === 'dodecatemoria';
     options.dodecatemore = mode === 'dodecatemoria' ? selected : undefined;
     options.proiezioneZodiacale = mode === 'antisci' || mode === 'contrantisci' ? {

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {mousePositionToNdc} from '../renderers/@gestore-eventi-mouse';
 
-export interface TransitPointHover { ring: 'natal' | 'transit'; name: string; longitude: number; }
+export interface TransitPointHover { ring: 'natal' | 'transit' | 'synastry'; name: string; longitude: number; }
 
 /** Opt-in picking for the two chart rings. The role distinguishes equal body names. */
 export class TransitHoverController {
@@ -31,7 +31,7 @@ export class TransitHoverController {
     const ndc = this.last && mousePositionToNdc(this.last.x, this.last.y, this.canvas.getBoundingClientRect());
     const groups: THREE.Object3D[] = [];
     scene?.traverse(object => {
-      if (['natal-planets','natal-axes','transit-planets','transit-axes'].includes(object.userData.chartInteractionRole)) groups.push(object);
+      if (['natal-planets','natal-axes','transit-planets','transit-axes','synastry-planets','synastry-axes'].includes(object.userData.chartInteractionRole)) groups.push(object);
     });
     if (!ndc || !camera || !groups.length) { this.set(null); return; }
     scene!.updateMatrixWorld(true);
@@ -43,7 +43,9 @@ export class TransitHoverController {
     if (!hit) { this.set(null); return; }
     let parent: THREE.Object3D | null = hit.object;
     while (parent && !groups.includes(parent)) parent = parent.parent;
-    this.set({ring: ['transit-planets','transit-axes'].includes(parent?.userData.chartInteractionRole) ? 'transit' : 'natal',
+    const role = parent?.userData.chartInteractionRole;
+    this.set({ring: ['synastry-planets','synastry-axes'].includes(role) ? 'synastry' :
+      ['transit-planets','transit-axes'].includes(role) ? 'transit' : 'natal',
       name:hit.object.userData.planet, longitude:hit.object.userData.trueLongitude});
   };
   public sceneChanged(): void { this.set(null); this.refresh(); }

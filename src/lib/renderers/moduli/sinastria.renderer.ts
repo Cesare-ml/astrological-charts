@@ -9,6 +9,7 @@ import { SkinManager } from '../@skin-manager';
 import {StatoCartaAstrale} from '../@carta-astrale/carta-astrale.renderer';
 import { stopSceneAnimations } from '../scene-animations';
 import { synastryDeflectionOffset } from './synastry-deflection';
+import { MarcatoriAssiRender } from './marcatori-assi.renderer';
 
 //import {AssiRender} from './assi.renderer';
 
@@ -112,7 +113,15 @@ export class SinastriaRender {
       'synastry-overlay',
     );
     // Own the completed animated subscene before the next awaited operation.
+    anelloElementiCelesti.userData.chartInteractionRole = 'synastry-planets';
     group.add(anelloElementiCelesti);
+    if (stato.opzioni.mostraAssiSinastria && Number.isFinite(as) && Number.isFinite(mc) &&
+        temaRender.houses?.[stato.opzioni.settaggi.domificazione_selezionata]) {
+      const radius = stato.diametri.diametroAnelloSegni / 2;
+      group.add(MarcatoriAssiRender.creaMarcatoriTransiti(ascendenteTemaDiRiferimento,
+        as + offsSinastriaDeflettiva, mc + offsSinastriaDeflettiva,
+        radius, stato.diametri.diametroAnelloTransiti / 2, stato.opzioni, true));
+    }
 
     var anelloSegni = await SegniRender.getAnelloSegniSinastria(
       as + (ascendenteTemaDiRiferimento-as) - offsSinastriaDeflettiva,

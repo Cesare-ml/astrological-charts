@@ -536,7 +536,9 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
     disegno.userData.transitAspectGeometry = {
         asc: stato.asc,
         diameter: stato.diametri.diametroCerchioAspetti,
-        transitRadius: stato.diametri.diametroGrigliaTransiti / 2,
+        transitRadius: (opzioni.mostraSinastria && opzioni.mostraAssiSinastria
+          ? stato.diametri.diametroAnelloElementiCelestiSinastria
+          : stato.diametri.diametroGrigliaTransiti) / 2,
     };
 
     // Skin-only backdrop. The wheel topology and all longitude positions

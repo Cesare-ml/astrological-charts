@@ -107,9 +107,9 @@ function textLabel(value: string, color: string, width: number, height: number,
 export class MarcatoriAssiRender {
   /** The moving chart's own axes, oriented to the natal ascendant. */
   public static creaMarcatoriTransiti(ascRef: number, asc: number, mc: number,
-    zodiacRadius: number, transitRadius: number, opzioni: any): THREE.Group {
+    zodiacRadius: number, transitRadius: number, opzioni: any, dotted = false): THREE.Group {
     const group = new THREE.Group();
-    group.userData.chartInteractionRole = 'transit-axes';
+    group.userData.chartInteractionRole = dotted ? 'synastry-axes' : 'transit-axes';
     const colors = SkinManager.getAxisColors(opzioni?.settaggi?.skin_id);
     const axes = [
       {key:'ASC', name:'AS', longitude:asc, angle:90 - ascRef + asc, color:colors.asc, arrow:true},
@@ -120,20 +120,36 @@ export class MarcatoriAssiRender {
     for (const axis of axes) {
       const start = pointOnRing(axis.angle, zodiacRadius + 0.02);
       const end = pointOnRing(axis.angle, transitRadius + 0.10);
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(start.x,start.y,0.035), new THREE.Vector3(end.x,end.y,0.035),
-      ]);
-      const stem = new THREE.Line(geometry, new THREE.LineDashedMaterial({color:axis.color, dashSize:0.055, gapSize:0.035}));
-      stem.computeLineDistances();
-      stem.userData.axisStem = axis.key;
-      stem.userData.planet = axis.name;
-      stem.userData.trueLongitude = ((axis.longitude % 360) + 360) % 360;
-      group.add(stem);
+      const longitude = ((axis.longitude % 360) + 360) % 360;
+      if (dotted) {
+        const geometry = new THREE.CircleGeometry(0.008, 12);
+        const material = new THREE.MeshBasicMaterial({color:axis.color, side:THREE.DoubleSide});
+        const count = Math.max(1, Math.floor(start.distanceTo(end) / 0.035));
+        for (let i = 0; i <= count; i++) {
+          const point = start.clone().lerp(end, i / count);
+          const dot = new THREE.Mesh(geometry, material);
+          dot.position.set(point.x, point.y, 0.035);
+          dot.userData.axisStem = axis.key;
+          dot.userData.planet = axis.name;
+          dot.userData.trueLongitude = longitude;
+          group.add(dot);
+        }
+      } else {
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(start.x,start.y,0.035), new THREE.Vector3(end.x,end.y,0.035),
+        ]);
+        const stem = new THREE.Line(geometry, new THREE.LineDashedMaterial({color:axis.color, dashSize:0.055, gapSize:0.035}));
+        stem.computeLineDistances();
+        stem.userData.axisStem = axis.key;
+        stem.userData.planet = axis.name;
+        stem.userData.trueLongitude = longitude;
+        group.add(stem);
+      }
       const marker = axis.arrow ? openArrowhead(axis.angle, transitRadius + 0.10, axis.color)
         : circularTerminal(axis.angle, transitRadius + 0.10, axis.color);
       marker.userData.axisMarker = axis.key;
       marker.userData.planet = axis.name;
-      marker.userData.trueLongitude = stem.userData.trueLongitude;
+      marker.userData.trueLongitude = longitude;
       marker.position.z = 0.04;
       group.add(marker);
     }

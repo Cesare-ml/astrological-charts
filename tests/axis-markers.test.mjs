@@ -183,6 +183,17 @@ test('opt-in transit markers use the transit longitudes and the natal orientatio
   assert.deepEqual(group.children.filter(child => child.userData.axisMarker).map(child => child.userData.axisMarker).sort(), ['ASC','DS','IC','MC']);
 });
 
+test('synastry axes use round dots while retaining the actual partner positions', () => {
+  const options = structuredClone(defaultOpzioniGrafico);
+  const group = MarcatoriAssiRender.creaMarcatoriTransiti(20, 72, 315, 2.286, 2.794, options, true);
+  assert.equal(group.userData.chartInteractionRole, 'synastry-axes');
+  for (const [key, name, longitude] of [['ASC','AS',72],['DS','DS',252],['MC','MC',315],['IC','IC',135]]) {
+    const dots = group.children.filter(child => child.userData.axisStem === key);
+    assert.ok(dots.length > 2);
+    assert.ok(dots.every(dot => dot.geometry.type === 'CircleGeometry' && dot.userData.planet === name && dot.userData.trueLongitude === longitude));
+  }
+});
+
 test('axis strokes stop at the zodiac degree ticks and degree captions follow the reference placement', async () => {
   const radius = 2.286;
   const tickRadius = radius * 103 / 120;
