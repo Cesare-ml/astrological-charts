@@ -109,19 +109,20 @@ function segmentCrossesRectangle(coords, rectangle, padding = 0.005) {
 async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
   outerRingRadius = outerRadius, innerRingRadius = innerRadius, source = planetLongitudes,
   axisPresentation = 'default', protectedAxes = [], synastryPrimary = false,
-  transitsPrimary = false, externalConnector = true, houseBoundaryRadius, extraOptions = {}) {
+  transitsPrimary = false, externalConnector = true, houseBoundaryRadius, extraOptions = {}, skin = 'light') {
   const originalGetImg = OggettiSempliciRender.getImg;
   const originalGetLinea = OggettiSempliciRender.getLinea;
   const originalDocument = globalThis.document;
   const labels = [];
   const fonts = [];
   try {
-    OggettiSempliciRender.getImg = async (ref, width, height, scale) => {
+    OggettiSempliciRender.getImg = async (ref, width, height, scale, inverted, color) => {
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(width * scale, height * scale),
         new THREE.MeshBasicMaterial({ transparent: true }),
       );
       mesh.userData.ref = ref;
+      mesh.userData.tint = color;
       return mesh;
     };
     OggettiSempliciRender.getLinea = (from, to, color) => {
@@ -152,7 +153,7 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     };
     const options = structuredClone(defaultOpzioniGrafico);
     Object.assign(options, extraOptions);
-    options.settaggi.skin_id = 'light';
+    options.settaggi.skin_id = skin;
     options.settaggi.elementi_celesti = Object.fromEntries(
       Object.keys(source).map(name => [name, { att: true }]),
     );
@@ -182,6 +183,22 @@ async function makeScene(showDegrees, longitudeOffset = 0, symbolScale = 1,
     globalThis.document = originalDocument;
   }
 }
+
+test('all nine Kleroi keep their colors across skins while normal points use the skin', async () => {
+  const source = {Tyche:10,Daimon:40,Basis:70,Ananke:100,Eros:130,Hermes:160,Tolma:190,Nike:220,Nemesi:250,Sun:280};
+  const expected = {Tyche:'#9324e8',Daimon:'#f9b62b',Basis:'#149432',Ananke:'#ad5916',
+    Eros:'#009933',Hermes:'#FFED00',Tolma:'#FF6600',Nike:'#0077FF',Nemesi:'#9E02FF'};
+  for (const skin of ['light','dark','virgostars']) {
+    const {group} = await makeScene(false,0,1,outerRadius,innerRadius,source,'default',[],false,false,true,undefined,{kleros:'visualizza sorti'},skin);
+    const tint = {};
+    group.traverse(object => {
+      const match = /^simboli-bianchi\/elementi-celesti\/(.+)\.png$/.exec(object.userData.ref ?? '');
+      if (match) tint[match[1]] = object.userData.tint;
+    });
+    for (const [name, color] of Object.entries(expected)) assert.equal(tint[name],color,`${skin}: ${name}`);
+    assert.ok(Object.hasOwn(tint,'Sun'),`${skin}: ordinary planet remains visible`);
+  }
+});
 
 test('desktop can hide only axes that have visible external markers', async () => {
   const source = {Sun:10, AS:20, DS:200, MC:290, IC:110};

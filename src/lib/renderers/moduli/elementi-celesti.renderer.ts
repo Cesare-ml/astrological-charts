@@ -7,6 +7,20 @@ import { SkinManager } from '../@skin-manager';
 import { registerSceneAnimation, stopSceneAnimations } from '../scene-animations';
 import { normalizeDegree, layoutPlanetSymbols, layoutCompositePlanetSymbols } from './planet-symbol-layout';
 
+// The four traditional lots have their own palette; the five planetary lots
+// use the color of their corresponding planet. Skin tint must not replace it.
+const klerosColors: Readonly<Record<string, string>> = {
+  Tyche: Colori.elementiCelesti.Tyche,
+  Daimon: Colori.elementiCelesti.Daimon,
+  Basis: Colori.elementiCelesti.Basis,
+  Ananke: Colori.elementiCelesti.Ananke,
+  Eros: Colori.elementiCelesti.Venus,
+  Hermes: Colori.elementiCelesti.Mercury,
+  Tolma: Colori.elementiCelesti.Mars,
+  Nike: Colori.elementiCelesti.Jupiter,
+  Nemesi: Colori.elementiCelesti.Saturn,
+};
+
 
 export class ElementiCelestiRender {
 
@@ -245,7 +259,7 @@ export class ElementiCelestiRender {
       } else {
         elRef = 'simboli-bianchi/elementi-celesti/'+nome+'.png';
       }
-      var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,coloreSimboli);
+      var el = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,klerosColors[nome] ?? coloreSimboli);
       const glyphScale = elementiCelestiRenderPos[nome].scale ?? 1;
       el.scale.set(glyphBaseSize * simboliScale * glyphScale, glyphBaseSize * simboliScale * glyphScale, 1);
       const trueDegree = elementiCelesti[nome][parametroDiRender];

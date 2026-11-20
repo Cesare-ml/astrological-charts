@@ -12,6 +12,7 @@ import { MarcatoriAssiRender } from '../moduli/marcatori-assi.renderer';
 import { ProiezioniZodiacaliRender } from '../moduli/proiezioni-zodiacali.renderer';
 import { directionOverlayOffsets } from '../moduli/direction-overlay';
 import { createFixedStarRing } from '../moduli/fixed-stars.renderer';
+import { Colori } from '../_colori.config';
 
 // ---------------------------
 // Stato globale per tutti i renderer
@@ -292,6 +293,73 @@ async function creaSegni(stato: StatoCartaAstrale) {
     return group;
 }
 
+/** All segments share one geometry and material, including the 96-part view. */
+export async function creaChakra(stato: StatoCartaAstrale) {
+    const sides: Record<string,number> = {Ajna:96,Vishuddha:16,Anahata:12,Manipura:10,Muladhara:6,Swadhisthana:4};
+    const name=stato.opzioni.chakram;
+    const count=sides[name];
+    if (!stato.opzioni.chakramAttivi || !count) return null;
+    const inner=stato.diametri.diametroCerchioAspetti/2;
+    const outer=stato.diametri.diametroInternoAnelloCase/2;
+    const vertices:number[]=[], boundaries:number[]=[], sectors:number[]=[];
+    const subdivisions=8, step=2*Math.PI/count;
+    for (let i=0;i<count;i++) {
+        const angle=Math.PI+(i-.5)*step, next=angle+step;
+        const x=Math.cos(angle), y=Math.sin(angle);
+        vertices.push(x*inner,y*inner,.001,x*outer,y*outer,.001);
+        if (name!=='Ajna') vertices.push(x*inner,y*inner,.001,Math.cos(next)*inner,Math.sin(next)*inner,.001);
+        const boundaryStart=count>=48 ? outer*.65 : 0;
+        boundaries.push(x*boundaryStart,y*boundaryStart,.002,x*outer,y*outer,.002);
+        for (let part=0;part<subdivisions;part++) {
+            const a=angle+step*part/subdivisions, b=angle+step*(part+1)/subdivisions;
+            sectors.push(0,0,.004,Math.cos(a)*outer,Math.sin(a)*outer,.004,Math.cos(b)*outer,Math.sin(b)*outer,.004);
+        }
+    }
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+    const lines=new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({color:Colori.chakram[name]}));
+    lines.name='chakra-lines';
+    const guides=new THREE.BufferGeometry();guides.setAttribute('position',new THREE.Float32BufferAttribute(boundaries,3));
+    const guideLines=new THREE.LineSegments(guides,new THREE.LineBasicMaterial({color:Colori.chakram[name],transparent:true,opacity:.24,depthWrite:false}));
+    const background=new THREE.Mesh(new THREE.CircleGeometry(outer,128),new THREE.MeshBasicMaterial({color:Colori.chakram[name],transparent:true,opacity:.045,depthWrite:false,side:THREE.DoubleSide}));
+    background.position.z=-.001;
+    const highlightGeometry=new THREE.BufferGeometry();
+    highlightGeometry.setAttribute('position',new THREE.Float32BufferAttribute(sectors,3));
+    highlightGeometry.setDrawRange(0,0);
+    const highlight=new THREE.Mesh(highlightGeometry,new THREE.MeshBasicMaterial({color:Colori.chakram[name],transparent:true,opacity:.3,depthWrite:false,depthTest:false,side:THREE.DoubleSide}));
+    highlight.visible=false;highlight.renderOrder=5;highlight.name='chakra-highlight';
+    // A square picking plane and a radial check cover the complete circle,
+    // including the area between the polygon and the house ring.
+    const hit=new THREE.Mesh(new THREE.PlaneGeometry(outer*2,outer*2),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));
+    hit.position.z=.003;
+    hit.userData={chartInteractionRole:'chakra-sectors',chakra:name,sectorCount:count,radius:outer,subdivisions};
+    const group=new THREE.Group(); group.add(background,lines,guideLines,highlight,hit); return group;
+}
+
+async function creaApogeo(stato: StatoCartaAstrale) {
+    const longitudes=stato.opzioni.apogeeLongitudes;
+    if (!Array.isArray(longitudes) || !longitudes.length || !longitudes.every(Number.isFinite)) return null;
+    const radius=stato.diametri.diametroCerchioAspetti/2, lines:number[]=[], faces:number[]=[];
+    let previous: [number,number]|null=null;
+    for (const longitude of longitudes) {
+        const angle=THREE.MathUtils.degToRad(180+longitude-stato.asc);
+        const x=radius*Math.cos(angle), y=radius*Math.sin(angle);
+        lines.push(-x,-y,.002,x,y,.002);
+        if (previous) {
+            const [px,py]=previous;
+            lines.push(px,py,.002,x,y,.002,-px,-py,.002,-x,-y,.002);
+            faces.push(0,0,0,px,py,0,x,y,0,0,0,0,-px,-py,0,-x,-y,0);
+        }
+        previous=[x,y];
+    }
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(lines,3));
+    const surface=new THREE.BufferGeometry();surface.setAttribute('position',new THREE.Float32BufferAttribute(faces,3));
+    const group=new THREE.Group();
+    group.add(new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({color:'#ac7eea'})));
+    group.add(new THREE.Mesh(surface,new THREE.MeshBasicMaterial({color:'#ac7eea',side:THREE.DoubleSide,transparent:true,opacity:.35,depthWrite:false})));
+    group.name='apogee-radix';return group;
+}
+
 async function creaCase(stato: StatoCartaAstrale) {
     let group;
     if(
@@ -565,6 +633,8 @@ export async function CartaAstraleCreaScena(opzioni, temaRender, temaRenderTrans
         creaProiezioniZodiacali,
         creaCase,
         creaAspetti,
+        creaChakra,
+        creaApogeo,
         creaMarcatoriAssi,
         creaMarcatoriAssiTransiti,
         creaSinastria

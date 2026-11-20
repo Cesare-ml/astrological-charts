@@ -18,6 +18,7 @@ import {LatitudiniRender} from '../renderers/@carta-astrale/latitudini.renderer'
 import {SkinManager} from '../renderers/@skin-manager';
 import { debounceTime, fromEvent, map, startWith } from 'rxjs';
 import {NatalHoverController, type NatalPlanetHover} from './natal-hover';
+import {ChakraHoverController, type ChakraHover} from './chakra-hover';
 import {TransitHoverController, type TransitPointHover} from './transit-hover';
 import {FixedStarHoverController} from './fixed-star-hover';
 import {AspettiRender} from '../renderers/moduli/aspetti.renderer';
@@ -83,6 +84,7 @@ export class GraficoRenderService implements OnDestroy {
   public camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;
   private natalHover: NatalHoverController | null = null;
+  private chakraHover: ChakraHoverController | null = null;
   private transitHover: TransitHoverController | null = null;
   private fixedStarHover: FixedStarHoverController | null = null;
   private transitLines: THREE.Group | null = null;
@@ -132,6 +134,7 @@ export class GraficoRenderService implements OnDestroy {
       this.camera.zoom = this.zoomValue;
       this.camera.updateProjectionMatrix();
       this.natalHover?.refresh();
+      this.chakraHover?.refresh();
       this.transitHover?.refresh();
       this.fixedStarHover?.refresh();
       this.render();
@@ -153,6 +156,8 @@ export class GraficoRenderService implements OnDestroy {
     ++this.drawGeneration;
     this.natalHover?.dispose();
     this.natalHover = null;
+    this.chakraHover?.dispose();
+    this.chakraHover = null;
     this.transitHover?.dispose();
     this.transitHover = null;
     this.fixedStarHover?.dispose();
@@ -193,8 +198,6 @@ export class GraficoRenderService implements OnDestroy {
     });
     
     this.renderer.setSize(this.dimensioni.x, this.dimensioni.y, false);
-    //this.renderer.setPixelRatio(/*window.devicePixelRatio **/ this.scale);
-    this.renderer.setPixelRatio(window.devicePixelRatio );
     this.renderer.setClearColor(0x000000, 0);
 
     if (!GraficoRenderService.constructingScene) OggettiSempliciRender.setDimensioniCanvas(dimensioni);
@@ -234,10 +237,12 @@ export class GraficoRenderService implements OnDestroy {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
 
-    const pixelRatio = /*window.devicePixelRatio **/ this.scale;
-    //this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.setPixelRatio(1);
-    //console.log (window.devicePixelRatio);
+    // Match the display density after each resize, including moving the
+    // window between monitors. Cap GPU memory on very high-density screens.
+    const displayRatio = window.devicePixelRatio;
+    const pixelRatio = Number.isFinite(displayRatio) && displayRatio > 0
+      ? Math.min(2, Math.max(1, displayRatio)) : 1;
+    if (this.renderer.getPixelRatio() !== pixelRatio) this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(rect.width, rect.height, false);
 
     this.camera.aspect = rect.width / rect.height;
@@ -251,9 +256,10 @@ export class GraficoRenderService implements OnDestroy {
   private aggiornaLineMaterialResolution(): void {
     if (!this.scene) return;
 
-    // Usa la risoluzione reale in pixel, non CSS
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    // LineMaterial measures line width against the logical viewport, as in
+    // Three.js LineSegments2.onBeforeRender; keep line thickness independent
+    // of the device-pixel-ratio backing buffer.
+    const {width: w, height: h} = this.canvas.getBoundingClientRect();
 
     this.scene.traverse((obj: any) => {
       const mat = obj.material;
@@ -330,6 +336,7 @@ export class GraficoRenderService implements OnDestroy {
       }
       if (disegno) this.scene.add(disegno);
       this.natalHover?.sceneChanged();
+      this.chakraHover?.sceneChanged();
       this.transitHover?.sceneChanged();
       this.fixedStarHover?.sceneChanged();
       this.render();
@@ -350,6 +357,14 @@ export class GraficoRenderService implements OnDestroy {
     this.natalHover?.dispose();
     this.natalHover = listener && this.canvas
       ? new NatalHoverController(this.canvas, () => this.scene, () => this.camera, listener) : null;
+  }
+
+  public setChakraHoverListener(listener: ((value: ChakraHover | null) => void) | null): void {
+    this.chakraHover?.dispose();
+    this.chakraHover = listener && this.canvas ? new ChakraHoverController(this.canvas,()=>this.scene,()=>this.camera,value=>{
+      listener(value);
+      if (this.isInizializzato) this.render();
+    }) : null;
   }
 
   public setFixedStarHoverListener(listener: ((id:number | null) => void) | null): void {

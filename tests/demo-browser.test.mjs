@@ -23,6 +23,28 @@ function launchBrowser() {
 const skins = ['virgostars', 'dark', 'dark-bn', 'light', 'light-bn', 'sun', 'astrolabio', 'astrolabio-girasole'];
 const modes = ['natal', 'transits', 'synastry', 'latitude'];
 
+test('chart keeps the display pixel density after resizing', {timeout: 90000}, async () => {
+  const browser = await launchBrowser();
+  try {
+    for (const density of [1, 1.25, 2]) {
+      const page = await browser.newPage({viewport:{width:1200,height:1000}, deviceScaleFactor:density});
+      try {
+        await page.goto(process.env.CHART_DEMO_URL || 'http://127.0.0.1:4200/', {waitUntil:'domcontentloaded'});
+        await page.waitForFunction(() => /Rendered/.test(document.querySelector('[data-testid=status]')?.textContent || ''), {timeout:30000});
+        for (const viewport of [{width:1200,height:1000},{width:1000,height:800}]) {
+          await page.setViewportSize(viewport);
+          await page.waitForFunction(expected => {
+            const canvas = document.querySelector('canvas');
+            const bounds = canvas?.getBoundingClientRect();
+            return bounds && bounds.width > 0 && Math.abs(canvas.width - bounds.width * expected) <= 2 &&
+              Math.abs(canvas.height - bounds.height * expected) <= 2;
+          }, density, {timeout:10000});
+        }
+      } finally { await page.close(); }
+    }
+  } finally { await browser.close(); }
+});
+
 test('Angular demo renders every chart and skin, exports PNG and reports missing assets', {timeout: 180000}, async () => {
   mkdirSync(output, {recursive: true});
   const browser = await launchBrowser();

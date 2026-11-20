@@ -8,6 +8,11 @@ primary natal group and its ASC/DS/MC/IC markers are pickable; transit and synas
 objects do not intercept it. Passing `null` unsubscribes. Scene replacement,
 resize, zoom and destruction update or clear the hover and detach listeners.
 
+Rendered dodecatemoria points in the natal group are also pickable. Their
+callback carries `projection: 'dodecatemoria'` and their projected longitude;
+ordinary natal glyphs keep the previous callback shape. The projection is
+supplied by the host and is not calculated by the renderer.
+
 `setNatalAspectsVisible(false)` temporarily hides the natal aspect lines in the
 on-screen scene; `true` restores the group if one was drawn. It does not change
 settings or off-screen PNG exports, nor create an aspect group when aspects

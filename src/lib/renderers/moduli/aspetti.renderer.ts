@@ -431,6 +431,7 @@ export class AspettiRender {
   public static renderArchi(as,nodi,archi,aspetti,opzioni,diametroCerchio,monocolore,parametroDiRender="longitude",nomeElementoCelesteInEvidenza=false) {
     var group = new THREE.Group();
     let endpointGeometry: THREE.CircleGeometry | undefined;
+    const kleroi = new Set(['Tyche', 'Daimon', 'Basis', 'Ananke', 'Eros', 'Hermes', 'Tolma', 'Nike', 'Nemesi']);
 
     if(Object.keys(archi).length > 0) {
       for(let k=0; k<aspetti.length; k++) {
@@ -524,6 +525,22 @@ export class AspettiRender {
               colore = '#333333';
             }
 
+            const klerosView = opzioni.kleros === 'visualizza sorti';
+            const lotAspect = kleroi.has(nodi[archi[tipoAspetto][i][0]].name) || kleroi.has(nodi[archi[tipoAspetto][i][1]].name);
+            const dimBackground = klerosView && !lotAspect;
+            if (klerosView) colore = lotAspect ? coloreAspetto : '#777777';
+            const addAspectObject = (object: THREE.Object3D) => {
+              if (dimBackground) object.traverse(child => {
+                const raw = (child as THREE.Mesh).material;
+                for (const material of raw ? (Array.isArray(raw) ? raw : [raw]) : []) {
+                  material.opacity *= 0.22;
+                  material.transparent = true;
+                  material.depthWrite = false;
+                }
+              });
+              group.add(object);
+            };
+
             var linea;
             var tipoLinea = AspettiRender.tipoLinea[aspetti[k]];
             var spessore = 1.3;
@@ -540,7 +557,7 @@ export class AspettiRender {
               default:
                 linea = OggettiSempliciRender.getLineaGrossa(a,b,colore,spessore);
             }
-            group.add(linea);
+            addAspectObject(linea);
 
             // The glyph may shift into another concentric lane in a stellium.
             // Small endpoint discs reveal exactly which TRUE longitude an
@@ -555,16 +572,16 @@ export class AspettiRender {
               dot.position.set(point.x, point.y, 0.025);
               dot.userData.aspectEndpoint = node.name;
               dot.userData.trueLongitude = node[parametroDiRender];
-              group.add(dot);
+              addAspectObject(dot);
             }
 
             if(nodi[archi[tipoAspetto][i][0]].y != diametroCerchio/2) {
               var linea2 = OggettiSempliciRender.getLineaGrossaTratteggiata(a,a2,colore,0.15,0.05);
-              group.add(linea2);
+              addAspectObject(linea2);
             }
             if(nodi[archi[tipoAspetto][i][1]].y != diametroCerchio/2) {
               var linea3 = OggettiSempliciRender.getLineaGrossaTratteggiata(b,b2,colore,0.15,0.05);
-              group.add(linea3);
+              addAspectObject(linea3);
             }
           }
         }

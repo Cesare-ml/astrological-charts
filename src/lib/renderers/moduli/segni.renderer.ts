@@ -36,10 +36,19 @@ export class SegniRender {
     // -------------------------
     // Decani
     // -------------------------
-    public static async getDecadi(degOffsAscendente,simboliScale,diametroCerchioInterno,diametroCerchioEsterno,australInversion,opzioni): Promise<any> {
+    public static async getDecadi(degOffsAscendente,simboliScale,diametroCerchioInterno,diametroCerchioEsterno,australInversion,opzioni,diametroAnelloEsterno = diametroCerchioEsterno): Promise<any> {
         var group = new THREE.Group();
         
         const coloreSimboli = SkinManager.skins[opzioni.settaggi.skin_id].anelloSegni.coloreSimboli;
+        // Keep the unrotated glyph plane inside the zodiac, including its
+        // corners at diagonal angles, while retaining the existing inner band.
+        const innerRadius = diametroCerchioInterno / 2;
+        const outerRadius = diametroAnelloEsterno / 2;
+        const diagonal = Math.hypot(100 / 69, 1);
+        const glyphSize = Math.min(0.12 * simboliScale, Math.max(0, outerRadius - innerRadius) * 0.95 / diagonal);
+        const halfDiagonal = diagonal * glyphSize / 2;
+        const middleRadius = (diametroCerchioInterno + diametroCerchioEsterno) / 4;
+        const glyphRadius = Math.min(outerRadius - halfDiagonal, Math.max(middleRadius, innerRadius + halfDiagonal));
 
         for(var i=0; i<12; i++) {
           for(var j=0; j<3; j++) {
@@ -53,12 +62,9 @@ export class SegniRender {
                 100, 69, 1 / 69, australInversion, colore
             );
     
-            segno.scale.set(0.14*simboliScale,0.14*simboliScale,1);
+            segno.scale.set(glyphSize,glyphSize,1);
             segno.rotateZ(THREE.MathUtils.degToRad(i*30+j*10+5 + degOffsAscendente));
-            segno.translateY(
-              diametroCerchioInterno/2
-              + (diametroCerchioEsterno/2 - diametroCerchioInterno/2)/2,
-            );
+            segno.translateY(glyphRadius);
             segno.rotation.z = 0;
             segno.userData.decadeSign = (i + 4*j)%12;
             segno.userData.decadeIndex = i*3+j;
@@ -253,7 +259,8 @@ export class SegniRender {
                 diametroCerchioInterno + (opzioni.mostraDecani ? (diametroCerchioEsterno-diametroCerchioInterno)/4 : 0),
                 diametroCerchioInterno + (opzioni.mostraDecani ? (diametroCerchioEsterno-diametroCerchioInterno)/2 : (diametroCerchioEsterno-diametroCerchioInterno)/4),
                 australInversion,
-                opzioni
+                opzioni,
+                diametroCerchioEsterno
             );
             group.add(decadi);
         }

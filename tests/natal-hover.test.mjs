@@ -35,3 +35,21 @@ test('picks only natal glyphs, tracks zoom/redraw, and detaches listeners', () =
     controller.dispose(); assert.equal(window.handlers.size,0); assert.equal(canvas.handlers.size,0);
   } finally { controller.dispose(); globalThis.window = previous; }
 });
+
+test('picks a projected dodecatemorion with its own longitude and distinguishes it from the natal point', () => {
+  const previous = globalThis.window;
+  globalThis.window = target();
+  const canvas=Object.assign(target(),{getBoundingClientRect:()=>({left:0,top:0,width:200,height:200})});
+  const camera=new THREE.PerspectiveCamera(75,1,.1,100);camera.position.z=5;camera.updateProjectionMatrix();
+  const scene=new THREE.Scene(), natal=new THREE.Group();natal.userData.chartInteractionRole='natal-planets';scene.add(natal);
+  const point=new THREE.Mesh(new THREE.CircleGeometry(.5,24),new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
+  point.userData={dodecatemoria:'Sun',trueLongitude:130};natal.add(point);
+  const seen=[],controller=new NatalHoverController(canvas,()=>scene,()=>camera,value=>seen.push(value));
+  try {
+    canvas.fire('mousemove',{clientX:100,clientY:100});
+    assert.deepEqual(seen.at(-1),{name:'Sun',longitude:130,projection:'dodecatemoria'});
+    point.userData={planet:'Sun',trueLongitude:130};controller.refresh();
+    assert.deepEqual(seen.at(-1),{name:'Sun',longitude:130});
+    assert.equal(seen.length,2);
+  } finally {controller.dispose();globalThis.window=previous;}
+});

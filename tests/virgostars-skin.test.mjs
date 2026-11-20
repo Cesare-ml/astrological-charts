@@ -18,14 +18,14 @@ const bundle = await build({
 const { SegniRender, CaseRender, OggettiSempliciRender, SkinManager, THREE } =
   await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 
-async function zodiac(skin, mostraTransiti = false, extra = {}) {
+async function zodiac(skin, mostraTransiti = false, extra = {}, asc = 20) {
   const original = OggettiSempliciRender.getImg;
   OggettiSempliciRender.setDimensioniCanvas({x: 1200, y: 1200});
-  OggettiSempliciRender.getImg = async () => new THREE.Mesh(
-    new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial(),
+  OggettiSempliciRender.getImg = async (_ref, width, height, scale) => new THREE.Mesh(
+    new THREE.PlaneGeometry(width * scale, height * scale), new THREE.MeshBasicMaterial(),
   );
   try {
-    return await SegniRender.getAnelloSegni(20, 1, 3.9, 4.57, false, false, false,
+    return await SegniRender.getAnelloSegni(asc, 1, 3.9, 4.57, false, false, false,
       {mostraTransiti, ...extra, settaggi: {skin_id: skin}});
   } finally {
     OggettiSempliciRender.getImg = original;
@@ -46,6 +46,22 @@ test('decades retain only ten-degree ticks and give the main signs a separate ou
     assert.ok(main(group).position.length() > main(ordinary).position.length());
     const decade = group.children.flatMap(c => c.children).find(c => c.userData.decadeIndex === 0);
     assert.ok(decade.position.length() < main(group).position.length());
+  }
+});
+
+test('decade image corners stay inside the zodiac in both subdivision modes across rotations and skins', async () => {
+  for (const skin of ['virgostars','light','dark']) for (const asc of [0,20,47,91]) for (const both of [false,true]) {
+    const group = await zodiac(skin,false,{mostraDecadi:true,mostraDecani:both},asc);
+    const decades = group.children.flatMap(child=>child.children).filter(child=>Number.isInteger(child.userData.decadeIndex));
+    assert.equal(decades.length,36);
+    for (const glyph of decades) {
+      const {width,height}=glyph.geometry.parameters;
+      const halfWidth=width*glyph.scale.x/2, halfHeight=height*glyph.scale.y/2;
+      for (const dx of [-halfWidth,halfWidth]) for (const dy of [-halfHeight,halfHeight]) {
+        const radius=Math.hypot(glyph.position.x+dx,glyph.position.y+dy);
+        assert.ok(radius >= 3.9/2 - 1e-9 && radius <= 4.57/2 + 1e-9, `${skin}, asc ${asc}, both ${both}, decade ${glyph.userData.decadeIndex}`);
+      }
+    }
   }
 });
 
