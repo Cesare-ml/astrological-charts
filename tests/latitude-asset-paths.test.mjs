@@ -17,3 +17,29 @@ test('latitude circles and transit rings use existing compatible artwork familie
     assert.match(latitudePlanetAsset(skin,'true Node',true),/anello\/true node\.png$/);
   }
 });
+
+test('latitude asset names reject URL syntax, traversal and invalid filename stems', () => {
+  const invalid = [
+    '', ' ', ' Sun', 'Sun ', '.', '..', '../Sun', 'Sun/../Moon',
+    'Sun\\Moon', 'Sun%2fMoon', 'Sun?raw=1', 'Sun#fragment',
+    'Sun:Moon', 'Sun\nMoon', 'Sun\u007fMoon', null, undefined, 12,
+  ];
+  for (const name of invalid) {
+    for (const transit of [false, true]) {
+      assert.throws(
+        () => latitudePlanetAsset('light', name, transit),
+        { name: 'TypeError', message: /single non-empty filename stem/ },
+        `Unexpectedly accepted latitude name: ${String(name)}`,
+      );
+    }
+  }
+});
+
+test('latitude asset names preserve legitimate spaced and dotted planet keys', () => {
+  for (const name of ['Sun', 'mean Node Sud', 'osc. Apogee', 'vertex']) {
+    assert.equal(latitudePlanetAsset('light', name, false),
+      `symbols/planets/light/_circle/${name}.png`);
+    assert.equal(latitudePlanetAsset('dark-bn', name, true),
+      `simboli/elementi-celesti/dark/cerchio/anello/${name}.png`);
+  }
+});
