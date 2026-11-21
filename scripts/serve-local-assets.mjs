@@ -17,6 +17,15 @@ const MIME=Object.freeze({
   '.otf':'font/otf','.json':'application/json; charset=utf-8',
 });
 export const DEFAULT_ORIGINS=['http://localhost:4200','http://127.0.0.1:4200'];
+
+/** Block DNS rebinding and non-loopback Host headers on the local asset server.
+ * The port must identify the socket actually receiving the request, so even
+ * a localhost Host value cannot impersonate another local service. */
+export function isAllowedLocalHostHeader(host, socketPort) {
+  if(typeof host!=='string'||!Number.isInteger(socketPort)) return false;
+  const match=/^(localhost|127\.0\.0\.1):([1-9][0-9]{0,4})$/i.exec(host);
+  return Boolean(match) && Number(match[2])===socketPort;
+}
 const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 })[c]);
@@ -81,6 +90,11 @@ export function createAssetServer({root,manifest,origins=DEFAULT_ORIGINS}) {
   return createServer((req,res)=>{
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
+    // Origin/CORS restrictions do not by themselves prevent a browser from
+    // reaching a loopback server via an attacker-controlled DNS hostname.
+    if(!isAllowedLocalHostHeader(req.headers.host,req.socket.localPort)){
+      res.writeHead(403);res.end('Forbidden host');return;
+    }
     const origin=req.headers.origin;
     if(origin&&!allowed.has(origin)){res.writeHead(403);res.end('Forbidden origin');return;}
     if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
