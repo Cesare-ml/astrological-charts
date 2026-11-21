@@ -188,3 +188,31 @@ test('report output refuses existing files, hard links and dangling symlinks', t
   assert.match(result.stderr, /must not be a symlink/);
   assert.equal(existsSync(absent), false);
 }));
+
+test('report filenames reject Windows device names on every platform before Git runs', () => {
+  const root = mkdtempSync(join(tmpdir(), 'charts-pr-reserved-names-'));
+  try {
+    const reserved = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM9', 'LPT1', 'LPT9', 'con', 'lPt7'];
+    for (const stem of reserved) for (const ext of ['.json', '.snapshot.json']) {
+      const name = '.local/' + stem + ext;
+      assert.throws(() => resolveReportOutputPath(name, root),
+        /reserved Windows device name/, name);
+    }
+
+    for (const name of ['console.json', 'auxiliary.json', 'COM0.json', 'COM10.json',
+      'LPT10.json', 'report.CON.json']) {
+      assert.equal(resolveReportOutputPath('.local/' + name, root),
+        join(root, '.local', name));
+    }
+    assert.equal(existsSync(join(root, '.local')), false,
+      'the path validator must not create a report folder');
+
+    // Invalid destinations must be reported before resolving nonexistent
+    // Git refs, even in a checkout-free, disposable directory.
+    const result = spawnSync(process.execPath, [cli, '--out', '.local/CON.json',
+      'main:feature/a', 'main:feature/b'], {cwd: root, encoding: 'utf8'});
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /reserved Windows device name/);
+    assert.equal(existsSync(join(root, '.local')), false);
+  } finally { rmSync(root, {recursive: true, force: true}); }
+});
