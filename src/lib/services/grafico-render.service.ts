@@ -84,6 +84,60 @@ export class GraficoRenderService implements OnDestroy {
   private natalHover: NatalHoverController | null = null;
   private transitHover: TransitHoverController | null = null;
   private transitLines: THREE.Group | null = null;
+  private fixedStarHoverListener: ((id: number | null) => void) | null = null;
+  private chakraHoverListener: ((value: {chakra:string;sector:number} | null) => void) | null = null;
+  private hoveredFixedStarId: number | null = null;
+  private hoveredChakra: {chakra:string;sector:number} | null = null;
+  private readonly selectionRaycaster = new THREE.Raycaster();
+
+  private readonly onSelectionLeave = (): void => {
+    this.publishSelection(null, null);
+  };
+  private readonly onSelectionMove = (event: PointerEvent): void => {
+    if ((!this.fixedStarHoverListener && !this.chakraHoverListener) ||
+        !this.canvas || !this.scene || !this.camera) return;
+    const rect=this.canvas.getBoundingClientRect();
+    if (rect.width<=0 || rect.height<=0) return;
+    const x=(event.clientX-rect.left)/rect.width;
+    const y=(event.clientY-rect.top)/rect.height;
+    if (x<0 || x>1 || y<0 || y>1) {this.publishSelection(null,null);return;}
+    this.camera.updateMatrixWorld();
+    this.selectionRaycaster.setFromCamera(new THREE.Vector2(x*2-1,1-y*2),this.camera);
+    let star:number|null=null;
+    let chakra:{chakra:string;sector:number}|null=null;
+    for (const hit of this.selectionRaycaster.intersectObjects(this.scene.children,true)) {
+      let part:THREE.Object3D|null=hit.object;
+      while(part) {
+        const id=part.userData?.fixedStarId;
+        const label=part.userData?.chakra;
+        const sector=part.userData?.sector;
+        if(star===null && typeof id==='number' && Number.isSafeInteger(id) && id>=0)star=id;
+        if(chakra===null && typeof label==='string' && label.length>0 &&
+          typeof sector==='number' && Number.isSafeInteger(sector) && sector>=0)
+          chakra={chakra:label,sector};
+        part=part.parent;
+      }
+      if(star!==null||chakra!==null)break;
+    }
+    this.publishSelection(star,chakra);
+  };
+  private publishSelection(star:number|null,chakra:{chakra:string;sector:number}|null):void {
+    if(star!==this.hoveredFixedStarId) {
+      this.hoveredFixedStarId=star;this.fixedStarHoverListener?.(star);
+    }
+    if(chakra?.chakra!==this.hoveredChakra?.chakra || chakra?.sector!==this.hoveredChakra?.sector) {
+      this.hoveredChakra=chakra;this.chakraHoverListener?.(chakra);
+    }
+  }
+  /** Pointer hooks listen only for real renderer-tagged objects, never guess missing stars/sections. */
+  public setFixedStarHoverListener(listener:((id:number|null)=>void)|null):void {
+    this.fixedStarHoverListener=listener;
+    if(!listener)this.hoveredFixedStarId=null;
+  }
+  public setChakraHoverListener(listener:((value:{chakra:string;sector:number}|null)=>void)|null):void {
+    this.chakraHoverListener=listener;
+    if(!listener)this.hoveredChakra=null;
+  }
   private natalAspectMaterials = new Map<THREE.Material, {color: THREE.Color; opacity: number; transparent: boolean; depthWrite: boolean; vertexColors: boolean}>();
   
   public scale = 1;
@@ -138,6 +192,47 @@ export class GraficoRenderService implements OnDestroy {
   public zoomOut(step: number = 0.04): void {
     this.setZoom(this.zoomValue - step);
   }
+  /** Wheel zoom around the pointer, keeping the hit point on the chart's z=0 plane stationary. */
+  public zoomAt(clientX:number,clientY:number,factor:number):void {
+    if(!Number.isFinite(factor)||factor<=0||!Number.isFinite(clientX)||!Number.isFinite(clientY))return;
+    const next=Math.max(this.minZoom,Math.min(this.maxZoom,this.zoomValue*factor));
+    if(!this.camera||!this.canvas) {this.setZoom(next);return;}
+    const rect=this.canvas.getBoundingClientRect();
+    if(rect.width<=0||rect.height<=0)return;
+    const ndc=new THREE.Vector2(
+      2*(clientX-rect.left)/rect.width-1,1-2*(clientY-rect.top)/rect.height);
+    const plane=new THREE.Plane(new THREE.Vector3(0,0,1),0);
+    const hit=(target:THREE.Vector3):THREE.Vector3|null=>{
+      this.camera.updateMatrixWorld(true);
+      this.selectionRaycaster.setFromCamera(ndc,this.camera);
+      return this.selectionRaycaster.ray.intersectPlane(plane,target);
+    };
+    const before=hit(new THREE.Vector3());
+    this.zoomValue=next;
+    this.camera.zoom=next;
+    this.camera.updateProjectionMatrix();
+    const after=hit(new THREE.Vector3());
+    if(before&&after) {
+      this.camera.position.x+=before.x-after.x;
+      this.camera.position.y+=before.y-after.y;
+      this.camera.updateMatrixWorld(true);
+    }
+    this.natalHover?.refresh();
+    this.transitHover?.refresh();
+    if(this.isInizializzato)this.render();
+  }
+  /** Reset wheel zoom and cursor pan without altering the current chart or camera distance. */
+  public resetFraming():void {
+    this.zoomValue=1;
+    if(!this.camera)return;
+    this.camera.zoom=1;
+    this.camera.position.x=0;this.camera.position.y=0;
+    this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld(true);
+    this.natalHover?.refresh();
+    this.transitHover?.refresh();
+    if(this.isInizializzato)this.render();
+  }
 
 
   // -------------------- LIFECYCLE --------------------
@@ -148,6 +243,12 @@ export class GraficoRenderService implements OnDestroy {
     this.natalHover = null;
     this.transitHover?.dispose();
     this.transitHover = null;
+    if(this.canvas) {
+      this.canvas.removeEventListener('pointermove',this.onSelectionMove);
+      this.canvas.removeEventListener('pointerleave',this.onSelectionLeave);
+    }
+    this.publishSelection(null,null);
+    this.fixedStarHoverListener=null;this.chakraHoverListener=null;
     this.natalAspectMaterials.clear();
     this.transitLines = null;
     if (this.frameId != null) cancelAnimationFrame(this.frameId);
@@ -174,6 +275,8 @@ export class GraficoRenderService implements OnDestroy {
     if (this.renderer) this.ngOnDestroy();
     // The first step is to get the reference of the canvas element from our HTML document
     this.canvas = canvas.nativeElement;
+    this.canvas.addEventListener('pointermove',this.onSelectionMove);
+    this.canvas.addEventListener('pointerleave',this.onSelectionLeave);
     this.dimensioni = dimensioni;
 
     this.renderer = new THREE.WebGLRenderer({
@@ -310,6 +413,7 @@ export class GraficoRenderService implements OnDestroy {
       if (!this.scene) this.scene = new THREE.Scene();
       this.natalAspectMaterials.clear();
       this.transitLines = null;
+      this.publishSelection(null,null);
       disposeSceneResources(this.scene);
       this.scene.clear();
       const bgColor = SkinManager.skins[opzioni.settaggi.skin_id].bgColor;
