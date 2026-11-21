@@ -23,7 +23,7 @@ export function validatePackPath(path) {
     throw new Error('Unsupported asset type: ' + path);
   return path;
 }
-export function readSafeAsset(root,path) {
+export function readSafeAsset(root,path,expectedBytes=null) {
   validatePackPath(path);
   let current=root;
   for(const part of path.split('/')) {
@@ -32,7 +32,12 @@ export function readSafeAsset(root,path) {
     const st=lstatSync(current);
     if(st.isSymbolicLink()) throw new Error('Pack asset symlink forbidden: '+path);
   }
-  if(!lstatSync(current).isFile()) throw new Error('Asset is not a regular file: '+path);
+  const stat=lstatSync(current);
+  if(!stat.isFile()) throw new Error('Asset is not a regular file: '+path);
+  // A changed approved file must fail before allocating its full contents.
+  // The SHA-256 check below still guards same-size modifications and races.
+  if(expectedBytes!==null && stat.size!==expectedBytes)
+    throw new Error('Asset differs from approved manifest: '+path);
   return readFileSync(current);
 }
 
@@ -59,7 +64,7 @@ export function verifyApprovedAssetPack(rootPath,manifest) {
     for(const field of ['rightsHolder','permissionBasis','approvalEvidence'])
       if(typeof record[field]!=='string' || !record[field].trim())
         throw new Error('Missing explicit approval metadata '+field+': '+path);
-    const bytes=readSafeAsset(root,path);
+    const bytes=readSafeAsset(root,path,record.bytes);
     if(bytes.length!==record.bytes ||
       createHash('sha256').update(bytes).digest('hex')!==record.sha256)
       throw new Error('Asset differs from approved manifest: '+path);
