@@ -59,32 +59,30 @@ export class PosizioneLocalDB {
      : new CittaLocalDB(obj?.citta);
   }
 
+  /**
+   * Reading the active source must not discard the inactive location data.
+   * Use resetCitta()/resetPosManuale() explicitly when intentionally clearing it.
+   */
   public getLng() {
     if (this.usa_posizione_manuale) {
-      this.resetCitta();
       return this.posizione_manuale?.lng ?? 0;
     } else {
-      this.resetPosManuale();
       return this.citta?.lng ?? 0;
     }
   }
 
   public getLat() {
     if (this.usa_posizione_manuale) {
-      this.resetCitta();
       return this.posizione_manuale?.lat ?? 0;
     } else {
-      this.resetPosManuale();
       return this.citta?.lat ?? 0;
     }
   }
 
   public getTz() {
     if (this.usa_posizione_manuale) {
-      this.resetCitta();
       return this.posizione_manuale?.tz ?? 'UTC';
     } else {
-      this.resetPosManuale();
       return this.citta?.tz ?? 'UTC';
     }
   }
