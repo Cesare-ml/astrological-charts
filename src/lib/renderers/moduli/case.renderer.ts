@@ -1,3 +1,4 @@
+import { unwrapHouseCusps } from './house-cusps';
 import * as THREE from 'three';
 import {OggettiSempliciRender} from '../oggetti-semplici.renderer';
 import { SkinManager } from '../@skin-manager';
@@ -203,14 +204,13 @@ export class CaseRender {
     //le texture hanno sistemi di render diversi, cerchio inizio 90 gradi dopo
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
-    var casePos = [];
-    casePos.push(caseObj.house[0]);
-    for(var i=0; i<11; i++) {
-      if(caseObj.house[i+1] < casePos[i]) {
-        casePos.push(caseObj.house[i+1]+360);
-      } else {
-        casePos.push(caseObj.house[i+1]);
-      }
+    const casePos = unwrapHouseCusps(caseObj.house);
+    // A missing or nonfinite Ascendant would make every rotation NaN.
+    if (!Number.isFinite(caseObj.ascendant)) {
+      throw new TypeError('House ascendant must be a finite longitude.');
+    }
+    if (!Number.isFinite(degOffs)) {
+      throw new TypeError('House rotation offset must be a finite number.');
     }
 
     if ( !SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
@@ -314,14 +314,13 @@ export class CaseRender {
     //le texture hanno sistemi di render diversi, cerchio inizio 90 gradi dopo
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
-    var casePos = [];
-    casePos.push(caseObj.house[0]);
-    for(var i=0; i<11; i++) {
-      if(caseObj.house[i+1] < casePos[i]) {
-        casePos.push(caseObj.house[i+1]+360);
-      } else {
-        casePos.push(caseObj.house[i+1]);
-      }
+    const casePos = unwrapHouseCusps(caseObj.house);
+    // A missing or nonfinite Ascendant would make every rotation NaN.
+    if (!Number.isFinite(caseObj.ascendant)) {
+      throw new TypeError('House ascendant must be a finite longitude.');
+    }
+    if (!Number.isFinite(degOffs)) {
+      throw new TypeError('House rotation offset must be a finite number.');
     }
 
     const texture = 
@@ -427,14 +426,13 @@ export class CaseRender {
     //le texture hanno sistemi di render diversi, cerchio inizio 90 gradi dopo
     var offsetDegRotazioneTextures = -caseObj.ascendant + degOffs + 180;
 
-    var casePos = [];
-    casePos.push(caseObj.house[0]);
-    for(var i=0; i<11; i++) {
-      if(caseObj.house[i+1] < casePos[i]) {
-        casePos.push(caseObj.house[i+1]+360);
-      } else {
-        casePos.push(caseObj.house[i+1]);
-      }
+    const casePos = unwrapHouseCusps(caseObj.house);
+    // A missing or nonfinite Ascendant would make every rotation NaN.
+    if (!Number.isFinite(caseObj.ascendant)) {
+      throw new TypeError('House ascendant must be a finite longitude.');
+    }
+    if (!Number.isFinite(degOffs)) {
+      throw new TypeError('House rotation offset must be a finite number.');
     }
 
     if ( !SkinManager.skins[opzioni.settaggi.skin_id].anelloCase.texture ) {
