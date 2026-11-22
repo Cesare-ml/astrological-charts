@@ -1,5 +1,13 @@
 # Rendering architecture
 
+## Pointer-centred zoom (local integration)
+
+The host can opt into `zoomAt` using viewport pointer coordinates. The camera
+keeps the corresponding point on the chart plane stationary while zooming;
+`resetFraming` restores the centred default. Existing centre zoom and exports
+retain their independent behaviour. In a composite wheel, dodecatemoria markers
+and selection dimming affect the natal ring, leaving transit glyphs visible.
+
 ## Chakra sector interaction (local integration)
 
 An opt-in hover listener reports the selected chakra and numbered sector from

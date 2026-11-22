@@ -227,6 +227,15 @@ test('transits omit their degrees and duplicate axes while natal planets retain 
   assert.deepEqual(secondary.labels, [], 'transiting planets never show degree badges');
 });
 
+test('selecting a natal dodecatemorion leaves transit glyphs fully visible', async () => {
+  const options={dodecatemoriAttivi:true,dodecatemore:'Sun'};
+  const primary=await makeScene(false,0,1,outerRadius,innerRadius,{Sun:10,Moon:48},'primary-overlay',[],false,true,true,undefined,options);
+  const transit=await makeScene(false,0,1,outerRadius,innerRadius,{Sun:10,Moon:48},'transit-overlay',[],false,false,true,undefined,options);
+  const glyphs=group=>group.children.filter(child=>child.userData.planet);
+  assert.ok(glyphs(primary.group).every(glyph=>glyph.material.opacity===0.3));
+  assert.ok(glyphs(transit.group).every(glyph=>glyph.material.opacity===1));
+});
+
 test('synastry has no planet degrees on either wheel and keeps its independent AS/MC', async () => {
   const source = { Sun: 10, Moon: 48, Jupiter: 148, AS: 20, DS: 200, MC: 290, IC: 110 };
   const primary = await makeScene(true, 0, 1, outerRadius, innerRadius, source,

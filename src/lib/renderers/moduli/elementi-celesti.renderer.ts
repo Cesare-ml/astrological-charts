@@ -271,9 +271,9 @@ export class ElementiCelestiRender {
       el.userData.planet = nome;
       el.userData.trueLongitude = trueDegree;
 
-      if((opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') ||
-        (axisPresentation !== 'transit-overlay' && axisPresentation !== 'synastry-overlay' &&
-          opzioni.proiezioneZodiacale?.tipo && opzioni.proiezioneZodiacale?.pianeta !== 'tutti')) {
+      if(axisPresentation !== 'transit-overlay' && axisPresentation !== 'synastry-overlay' &&
+        ((opzioni.dodecatemoriAttivi && opzioni.dodecatemore != 'tutti') ||
+          (opzioni.proiezioneZodiacale?.tipo && opzioni.proiezioneZodiacale?.pianeta !== 'tutti'))) {
         el.material.opacity = 0.3;
       }
 
@@ -401,7 +401,7 @@ export class ElementiCelestiRender {
       }*/
 
       //Dodecatemoria tutti
-      if(elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == 'tutti' && !calcolaPartiArabe) {
+      if(axisPresentation !== 'transit-overlay' && axisPresentation !== 'synastry-overlay' && elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == 'tutti' && !calcolaPartiArabe) {
         var raggioEclitticaDodecatemore =
           (diametroCerchioEsterno/2 - diametroCerchioDodecatemori/2)/2 + diametroCerchioDodecatemori/2;
 
@@ -427,7 +427,7 @@ export class ElementiCelestiRender {
 
       }
       // Dodecatemoria singola
-      else if(elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == nome && !calcolaPartiArabe) {
+      else if(axisPresentation !== 'transit-overlay' && axisPresentation !== 'synastry-overlay' && elementiCelesti[nome]['dodecatemoria'] && opzioni.dodecatemore == nome && !calcolaPartiArabe) {
         let eld = await OggettiSempliciRender.getImg(elRef,875,605,1/875,australInversion,Colori.elementiCelesti[nome]);
         var dodecatemoreDegDiRender = 75-ascendente+15 + elementiCelesti[nome]['dodecatemoria']['longitude'];
 

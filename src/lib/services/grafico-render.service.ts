@@ -133,6 +133,7 @@ export class GraficoRenderService implements OnDestroy {
     if (this.camera) {
       this.camera.zoom = this.zoomValue;
       this.camera.updateProjectionMatrix();
+      this.camera.updateMatrixWorld();
       this.natalHover?.refresh();
       this.chakraHover?.refresh();
       this.transitHover?.refresh();
@@ -147,6 +148,33 @@ export class GraficoRenderService implements OnDestroy {
 
   public zoomOut(step: number = 0.04): void {
     this.setZoom(this.zoomValue - step);
+  }
+
+  /** Zoom around the pointer on the chart plane, keeping that point stationary. */
+  public zoomAt(clientX: number, clientY: number, factor: number): void {
+    if (!this.camera || !this.canvas || !Number.isFinite(clientX) || !Number.isFinite(clientY) ||
+        !Number.isFinite(factor) || factor <= 0) return;
+    const rect = this.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const next = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomValue * factor));
+    if (next === this.zoomValue) return;
+    this.camera.updateMatrixWorld();
+    const point = new THREE.Vector3((clientX - rect.left) / rect.width * 2 - 1,
+      1 - (clientY - rect.top) / rect.height * 2, 0.5).unproject(this.camera);
+    const ray = point.sub(this.camera.position);
+    if (!Number.isFinite(ray.z) || Math.abs(ray.z) < 1e-9) return;
+    const distance = -this.camera.position.z / ray.z;
+    if (!Number.isFinite(distance) || distance <= 0) return;
+    const ratio = 1 - this.zoomValue / next;
+    this.camera.position.x += ray.x * distance * ratio;
+    this.camera.position.y += ray.y * distance * ratio;
+    this.setZoom(next);
+  }
+
+  /** Restore the whole wheel after pointer-centred zooming. */
+  public resetFraming(): void {
+    if (this.camera) { this.camera.position.x = 0; this.camera.position.y = 0; }
+    this.setZoom(1);
   }
 
 

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import * as THREE from 'three';
 
 // Exercise the actual service methods without creating Angular or a WebGL context.
 // TypeScript's parser extracts the three methods, so renaming/removing one fails
@@ -13,7 +14,7 @@ const klass = ast.statements.find(node =>
   ts.isClassDeclaration(node) && node.name?.text === 'GraficoRenderService');
 assert.ok(klass, 'GraficoRenderService class must exist');
 
-const names = ['setZoom', 'zoomIn', 'zoomOut', 'chartCameraDistance'];
+const names = ['setZoom', 'zoomIn', 'zoomOut', 'zoomAt', 'resetFraming', 'chartCameraDistance'];
 const methods = names.map(name => {
   const method = klass.members.find(member =>
     ts.isMethodDeclaration(member) && member.name.getText(ast) === name);
@@ -36,7 +37,7 @@ ZoomProbe;
 const js = ts.transpileModule(probeSource, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
 }).outputText;
-const ZoomProbe = vm.runInNewContext(js + '\nZoomProbe');
+const ZoomProbe = vm.runInNewContext(js + '\nZoomProbe', {THREE});
 
 function withCamera() {
   const service = new ZoomProbe();
@@ -44,10 +45,29 @@ function withCamera() {
     zoom: 1,
     projections: 0,
     updateProjectionMatrix() { this.projections++; },
+    updateMatrixWorld() {},
   };
   service.camera = camera;
   return { service, camera };
 }
+
+test('pointer zoom holds the selected chart point still and fit recentres', () => {
+  const service = new ZoomProbe();
+  const camera = new THREE.PerspectiveCamera(75,1,0.1,1000);
+  camera.position.z=3;
+  camera.updateProjectionMatrix();camera.updateMatrixWorld();
+  service.camera=camera;
+  service.canvas={getBoundingClientRect:()=>({left:20,top:30,width:400,height:400})};
+  const target=new THREE.Vector3(0.8,-0.45,0);
+  const pixel=()=>{camera.updateMatrixWorld();const p=target.clone().project(camera);return [20+(p.x+1)*200,30+(1-p.y)*200];};
+  const before=pixel();
+  service.zoomAt(before[0],before[1],2);
+  const after=pixel();
+  assert.ok(Math.abs(before[0]-after[0])<1e-6 && Math.abs(before[1]-after[1])<1e-6);
+  assert.ok(Math.abs(camera.position.x)>0.1);
+  service.resetFraming();
+  assert.equal(camera.position.x,0);assert.equal(camera.position.y,0);assert.equal(camera.zoom,1);
+});
 
 test('NaN, infinite and non-number zoom inputs do not corrupt the camera', () => {
   const { service, camera } = withCamera();
