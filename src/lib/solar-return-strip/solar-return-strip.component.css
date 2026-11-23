@@ -1,0 +1,18 @@
+:host { display: block; width: 100%; min-width: 0; }
+.return-strip { color: inherit; max-width: 100%; }
+.strip-heading { font-weight: 600; font-size: .82rem; margin: 0 0 6px; }
+.strip-scroll { overflow-x: auto; max-width: 100%; scrollbar-width: thin; }
+.strip-body { position: relative; min-width: 680px; border: 1px solid currentColor; border-radius: 8px; background: rgba(128,128,128,.035); overflow: hidden; }
+.zodiac { height: 53px; display: grid; grid-template-columns: repeat(12, minmax(0,1fr)); border-bottom: 1px solid rgba(128,128,128,.25); }
+.sign { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border-right:1px solid rgba(128,128,128,.15); font-size: .6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sign:last-child { border-right: 0; }
+.sign img, .planet img { display:block; object-fit: contain; }
+.lane { position:relative; box-sizing:border-box; height:22px; border-bottom:1px solid rgba(128,128,128,.18); }
+.lane-label { position:absolute; left: 4px; top:2px; font-size:.58rem; opacity:.62; pointer-events:none; }
+.cusp { position:absolute; top:0; height:100%; width:2px; transform:translateX(-50%); background:#596d8e; }
+.return-cusp { background:#b58b45; }
+.axes { height:25px; }
+.axis { position:absolute; top:2px; font-weight:600; font-size:.57rem; transform:translateX(-50%); color:#9860ae; }
+.planets { height:96px; border-bottom:0; }
+.planet { position:absolute; transform:translateX(-50%); width:24px; height:24px; }
+.strip-caption { font-size:.62rem; opacity:.65; padding:5px 0; }
