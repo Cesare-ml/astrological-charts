@@ -1,0 +1,37 @@
+<section class="return-strip" [attr.aria-label]="label">
+  <div class="strip-heading">{{ label }}</div>
+  <div class="strip-scroll">
+    <div class="strip-body">
+      <div class="zodiac" [attr.aria-label]="signsLabel">
+        <div class="sign" *ngFor="let sign of data.signs">
+          <img [src]="sign.glyphUrl" [alt]="sign.name" width="21" height="21" loading="lazy">
+          <span>{{ sign.name }}</span>
+        </div>
+      </div>
+      <div class="lane" [attr.aria-label]="radixLabel">
+        <span class="lane-label">{{ radixLabel }}</span>
+        <span class="cusp radix-cusp" *ngFor="let longitude of data.radixCusps; index as i"
+          [style.left.%]="percent(longitude)"
+          [attr.title]="radixLabel + ' ' + (i + 1) + ': ' + degreeLabel(longitude)"></span>
+      </div>
+      <div class="lane" [attr.aria-label]="returnLabel">
+        <span class="lane-label">{{ returnLabel }}</span>
+        <span class="cusp return-cusp" *ngFor="let longitude of data.returnCusps; index as i"
+          [style.left.%]="percent(longitude)"
+          [attr.title]="returnLabel + ' ' + (i + 1) + ': ' + degreeLabel(longitude)"></span>
+      </div>
+      <div class="lane axes">
+        <span class="axis" *ngFor="let axis of data.axes" [style.left.%]="percent(axis.longitude)"
+          [attr.title]="axis.name + ': ' + degreeLabel(axis.longitude)">{{ axis.name }}</span>
+      </div>
+      <div class="lane planets" [attr.aria-label]="planetsLabel">
+        <span class="planet" *ngFor="let planet of data.planets; index as i"
+          [style.left.%]="percent(planet.longitude)" [style.top.px]="planetOffset(i)"
+          [attr.title]="planet.name + ': ' + degreeLabel(planet.longitude)">
+          <img [src]="planet.glyphUrl" [alt]="planet.name" width="23" height="23" loading="lazy">
+        </span>
+      </div>
+    </div>
+  </div>
+  <div class="strip-caption">{{ signsLabel }} · {{ radixLabel }} · {{ returnLabel }} · {{ planetsLabel }}</div>
+</section>
