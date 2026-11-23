@@ -56,6 +56,8 @@ export interface OpzioniGrafico {
   disegnaAsseNomePianeta?: boolean;
 
   latitudiniPianetaSelezionato?: string;
+  /** Optional host-requested initial latitude-view camera distance. */
+  latitudiniDistanzaCamera?: number;
 
   dodecatemoriAttivi: boolean;
   dodecatemore?: any;
@@ -81,6 +83,8 @@ export interface OpzioniGrafico {
   mostraTransiti: boolean;
   /** Draw the transit chart's ASC/DS/MC/IC as dashed external markers. Opt-in. */
   mostraAssiTransiti?: boolean;
+  /** Optional outer-axes display on a synastry chart. */
+  mostraAssiSinastria?: boolean;
   mostraTransitiSinodici: boolean;
   transitoSinodicoNomePianeta?: string;
   transitoSinodicoFase: string;
@@ -191,6 +195,7 @@ export const createDefaultOpzioniGrafico = (): OpzioniGrafico => ({
 
   disegnaAsseNomePianeta: undefined,
   latitudiniPianetaSelezionato: undefined,
+  latitudiniDistanzaCamera: undefined,
 
   dodecatemoriAttivi: false,
   dodecatemore: undefined,
@@ -208,6 +213,7 @@ export const createDefaultOpzioniGrafico = (): OpzioniGrafico => ({
 
   mostraTransiti: false,
   mostraAssiTransiti: false,
+  mostraAssiSinastria: false,
   mostraTransitiSinodici: false,
   transitoSinodicoNomePianeta: undefined,
   transitoSinodicoFase: 'd1',
