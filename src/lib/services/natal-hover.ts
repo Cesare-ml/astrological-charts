@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {mousePositionToNdc} from '../renderers/@gestore-eventi-mouse';
 
 /** Hover data refers to the supplied natal chart, never the displaced glyph longitude. */
-export interface NatalPlanetHover { name: string; longitude: number; }
+export interface NatalPlanetHover { name: string; longitude: number; projection?: 'dodecatemoria'; }
 
 export class NatalHoverController {
   private readonly raycaster = new THREE.Raycaster();
@@ -26,7 +26,7 @@ export class NatalHoverController {
   };
   private leave = (): void => { this.last = null; this.set(null); };
   private set(value: NatalPlanetHover | null): void {
-    if (this.current?.name === value?.name && this.current?.longitude === value?.longitude) return;
+    if (this.current?.name === value?.name && this.current?.longitude === value?.longitude && this.current?.projection === value?.projection) return;
     this.current = value;
     this.notify(value);
   }
@@ -44,7 +44,8 @@ export class NatalHoverController {
     this.raycaster.setFromCamera(this.point, camera);
     const hit = this.raycaster.intersectObjects(natal, true).find(item =>
       typeof item.object.userData.planet === 'string' && Number.isFinite(item.object.userData.trueLongitude));
-    this.set(hit ? {name: hit.object.userData.planet, longitude: hit.object.userData.trueLongitude} : null);
+    this.set(hit ? {name: hit.object.userData.planet, longitude: hit.object.userData.trueLongitude,
+      ...(hit.object.userData.projection === 'dodecatemoria' ? {projection: 'dodecatemoria' as const} : {})} : null);
   };
   public sceneChanged(): void { this.set(null); this.refresh(); }
   public dispose(): void {
